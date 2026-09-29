@@ -7,7 +7,7 @@
         xmlns:views="clr-namespace:OptiGame.App.Views"
         mc:Ignorable="d"
         d:DataContext="{d:DesignInstance vm:MainViewModel}"
-        Title="{Binding Title}" Height="720" Width="960" MinHeight="420" MinWidth="640"
+        Title="{Binding Title}" Height="820" Width="1000" MinHeight="420" MinWidth="640"
         WindowStartupLocation="CenterScreen" Background="#F4F5F7">
     <Window.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
@@ -38,7 +38,7 @@
                 <views:ProfilesView DataContext="{Binding Profiles}" />
             </TabItem>
             <TabItem Header="Mesures">
-                <TextBlock Margin="16" Text="Mesures PresentMon — phase 3." />
+                <views:MeasuresView DataContext="{Binding Measures}" />
             </TabItem>
             <TabItem Header="Paramètres">
                 <views:SettingsView DataContext="{Binding Settings}" />

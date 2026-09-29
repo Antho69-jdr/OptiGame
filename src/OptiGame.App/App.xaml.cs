@@ -129,6 +129,7 @@ public partial class App : Application
             services.GetRequiredKeyedService<ChangeJournal>(JournalKeys.Session);
             services.GetRequiredService<ProfileStore>();
             services.GetRequiredService<Core.Settings.AppSettingsStore>();
+            services.GetRequiredService<Core.Measurement.CaptureStore>();
             return true;
         }
         catch (StateFileCorruptException ex)
@@ -156,6 +157,7 @@ public partial class App : Application
         services.AddSingleton<DiagnosticViewModel>();
         services.AddSingleton<ProfilesViewModel>();
         services.AddSingleton<SettingsViewModel>();
+        services.AddSingleton<MeasuresViewModel>();
         services.AddSingleton<MainViewModel>();
         services.AddSingleton<TrayViewModel>();
         services.AddSingleton<MainWindow>();

@@ -8,8 +8,14 @@ public sealed class AppPaths
         Root = root;
     }
 
+    /// <summary>
+    /// %LocalAppData%\OptiGame, ou le dossier de la variable OPTIGAME_DATA_DIR (développement : tester l'UI avec des
+    /// données fictives sans toucher aux vraies).
+    /// </summary>
     public static AppPaths Default { get; } = new(
-        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "OptiGame"));
+        Environment.GetEnvironmentVariable("OPTIGAME_DATA_DIR") is { Length: > 0 } devRoot
+            ? devRoot
+            : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "OptiGame"));
 
     public string Root { get; }
 

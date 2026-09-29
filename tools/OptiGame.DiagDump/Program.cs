@@ -3,6 +3,8 @@ using Microsoft.Extensions.DependencyInjection;
 using OptiGame.Core;
 using OptiGame.Core.Diagnostics;
 using OptiGame.Core.Library;
+using OptiGame.Core.Measurement;
+using OptiGame.Core.State;
 using OptiGame.Platform;
 
 Console.OutputEncoding = Encoding.UTF8;
@@ -10,6 +12,31 @@ Console.OutputEncoding = Encoding.UTF8;
 // Chemins isolés : l'outil ne touche jamais aux journaux de l'appli.
 var paths = new AppPaths(Path.Combine(Path.GetTempPath(), "OptiGame.DiagDump"));
 using var services = new ServiceCollection().AddOptiGamePlatform(paths).BuildServiceProvider();
+
+// --import-capture <csv> <libellé> <date ISO> : ajoute un CSV PresentMon aux captures (tests de l'UI avec des
+// données fictives). Refusé sans OPTIGAME_DATA_DIR, pour ne jamais écrire dans les vraies données.
+if (args.Length == 4 && args[0] == "--import-capture")
+{
+    if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable("OPTIGAME_DATA_DIR")))
+    {
+        Console.Error.WriteLine("OPTIGAME_DATA_DIR doit être défini.");
+        return;
+    }
+    var store = new CaptureStore(new JsonStateStore<CapturesDocument>(Path.Combine(AppPaths.Default.CapturesDir, "captures.json")),
+        AppPaths.Default.CapturesDir);
+    using var reader = new StreamReader(args[1]);
+    var frames = PresentMonCsv.MainSwapChain(PresentMonCsv.Parse(reader));
+    store.Add(new CaptureRecord
+    {
+        Label = args[2],
+        ProcessName = frames[0].Application,
+        CapturedAt = DateTimeOffset.Parse(args[3], System.Globalization.CultureInfo.InvariantCulture),
+        CsvFile = Path.GetRelativePath(AppPaths.Default.CapturesDir, args[1]),
+        Stats = FrameStats.Compute(frames.Select(f => f.MsBetweenPresents).ToList()),
+    });
+    Console.WriteLine($"Importé : {args[2]} ({frames.Count} images)");
+    return;
+}
 
 // dotnet run --project tools/OptiGame.DiagDump -- --games [dossier…] : recherche des jeux installés.
 if (args.Length > 0 && args[0] == "--games")

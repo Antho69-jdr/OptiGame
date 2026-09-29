@@ -5,6 +5,7 @@ namespace OptiGame.App.ViewModels;
 public sealed partial class MainViewModel(
     DiagnosticViewModel diagnostic,
     ProfilesViewModel profiles,
+    MeasuresViewModel measures,
     SessionViewModel session,
     SettingsViewModel settings) : ObservableObject
 {
@@ -13,6 +14,8 @@ public sealed partial class MainViewModel(
     public DiagnosticViewModel Diagnostic { get; } = diagnostic;
 
     public ProfilesViewModel Profiles { get; } = profiles;
+
+    public MeasuresViewModel Measures { get; } = measures;
 
     public SessionViewModel Session { get; } = session;
 

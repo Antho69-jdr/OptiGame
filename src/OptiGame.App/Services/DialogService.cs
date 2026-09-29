@@ -35,6 +35,9 @@ public interface IDialogService
 
     /// <summary>Sélection d'un dossier ; null si annulé.</summary>
     string? PickFolder(string title);
+
+    /// <summary>Sélection d'un fichier .exe quelconque ; null si annulé.</summary>
+    string? PickProgram(string title, string? initialPath);
 }
 
 public sealed class DialogService : IDialogService
@@ -55,11 +58,13 @@ public sealed class DialogService : IDialogService
 
     public void ShowError(string message) => Show(message, MessageBoxButton.OK, MessageBoxImage.Error, MessageBoxResult.OK);
 
-    public string? PickExecutable(string? initialPath)
+    public string? PickExecutable(string? initialPath) => PickProgram("Choisir l'exécutable du jeu", initialPath);
+
+    public string? PickProgram(string title, string? initialPath)
     {
         var dialog = new OpenFileDialog
         {
-            Title = "Choisir l'exécutable du jeu",
+            Title = title,
             Filter = "Programmes (*.exe)|*.exe",
             CheckFileExists = true,
         };

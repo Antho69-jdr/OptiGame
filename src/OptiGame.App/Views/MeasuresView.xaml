@@ -1,0 +1,225 @@
+<UserControl x:Class="OptiGame.App.Views.MeasuresView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="clr-namespace:OptiGame.App.ViewModels"
+             xmlns:controls="clr-namespace:OptiGame.App.Controls"
+             mc:Ignorable="d"
+             d:DataContext="{d:DesignInstance vm:MeasuresViewModel}">
+    <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
+        <Style x:Key="Hint" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="#666" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+        </Style>
+    </UserControl.Resources>
+
+    <DockPanel Margin="12">
+        <!-- PresentMon introuvable -->
+        <Border DockPanel.Dock="Top" Margin="0,0,0,10" Padding="12,8" Background="#FFF3E0" BorderBrush="#E65100" BorderThickness="1" CornerRadius="4">
+            <Border.Style>
+                <Style TargetType="Border">
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding HasPresentMon}" Value="True">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </Border.Style>
+            <DockPanel>
+                <Button DockPanel.Dock="Right" Padding="10,2" Content="Choisir PresentMon…" Command="{Binding ChoosePresentMonCommand}" />
+                <TextBlock VerticalAlignment="Center" TextWrapping="Wrap"
+                           Text="PresentMon (outil open source d'Intel) est nécessaire pour mesurer les FPS. Indiquez la version console (PresentMon-x.y.z-x64.exe)." />
+            </DockPanel>
+        </Border>
+
+        <!-- Nouvelle capture -->
+        <Border DockPanel.Dock="Top" Padding="12" Background="White" BorderBrush="#DDD" BorderThickness="1" CornerRadius="4">
+            <StackPanel>
+                <WrapPanel>
+                    <StackPanel Margin="0,0,16,0">
+                        <TextBlock FontWeight="SemiBold" Text="Jeu" />
+                        <ComboBox Width="220" Margin="0,4,0,0" ItemsSource="{Binding Targets}" SelectedItem="{Binding SelectedTarget}" />
+                    </StackPanel>
+                    <StackPanel Margin="0,0,16,0">
+                        <TextBlock FontWeight="SemiBold" Text="ou nom de l'exe" />
+                        <TextBox Width="150" Margin="0,4,0,0" Padding="3" Text="{Binding CustomExeName, UpdateSourceTrigger=PropertyChanged}" />
+                    </StackPanel>
+                    <StackPanel Margin="0,0,16,0">
+                        <TextBlock FontWeight="SemiBold" Text="Durée (s)" />
+                        <ComboBox Width="70" Margin="0,4,0,0" ItemsSource="{Binding DurationOptions}" SelectedItem="{Binding SelectedDuration}" />
+                    </StackPanel>
+                    <StackPanel Margin="0,0,16,0">
+                        <TextBlock FontWeight="SemiBold" Text="Délai (s)" />
+                        <ComboBox Width="70" Margin="0,4,0,0" ItemsSource="{Binding DelayOptions}" SelectedItem="{Binding SelectedDelay}" />
+                    </StackPanel>
+                    <StackPanel Margin="0,0,16,0">
+                        <TextBlock FontWeight="SemiBold" Text="Libellé" />
+                        <TextBox Width="200" Margin="0,4,0,0" Padding="3" Text="{Binding Label, UpdateSourceTrigger=PropertyChanged}"
+                                 ToolTip="Ex. « Avant optimisation » ; par défaut : jeu + date" />
+                    </StackPanel>
+                    <StackPanel VerticalAlignment="Bottom" Orientation="Horizontal">
+                        <Button Padding="14,5" Content="Démarrer la capture" Command="{Binding StartCaptureCommand}" />
+                        <Button Margin="8,0,0,0" Padding="14,5" Content="Annuler" Command="{Binding CancelCaptureCommand}"
+                                Visibility="{Binding IsCapturing, Converter={StaticResource BoolToVisibility}}" />
+                    </StackPanel>
+                </WrapPanel>
+                <TextBlock Margin="0,8,0,0" FontWeight="SemiBold" Foreground="#1565C0" Text="{Binding CaptureStatus}" />
+                <DockPanel Margin="0,4,0,0" Visibility="{Binding HasPresentMon, Converter={StaticResource BoolToVisibility}}">
+                    <Button DockPanel.Dock="Right" Padding="8,0" Content="Changer…" Command="{Binding ChoosePresentMonCommand}" />
+                    <TextBlock Style="{StaticResource Hint}" VerticalAlignment="Center">
+                        <Run Text="PresentMon : " /><Run Text="{Binding PresentMonPath, Mode=OneWay}" FontFamily="Consolas" />
+                    </TextBlock>
+                </DockPanel>
+                <TextBlock Margin="0,4,0,0" Style="{StaticResource Hint}"
+                           Text="Pour comparer, mesurez la même scène (même carte, même endroit, mêmes réglages graphiques) avant et après optimisation, idéalement plusieurs fois : d'une capture à l'autre, les écarts de quelques pourcents sont normaux." />
+            </StackPanel>
+        </Border>
+
+        <Grid Margin="0,10,0,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="5*" />
+                <ColumnDefinition Width="10" />
+                <ColumnDefinition Width="4*" />
+            </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="190" />
+            </Grid.RowDefinitions>
+
+            <!-- Captures -->
+            <DockPanel Grid.Column="0" Grid.Row="0">
+                <DockPanel DockPanel.Dock="Top" Margin="0,0,0,4">
+                    <Button DockPanel.Dock="Right" Padding="10,2" Content="Supprimer" Command="{Binding DeleteSelectedCommand}" />
+                    <TextBlock VerticalAlignment="Center" Style="{StaticResource Hint}"
+                               Text="Sélectionnez une capture, ou deux (Ctrl+clic) pour les comparer." />
+                </DockPanel>
+                <ListView x:Name="CaptureList" ItemsSource="{Binding Captures}" SelectionMode="Extended" SelectionChanged="OnSelectionChanged">
+                    <ListView.View>
+                        <GridView>
+                            <GridViewColumn Header="Libellé" Width="150" DisplayMemberBinding="{Binding Label}" />
+                            <GridViewColumn Header="Jeu" Width="95" DisplayMemberBinding="{Binding Game}" />
+                            <GridViewColumn Header="Date" Width="100" DisplayMemberBinding="{Binding Date}" />
+                            <GridViewColumn Header="Profil" Width="70" DisplayMemberBinding="{Binding Profile}" />
+                            <GridViewColumn Header="FPS" Width="55" DisplayMemberBinding="{Binding AverageFps}" />
+                            <GridViewColumn Header="1 % low" Width="60" DisplayMemberBinding="{Binding OnePercentLow}" />
+                        </GridView>
+                    </ListView.View>
+                </ListView>
+            </DockPanel>
+
+            <!-- Détail / comparaison -->
+            <Border Grid.Column="2" Grid.Row="0" Padding="12" Background="White" BorderBrush="#DDD" BorderThickness="1" CornerRadius="4">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel>
+                        <TextBlock Text="Aucune capture sélectionnée.">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock" BasedOn="{StaticResource Hint}">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding HasSelection}" Value="True">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+
+                        <!-- Une capture -->
+                        <StackPanel DataContext="{Binding Before}">
+                            <StackPanel.Style>
+                                <Style TargetType="StackPanel">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding DataContext.IsComparison, RelativeSource={RelativeSource AncestorType=UserControl}}" Value="True">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding}" Value="{x:Null}">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </StackPanel.Style>
+                            <TextBlock FontSize="14" FontWeight="SemiBold" Text="{Binding Label}" TextWrapping="Wrap" />
+                            <TextBlock Style="{StaticResource Hint}" Text="{Binding Date}" />
+                            <Grid Margin="0,10,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition /><RowDefinition /><RowDefinition /><RowDefinition />
+                                </Grid.RowDefinitions>
+                                <TextBlock Grid.Row="0" Text="FPS moyens" />
+                                <TextBlock Grid.Row="0" Grid.Column="1" FontWeight="SemiBold" Text="{Binding AverageFps}" />
+                                <TextBlock Grid.Row="1" Text="1 % low" />
+                                <TextBlock Grid.Row="1" Grid.Column="1" FontWeight="SemiBold" Text="{Binding OnePercentLow}" />
+                                <TextBlock Grid.Row="2" Text="0,1 % low" />
+                                <TextBlock Grid.Row="2" Grid.Column="1" FontWeight="SemiBold" Text="{Binding PointOnePercentLow}" />
+                                <TextBlock Grid.Row="3" Text="Frametime P99" />
+                                <TextBlock Grid.Row="3" Grid.Column="1" FontWeight="SemiBold" Text="{Binding P99}" />
+                            </Grid>
+                            <TextBlock Margin="0,8,0,0" Style="{StaticResource Hint}" Text="{Binding Summary}" />
+                        </StackPanel>
+
+                        <!-- Comparaison -->
+                        <StackPanel Visibility="{Binding IsComparison, Converter={StaticResource BoolToVisibility}}">
+                            <TextBlock FontSize="14" FontWeight="SemiBold" Text="Comparaison" />
+                            <TextBlock Style="{StaticResource Hint}">
+                                <Run Text="Avant (bleu) : " /><Run Text="{Binding Before.Label, Mode=OneWay}" />
+                            </TextBlock>
+                            <TextBlock Style="{StaticResource Hint}">
+                                <Run Text="Après (orange) : " /><Run Text="{Binding After.Label, Mode=OneWay}" />
+                            </TextBlock>
+                            <ItemsControl Margin="0,8,0,0" ItemsSource="{Binding Comparison}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate DataType="{x:Type vm:ComparisonRow}">
+                                        <Grid Margin="0,2">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="60" />
+                                                <ColumnDefinition Width="60" />
+                                                <ColumnDefinition Width="70" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Text="{Binding Metric}" />
+                                            <TextBlock Grid.Column="1" TextAlignment="Right" Text="{Binding Before}" />
+                                            <TextBlock Grid.Column="2" TextAlignment="Right" Text="{Binding After}" />
+                                            <TextBlock Grid.Column="3" TextAlignment="Right" FontWeight="SemiBold" Text="{Binding Change}">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
+                                                        <Setter Property="Foreground" Value="#666" />
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsBetter}" Value="True">
+                                                                <Setter Property="Foreground" Value="#2E7D32" />
+                                                            </DataTrigger>
+                                                            <DataTrigger Binding="{Binding IsBetter}" Value="False">
+                                                                <Setter Property="Foreground" Value="#C62828" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+                                        </Grid>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <TextBlock Margin="0,6,0,0" Style="{StaticResource Hint}"
+                                       Text="Vert = mieux, rouge = moins bien, gris = écart inférieur à 1 % (dans la marge de variation normale)." />
+                        </StackPanel>
+
+                        <TextBlock Margin="0,12,0,0" Style="{StaticResource Hint}"
+                                   Visibility="{Binding HasSelection, Converter={StaticResource BoolToVisibility}}"
+                                   Text="FPS moyens = images ÷ durée. 1 % / 0,1 % low = FPS moyens sur les 1 % / 0,1 % d'images les plus lentes. P99 = 99 % des images sont plus rapides. Calculé sur la cadence de rendu du jeu (MsBetweenPresents), chaîne d'affichage principale uniquement (overlays exclus)." />
+                    </StackPanel>
+                </ScrollViewer>
+            </Border>
+
+            <!-- Graphe -->
+            <TextBlock Grid.Row="1" Grid.ColumnSpan="3" Margin="0,10,0,4" FontWeight="SemiBold" Text="Frametimes (plus bas = mieux ; les pics sont des saccades)" />
+            <Border Grid.Row="2" Grid.ColumnSpan="3" BorderBrush="#DDD" BorderThickness="1" CornerRadius="4">
+                <controls:FrametimeChart Primary="{Binding BeforeFrames}" Secondary="{Binding AfterFrames}" />
+            </Border>
+        </Grid>
+    </DockPanel>
+</UserControl>
