@@ -3,6 +3,7 @@ using OptiGame.Core;
 using OptiGame.Core.Abstractions;
 using OptiGame.Core.Diagnostics;
 using OptiGame.Core.Diagnostics.Checks;
+using OptiGame.Core.Logging;
 using OptiGame.Core.Profiles;
 using OptiGame.Core.Sessions;
 using OptiGame.Core.State;
@@ -31,6 +32,7 @@ public static class ServiceCollectionExtensions
     {
         services.AddSingleton(paths);
         services.AddSingleton(TimeProvider.System);
+        services.AddSingleton(new FileLog(paths.LogsDir));
 
         services.AddSingleton<IPrivilegedOperations, InProcessPrivilegedOperations>();
 

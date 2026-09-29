@@ -6,6 +6,7 @@ using OptiGame.App.Tray;
 using OptiGame.App.ViewModels;
 using OptiGame.App.Views;
 using OptiGame.Core;
+using OptiGame.Core.Logging;
 using OptiGame.Core.Profiles;
 using OptiGame.Core.Sessions;
 using OptiGame.Core.State;
@@ -80,6 +81,8 @@ public partial class App : Application
     /// <summary>Récupération d'une session interrompue, puis détection des jeux.</summary>
     private static void StartSessions(IServiceProvider services)
     {
+        var log = services.GetRequiredService<FileLog>();
+        log.Info($"OptiGame démarre ({Environment.ProcessPath}).");
         var notifications = services.GetRequiredService<INotificationService>();
         var sessionVm = services.GetRequiredService<SessionViewModel>(); // s'abonne aux événements de session
         var sessions = services.GetRequiredService<GameSessionManager>();

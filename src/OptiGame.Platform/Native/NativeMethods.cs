@@ -116,6 +116,7 @@ internal static class NativeMethods
     // ---- Processus (kernel32 / user32 / advapi32) ----
 
     public const uint ProcessQueryLimitedInformation = 0x1000;
+    public const uint Synchronize = 0x00100000;
     public const uint ProcessQueryInformation = 0x0400;
 
     [DllImport("kernel32.dll", SetLastError = true)]
