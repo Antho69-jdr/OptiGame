@@ -38,7 +38,11 @@ src/OptiGame.Core/       net10.0, aucune dépendance Windows, 100 % testable
   Profiles/              GameProfile, ProfileStore (profiles.json), ProfileValidator (processus protégés)
   Sessions/              SessionPlan (profil → changements + texte), GameSessionManager (application, restauration,
                          reprise après crash ; une session à la fois ; IProcessControl pour fermer/prioriser)
-  Measurement/           parser CSV PresentMon + statistiques (phase 3)
+  Library/               Vdf (format KeyValues de Steam), ExeRanking (choix de l'exe principal, validé sur cas réels)
+  Measurement/           PresentMonCsv (colonnes lues par NOM, v1/v2, « NA », chaîne d'affichage principale),
+                         FrameStats (FPS moyens pondérés par le temps, 1 %/0,1 % low = moyenne des pires images,
+                         P99), CaptureRequest (arguments PresentMon 2.x vérifiés via --help), CaptureStore
+  Settings/              AppSettings (settings.json : dossiers de jeux, chemin de PresentMon)
 src/OptiGame.Platform/   net10.0-windows : implémentations réelles (registre, WMI, P/Invoke), Privileged/,
                          Processes/, Startup/ (tâche planifiée), Measurement/ (runner PresentMon)
 src/OptiGame.App/        WPF : composition DI, tray, vues/viewmodels, dialogue de confirmation
@@ -46,6 +50,13 @@ tests/OptiGame.Core.Tests/      xUnit + fakes en mémoire (journal, logique des 
 tests/OptiGame.Platform.Tests/  intégration sur le vrai registre, UNIQUEMENT sous HKCU\Software\OptiGame.Tests
 tools/OptiGame.DiagDump/        diagnostic en console (lecture seule), pour vérifier les lectures système
 ```
+
+Données fictives pour tester l'UI : `$env:OPTIGAME_DATA_DIR='<dossier temporaire>'` redirige tout le dossier de
+données ; `DiagDump -- --import-capture <csv> <libellé> <date ISO>` y ajoute une capture (refusé sans la variable).
+`DiagDump -- --games [dossier…]` affiche la recherche des jeux installés.
+
+PresentMon : version console téléchargée depuis github.com/GameTechDev/PresentMon (v2.6.0, signée Intel) dans
+`%LocalAppData%\OptiGame\tools`, détectée automatiquement ; capture = ETW, droits admin requis.
 
 Tests manuels de l'UI sans UAC : `$env:__COMPAT_LAYER='RunAsInvoker'` avant de lancer l'exe (l'appli démarre
 non élevée ; les lectures fonctionnent, les écritures HKLM échoueront proprement).
