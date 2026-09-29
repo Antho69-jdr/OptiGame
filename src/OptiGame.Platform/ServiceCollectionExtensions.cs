@@ -3,7 +3,9 @@ using OptiGame.Core;
 using OptiGame.Core.Abstractions;
 using OptiGame.Core.Diagnostics;
 using OptiGame.Core.Diagnostics.Checks;
+using OptiGame.Core.Library;
 using OptiGame.Core.Logging;
+using OptiGame.Core.Settings;
 using OptiGame.Core.Profiles;
 using OptiGame.Core.Sessions;
 using OptiGame.Core.State;
@@ -64,6 +66,8 @@ public static class ServiceCollectionExtensions
         services.AddSingleton(sp => new SettingAccessors(sp.GetServices<ISettingAccessor>()));
 
         services.AddSingleton(_ => new ProfileStore(new JsonStateStore<ProfilesDocument>(paths.Profiles)));
+        services.AddSingleton(_ => new AppSettingsStore(new JsonStateStore<AppSettings>(paths.Settings)));
+        services.AddSingleton<IGameLibraryScanner, Library.GameLibraryScanner>();
 
         services.AddKeyedSingleton(JournalKeys.Fixes, (sp, _) => new ChangeJournal(
             new JsonStateStore<JournalDocument>(paths.FixesJournal), sp.GetRequiredService<SettingAccessors>(), sp.GetRequiredService<TimeProvider>()));

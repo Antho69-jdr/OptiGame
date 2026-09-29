@@ -1,0 +1,33 @@
+<Window x:Class="OptiGame.App.Dialogs.GameScanDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Jeux installés" Width="760" Height="560" MinHeight="320" MinWidth="520"
+        WindowStartupLocation="CenterOwner" ShowInTaskbar="False">
+    <DockPanel Margin="16">
+        <TextBlock DockPanel.Dock="Top" TextWrapping="Wrap" Margin="0,0,0,10"
+                   Text="Cochez les jeux pour lesquels créer un profil. L'exécutable proposé est le plus probable ; changez-le si besoin (c'est le processus du jeu lui-même, pas son lanceur). Les profils créés ne modifient rien tant que vous ne les configurez pas." />
+        <TextBlock DockPanel.Dock="Top" x:Name="FoldersHint" Foreground="#666" FontSize="12" TextWrapping="Wrap" Margin="0,0,0,10" />
+        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
+            <Button Content="Créer les profils cochés" Padding="16,6" Margin="0,0,8,0" IsDefault="True" Click="OnOk" />
+            <Button Content="Annuler" Padding="16,6" IsCancel="True" />
+        </StackPanel>
+        <ListBox x:Name="List" HorizontalContentAlignment="Stretch">
+            <ListBox.ItemTemplate>
+                <DataTemplate>
+                    <DockPanel Margin="2,4">
+                        <CheckBox DockPanel.Dock="Left" VerticalAlignment="Top" Margin="0,2,8,0"
+                                  IsChecked="{Binding IsSelected}" IsEnabled="{Binding CanSelect}" />
+                        <StackPanel>
+                            <TextBlock>
+                                <Run Text="{Binding Name, Mode=OneWay}" FontWeight="SemiBold" />
+                                <Run Text="{Binding Suffix, Mode=OneWay}" Foreground="#666" />
+                            </TextBlock>
+                            <ComboBox Margin="0,4,0,0" ItemsSource="{Binding Candidates}" SelectedItem="{Binding SelectedExe}"
+                                      DisplayMemberPath="Label" IsEnabled="{Binding CanSelect}" />
+                        </StackPanel>
+                    </DockPanel>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+    </DockPanel>
+</Window>

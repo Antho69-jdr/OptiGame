@@ -29,7 +29,19 @@
 
         <!-- Liste des profils -->
         <DockPanel Grid.Column="0">
-            <Button DockPanel.Dock="Top" Padding="12,6" Margin="0,0,0,8" Content="Ajouter un jeu…" Command="{Binding AddGameCommand}" />
+            <Button DockPanel.Dock="Top" Padding="12,6" Margin="0,0,0,6" Command="{Binding ScanGamesCommand}">
+                <Button.Style>
+                    <Style TargetType="Button">
+                        <Setter Property="Content" Value="Rechercher des jeux installés…" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsScanning}" Value="True">
+                                <Setter Property="Content" Value="Recherche en cours…" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Button.Style>
+            </Button>
+            <Button DockPanel.Dock="Top" Padding="12,6" Margin="0,0,0,8" Content="Ajouter un jeu à la main (.exe)…" Command="{Binding AddGameCommand}" />
             <TextBlock DockPanel.Dock="Bottom" Margin="0,6,0,0" Foreground="#E65100" FontSize="12" TextWrapping="Wrap"
                        Text="Enregistrez ou annulez les modifications pour changer de profil.">
                 <TextBlock.Style>

@@ -3,7 +3,9 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using OptiGame.App.Services;
 using OptiGame.Core.Abstractions;
+using OptiGame.Core.Library;
 using OptiGame.Core.Profiles;
+using OptiGame.Core.Settings;
 
 namespace OptiGame.App.ViewModels;
 
@@ -13,16 +15,72 @@ public sealed partial class ProfilesViewModel : ObservableObject
     private readonly IPowerSchemeProvider _power;
     private readonly IRunningProgramsProvider _programs;
     private readonly IDialogService _dialogs;
+    private readonly IGameLibraryScanner _scanner;
+    private readonly AppSettingsStore _settings;
     private IReadOnlyList<PowerScheme>? _schemes;
 
-    public ProfilesViewModel(ProfileStore store, IPowerSchemeProvider power, IRunningProgramsProvider programs, IDialogService dialogs)
+    public ProfilesViewModel(ProfileStore store, IPowerSchemeProvider power, IRunningProgramsProvider programs,
+        IDialogService dialogs, IGameLibraryScanner scanner, AppSettingsStore settings)
     {
         _store = store;
         _power = power;
         _programs = programs;
         _dialogs = dialogs;
+        _scanner = scanner;
+        _settings = settings;
         Reload(selectId: null);
     }
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(ScanGamesCommand))]
+    private bool _isScanning;
+
+    private bool CanScan() => CanChangeSelection && !IsScanning;
+
+    /// <summary>Recherche des jeux installés (Steam + dossiers de jeux), lecture seule.</summary>
+    [RelayCommand(CanExecute = nameof(CanScan))]
+    private async Task ScanGamesAsync()
+    {
+        var folders = _settings.Get().GameFolders;
+        IReadOnlyList<InstalledGame> games;
+        IsScanning = true;
+        try
+        {
+            games = await Task.Run(() => _scanner.Scan(folders));
+        }
+        catch (Exception ex)
+        {
+            _dialogs.ShowError("La recherche des jeux a échoué.\n\n" + ex.Message);
+            return;
+        }
+        finally
+        {
+            IsScanning = false;
+        }
+
+        var existing = _store.GetAll();
+        var selection = _dialogs.PickInstalledGames(games, path => existing.Any(p => p.Matches(path)), folders);
+        var errors = new List<string>();
+        Guid? last = null;
+        foreach (var (game, exe) in selection)
+        {
+            var profile = new GameProfile { Name = CleanName(game.Name), ExePath = exe.Path };
+            try
+            {
+                _store.Save(profile);
+                last = profile.Id;
+            }
+            catch (ProfileValidationException ex)
+            {
+                errors.Add($"{game.Name} : {ex.Message}");
+            }
+        }
+
+        if (last is not null) Reload(last);
+        if (errors.Count > 0) _dialogs.ShowError("Certains profils n'ont pas été créés :\n\n" + string.Join("\n", errors));
+    }
+
+    private static string CleanName(string name) => name.Replace("®", "").Replace("™", "").Trim();
 
     public ObservableCollection<ProfileListItem> Profiles { get; } = [];
 
@@ -68,6 +126,7 @@ public sealed partial class ProfilesViewModel : ObservableObject
         {
             OnPropertyChanged(nameof(CanChangeSelection));
             AddGameCommand.NotifyCanExecuteChanged();
+            ScanGamesCommand.NotifyCanExecuteChanged();
         }
     }
 

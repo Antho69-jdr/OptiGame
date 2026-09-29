@@ -128,6 +128,7 @@ public partial class App : Application
             services.GetRequiredKeyedService<ChangeJournal>(JournalKeys.Fixes);
             services.GetRequiredKeyedService<ChangeJournal>(JournalKeys.Session);
             services.GetRequiredService<ProfileStore>();
+            services.GetRequiredService<Core.Settings.AppSettingsStore>();
             return true;
         }
         catch (StateFileCorruptException ex)

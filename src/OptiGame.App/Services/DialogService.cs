@@ -4,6 +4,7 @@ using Microsoft.Win32;
 using OptiGame.App.Dialogs;
 using OptiGame.Core.Abstractions;
 using OptiGame.Core.Changes;
+using OptiGame.Core.Library;
 using OptiGame.Core.State;
 
 namespace OptiGame.App.Services;
@@ -27,6 +28,13 @@ public interface IDialogService
 
     /// <summary>Sélection de programmes ouverts ; renvoie les noms d'exe choisis (vide si annulé).</summary>
     IReadOnlyList<string> PickRunningPrograms(IReadOnlyList<RunningProgram> programs);
+
+    /// <summary>Sélection de jeux installés et de leur exe ; vide si annulé.</summary>
+    IReadOnlyList<(InstalledGame Game, ExeFile Exe)> PickInstalledGames(
+        IReadOnlyList<InstalledGame> games, Func<string, bool> hasProfile, IReadOnlyList<string> gameFolders);
+
+    /// <summary>Sélection d'un dossier ; null si annulé.</summary>
+    string? PickFolder(string title);
 }
 
 public sealed class DialogService : IDialogService
@@ -66,6 +74,19 @@ public sealed class DialogService : IDialogService
     {
         var dialog = new ProcessPickerDialog(programs);
         return ShowOwned(dialog) == true ? dialog.SelectedExeNames : [];
+    }
+
+    public IReadOnlyList<(InstalledGame Game, ExeFile Exe)> PickInstalledGames(
+        IReadOnlyList<InstalledGame> games, Func<string, bool> hasProfile, IReadOnlyList<string> gameFolders)
+    {
+        var dialog = new GameScanDialog(games, hasProfile, gameFolders);
+        return ShowOwned(dialog) == true ? dialog.Selection : [];
+    }
+
+    public string? PickFolder(string title)
+    {
+        var dialog = new OpenFolderDialog { Title = title };
+        return dialog.ShowDialog(ActiveWindow()) == true ? dialog.FolderName : null;
     }
 
     private static bool? ShowOwned(Window dialog)

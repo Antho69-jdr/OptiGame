@@ -17,6 +17,23 @@
                 <Run Text="Programme lancé : " /><Run Text="{Binding ExePath, Mode=OneWay}" FontFamily="Consolas" />
             </TextBlock>
 
+            <TextBlock Margin="0,24,0,0" FontSize="15" FontWeight="SemiBold" Text="Dossiers de jeux" />
+            <TextBlock Margin="0,10,0,0" TextWrapping="Wrap"
+                       Text="Utilisés par « Rechercher des jeux installés » (onglet Profils), en plus des bibliothèques Steam détectées automatiquement. Chaque sous-dossier est considéré comme un jeu." />
+            <ItemsControl Margin="0,6,0,0" ItemsSource="{Binding GameFolders}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <DockPanel Margin="0,2">
+                            <Button DockPanel.Dock="Right" Margin="8,0,0,0" Padding="10,0" Content="Retirer"
+                                    Command="{Binding DataContext.RemoveGameFolderCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                    CommandParameter="{Binding}" />
+                            <TextBlock VerticalAlignment="Center" Text="{Binding}" FontFamily="Consolas" />
+                        </DockPanel>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <Button Margin="0,6,0,0" Padding="10,2" HorizontalAlignment="Left" Content="Ajouter un dossier…" Command="{Binding AddGameFolderCommand}" />
+
             <TextBlock Margin="0,24,0,0" FontSize="15" FontWeight="SemiBold" Text="Données" />
             <TextBlock Margin="0,10,0,0" TextWrapping="Wrap"
                        Text="Profils, sauvegardes de l'état d'origine (fixes.json, session.json) et captures sont enregistrés ici :" />
