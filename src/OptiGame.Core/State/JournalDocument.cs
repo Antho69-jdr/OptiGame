@@ -13,14 +13,20 @@ public sealed class JournalDocument
     /// <summary>Dans l'ordre de capture ; la restauration se fait en ordre inverse.</summary>
     public List<JournalEntry> Entries { get; set; } = [];
 
+    /// <summary>Description des changements actifs, pour les afficher (et proposer l'annulation) après un redémarrage.</summary>
+    public List<ChangeRecord> Changes { get; set; } = [];
+
     public JournalDocument Clone() => new()
     {
         Version = Version,
         CreatedAt = CreatedAt,
         Context = Context,
         Entries = Entries.Select(e => e.Clone()).ToList(),
+        Changes = [.. Changes],
     };
 }
+
+public sealed record ChangeRecord(string Id, string Title, string What, bool RequiresReboot, DateTimeOffset AppliedAt);
 
 public sealed class JournalEntry
 {

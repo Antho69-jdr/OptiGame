@@ -40,8 +40,13 @@ src/OptiGame.Core/       net10.0, aucune dépendance Windows, 100 % testable
 src/OptiGame.Platform/   net10.0-windows : implémentations réelles (registre, WMI, P/Invoke), Privileged/,
                          Processes/, Startup/ (tâche planifiée), Measurement/ (runner PresentMon)
 src/OptiGame.App/        WPF : composition DI, tray, vues/viewmodels, dialogue de confirmation
-tests/OptiGame.Core.Tests/  xUnit + fakes en mémoire
+tests/OptiGame.Core.Tests/      xUnit + fakes en mémoire (journal, logique des contrôles)
+tests/OptiGame.Platform.Tests/  intégration sur le vrai registre, UNIQUEMENT sous HKCU\Software\OptiGame.Tests
+tools/OptiGame.DiagDump/        diagnostic en console (lecture seule), pour vérifier les lectures système
 ```
+
+Tests manuels de l'UI sans UAC : `$env:__COMPAT_LAYER='RunAsInvoker'` avant de lancer l'exe (l'appli démarre
+non élevée ; les lectures fonctionnent, les écritures HKLM échoueront proprement).
 
 Règle de dépendance : `App → Platform → Core`. La logique de décision (statut d'un check, restauration)
 vit dans Core ; Platform ne fait que lire/écrire le système.

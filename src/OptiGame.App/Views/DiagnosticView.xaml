@@ -10,6 +10,15 @@
     <UserControl.Resources>
         <conv:StatusToBrushConverter x:Key="StatusBrush" />
         <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
+
+        <DataTemplate x:Key="FixButtonTemplate" DataType="{x:Type vm:FixViewModel}">
+            <Button Margin="0,6,8,0" Padding="12,4" HorizontalAlignment="Left" Command="{Binding ApplyCommand}">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="{Binding Title, StringFormat='Corriger : {0}'}" />
+                    <TextBlock Margin="8,0,0,0" Foreground="#777" Text="{Binding Badges}" />
+                </StackPanel>
+            </Button>
+        </DataTemplate>
     </UserControl.Resources>
 
     <DockPanel Margin="12">
@@ -19,42 +28,76 @@
         </DockPanel>
 
         <ScrollViewer VerticalScrollBarVisibility="Auto">
-            <ItemsControl ItemsSource="{Binding Items}">
-                <ItemsControl.ItemTemplate>
-                    <DataTemplate DataType="{x:Type vm:DiagnosticItemViewModel}">
-                        <Border Margin="0,0,0,8" Background="White" BorderBrush="#DDD" BorderThickness="1" CornerRadius="4">
-                            <DockPanel>
-                                <Border DockPanel.Dock="Left" Width="5" CornerRadius="4,0,0,4"
-                                        Background="{Binding Status, Converter={StaticResource StatusBrush}}" />
-                                <StackPanel Margin="12,10">
-                                    <DockPanel>
-                                        <Border DockPanel.Dock="Right" Padding="8,2" CornerRadius="10" VerticalAlignment="Top"
-                                                Background="{Binding Status, Converter={StaticResource StatusBrush}}">
-                                            <TextBlock Text="{Binding StatusLabel}" Foreground="White" FontWeight="SemiBold" FontSize="12" />
-                                        </Border>
-                                        <TextBlock Text="{Binding Title}" FontWeight="SemiBold" FontSize="14" TextWrapping="Wrap" />
-                                    </DockPanel>
-                                    <TextBlock Margin="0,4,0,0" Text="{Binding Summary}" TextWrapping="Wrap" />
-                                    <Expander Margin="0,6,0,0" Header="Détails et explication">
-                                        <StackPanel Margin="4,6,0,0">
-                                            <ItemsControl ItemsSource="{Binding Details}">
-                                                <ItemsControl.ItemTemplate>
-                                                    <DataTemplate>
-                                                        <TextBlock Text="{Binding StringFormat='• {0}'}" TextWrapping="Wrap" Foreground="#444"
-                                                                   FontFamily="Consolas" FontSize="12" />
-                                                    </DataTemplate>
-                                                </ItemsControl.ItemTemplate>
-                                            </ItemsControl>
-                                            <TextBlock Margin="0,8,0,0" Text="{Binding Explanation}" TextWrapping="Wrap"
-                                                       Visibility="{Binding HasExplanation, Converter={StaticResource BoolToVisibility}}" />
+            <StackPanel>
+                <!-- Corrections appliquées par OptiGame, annulables -->
+                <Border Margin="0,0,0,12" Padding="12,10" Background="#E8F5E9" BorderBrush="#A5D6A7" BorderThickness="1" CornerRadius="4"
+                        Visibility="{Binding HasAppliedFixes, Converter={StaticResource BoolToVisibility}}">
+                    <StackPanel>
+                        <TextBlock FontWeight="SemiBold" Text="Corrections appliquées par OptiGame" />
+                        <ItemsControl ItemsSource="{Binding AppliedFixes}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="{x:Type vm:AppliedFixViewModel}">
+                                    <DockPanel Margin="0,8,0,0">
+                                        <Button DockPanel.Dock="Right" VerticalAlignment="Center" Padding="12,4" Content="Annuler"
+                                                Command="{Binding UndoCommand}" />
+                                        <StackPanel>
+                                            <TextBlock Text="{Binding Title}" />
+                                            <TextBlock Foreground="#555" FontSize="12" TextWrapping="Wrap" Text="{Binding What}" />
+                                            <TextBlock Foreground="#777" FontSize="11" Text="{Binding AppliedAt}" />
                                         </StackPanel>
-                                    </Expander>
-                                </StackPanel>
-                            </DockPanel>
-                        </Border>
-                    </DataTemplate>
-                </ItemsControl.ItemTemplate>
-            </ItemsControl>
+                                    </DockPanel>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </Border>
+
+                <ItemsControl ItemsSource="{Binding Items}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate DataType="{x:Type vm:DiagnosticItemViewModel}">
+                            <Border Margin="0,0,0,8" Background="White" BorderBrush="#DDD" BorderThickness="1" CornerRadius="4">
+                                <DockPanel>
+                                    <Border DockPanel.Dock="Left" Width="5" CornerRadius="4,0,0,4"
+                                            Background="{Binding Status, Converter={StaticResource StatusBrush}}" />
+                                    <StackPanel Margin="12,10">
+                                        <DockPanel>
+                                            <Border DockPanel.Dock="Right" Padding="8,2" CornerRadius="10" VerticalAlignment="Top"
+                                                    Background="{Binding Status, Converter={StaticResource StatusBrush}}">
+                                                <TextBlock Text="{Binding StatusLabel}" Foreground="White" FontWeight="SemiBold" FontSize="12" />
+                                            </Border>
+                                            <TextBlock Text="{Binding Title}" FontWeight="SemiBold" FontSize="14" TextWrapping="Wrap" />
+                                        </DockPanel>
+                                        <TextBlock Margin="0,4,0,0" Text="{Binding Summary}" TextWrapping="Wrap" />
+
+                                        <ItemsControl ItemsSource="{Binding Fixes}" ItemTemplate="{StaticResource FixButtonTemplate}" />
+
+                                        <Expander Margin="0,6,0,0" Header="Détails et explication">
+                                            <StackPanel Margin="4,6,0,0">
+                                                <ItemsControl ItemsSource="{Binding Details}">
+                                                    <ItemsControl.ItemTemplate>
+                                                        <DataTemplate>
+                                                            <TextBlock Text="{Binding StringFormat='• {0}'}" TextWrapping="Wrap" Foreground="#444"
+                                                                       FontFamily="Consolas" FontSize="12" />
+                                                        </DataTemplate>
+                                                    </ItemsControl.ItemTemplate>
+                                                </ItemsControl>
+                                                <TextBlock Margin="0,8,0,0" Text="{Binding Explanation}" TextWrapping="Wrap"
+                                                           Visibility="{Binding HasExplanation, Converter={StaticResource BoolToVisibility}}" />
+                                            </StackPanel>
+                                        </Expander>
+
+                                        <Expander Margin="0,4,0,0" Header="Options avancées" Foreground="#B71C1C"
+                                                  Visibility="{Binding HasAdvancedFixes, Converter={StaticResource BoolToVisibility}}">
+                                            <ItemsControl Margin="4,0,0,0" ItemsSource="{Binding AdvancedFixes}"
+                                                          ItemTemplate="{StaticResource FixButtonTemplate}" Foreground="Black" />
+                                        </Expander>
+                                    </StackPanel>
+                                </DockPanel>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
         </ScrollViewer>
     </DockPanel>
 </UserControl>

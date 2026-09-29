@@ -307,6 +307,47 @@ public sealed class ChangeJournalTests : IDisposable
     }
 
     [Fact]
+    public void Active_changes_are_described_after_restart_and_pruned_after_undo()
+    {
+        var journal = OpenJournal();
+        journal.Apply(Change("c1", new SettingWrite(_dvr, SettingValue.DWord(0))));
+        journal.Apply(Change("c2", new SettingWrite(_gameMode, SettingValue.DWord(1))));
+
+        var afterRestart = OpenJournal();
+        Assert.Equal(["c1", "c2"], afterRestart.ActiveChanges.Select(c => c.Id));
+        Assert.Equal("c1", afterRestart.ActiveChanges[0].Title);
+
+        afterRestart.Undo("c1");
+        Assert.Equal(["c2"], OpenJournal().ActiveChanges.Select(c => c.Id));
+
+        afterRestart.RestoreAll();
+        Assert.Empty(afterRestart.ActiveChanges);
+    }
+
+    [Fact]
+    public void Failed_apply_leaves_no_change_record()
+    {
+        _system.FailWrites.Add(_dvr);
+        var journal = OpenJournal();
+
+        Assert.Throws<UnauthorizedAccessException>(() => journal.Apply(Change("c1", new SettingWrite(_dvr, SettingValue.DWord(0)))));
+
+        Assert.Empty(journal.ActiveChanges);
+    }
+
+    [Fact]
+    public void Shared_setting_record_disappears_only_with_its_last_setting()
+    {
+        var journal = OpenJournal();
+        journal.Apply(Change("c1", new SettingWrite(_dvr, SettingValue.DWord(0))));
+        journal.Apply(Change("c2", new SettingWrite(_dvr, SettingValue.DWord(0))));
+
+        journal.Undo("c1");
+
+        Assert.Equal(["c2"], journal.ActiveChanges.Select(c => c.Id));
+    }
+
+    [Fact]
     public void Context_is_persisted_with_the_entries()
     {
         var journal = OpenJournal();

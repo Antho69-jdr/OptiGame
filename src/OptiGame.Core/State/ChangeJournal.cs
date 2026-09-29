@@ -44,6 +44,12 @@ public sealed class ChangeJournal
         lock (_lock) return _document.Entries.Any(e => e.ChangeIds.Contains(changeId));
     }
 
+    /// <summary>Changements encore actifs (au moins un réglage non restauré), dans l'ordre d'application.</summary>
+    public IReadOnlyList<ChangeRecord> ActiveChanges
+    {
+        get { lock (_lock) return [.. _document.Changes]; }
+    }
+
     /// <summary>Renseigne le contexte (ex. nom du jeu) quand le journal est vide.</summary>
     public void SetContext(string? context)
     {
@@ -73,6 +79,8 @@ public sealed class ChangeJournal
             try
             {
                 previousValues = Capture(change);
+                _document.Changes.RemoveAll(c => c.Id == change.Id);
+                _document.Changes.Add(new ChangeRecord(change.Id, change.Title, change.What, change.RequiresReboot, _time.GetUtcNow()));
                 if (before.Entries.Count == 0)
                 {
                     _document.CreatedAt = _time.GetUtcNow();
@@ -232,6 +240,9 @@ public sealed class ChangeJournal
 
     private void PersistOrDelete()
     {
+        // Un changement dont plus aucun réglage n'est modifié n'est plus actif.
+        _document.Changes.RemoveAll(c => !_document.Entries.Any(e => e.ChangeIds.Contains(c.Id)));
+
         if (_document.Entries.Count == 0)
         {
             _store.Delete();

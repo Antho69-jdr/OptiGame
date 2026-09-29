@@ -6,6 +6,7 @@
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/OptiGame.Core.Tests/OptiGame.Core.Tests.csproj" />
+    <Project Path="tests/OptiGame.Platform.Tests/OptiGame.Platform.Tests.csproj" />
   </Folder>
   <Folder Name="/tools/">
     <Project Path="tools/OptiGame.DiagDump/OptiGame.DiagDump.csproj" />
