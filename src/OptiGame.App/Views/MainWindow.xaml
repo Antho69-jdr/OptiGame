@@ -9,15 +9,30 @@
         d:DataContext="{d:DesignInstance vm:MainViewModel}"
         Title="{Binding Title}" Height="720" Width="960" MinHeight="420" MinWidth="640"
         WindowStartupLocation="CenterScreen" Background="#F4F5F7">
-    <TabControl Margin="8">
-        <TabItem Header="Diagnostic">
-            <views:DiagnosticView DataContext="{Binding Diagnostic}" />
-        </TabItem>
-        <TabItem Header="Profils de jeu">
-            <views:ProfilesView DataContext="{Binding Profiles}" />
-        </TabItem>
-        <TabItem Header="Mesures">
-            <TextBlock Margin="16" Text="Mesures PresentMon — phase 3." />
-        </TabItem>
-    </TabControl>
+    <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
+    </Window.Resources>
+    <DockPanel>
+        <!-- Bandeau de session en cours -->
+        <Border DockPanel.Dock="Top" Margin="8,8,8,0" Padding="12,8" Background="#1F7A4D" CornerRadius="4"
+                DataContext="{Binding Session}"
+                Visibility="{Binding IsActive, Converter={StaticResource BoolToVisibility}}">
+            <DockPanel>
+                <Button DockPanel.Dock="Right" Padding="12,4" Content="Terminer la session et restaurer" Command="{Binding EndNowCommand}" />
+                <TextBlock VerticalAlignment="Center" Foreground="White" FontWeight="SemiBold" Text="{Binding StatusText}" />
+            </DockPanel>
+        </Border>
+
+        <TabControl Margin="8">
+            <TabItem Header="Diagnostic">
+                <views:DiagnosticView DataContext="{Binding Diagnostic}" />
+            </TabItem>
+            <TabItem Header="Profils de jeu">
+                <views:ProfilesView DataContext="{Binding Profiles}" />
+            </TabItem>
+            <TabItem Header="Mesures">
+                <TextBlock Margin="16" Text="Mesures PresentMon — phase 3." />
+            </TabItem>
+        </TabControl>
+    </DockPanel>
 </Window>

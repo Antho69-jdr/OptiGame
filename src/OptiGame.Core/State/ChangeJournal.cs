@@ -176,6 +176,22 @@ public sealed class ChangeJournal
         }
     }
 
+    /// <summary>
+    /// Retire une entrée SANS la restaurer. Réservé aux cas où la restauration est impossible et sans enjeu
+    /// système (ex. relance d'un programme désinstallé) ; l'appelant doit en informer l'utilisateur.
+    /// </summary>
+    public void Discard(SettingTarget target)
+    {
+        lock (_lock)
+        {
+            if (Find(target) is { } entry)
+            {
+                _document.Entries.Remove(entry);
+                PersistOrDelete();
+            }
+        }
+    }
+
     /// <summary>Restaure tout, en ordre inverse. Les échecs n'empêchent pas les restaurations suivantes.</summary>
     public RestoreReport RestoreAll()
     {

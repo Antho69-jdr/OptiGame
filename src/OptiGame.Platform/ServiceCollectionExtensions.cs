@@ -4,6 +4,7 @@ using OptiGame.Core.Abstractions;
 using OptiGame.Core.Diagnostics;
 using OptiGame.Core.Diagnostics.Checks;
 using OptiGame.Core.Profiles;
+using OptiGame.Core.Sessions;
 using OptiGame.Core.State;
 using OptiGame.Platform.Display;
 using OptiGame.Platform.Gpu;
@@ -54,6 +55,10 @@ public static class ServiceCollectionExtensions
 
         services.AddSingleton<IRunningProgramsProvider, RunningProgramsProvider>();
 
+        services.AddSingleton<ProcessService>();
+        services.AddSingleton<ISettingAccessor>(sp => sp.GetRequiredService<ProcessService>());
+        services.AddSingleton<IProcessControl>(sp => sp.GetRequiredService<ProcessService>());
+
         services.AddSingleton(sp => new SettingAccessors(sp.GetServices<ISettingAccessor>()));
 
         services.AddSingleton(_ => new ProfileStore(new JsonStateStore<ProfilesDocument>(paths.Profiles)));
@@ -62,6 +67,15 @@ public static class ServiceCollectionExtensions
             new JsonStateStore<JournalDocument>(paths.FixesJournal), sp.GetRequiredService<SettingAccessors>(), sp.GetRequiredService<TimeProvider>()));
         services.AddKeyedSingleton(JournalKeys.Session, (sp, _) => new ChangeJournal(
             new JsonStateStore<JournalDocument>(paths.SessionJournal), sp.GetRequiredService<SettingAccessors>(), sp.GetRequiredService<TimeProvider>()));
+
+        services.AddSingleton(sp => new GameSessionManager(
+            sp.GetRequiredKeyedService<ChangeJournal>(JournalKeys.Session),
+            sp.GetRequiredService<ProfileStore>(),
+            sp.GetRequiredService<SettingAccessors>(),
+            sp.GetRequiredService<IPowerSchemeProvider>(),
+            sp.GetRequiredService<IProcessControl>(),
+            sp.GetRequiredService<TimeProvider>()));
+        services.AddSingleton<GameMonitor>();
 
         // Contrôles du diagnostic, dans l'ordre d'affichage.
         services.AddSingleton<IDiagnosticCheck, DisplayRefreshRateCheck>();

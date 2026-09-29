@@ -4,8 +4,9 @@
              xmlns:tb="clr-namespace:H.NotifyIcon;assembly=H.NotifyIcon.Wpf"
              ShutdownMode="OnExplicitShutdown">
     <Application.Resources>
+        <BooleanToVisibilityConverter x:Key="TrayBoolToVisibility" />
         <tb:TaskbarIcon x:Key="TrayIcon"
-                        ToolTipText="OptiGame"
+                        ToolTipText="{Binding Session.TrayToolTip}"
                         NoLeftClickDelay="True"
                         LeftClickCommand="{Binding ShowMainWindowCommand}">
             <tb:TaskbarIcon.IconSource>
@@ -15,6 +16,11 @@
                 <ContextMenu>
                     <MenuItem Header="Ouvrir OptiGame" Command="{Binding ShowMainWindowCommand}" FontWeight="Bold" />
                     <Separator />
+                    <MenuItem Header="{Binding Session.StatusText}" IsEnabled="False"
+                              Visibility="{Binding Session.IsActive, Converter={StaticResource TrayBoolToVisibility}}" />
+                    <MenuItem Header="Terminer la session et restaurer les réglages" Command="{Binding Session.EndNowCommand}"
+                              Visibility="{Binding Session.IsActive, Converter={StaticResource TrayBoolToVisibility}}" />
+                    <Separator Visibility="{Binding Session.IsActive, Converter={StaticResource TrayBoolToVisibility}}" />
                     <MenuItem Header="Quitter" Command="{Binding ExitCommand}" />
                 </ContextMenu>
             </tb:TaskbarIcon.ContextMenu>
