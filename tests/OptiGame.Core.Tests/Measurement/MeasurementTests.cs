@@ -59,10 +59,23 @@ public sealed class MeasurementTests : IDisposable
     }
 
     [Fact]
-    public void Rejects_non_presentmon_files()
+    public void Rejects_non_presentmon_files_and_lists_found_columns()
     {
-        Assert.Throws<FormatException>(() => PresentMonCsv.Parse(new StringReader("a,b,c\n1,2,3")));
+        var ex = Assert.Throws<FormatException>(() => PresentMonCsv.Parse(new StringReader("a,b,c\n1,2,3")));
+        Assert.Contains("Colonnes trouvées : a, b, c", ex.Message);
         Assert.Throws<FormatException>(() => PresentMonCsv.Parse(new StringReader("")));
+    }
+
+    [Fact]
+    public void Accepts_FrameTime_column_name_of_v2_metrics()
+    {
+        var csv = "Application,ProcessID,SwapChainAddress,CPUStartTime,FrameTime,CPUBusy,DisplayedTime\n" +
+                  "Overwatch.exe,11316,0x1A,12.5,6.25,3.1,6.2\n";
+
+        var frame = Assert.Single(PresentMonCsv.Parse(new StringReader(csv)));
+
+        Assert.Equal(6.25, frame.MsBetweenPresents);
+        Assert.Equal(6.2, frame.MsBetweenDisplayChange);
     }
 
     [Fact]

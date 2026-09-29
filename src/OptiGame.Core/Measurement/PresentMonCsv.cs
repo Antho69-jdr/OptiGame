@@ -12,21 +12,29 @@ public sealed record FrameSample(string Application, int ProcessId, string SwapC
 /// </summary>
 public static class PresentMonCsv
 {
+    /// <summary>Noms possibles de la colonne « temps entre deux images » (ms), par ordre de préférence.</summary>
+    public static readonly string[] FrameTimeColumns = ["MsBetweenPresents", "FrameTime"];
+
     public static IReadOnlyList<FrameSample> Parse(TextReader reader)
     {
         var header = reader.ReadLine() ?? throw new FormatException("Fichier CSV vide.");
         var columns = SplitLine(header).Select(c => c.Trim()).ToList();
-        int Index(string name) => columns.FindIndex(c => c.Equals(name, StringComparison.OrdinalIgnoreCase));
+        int Index(params string[] names) =>
+            names.Select(n => columns.FindIndex(c => c.Equals(n, StringComparison.OrdinalIgnoreCase))).FirstOrDefault(i => i >= 0, -1);
 
-        var betweenPresents = Index("MsBetweenPresents");
+        // La documentation v2.6.0 annonce MsBetweenPresents, mais la première capture réelle ne l'avait pas :
+        // on accepte aussi le nom FrameTime des métriques 2.x.
+        var betweenPresents = Index(FrameTimeColumns);
         if (betweenPresents < 0)
         {
-            throw new FormatException("Colonne MsBetweenPresents absente : ce fichier n'est pas un CSV PresentMon reconnu.");
+            throw new FormatException(
+                $"Aucune colonne de temps entre images ({string.Join(" / ", FrameTimeColumns)}) : ce fichier n'est pas un CSV PresentMon reconnu. " +
+                $"Colonnes trouvées : {string.Join(", ", columns)}");
         }
         var application = Index("Application");
         var processId = Index("ProcessID");
         var swapChain = Index("SwapChainAddress");
-        var betweenDisplay = Index("MsBetweenDisplayChange");
+        var betweenDisplay = Index("MsBetweenDisplayChange", "DisplayedTime");
 
         var frames = new List<FrameSample>();
         string? line;

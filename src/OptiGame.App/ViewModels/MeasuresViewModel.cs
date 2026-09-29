@@ -142,12 +142,20 @@ public sealed partial class MeasuresViewModel : ObservableObject
         }
         catch (OperationCanceledException)
         {
-            File.Delete(request.OutputCsv);
+            File.Delete(request.OutputCsv); // capture partielle, sans intérêt
             CaptureStatus = "Capture annulée.";
+        }
+        catch (FormatException ex)
+        {
+            // Fichier produit mais non reconnu : on le GARDE pour pouvoir l'analyser.
+            var kept = Path.ChangeExtension(request.OutputCsv, null) + "-non-reconnu.csv";
+            File.Move(request.OutputCsv, kept, overwrite: true);
+            CaptureStatus = "Capture non reconnue (fichier conservé).";
+            _log.Error($"CSV PresentMon non reconnu, conservé dans {kept}", ex);
+            _dialogs.ShowError($"{ex.Message}\n\nLe fichier a été conservé pour analyse :\n{kept}");
         }
         catch (Exception ex)
         {
-            File.Delete(request.OutputCsv);
             CaptureStatus = "Capture échouée.";
             _log.Error("Capture échouée", ex);
             _dialogs.ShowError(ex.Message);
