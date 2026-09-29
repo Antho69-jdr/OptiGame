@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/OptiGame.App/OptiGame.App.csproj" />
+    <Project Path="src/OptiGame.Core/OptiGame.Core.csproj" />
+    <Project Path="src/OptiGame.Platform/OptiGame.Platform.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/OptiGame.Core.Tests/OptiGame.Core.Tests.csproj" />
+  </Folder>
+</Solution>
