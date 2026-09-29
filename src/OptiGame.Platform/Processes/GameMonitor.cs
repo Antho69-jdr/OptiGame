@@ -33,12 +33,16 @@ public sealed class GameMonitor(GameSessionManager sessions, ProfileStore profil
         watcher.Start();
         _watcher = watcher;
 
-        // Jeux déjà lancés avant OptiGame.
+        // Jeux déjà lancés avant OptiGame, ou avant la création/activation de leur profil.
         Task.Run(ScanRunningGames);
+        profiles.Changed += OnProfilesChanged;
     }
+
+    private void OnProfilesChanged(object? sender, EventArgs e) => Task.Run(ScanRunningGames);
 
     public void Dispose()
     {
+        profiles.Changed -= OnProfilesChanged;
         _watcher?.Stop();
         _watcher?.Dispose();
         _watcher = null;

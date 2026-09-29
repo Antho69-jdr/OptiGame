@@ -76,6 +76,7 @@ public static class ServiceCollectionExtensions
             sp.GetRequiredService<IProcessControl>(),
             sp.GetRequiredService<TimeProvider>()));
         services.AddSingleton<GameMonitor>();
+        services.AddSingleton<Startup.AutoStartService>();
 
         // Contrôles du diagnostic, dans l'ordre d'affichage.
         services.AddSingleton<IDiagnosticCheck, DisplayRefreshRateCheck>();

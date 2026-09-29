@@ -33,6 +33,9 @@
             <TabItem Header="Mesures">
                 <TextBlock Margin="16" Text="Mesures PresentMon — phase 3." />
             </TabItem>
+            <TabItem Header="Paramètres">
+                <views:SettingsView DataContext="{Binding Settings}" />
+            </TabItem>
         </TabControl>
     </DockPanel>
 </Window>

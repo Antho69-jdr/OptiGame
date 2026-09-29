@@ -35,7 +35,9 @@ src/OptiGame.Core/       net10.0, aucune dépendance Windows, 100 % testable
                          restaure via l'accesseur du Kind, ce qui fonctionne aussi après un crash.
   Diagnostics/           IDiagnosticCheck → DiagnosticResult (OK / ÀCorriger / Info), un fichier par contrôle
   Abstractions/          IRegistry, IWmi, IPowerPlans, IDisplayInfo, IPowerStatus, IGpuSchedulingInfo…
-  Profiles/              profils de jeu (phase 2)
+  Profiles/              GameProfile, ProfileStore (profiles.json), ProfileValidator (processus protégés)
+  Sessions/              SessionPlan (profil → changements + texte), GameSessionManager (application, restauration,
+                         reprise après crash ; une session à la fois ; IProcessControl pour fermer/prioriser)
   Measurement/           parser CSV PresentMon + statistiques (phase 3)
 src/OptiGame.Platform/   net10.0-windows : implémentations réelles (registre, WMI, P/Invoke), Privileged/,
                          Processes/, Startup/ (tâche planifiée), Measurement/ (runner PresentMon)
@@ -47,6 +49,16 @@ tools/OptiGame.DiagDump/        diagnostic en console (lecture seule), pour vér
 
 Tests manuels de l'UI sans UAC : `$env:__COMPAT_LAYER='RunAsInvoker'` avant de lancer l'exe (l'appli démarre
 non élevée ; les lectures fonctionnent, les écritures HKLM échoueront proprement).
+
+Sessions de jeu (Platform/Processes) :
+- Détection : `Win32_ProcessStartTrace` (admin requis) + comparaison sur le chemin complet de l'exe ; fin de
+  partie via `Process.Exited`. Aucun polling.
+- Fermeture : fenêtre principale fermée normalement, arrêt forcé après 5 s. Jamais les exe de `%windir%`, les
+  services (autre session) ni les noms de `ProfileValidator.ProtectedProcesses`.
+- Réglage `process` : valeur = [chemin, ligne de commande] ; journalisé seulement si le programme tournait.
+  Relance via le jeton de l'Explorateur (`UnelevatedLauncher`) : jamais de relance élevée. Une relance ratée est
+  signalée puis retirée du journal (`ChangeJournal.Discard`) ; les réglages système ratés restent en attente.
+- Démarrage auto : tâche planifiée importée en XML (`Startup/AutoStartService`), argument `--minimized`.
 
 Règle de dépendance : `App → Platform → Core`. La logique de décision (statut d'un check, restauration)
 vit dans Core ; Platform ne fait que lire/écrire le système.

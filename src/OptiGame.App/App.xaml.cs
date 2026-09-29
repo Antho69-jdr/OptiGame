@@ -149,6 +149,7 @@ public partial class App : Application
         services.AddSingleton<SessionViewModel>();
         services.AddSingleton<DiagnosticViewModel>();
         services.AddSingleton<ProfilesViewModel>();
+        services.AddSingleton<SettingsViewModel>();
         services.AddSingleton<MainViewModel>();
         services.AddSingleton<TrayViewModel>();
         services.AddSingleton<MainWindow>();
