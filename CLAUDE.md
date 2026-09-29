@@ -74,4 +74,5 @@ vit dans Core ; Platform ne fait que lire/écrire le système.
 dotnet build OptiGame.slnx
 dotnet test OptiGame.slnx
 dotnet run --project src/OptiGame.App   # demande l'élévation UAC
+dotnet run --project tools/OptiGame.DiagDump   # diagnostic lecture seule en console, sans élévation
 ```

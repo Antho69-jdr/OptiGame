@@ -1,0 +1,60 @@
+<UserControl x:Class="OptiGame.App.Views.DiagnosticView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="clr-namespace:OptiGame.App.ViewModels"
+             xmlns:conv="clr-namespace:OptiGame.App.Converters"
+             mc:Ignorable="d"
+             d:DataContext="{d:DesignInstance vm:DiagnosticViewModel}">
+    <UserControl.Resources>
+        <conv:StatusToBrushConverter x:Key="StatusBrush" />
+        <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
+    </UserControl.Resources>
+
+    <DockPanel Margin="12">
+        <DockPanel DockPanel.Dock="Top" Margin="0,0,0,12">
+            <Button DockPanel.Dock="Right" Padding="16,6" Content="Relancer l'analyse" Command="{Binding RunCommand}" />
+            <TextBlock VerticalAlignment="Center" Text="{Binding StatusText}" Foreground="#555" />
+        </DockPanel>
+
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+            <ItemsControl ItemsSource="{Binding Items}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate DataType="{x:Type vm:DiagnosticItemViewModel}">
+                        <Border Margin="0,0,0,8" Background="White" BorderBrush="#DDD" BorderThickness="1" CornerRadius="4">
+                            <DockPanel>
+                                <Border DockPanel.Dock="Left" Width="5" CornerRadius="4,0,0,4"
+                                        Background="{Binding Status, Converter={StaticResource StatusBrush}}" />
+                                <StackPanel Margin="12,10">
+                                    <DockPanel>
+                                        <Border DockPanel.Dock="Right" Padding="8,2" CornerRadius="10" VerticalAlignment="Top"
+                                                Background="{Binding Status, Converter={StaticResource StatusBrush}}">
+                                            <TextBlock Text="{Binding StatusLabel}" Foreground="White" FontWeight="SemiBold" FontSize="12" />
+                                        </Border>
+                                        <TextBlock Text="{Binding Title}" FontWeight="SemiBold" FontSize="14" TextWrapping="Wrap" />
+                                    </DockPanel>
+                                    <TextBlock Margin="0,4,0,0" Text="{Binding Summary}" TextWrapping="Wrap" />
+                                    <Expander Margin="0,6,0,0" Header="Détails et explication">
+                                        <StackPanel Margin="4,6,0,0">
+                                            <ItemsControl ItemsSource="{Binding Details}">
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <TextBlock Text="{Binding StringFormat='• {0}'}" TextWrapping="Wrap" Foreground="#444"
+                                                                   FontFamily="Consolas" FontSize="12" />
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                            <TextBlock Margin="0,8,0,0" Text="{Binding Explanation}" TextWrapping="Wrap"
+                                                       Visibility="{Binding HasExplanation, Converter={StaticResource BoolToVisibility}}" />
+                                        </StackPanel>
+                                    </Expander>
+                                </StackPanel>
+                            </DockPanel>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
+    </DockPanel>
+</UserControl>

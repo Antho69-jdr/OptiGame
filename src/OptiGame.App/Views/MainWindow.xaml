@@ -4,13 +4,14 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:vm="clr-namespace:OptiGame.App.ViewModels"
+        xmlns:views="clr-namespace:OptiGame.App.Views"
         mc:Ignorable="d"
         d:DataContext="{d:DesignInstance vm:MainViewModel}"
-        Title="{Binding Title}" Height="640" Width="960" MinHeight="420" MinWidth="640"
-        WindowStartupLocation="CenterScreen">
+        Title="{Binding Title}" Height="720" Width="960" MinHeight="420" MinWidth="640"
+        WindowStartupLocation="CenterScreen" Background="#F4F5F7">
     <TabControl Margin="8">
         <TabItem Header="Diagnostic">
-            <TextBlock Margin="16" Text="Diagnostic — à venir." />
+            <views:DiagnosticView DataContext="{Binding Diagnostic}" />
         </TabItem>
         <TabItem Header="Profils de jeu">
             <TextBlock Margin="16" Text="Profils de jeu — phase 2." />

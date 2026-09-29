@@ -10,6 +10,15 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         DataContext = viewModel;
+
+        // Première ouverture : lancer l'analyse (lecture seule).
+        Loaded += (_, _) =>
+        {
+            if (viewModel.Diagnostic.Items.Count == 0)
+            {
+                viewModel.Diagnostic.RunCommand.Execute(null);
+            }
+        };
     }
 
     /// <summary>Fermer la fenêtre la masque : l'appli reste dans la zone de notification.</summary>

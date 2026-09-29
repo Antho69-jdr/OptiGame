@@ -5,6 +5,7 @@ using OptiGame.App.Tray;
 using OptiGame.App.ViewModels;
 using OptiGame.App.Views;
 using OptiGame.Core;
+using OptiGame.Platform;
 
 namespace OptiGame.App;
 
@@ -58,8 +59,9 @@ public partial class App : Application
     {
         var services = new ServiceCollection();
 
-        services.AddSingleton(AppPaths.Default);
+        services.AddOptiGamePlatform(AppPaths.Default);
 
+        services.AddSingleton<DiagnosticViewModel>();
         services.AddSingleton<MainViewModel>();
         services.AddSingleton<TrayViewModel>();
         services.AddSingleton<MainWindow>();
