@@ -27,9 +27,12 @@ DI Microsoft.Extensions.DependencyInjection, tests xUnit.
 
 ```
 src/OptiGame.Core/       net10.0, aucune dépendance Windows, 100 % testable
-  State/                 SettingSnapshot, SettingValue (Absent | DWord | QWord | String…), JsonStateStore
-                         (écriture atomique), ChangeJournal, SessionRestorer
-  Changes/               IReversibleChange (Capture / Apply / Restore, What / Why, RequiresAdmin / RequiresReboot)
+  State/                 SettingValue (Absent | DWord | QWord | String…), SettingTarget (Kind, Path, Name),
+                         ISettingAccessor (lecture/écriture d'une famille de réglages), JsonStateStore
+                         (écriture atomique), ChangeJournal (write-ahead, Apply / Undo / RestoreAll)
+  Changes/               ReversibleChange : description par DONNÉES (liste de SettingWrite) + What / Why /
+                         RequiresAdmin / RequiresReboot. Pas de code de restauration par changement : le journal
+                         restaure via l'accesseur du Kind, ce qui fonctionne aussi après un crash.
   Diagnostics/           IDiagnosticCheck → DiagnosticResult (OK / ÀCorriger / Info), un fichier par contrôle
   Abstractions/          IRegistry, IWmi, IPowerPlans, IDisplayInfo, IPowerStatus, IGpuSchedulingInfo…
   Profiles/              profils de jeu (phase 2)
