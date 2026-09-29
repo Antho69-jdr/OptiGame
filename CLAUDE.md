@@ -88,6 +88,9 @@ vit dans Core ; Platform ne fait que lire/écrire le système.
 - `powercfg` a une sortie localisée → ne jamais la parser ; utiliser `powrprof.dll`. Les plans personnalisés
   (ex. « Atlas Power Scheme ») sont un statut Info.
 - Une valeur de registre absente se sauvegarde comme `Absent` et se restaure par **suppression**.
+- CSV réel de PresentMon 2.6.0 (`--v2_metrics`) : colonnes `FrameTime`, `CPUBusy`, `GPUTime`, `DisplayedTime`… SANS
+  préfixe `Ms`, contrairement à sa documentation. Toujours valider un format sur un vrai fichier, et ne jamais
+  supprimer un fichier qu'on n'a pas réussi à lire.
 - `WqlEventQuery` n'accepte que `SELECT * FROM …` : une liste de propriétés lève « Paramètre non valide ».
 - Les notifications Windows peuvent être masquées (AtlasOS) : toute erreur importante doit aussi apparaître
   dans la fenêtre et dans `%LocalAppData%\OptiGame\logs\optigame.log` (UTF-8 : `Get-Content -Encoding UTF8`).
