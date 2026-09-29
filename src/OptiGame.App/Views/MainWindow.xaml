@@ -14,7 +14,7 @@
             <views:DiagnosticView DataContext="{Binding Diagnostic}" />
         </TabItem>
         <TabItem Header="Profils de jeu">
-            <TextBlock Margin="16" Text="Profils de jeu — phase 2." />
+            <views:ProfilesView DataContext="{Binding Profiles}" />
         </TabItem>
         <TabItem Header="Mesures">
             <TextBlock Margin="16" Text="Mesures PresentMon — phase 3." />

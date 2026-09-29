@@ -10,6 +10,7 @@ public static class KnownSettings
     public const string RegistryKind = "registry";
     public const string PowerSchemeKind = "power-scheme";
     public const string DisplayModeKind = "display-mode";
+    public const string ProcessKind = "process";
 
     /// <summary>Mode Jeu. Absente = activé (défaut Windows).</summary>
     public static readonly SettingTarget GameMode =
@@ -54,6 +55,12 @@ public static class KnownSettings
 
     /// <summary>Mode d'affichage d'un écran (valeur = « largeur x hauteur @ Hz »).</summary>
     public static SettingTarget DisplayMode(string deviceName) => new(DisplayModeKind, deviceName);
+
+    /// <summary>
+    /// Programme en cours d'exécution dans la session. Valeur = ligne de commande pour le relancer, ou Absent
+    /// s'il ne tourne pas. Écrire Absent le ferme ; écrire une ligne de commande le relance (non élevé) s'il ne tourne pas.
+    /// </summary>
+    public static SettingTarget RunningProcess(string exeName) => new(ProcessKind, exeName.ToLowerInvariant());
 }
 
 public static class PowerSchemes

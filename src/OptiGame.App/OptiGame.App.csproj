@@ -10,6 +10,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Using Include="System.IO" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\OptiGame.Core\OptiGame.Core.csproj" />
     <ProjectReference Include="..\OptiGame.Platform\OptiGame.Platform.csproj" />
   </ItemGroup>

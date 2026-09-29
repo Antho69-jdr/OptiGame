@@ -95,6 +95,7 @@ public partial class App : Application
         services.AddSingleton<IDialogService, DialogService>();
 
         services.AddSingleton<DiagnosticViewModel>();
+        services.AddSingleton<ProfilesViewModel>();
         services.AddSingleton<MainViewModel>();
         services.AddSingleton<TrayViewModel>();
         services.AddSingleton<MainWindow>();

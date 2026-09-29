@@ -81,6 +81,15 @@ public interface IDeviceGuardProvider
     DeviceGuardStatus? GetStatus();
 }
 
+/// <summary>Programme ouvert dans la session de l'utilisateur (regroupé par nom d'exécutable).</summary>
+public sealed record RunningProgram(string ExeName, string? Description, string Path, int InstanceCount);
+
+public interface IRunningProgramsProvider
+{
+    /// <summary>Programmes de la session courante, hors composants de Windows et hors OptiGame.</summary>
+    IReadOnlyList<RunningProgram> GetUserPrograms();
+}
+
 public interface IRegistryReader
 {
     /// <summary>Noms des valeurs d'une clé (vide si la clé n'existe pas).</summary>

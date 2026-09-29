@@ -3,11 +3,13 @@ using OptiGame.Core;
 using OptiGame.Core.Abstractions;
 using OptiGame.Core.Diagnostics;
 using OptiGame.Core.Diagnostics.Checks;
+using OptiGame.Core.Profiles;
 using OptiGame.Core.State;
 using OptiGame.Platform.Display;
 using OptiGame.Platform.Gpu;
 using OptiGame.Platform.Power;
 using OptiGame.Platform.Privileged;
+using OptiGame.Platform.Processes;
 using OptiGame.Platform.Registry;
 using OptiGame.Platform.Wmi;
 
@@ -50,7 +52,11 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IDeviceGuardProvider, WmiDeviceGuardProvider>();
         services.AddSingleton<IGpuSchedulingProvider, GpuSchedulingProvider>();
 
+        services.AddSingleton<IRunningProgramsProvider, RunningProgramsProvider>();
+
         services.AddSingleton(sp => new SettingAccessors(sp.GetServices<ISettingAccessor>()));
+
+        services.AddSingleton(_ => new ProfileStore(new JsonStateStore<ProfilesDocument>(paths.Profiles)));
 
         services.AddKeyedSingleton(JournalKeys.Fixes, (sp, _) => new ChangeJournal(
             new JsonStateStore<JournalDocument>(paths.FixesJournal), sp.GetRequiredService<SettingAccessors>(), sp.GetRequiredService<TimeProvider>()));

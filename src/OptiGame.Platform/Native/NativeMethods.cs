@@ -113,6 +113,68 @@ internal static class NativeMethods
     [DllImport("kernel32.dll")]
     public static extern IntPtr LocalFree(IntPtr hMem);
 
+    // ---- Processus (kernel32 / user32 / advapi32) ----
+
+    public const uint ProcessQueryLimitedInformation = 0x1000;
+    public const uint ProcessQueryInformation = 0x0400;
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    public static extern IntPtr OpenProcess(uint desiredAccess, bool inheritHandle, int processId);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    public static extern bool CloseHandle(IntPtr handle);
+
+    [DllImport("kernel32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+    public static extern bool QueryFullProcessImageName(IntPtr process, uint flags, [Out] char[] exeName, ref uint size);
+
+    [DllImport("user32.dll")]
+    public static extern IntPtr GetShellWindow();
+
+    [DllImport("user32.dll", SetLastError = true)]
+    public static extern uint GetWindowThreadProcessId(IntPtr hwnd, out int processId);
+
+    public const uint TokenAssignPrimary = 0x0001;
+    public const uint TokenDuplicate = 0x0002;
+    public const uint TokenQuery = 0x0008;
+    public const uint TokenAdjustDefault = 0x0080;
+    public const uint TokenAdjustSessionId = 0x0100;
+    public const int SecurityImpersonation = 2;
+    public const int TokenPrimary = 1;
+    public const uint CreateUnicodeEnvironment = 0x00000400;
+
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+    public struct StartupInfo
+    {
+        public int cb;
+        public string? lpReserved;
+        public string? lpDesktop;
+        public string? lpTitle;
+        public int dwX, dwY, dwXSize, dwYSize, dwXCountChars, dwYCountChars, dwFillAttribute, dwFlags;
+        public short wShowWindow, cbReserved2;
+        public IntPtr lpReserved2, hStdInput, hStdOutput, hStdError;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct ProcessInformation
+    {
+        public IntPtr hProcess;
+        public IntPtr hThread;
+        public int dwProcessId;
+        public int dwThreadId;
+    }
+
+    [DllImport("advapi32.dll", SetLastError = true)]
+    public static extern bool OpenProcessToken(IntPtr process, uint desiredAccess, out IntPtr token);
+
+    [DllImport("advapi32.dll", SetLastError = true)]
+    public static extern bool DuplicateTokenEx(IntPtr existingToken, uint desiredAccess, IntPtr tokenAttributes,
+        int impersonationLevel, int tokenType, out IntPtr newToken);
+
+    [DllImport("advapi32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+    public static extern bool CreateProcessWithTokenW(IntPtr token, uint logonFlags, string? applicationName,
+        [In, Out] char[] commandLine, uint creationFlags, IntPtr environment, string? currentDirectory,
+        ref StartupInfo startupInfo, out ProcessInformation processInformation);
+
     // ---- D3DKMT (gdi32) : vérifié sur Windows 11 26200 ----
 
     public const int KmtqaiTypeAdapterRegistryInfo = 8;
