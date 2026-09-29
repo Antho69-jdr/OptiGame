@@ -22,8 +22,8 @@ public static class PresentMonCsv
         int Index(params string[] names) =>
             names.Select(n => columns.FindIndex(c => c.Equals(n, StringComparison.OrdinalIgnoreCase))).FirstOrDefault(i => i >= 0, -1);
 
-        // La documentation v2.6.0 annonce MsBetweenPresents, mais la première capture réelle ne l'avait pas :
-        // on accepte aussi le nom FrameTime des métriques 2.x.
+        // La documentation v2.6.0 annonce MsBetweenPresents, mais une vraie capture PresentMon 2.6.0 (--v2_metrics)
+        // contient FrameTime (voir MeasurementTests.RealHeader) ; MsBetweenPresents reste pour les CSV 1.x.
         var betweenPresents = Index(FrameTimeColumns);
         if (betweenPresents < 0)
         {

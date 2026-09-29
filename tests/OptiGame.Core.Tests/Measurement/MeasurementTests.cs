@@ -66,6 +66,27 @@ public sealed class MeasurementTests : IDisposable
         Assert.Throws<FormatException>(() => PresentMonCsv.Parse(new StringReader("")));
     }
 
+    /// <summary>En-tête et lignes réels d'une capture PresentMon 2.6.0 d'Overwatch (machine de dev, 30/09/2026).</summary>
+    private const string RealHeader =
+        "Application,ProcessID,SwapChainAddress,PresentRuntime,SyncInterval,PresentFlags,AllowsTearing,PresentMode,CPUStartTime," +
+        "FrameTime,CPUBusy,CPUWait,GPULatency,GPUTime,GPUBusy,GPUWait,DisplayLatency,DisplayedTime,AnimationError,AnimationTime," +
+        "MsFlipDelay,AllInputToPhotonLatency,ClickToPhotonLatency";
+
+    [Fact]
+    public void Parses_real_PresentMon_2_6_capture()
+    {
+        var csv = string.Join("\n",
+            RealHeader,
+            "Overwatch.exe,18844,0x23F3FE6E5C0,DXGI,0,0,1,Hardware Composed: Independent Flip,5004.6084,6.1234,5.9120,0.2114,1.1590,5.8314,4.4572,1.3742,11.8879,6.0347,-0.1530,5004.6084,NA,NA,NA",
+            "Overwatch.exe,18844,0x23F3FE6E5C0,DXGI,0,0,1,Hardware Composed: Independent Flip,5010.7318,6.0059,3.8676,2.1383,1.0066,6.0120,4.3308,1.6812,11.7992,6.0845,0.0887,5010.7318,NA,NA,NA");
+
+        var frames = PresentMonCsv.Parse(new StringReader(csv));
+
+        Assert.Equal([6.1234, 6.0059], frames.Select(f => f.MsBetweenPresents));
+        Assert.Equal(6.0347, frames[0].MsBetweenDisplayChange);
+        Assert.All(frames, f => Assert.Equal(("Overwatch.exe", 18844, "0x23F3FE6E5C0"), (f.Application, f.ProcessId, f.SwapChain)));
+    }
+
     [Fact]
     public void Accepts_FrameTime_column_name_of_v2_metrics()
     {

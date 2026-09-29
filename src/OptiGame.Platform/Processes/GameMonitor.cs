@@ -141,9 +141,9 @@ public sealed class GameMonitor(GameSessionManager sessions, ProfileStore profil
             var candidate = profiles.GetAll().FirstOrDefault(p =>
                 Path.GetFileName(p.ExePath).Equals(eventName, StringComparison.OrdinalIgnoreCase) ||
                 (path is not null && p.Matches(path)));
-            if (candidate is null)
+            if (candidate is null || sessions.Current?.ProcessId == pid)
             {
-                return; // Processus sans rapport avec un profil : rien à journaliser.
+                return; // Sans rapport avec un profil, ou jeu de la session déjà suivie (nouveau balayage).
             }
 
             if (path is null)
