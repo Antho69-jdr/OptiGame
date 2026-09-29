@@ -77,6 +77,9 @@ vit dans Core ; Platform ne fait que lire/écrire le système.
 - `powercfg` a une sortie localisée → ne jamais la parser ; utiliser `powrprof.dll`. Les plans personnalisés
   (ex. « Atlas Power Scheme ») sont un statut Info.
 - Une valeur de registre absente se sauvegarde comme `Absent` et se restaure par **suppression**.
+- `WqlEventQuery` n'accepte que `SELECT * FROM …` : une liste de propriétés lève « Paramètre non valide ».
+- Les notifications Windows peuvent être masquées (AtlasOS) : toute erreur importante doit aussi apparaître
+  dans la fenêtre et dans `%LocalAppData%\OptiGame\logs\optigame.log` (UTF-8 : `Get-Content -Encoding UTF8`).
 
 ## Conventions
 
