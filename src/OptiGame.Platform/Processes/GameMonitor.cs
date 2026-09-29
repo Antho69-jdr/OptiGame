@@ -24,6 +24,10 @@ public sealed class GameMonitor(GameSessionManager sessions, ProfileStore profil
     private SafeWaitHandle? _exitHandle;
     private int _startEventCount;
 
+    // WqlEventQuery n'accepte que « SELECT * » : une liste de propriétés lève « Paramètre non valide ».
+    internal const string StartQuery = "SELECT * FROM Win32_ProcessStartTrace";
+    internal const string StopQuery = "SELECT * FROM Win32_ProcessStopTrace";
+
     /// <summary>Erreur non bloquante (ex. détection indisponible), à afficher à l'utilisateur.</summary>
     public event EventHandler<string>? Error;
 
@@ -36,11 +40,11 @@ public sealed class GameMonitor(GameSessionManager sessions, ProfileStore profil
 
         try
         {
-            _startWatcher = new ManagementEventWatcher(new WqlEventQuery("SELECT ProcessID, ProcessName FROM Win32_ProcessStartTrace"));
+            _startWatcher = new ManagementEventWatcher(new WqlEventQuery(StartQuery));
             _startWatcher.EventArrived += OnStartEvent;
             _startWatcher.Start();
 
-            _stopWatcher = new ManagementEventWatcher(new WqlEventQuery("SELECT ProcessID FROM Win32_ProcessStopTrace"));
+            _stopWatcher = new ManagementEventWatcher(new WqlEventQuery(StopQuery));
             _stopWatcher.EventArrived += OnStopEvent;
             _stopWatcher.Start();
         }

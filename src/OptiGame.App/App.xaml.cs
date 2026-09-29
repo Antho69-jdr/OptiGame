@@ -110,6 +110,8 @@ public partial class App : Application
         }
         catch (Exception ex)
         {
+            // Les notifications peuvent être masquées par Windows : l'erreur est aussi affichée dans la fenêtre.
+            sessionVm.DetectionError = $"Détection des jeux indisponible : les profils ne seront pas appliqués automatiquement ({ex.Message}).";
             notifications.Show("OptiGame : détection des jeux indisponible",
                 $"Les profils ne seront pas appliqués automatiquement : {ex.Message}", isWarning: true);
         }

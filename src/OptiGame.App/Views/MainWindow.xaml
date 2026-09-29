@@ -13,6 +13,13 @@
         <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
     </Window.Resources>
     <DockPanel>
+        <!-- Détection des jeux en panne -->
+        <Border DockPanel.Dock="Top" Margin="8,8,8,0" Padding="12,8" Background="#C62828" CornerRadius="4"
+                DataContext="{Binding Session}"
+                Visibility="{Binding HasDetectionError, Converter={StaticResource BoolToVisibility}}">
+            <TextBlock Foreground="White" TextWrapping="Wrap" Text="{Binding DetectionError}" />
+        </Border>
+
         <!-- Bandeau de session en cours -->
         <Border DockPanel.Dock="Top" Margin="8,8,8,0" Padding="12,8" Background="#1F7A4D" CornerRadius="4"
                 DataContext="{Binding Session}"

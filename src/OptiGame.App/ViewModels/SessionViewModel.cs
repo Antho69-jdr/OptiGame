@@ -31,6 +31,13 @@ public sealed partial class SessionViewModel : ObservableObject
     [ObservableProperty]
     private string _statusText = "";
 
+    /// <summary>Raison pour laquelle la détection des jeux ne fonctionne pas ; null si elle fonctionne.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasDetectionError))]
+    private string? _detectionError;
+
+    public bool HasDetectionError => DetectionError is not null;
+
     public string TrayToolTip => IsActive ? $"OptiGame — {StatusText}" : "OptiGame";
 
     partial void OnStatusTextChanged(string value) => OnPropertyChanged(nameof(TrayToolTip));
