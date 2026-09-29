@@ -78,6 +78,8 @@ vit dans Core ; Platform ne fait que lire/écrire le système.
 ```powershell
 dotnet build OptiGame.slnx
 dotnet test OptiGame.slnx
-dotnet run --project src/OptiGame.App   # demande l'élévation UAC
+# Lancer l'appli : `dotnet run` échoue (erreur 740) car il ne peut pas déclencher l'UAC.
+# Passer par Start-Process (ShellExecute), ou lancer dotnet run depuis un terminal déjà administrateur.
+dotnet build src/OptiGame.App; if ($?) { Start-Process src\OptiGame.App\bin\Debug\net10.0-windows\OptiGame.exe }
 dotnet run --project tools/OptiGame.DiagDump   # diagnostic lecture seule en console, sans élévation
 ```
