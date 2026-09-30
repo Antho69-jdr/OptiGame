@@ -35,4 +35,7 @@ public sealed class AppPaths
     public string CapturesDir => Path.Combine(Root, "captures");
 
     public string LogsDir => Path.Combine(Root, "logs");
+
+    /// <summary>Installeurs de pilotes téléchargés (vérifiés avant d'être ouverts).</summary>
+    public string DownloadsDir => Path.Combine(Root, "downloads");
 }

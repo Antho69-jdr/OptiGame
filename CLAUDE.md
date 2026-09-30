@@ -13,6 +13,9 @@ DI Microsoft.Extensions.DependencyInjection, tests xUnit.
    - Changements de session (`session.json`) : restaurés à la fermeture du jeu, et au démarrage suivant si
      l'appli a planté pendant une session.
    - Corrections du diagnostic (`fixes.json`) : permanentes mais annulables depuis l'UI.
+   - SEULE exception, validée par l'utilisateur : l'installation de pilotes (page « Pilotes »). Non journalisable ;
+     annoncée dans une confirmation dédiée (`DriverInstallDialog`, case « je comprends » obligatoire) avec le chemin du
+     retour en arrière (Gestionnaire de périphériques → « Restaurer le pilote ») et un point de restauration si possible.
 2. **Rien n'est appliqué sans action explicite de l'utilisateur.** Chaque correction affiche ce qu'elle
    change, pourquoi, et si elle nécessite admin / redémarrage.
 3. **Pas de tweaks placebo ou risqués.** Interdits : tweaks registre réseau/système (NetworkThrottlingIndex,
@@ -130,7 +133,12 @@ vit dans Core ; Platform ne fait que lire/écrire le système.
     3070 » ≠ « … Ti » ≠ « … Laptop GPU » ; RTX 3070 = psid 120, pfid 933) puis `gfwsl.geforce.com/…/AjaxDriverService.php
     ?func=DriverManualLookup` (JSON servi en text/html ; languageCode=1033 → date « Tue Sep 22, 2026 » ; osID 57 = Windows 11).
   - Version Windows → NVIDIA : 5 derniers chiffres des deux derniers nombres (32.0.15.9186 → 591.86).
-  - Téléchargement autorisé seulement depuis `https://*.download.nvidia.com`.
+  - Téléchargement autorisé seulement depuis `https://*.download.nvidia.com` (redirections comprises), dans
+    `%LocalAppData%\OptiGame\downloads`. Avant ouverture (et encore juste avant, dans `IPrivilegedOperations`) :
+    WinVerifyTrust + signataire « CN=NVIDIA Corporation, O=NVIDIA Corporation » (lu sur l'installeur 617.14 par requêtes
+    partielles : le serveur accepte les Range). Installeur refusé → renommé `.non-verifie`, jamais ouvert.
+  - Protection du système : `HKLM\…\SPP\Clients` n'est lisible QU'EN ADMIN (accès refusé sinon) → état « Unknown » hors
+    admin ; l'état réel est journalisé à chaque installation. Création de point : WMI `root\default:SystemRestore`.
   - Windows Update : COM `Microsoft.Update.Session`, « IsInstalled=0 and Type='Driver' and IsHidden=0 », ≈ 25 s, fonctionne
     sous AtlasOS même sans droits admin. Le pilote NVIDIA de Windows Update est masqué si celui de NVIDIA est plus récent.
 - Temps de jeu Steam : `<SteamPath>\userdata\<accountid>\config\localconfig.vdf`, UserLocalConfigStore > Software > Valve >

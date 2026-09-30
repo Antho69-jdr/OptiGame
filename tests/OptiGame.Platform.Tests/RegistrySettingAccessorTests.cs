@@ -12,7 +12,7 @@ public sealed class RegistrySettingAccessorTests : IDisposable
 {
     private const string TestRoot = @"Software\OptiGame.Tests";
     private readonly string _key = $@"HKCU\{TestRoot}\{Guid.NewGuid():N}";
-    private readonly RegistrySettingAccessor _accessor = new(new InProcessPrivilegedOperations());
+    private readonly RegistrySettingAccessor _accessor = new(new InProcessPrivilegedOperations(new Core.AppPaths(Path.GetTempPath())));
 
     public void Dispose() => Win32Registry.CurrentUser.DeleteSubKeyTree(TestRoot, throwOnMissingSubKey: false);
 

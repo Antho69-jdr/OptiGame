@@ -17,6 +17,9 @@ public interface IDialogService
 
     bool ConfirmUndo(ChangeRecord change);
 
+    /// <summary>Confirmation d'une installation de pilote (non annulable par OptiGame) ; null si annulée.</summary>
+    Dialogs.DriverInstallChoice? ConfirmDriverInstall(Core.Drivers.DriverInstallPlan plan);
+
     /// <summary>Question oui/non ; « Non » par défaut.</summary>
     bool Confirm(string message);
 
@@ -50,6 +53,12 @@ public sealed class DialogService : IDialogService
 
     public bool ConfirmChange(ReversibleChange change, bool isAdvanced) =>
         ShowOwned(new ConfirmChangeDialog(change, isAdvanced)) == true;
+
+    public Dialogs.DriverInstallChoice? ConfirmDriverInstall(Core.Drivers.DriverInstallPlan plan)
+    {
+        var dialog = new Dialogs.DriverInstallDialog(plan);
+        return ShowOwned(dialog) == true ? dialog.Choice : null;
+    }
 
     public bool ConfirmUndo(ChangeRecord change) =>
         Confirm($"Annuler « {change.Title} » ?\n\nLe réglage d'origine, sauvegardé avant la correction, sera restauré." +
