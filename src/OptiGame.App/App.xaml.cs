@@ -12,6 +12,7 @@ using OptiGame.Core.Sessions;
 using OptiGame.Core.State;
 using OptiGame.Platform;
 using OptiGame.Platform.Processes;
+using OptiGame.Platform.Startup;
 
 namespace OptiGame.App;
 
@@ -23,6 +24,7 @@ public partial class App : Application
     private SingleInstance? _singleInstance;
     private ServiceProvider? _services;
     private TaskbarIcon? _trayIcon;
+    private QuitRequestWatcher? _quitWatcher;
 
     protected override void OnStartup(StartupEventArgs e)
     {
@@ -51,6 +53,20 @@ public partial class App : Application
 
         StartSessions(_services);
 
+        var services = _services;
+        _quitWatcher = new QuitRequestWatcher(services.GetRequiredService<AppPaths>().Root,
+            () => Dispatcher.BeginInvoke(async () =>
+            {
+                services.GetRequiredService<FileLog>().Info("Arrêt demandé par scripts\\dev-run.ps1 (quit.request).");
+                // Comme « Quitter » pendant une partie : on restaure plutôt que de laisser la session en suspens.
+                var sessions = services.GetRequiredService<GameSessionManager>();
+                if (sessions.Current is not null)
+                {
+                    await Task.Run(sessions.EndNow);
+                }
+                Shutdown();
+            }));
+
         if (!e.Args.Contains(MinimizedArgument, StringComparer.OrdinalIgnoreCase))
         {
             ShowMainWindow();
@@ -61,6 +77,7 @@ public partial class App : Application
     {
         // Pas de restauration ici : si Windows s'arrête pendant une partie, le journal de session
         // est rejoué au prochain démarrage d'OptiGame.
+        _quitWatcher?.Dispose();
         _trayIcon?.Dispose();
         _services?.Dispose();
         _singleInstance?.Dispose();
