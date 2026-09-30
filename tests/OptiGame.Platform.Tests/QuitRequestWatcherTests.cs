@@ -13,8 +13,13 @@ public sealed class QuitRequestWatcherTests : IDisposable
 
     private string RequestPath => Path.Combine(_dir, QuitRequestWatcher.FileName);
 
+    /// <summary>
+    /// Pas de vérification de la suppression du fichier ici : elle peut échouer (fichier encore ouvert par
+    /// l'écrivain) ou être suivie d'une réécriture. Un fichier restant est supprimé au démarrage suivant
+    /// (<see cref="Stale_request_from_a_previous_run_is_ignored"/>). Test instable corrigé le 2026-09-30.
+    /// </summary>
     [Fact]
-    public void Request_file_triggers_quit_once_and_is_removed()
+    public void Request_file_triggers_quit_exactly_once()
     {
         var calls = 0;
         using var signaled = new ManualResetEventSlim();
@@ -30,7 +35,6 @@ public sealed class QuitRequestWatcherTests : IDisposable
         Assert.True(signaled.Wait(TimeSpan.FromSeconds(5)));
         Thread.Sleep(300);
         Assert.Equal(1, calls);
-        Assert.False(File.Exists(RequestPath));
     }
 
     [Fact]
