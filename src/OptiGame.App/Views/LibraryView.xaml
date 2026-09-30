@@ -61,16 +61,54 @@
                                         </ControlTemplate>
                                     </Button.Template>
                                 </Button>
-                                <!-- Pastilles -->
-                                <StackPanel Margin="8" HorizontalAlignment="Left" VerticalAlignment="Top">
-                                    <Border Style="{StaticResource Badge}" Background="{StaticResource Brush.Accent}"
-                                            Visibility="{Binding IsPlaying, Converter={StaticResource BoolToVisibility}}">
-                                        <TextBlock Text="En cours" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource Brush.OnAccent}" />
-                                    </Border>
-                                    <Border Style="{StaticResource Badge}" Background="#CC0E1014"
-                                            Visibility="{Binding Enabled, Converter={StaticResource InverseBoolToVisibility}}">
-                                        <TextBlock Text="Profil désactivé" FontSize="11" Foreground="{StaticResource Brush.TextSecondary}" />
-                                    </Border>
+                                <!-- Coin haut gauche : épingle du dock, puis pastilles -->
+                                <StackPanel Margin="8" HorizontalAlignment="Left" VerticalAlignment="Top" Orientation="Horizontal">
+                                    <!-- Épinglé : toujours visible (épingle pleine) ; sinon seulement au survol. Hidden et non
+                                         Collapsed : la place reste réservée, les pastilles ne bougent pas au survol. -->
+                                    <Button x:Name="PinButton" Width="32" Height="32" Cursor="Hand" Visibility="Hidden"
+                                            Command="{Binding DataContext.TogglePinCardCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                            CommandParameter="{Binding}">
+                                        <Button.Template>
+                                            <ControlTemplate TargetType="Button">
+                                                <Border x:Name="Round" CornerRadius="16" Background="#CC0E1014" BorderThickness="1" BorderBrush="#33FFFFFF">
+                                                    <TextBlock x:Name="Glyph" HorizontalAlignment="Center" VerticalAlignment="Center" Style="{StaticResource Text.Icon}"
+                                                               FontSize="14" Foreground="{StaticResource Brush.Text}" Text="&#xE718;" />
+                                                </Border>
+                                                <ControlTemplate.Triggers>
+                                                    <DataTrigger Binding="{Binding IsPinned}" Value="True">
+                                                        <Setter TargetName="Glyph" Property="Text" Value="&#xE841;" />
+                                                        <Setter TargetName="Glyph" Property="Foreground" Value="{StaticResource Brush.Accent}" />
+                                                    </DataTrigger>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter TargetName="Round" Property="Background" Value="#F0181C23" />
+                                                        <Setter TargetName="Round" Property="BorderBrush" Value="{StaticResource Brush.Accent}" />
+                                                    </Trigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </Button.Template>
+                                        <Button.Style>
+                                            <Style TargetType="Button">
+                                                <Setter Property="ToolTip" Value="Épingler au dock" />
+                                                <Setter Property="AutomationProperties.Name" Value="{Binding Name, StringFormat='Épingler {0} au dock'}" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsPinned}" Value="True">
+                                                        <Setter Property="ToolTip" Value="Retirer du dock" />
+                                                        <Setter Property="AutomationProperties.Name" Value="{Binding Name, StringFormat='Retirer {0} du dock'}" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Button.Style>
+                                    </Button>
+                                    <StackPanel Margin="6,0,0,0">
+                                        <Border Style="{StaticResource Badge}" Background="{StaticResource Brush.Accent}"
+                                                Visibility="{Binding IsPlaying, Converter={StaticResource BoolToVisibility}}">
+                                            <TextBlock Text="En cours" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource Brush.OnAccent}" />
+                                        </Border>
+                                        <Border Style="{StaticResource Badge}" Background="#CC0E1014"
+                                                Visibility="{Binding Enabled, Converter={StaticResource InverseBoolToVisibility}}">
+                                            <TextBlock Text="Profil désactivé" FontSize="11" Foreground="{StaticResource Brush.TextSecondary}" />
+                                        </Border>
+                                    </StackPanel>
                                 </StackPanel>
                             </Grid>
                             <TextBlock Margin="2,10,2,0" Style="{StaticResource Text.Body}" FontWeight="SemiBold" Text="{Binding Name}"
@@ -81,9 +119,13 @@
                             </StackPanel>
                         </StackPanel>
                         <ControlTemplate.Triggers>
+                            <DataTrigger Binding="{Binding IsPinned}" Value="True">
+                                <Setter TargetName="PinButton" Property="Visibility" Value="Visible" />
+                            </DataTrigger>
                             <Trigger Property="IsMouseOver" Value="True">
                                 <Setter TargetName="Outline" Property="BorderBrush" Value="{StaticResource Brush.Accent}" />
                                 <Setter TargetName="PlayButton" Property="Visibility" Value="Visible" />
+                                <Setter TargetName="PinButton" Property="Visibility" Value="Visible" />
                                 <Trigger.EnterActions>
                                     <BeginStoryboard>
                                         <Storyboard>
