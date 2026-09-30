@@ -39,6 +39,17 @@ public partial class App : Application
         }
 
         _services = ConfigureServices().BuildServiceProvider();
+        var services = _services;
+
+        // Filet de sécurité : une erreur dans l'interface (ex. le dock) ne doit pas arrêter OptiGame pendant une partie.
+        // Elle est journalisée avec sa pile d'appels et signalée ; l'appli continue.
+        DispatcherUnhandledException += (_, args) =>
+        {
+            services.GetRequiredService<FileLog>().Error($"Erreur d'interface inattendue :{Environment.NewLine}{args.Exception}");
+            services.GetRequiredService<INotificationService>().Show("OptiGame : erreur inattendue",
+                $"{args.Exception.Message} (détails dans le journal).", isWarning: true);
+            args.Handled = true;
+        };
 
         if (!LoadStateFiles(_services))
         {
@@ -54,7 +65,6 @@ public partial class App : Application
         StartSessions(_services);
         _services.GetRequiredService<Dock.DockController>().Start();
 
-        var services = _services;
         _quitWatcher = new QuitRequestWatcher(services.GetRequiredService<AppPaths>().Root,
             () => Dispatcher.BeginInvoke(async () =>
             {

@@ -117,6 +117,9 @@ vit dans Core ; Platform ne fait que lire/écrire le système.
 - CSV réel de PresentMon 2.6.0 (`--v2_metrics`) : colonnes `FrameTime`, `CPUBusy`, `GPUTime`, `DisplayedTime`… SANS
   préfixe `Ms`, contrairement à sa documentation. Toujours valider un format sur un vrai fichier, et ne jamais
   supprimer un fichier qu'on n'a pas réussi à lire.
+- WPF gèle les Freezable (ScaleTransform, brushes…) déclarés dans un DataTemplate : pour les animer, donner à
+  chaque élément sa propre instance (cf. `DockWindow.SetScale`). Toute erreur d'interface passe par
+  `DispatcherUnhandledException` (journalisée, l'appli continue).
 - `WqlEventQuery` n'accepte que `SELECT * FROM …` : une liste de propriétés lève « Paramètre non valide ».
 - Les notifications Windows peuvent être masquées (AtlasOS) : toute erreur importante doit aussi apparaître
   dans la fenêtre et dans `%LocalAppData%\OptiGame\logs\optigame.log` (UTF-8 : `Get-Content -Encoding UTF8`).

@@ -250,7 +250,13 @@ public partial class DockWindow : Window
 
     private static void SetScale(FrameworkElement cell, double scale, bool animate)
     {
-        if (cell.LayoutTransform is not ScaleTransform transform) return;
+        // Un ScaleTransform déclaré dans un DataTemplate est gelé (partagé par toutes les instances du modèle) :
+        // l'animer ou le modifier lève une exception. Chaque cellule reçoit donc son propre transform, modifiable.
+        if (cell.LayoutTransform is not ScaleTransform { IsFrozen: false } transform)
+        {
+            transform = new ScaleTransform(1, 1);
+            cell.LayoutTransform = transform;
+        }
         if (animate)
         {
             var animation = new DoubleAnimation(scale, TimeSpan.FromMilliseconds(140)) { EasingFunction = Ease };
