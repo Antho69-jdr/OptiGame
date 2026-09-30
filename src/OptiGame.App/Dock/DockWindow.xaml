@@ -44,18 +44,14 @@
                     </ItemsControl.ItemsPanel>
                     <ItemsControl.ItemTemplate>
                         <DataTemplate DataType="{x:Type vm:DockItemViewModel}">
-                            <!-- RenderTransform (soulèvement + déplacement pendant un glisser) créé par le code, une instance par cellule -->
+                            <!-- RenderTransform (grossissement, soulèvement, glisser) créé par le code, une instance par cellule -->
                             <Grid x:Name="Cell" Margin="5" Background="Transparent" Cursor="Hand" ToolTip="{Binding Name}"
-                                  RenderTransformOrigin="0.5,0.5"
                                   ToolTipService.InitialShowDelay="150" ToolTipService.BetweenShowDelay="0"
                                   ToolTipService.Placement="{Binding TipPlacement, RelativeSource={RelativeSource AncestorType=Window}}"
                                   PreviewMouseLeftButtonDown="OnItemMouseDown" PreviewMouseMove="OnItemMouseMove"
                                   PreviewMouseLeftButtonUp="OnItemMouseUp" LostMouseCapture="OnItemLostCapture"
                                   MouseRightButtonUp="OnItemRightClick"
                                   AutomationProperties.Name="{Binding Name}">
-                                <Grid.LayoutTransform>
-                                    <ScaleTransform ScaleX="1" ScaleY="1" />
-                                </Grid.LayoutTransform>
                                 <Grid Width="{Binding IconWidth, RelativeSource={RelativeSource AncestorType=Window}}"
                                       Height="{Binding IconHeight, RelativeSource={RelativeSource AncestorType=Window}}">
                                     <Border CornerRadius="14">
@@ -97,9 +93,6 @@
                       ToolTipService.InitialShowDelay="150"
                       ToolTipService.Placement="{Binding TipPlacement, RelativeSource={RelativeSource AncestorType=Window}}"
                       MouseLeftButtonUp="OnOptiGameClick" AutomationProperties.Name="Ouvrir OptiGame">
-                    <Grid.LayoutTransform>
-                        <ScaleTransform ScaleX="1" ScaleY="1" />
-                    </Grid.LayoutTransform>
                     <Border Width="{Binding IconWidth, RelativeSource={RelativeSource AncestorType=Window}}"
                             Height="{Binding IconHeight, RelativeSource={RelativeSource AncestorType=Window}}"
                             CornerRadius="14" Background="{StaticResource Brush.Accent}">

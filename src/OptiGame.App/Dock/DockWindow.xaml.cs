@@ -1,4 +1,3 @@
-using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
@@ -26,7 +25,6 @@ public partial class DockWindow : Window
     private const double MaxScale = 1.6;
     private const double CellMargin = 10;      // 5 px de chaque côté d'une icône
     private const double ShelfPadding = 10;   // marge de la rangée (5) + marge d'une cellule (5)
-    private const double RowMargin = 5;
     private const double EdgeGap = 6;          // espace entre le dock et le bord de l'écran
     private const double IconRadius = 14;
     private const double SpringOmega = 22;     // grossissement : ~0,25 s pour rejoindre la cible
@@ -47,9 +45,12 @@ public partial class DockWindow : Window
     private bool _shown;
     private bool _suppressed;
 
-    // Grossissement : position de la souris le long du dock (null = icônes au repos), vitesse de chaque icône.
+    // Grossissement : dernière position de la souris le long du dock (repère de la rangée) et intensité de l'effet
+    // (0 = icônes au repos, 1 = grossissement complet), animée par un ressort.
     private double? _magnifyAxis;
-    private readonly ConditionalWeakTable<FrameworkElement, StrongBox<double>> _velocities = new();
+    private double _intensity;
+    private double _intensityVelocity;
+    private double _intensityTarget;
     private TimeSpan? _lastFrame;
     private bool _magnifying;
 
@@ -183,6 +184,7 @@ public partial class DockWindow : Window
             DockEdge.Right => new Thickness(0, 0, EdgeGap, 0),
             _ => new Thickness(0, 0, 0, EdgeGap),
         };
+        Plate.Margin = new Thickness(0);
         Plate.Width = Horizontal ? double.NaN : plate;
         Plate.Height = Horizontal ? plate : double.NaN;
         Plate.HorizontalAlignment = Shelf.HorizontalAlignment == HorizontalAlignment.Center ? HorizontalAlignment.Stretch : Shelf.HorizontalAlignment;
@@ -271,18 +273,24 @@ public partial class DockWindow : Window
     private void OnShelfMouseMove(object sender, MouseEventArgs e)
     {
         if (!_shown || _dragging) return;
-        var mouse = e.GetPosition(Root);
+        var mouse = e.GetPosition(Row);
         Magnify(Horizontal ? mouse.X : mouse.Y);
     }
 
     /// <summary>
-    /// Change la cible du grossissement. Les icônes la rejoignent image par image avec un ressort (départ doux,
-    /// arrivée ralentie, dans les deux sens), puis la boucle s'arrête d'elle-même.
+    /// Suit la souris (null = elle est partie). La position est suivie telle quelle ; seule l'intensité de l'effet
+    /// est animée, par un ressort (départ doux, arrivée ralentie, dans les deux sens), puis la boucle s'arrête.
     /// </summary>
     private void Magnify(double? axis)
     {
-        _magnifyAxis = axis;
-        if (_magnifying) return;
+        if (axis is { } position) _magnifyAxis = position;
+        _intensityTarget = axis is null ? 0 : 1;
+        if (_magnifying) return; // la boucle en cours appliquera la nouvelle position à la prochaine image
+        if (_intensity == _intensityTarget)
+        {
+            if (_intensity > 0) ApplyMagnification();
+            return;
+        }
         _magnifying = true;
         _lastFrame = null;
         CompositionTarget.Rendering += OnMagnifyFrame;
@@ -297,58 +305,65 @@ public partial class DockWindow : Window
         var elapsed = _lastFrame is { } last ? Math.Min((now - last).TotalSeconds, 0.05) : 1 / 60.0; // après un gel, pas de saut
         _lastFrame = now;
 
-        var cells = Cells().ToList();
-        var targets = TargetScales(cells.Count);
-        var settled = true;
-        for (var i = 0; i < cells.Count; i++)
-        {
-            var transform = LayoutScale(cells[i]);
-            var velocity = _velocities.GetValue(cells[i], _ => new StrongBox<double>());
-            var (scale, speed) = DockSpring.Step(transform.ScaleX, velocity.Value, targets[i], elapsed, SpringOmega);
-            if (scale != transform.ScaleX) transform.ScaleX = transform.ScaleY = scale;
-            velocity.Value = speed;
-            settled &= scale == targets[i] && speed == 0;
-        }
-
-        if (settled)
+        (_intensity, _intensityVelocity) = DockSpring.Step(_intensity, _intensityVelocity, _intensityTarget, elapsed, SpringOmega);
+        ApplyMagnification();
+        if (_intensity == _intensityTarget && _intensityVelocity == 0)
         {
             CompositionTarget.Rendering -= OnMagnifyFrame;
             _magnifying = false;
         }
     }
 
-    /// <summary>Grossissement visé pour chaque cellule (jeux puis OptiGame) selon la position de la souris.</summary>
-    private double[] TargetScales(int count)
+    /// <summary>
+    /// Place chaque élément selon l'étirement de l'axe autour de la souris (<see cref="DockMagnification"/>), par
+    /// transformations de rendu uniquement : la disposition au repos, donc le centrage du dock, ne bouge jamais.
+    /// Le plateau s'allonge de chaque côté de ce que les icônes ont gagné.
+    /// </summary>
+    private void ApplyMagnification()
     {
-        var targets = Enumerable.Repeat(1.0, count).ToArray();
-        if (_magnifyAxis is not { } axis) return targets;
-
-        // Centres calculés sur la disposition AU REPOS, dans le repère de la fenêtre : stable même pendant
-        // que les icônes grossissent et écartent leurs voisines.
-        var extra = Horizontal ? Divider.Width + Divider.Margin.Left + Divider.Margin.Right : Divider.Height + Divider.Margin.Top + Divider.Margin.Bottom;
-        var length = Horizontal ? Root.ActualWidth : Root.ActualHeight;
-        var total = count * Slot + extra + (_vm.IsEmpty ? EmptyHint.ActualWidth : 0);
-        var start = (length - total - RowMargin * 2) / 2 + RowMargin;
+        var mouse = _magnifyAxis ?? 0;
+        var maxScale = 1 + (MaxScale - 1) * Math.Max(0, _intensity);
         var range = Along * 2.2;
-        for (var i = 0; i < count; i++)
+        var cells = Cells().ToList();
+
+        foreach (var cell in cells)
         {
-            var isOg = i == count - 1;
-            var center = start + i * Slot + Slot / 2 + (isOg ? extra : 0);
-            targets[i] = DockMagnification.Scale(axis - center, range, MaxScale);
+            var (scale, shift) = DockMagnification.Place(RestStart(cell) - CellMargin / 2, Slot, mouse, range, maxScale);
+            var parts = RenderParts(cell);
+            // Grossit depuis le bord de l'écran, centré le long du dock.
+            parts.MagScale.CenterX = Horizontal ? cell.ActualWidth / 2 : _edge == DockEdge.Right ? cell.ActualWidth : 0;
+            parts.MagScale.CenterY = Horizontal ? (_edge == DockEdge.Bottom ? cell.ActualHeight : 0) : cell.ActualHeight / 2;
+            parts.MagScale.ScaleX = parts.MagScale.ScaleY = scale;
+            if (Horizontal) (parts.MagShift.X, parts.MagShift.Y) = (shift, 0);
+            else (parts.MagShift.X, parts.MagShift.Y) = (0, shift);
         }
-        return targets;
+
+        foreach (var element in new FrameworkElement[] { Divider, EmptyHint })
+        {
+            var center = RestStart(element) + (Horizontal ? element.ActualWidth : element.ActualHeight) / 2;
+            var shift = DockMagnification.Map(center, mouse, range, maxScale) - center;
+            if (element.RenderTransform is not TranslateTransform { IsFrozen: false } move) element.RenderTransform = move = new TranslateTransform();
+            (move.X, move.Y) = Horizontal ? (shift, 0.0) : (0.0, shift);
+        }
+
+        if (cells.Count == 0) return;
+        var first = RestStart(cells[0]) - CellMargin / 2;
+        var end = RestStart(cells[^1]) + Along + CellMargin / 2;
+        var before = first - DockMagnification.Map(first, mouse, range, maxScale);
+        var after = DockMagnification.Map(end, mouse, range, maxScale) - end;
+        Plate.Margin = Horizontal ? new Thickness(-before, 0, -after, 0) : new Thickness(0, -before, 0, -after);
     }
 
-    private static ScaleTransform LayoutScale(FrameworkElement cell)
+    /// <summary>Début d'un élément le long du dock, dans la disposition au repos (sans transformation de rendu).</summary>
+    private double RestStart(FrameworkElement element)
     {
-        // Un ScaleTransform déclaré dans un DataTemplate est gelé (partagé par toutes les instances du modèle) :
-        // le modifier lève une exception. Chaque cellule reçoit donc son propre transform, modifiable.
-        if (cell.LayoutTransform is not ScaleTransform { IsFrozen: false } transform)
+        var offset = VisualTreeHelper.GetOffset(element);
+        var point = new Point(offset.X, offset.Y);
+        if (VisualTreeHelper.GetParent(element) is Visual parent && !ReferenceEquals(parent, Row) && parent.IsDescendantOf(Row))
         {
-            transform = new ScaleTransform(1, 1);
-            cell.LayoutTransform = transform;
+            point = parent.TransformToAncestor(Row).Transform(point);
         }
-        return transform;
+        return Horizontal ? point.X : point.Y;
     }
 
     /// <summary>Cellules des jeux dans l'ordre, puis celle d'OptiGame.</summary>
@@ -472,10 +487,11 @@ public partial class DockWindow : Window
 
         if (commit && press.Target != press.From) _vm.Move(press.Item.Id, press.Target);
         UpdateLayout();
+        ApplyMagnification(); // grossissement éventuellement encore en train de retomber : recalculé sur les nouvelles cases
 
         foreach (var (item, cell, presenter) in GameCells())
         {
-            var from = before.TryGetValue(item.Id, out var old) ? old - SlotPosition(presenter) : 0;
+            var from = before.TryGetValue(item.Id, out var old) ? old - SlotPosition(presenter) - MagnifyShift(cell) : 0;
             MoveCell(cell, from, animate: false);
             MoveCell(cell, 0, animate: true);
             ToolTipService.SetIsEnabled(cell, true);
@@ -494,10 +510,17 @@ public partial class DockWindow : Window
         return Horizontal ? offset.X : offset.Y;
     }
 
+    /// <summary>Décalage à l'écran d'une cellule par rapport à sa case : glisser + grossissement.</summary>
     private double CellOffset(FrameworkElement cell)
     {
         var move = RenderParts(cell).Move;
-        return Horizontal ? move.X : move.Y;
+        return (Horizontal ? move.X : move.Y) + MagnifyShift(cell);
+    }
+
+    private double MagnifyShift(FrameworkElement cell)
+    {
+        var shift = RenderParts(cell).MagShift;
+        return Horizontal ? shift.X : shift.Y;
     }
 
     /// <summary>Décale une cellule le long du dock (sans toucher à la disposition des autres).</summary>
@@ -520,20 +543,25 @@ public partial class DockWindow : Window
     private static void AnimateLift(FrameworkElement cell, double scale, TimeSpan duration, IEasingFunction easing)
     {
         var lift = RenderParts(cell).Lift;
+        (lift.CenterX, lift.CenterY) = (cell.ActualWidth / 2, cell.ActualHeight / 2);
         var animation = new DoubleAnimation(scale, duration) { EasingFunction = easing };
         lift.BeginAnimation(ScaleTransform.ScaleXProperty, animation);
         lift.BeginAnimation(ScaleTransform.ScaleYProperty, animation);
     }
 
-    /// <summary>Soulèvement (échelle autour du centre) puis déplacement : une instance par cellule, jamais gelée.</summary>
-    private static (ScaleTransform Lift, TranslateTransform Move) RenderParts(FrameworkElement cell)
+    /// <summary>
+    /// Transformations de rendu d'une cellule, dans l'ordre : soulèvement / enfoncement (autour de son centre),
+    /// grossissement (depuis le bord de l'écran) et son décalage, puis déplacement du glisser. Une instance par
+    /// cellule, jamais gelée (un transform déclaré dans un DataTemplate le serait).
+    /// </summary>
+    private static (ScaleTransform Lift, ScaleTransform MagScale, TranslateTransform MagShift, TranslateTransform Move) RenderParts(FrameworkElement cell)
     {
-        if (cell.RenderTransform is TransformGroup { IsFrozen: false, Children: [ScaleTransform lift, TranslateTransform move] })
+        if (cell.RenderTransform is TransformGroup { IsFrozen: false, Children: [ScaleTransform lift, ScaleTransform magScale, TranslateTransform magShift, TranslateTransform move] })
         {
-            return (lift, move);
+            return (lift, magScale, magShift, move);
         }
-        var parts = (Lift: new ScaleTransform(1, 1), Move: new TranslateTransform());
-        cell.RenderTransform = new TransformGroup { Children = { parts.Lift, parts.Move } };
+        var parts = (Lift: new ScaleTransform(1, 1), MagScale: new ScaleTransform(1, 1), MagShift: new TranslateTransform(), Move: new TranslateTransform());
+        cell.RenderTransform = new TransformGroup { Children = { parts.Lift, parts.MagScale, parts.MagShift, parts.Move } };
         return parts;
     }
 

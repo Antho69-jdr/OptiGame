@@ -61,8 +61,10 @@ src/OptiGame.App/        WPF : composition DI, tray, vues/viewmodels, dialogue d
                          clics traversants) + DockController (crée/ferme selon settings, masque pendant une session
                          ou une appli plein écran via Platform/Display/FullscreenWatcher = EVENT_SYSTEM_FOREGROUND +
                          SHQueryUserNotificationState). Animations uniquement pendant les transitions : grossissement
-                         par ressort (Core/Dock/DockSpring, boucle CompositionTarget.Rendering arrêtée une fois la cible
-                         atteinte), glisser-déposer interne (capture souris + Core/Dock/DockReorder, jamais DragDrop OLE),
+                         = étirement continu de l'axe autour de la souris (Core/Dock/DockMagnification.Place), appliqué
+                         en transformations de RENDU (jamais LayoutTransform : la rangée se recentrerait et le dock
+                         sursauterait), intensité animée par ressort (DockSpring, boucle CompositionTarget.Rendering
+                         arrêtée une fois au repos), glisser-déposer interne (capture souris + Core/Dock/DockReorder, jamais DragDrop OLE),
                          onde au clic. Ordre du dock = GameProfile.DockOrder, modifié seulement par ProfileStore.SetPinned
                          / MoveInDock (DockViewModel.Move déplace d'abord l'élément affiché, pour animer son arrivée).
                          Capture de test : PrintWindow sur la fenêtre « OptiGame — Dock » (zones transparentes = noir).
