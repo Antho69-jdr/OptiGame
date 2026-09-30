@@ -40,10 +40,24 @@
                             <ComboBox Width="160" ItemsSource="{Binding DockEdgeOptions}" SelectedItem="{Binding SelectedDockEdge}" DisplayMemberPath="Label" />
                         </StackPanel>
                         <StackPanel Margin="0,0,16,0">
-                            <TextBlock Style="{StaticResource Text.Label}" Text="Taille des icônes" />
-                            <ComboBox Width="160" ItemsSource="{Binding DockSizeOptions}" SelectedItem="{Binding SelectedDockSize}" DisplayMemberPath="Label" />
+                            <TextBlock Style="{StaticResource Text.Label}" Text="Format des icônes" />
+                            <ComboBox Width="220" ItemsSource="{Binding DockShapeOptions}" SelectedItem="{Binding SelectedDockShape}" DisplayMemberPath="Label" />
                         </StackPanel>
                     </WrapPanel>
+                    <!-- Delay : l'enregistrement attend que le curseur soit immobile (pas une écriture disque par pixel). -->
+                    <TextBlock Margin="28,0,0,0" Style="{StaticResource Text.Label}">
+                        <Run Text="Taille des icônes : " /><Run Text="{Binding Value, ElementName=SizeSlider, Mode=OneWay, StringFormat='{}{0:0} px'}" />
+                    </TextBlock>
+                    <Slider x:Name="SizeSlider" Margin="28,0,0,0" MaxWidth="420" HorizontalAlignment="Left" Width="420"
+                            Minimum="{Binding MinDockIconSize, Mode=OneTime}" Maximum="{Binding MaxDockIconSize, Mode=OneTime}"
+                            TickFrequency="4" IsSnapToTickEnabled="True" SmallChange="4" LargeChange="16"
+                            Value="{Binding DockIconSize, Delay=250}" AutomationProperties.Name="Taille des icônes du dock" />
+                    <TextBlock Margin="28,0,0,0" Style="{StaticResource Text.Label}">
+                        <Run Text="Opacité du fond : " /><Run Text="{Binding Value, ElementName=OpacitySlider, Mode=OneWay, StringFormat='{}{0:0} %'}" />
+                    </TextBlock>
+                    <Slider x:Name="OpacitySlider" Margin="28,0,0,0" HorizontalAlignment="Left" Width="420"
+                            Minimum="20" Maximum="100" TickFrequency="5" IsSnapToTickEnabled="True" SmallChange="5" LargeChange="10"
+                            Value="{Binding DockOpacityPercent, Delay=250}" AutomationProperties.Name="Opacité du fond du dock" />
                     <CheckBox Margin="28,14,0,0" IsChecked="{Binding DockAutoHide}"
                               Content="Masquer automatiquement (approchez la souris du bord de l'écran pour l'afficher)" />
                     <TextBlock Margin="28,6,0,0" Style="{StaticResource Text.Caption}"

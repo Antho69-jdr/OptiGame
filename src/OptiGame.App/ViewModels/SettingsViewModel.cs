@@ -43,12 +43,15 @@ public sealed partial class SettingsViewModel : ObservableObject
         new(DockEdge.Right, "À droite"),
     ];
 
-    public IReadOnlyList<DockSizeOption> DockSizeOptions { get; } =
+    public IReadOnlyList<DockShapeOption> DockShapeOptions { get; } =
     [
-        new(48, "Petites"),
-        new(64, "Moyennes"),
-        new(80, "Grandes"),
+        new(DockIconShape.Square, "Carré"),
+        new(DockIconShape.Cover, "Format jaquette (portrait)"),
     ];
+
+    public int MinDockIconSize => Core.Dock.DockLayout.MinIconSize;
+
+    public int MaxDockIconSize => Core.Dock.DockLayout.MaxIconSize;
 
     public bool DockEnabled
     {
@@ -68,10 +71,36 @@ public sealed partial class SettingsViewModel : ObservableObject
         set { if (value is not null) { _settings.Update(s => s.DockEdge = value.Value); OnPropertyChanged(); } }
     }
 
-    public DockSizeOption SelectedDockSize
+    public DockShapeOption SelectedDockShape
     {
-        get => DockSizeOptions.FirstOrDefault(o => o.Pixels == _settings.Get().DockIconSize) ?? DockSizeOptions[1];
-        set { if (value is not null) { _settings.Update(s => s.DockIconSize = value.Pixels); OnPropertyChanged(); } }
+        get => DockShapeOptions.FirstOrDefault(o => o.Value == _settings.Get().DockIconShape) ?? DockShapeOptions[0];
+        set { if (value is not null) { _settings.Update(s => s.DockIconShape = value.Value); OnPropertyChanged(); } }
+    }
+
+    /// <summary>Largeur des icônes (curseur ; la liaison attend que le curseur s'arrête avant d'enregistrer).</summary>
+    public int DockIconSize
+    {
+        get => _settings.Get().DockIconSize;
+        set
+        {
+            var size = Math.Clamp(value, MinDockIconSize, MaxDockIconSize);
+            if (size == _settings.Get().DockIconSize) return;
+            _settings.Update(s => s.DockIconSize = size);
+            OnPropertyChanged();
+        }
+    }
+
+    /// <summary>Opacité du fond du dock, en pourcents (20 à 100).</summary>
+    public int DockOpacityPercent
+    {
+        get => (int)Math.Round(_settings.Get().DockOpacity * 100);
+        set
+        {
+            var opacity = Core.Dock.DockLayout.Opacity(value / 100.0);
+            if (Math.Abs(opacity - _settings.Get().DockOpacity) < 0.001) return;
+            _settings.Update(s => s.DockOpacity = opacity);
+            OnPropertyChanged();
+        }
     }
 
     // ---- IGDB (jaquettes) ----
@@ -218,4 +247,4 @@ public sealed partial class SettingsViewModel : ObservableObject
 
 public sealed record DockEdgeOption(DockEdge Value, string Label);
 
-public sealed record DockSizeOption(int Pixels, string Label);
+public sealed record DockShapeOption(DockIconShape Value, string Label);

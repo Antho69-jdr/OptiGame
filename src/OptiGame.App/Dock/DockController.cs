@@ -61,7 +61,7 @@ public sealed class DockController(
             _window.Show();
             log.Info("Dock activé.");
         }
-        _window.ApplySettings(s.DockEdge, s.DockIconSize, s.DockAutoHide);
+        _window.ApplySettings(s.DockEdge, s.DockIconSize, s.DockIconShape, s.DockOpacity, s.DockAutoHide);
         UpdateSuppression();
     }
 

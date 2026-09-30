@@ -54,8 +54,8 @@
                                 <Grid.LayoutTransform>
                                     <ScaleTransform ScaleX="1" ScaleY="1" />
                                 </Grid.LayoutTransform>
-                                <Grid Width="{Binding IconSize, RelativeSource={RelativeSource AncestorType=Window}}"
-                                      Height="{Binding IconSize, RelativeSource={RelativeSource AncestorType=Window}}">
+                                <Grid Width="{Binding IconWidth, RelativeSource={RelativeSource AncestorType=Window}}"
+                                      Height="{Binding IconHeight, RelativeSource={RelativeSource AncestorType=Window}}">
                                     <Border CornerRadius="14">
                                         <Border.Background>
                                             <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
@@ -68,7 +68,7 @@
                                     </Border>
                                     <Border CornerRadius="14" Visibility="{Binding HasCover, Converter={StaticResource BoolToVisibility}}">
                                         <Border.Background>
-                                            <ImageBrush Stretch="UniformToFill" ImageSource="{Binding CoverPath, Converter={StaticResource PathToImage}, ConverterParameter=200}" />
+                                            <ImageBrush Stretch="UniformToFill" ImageSource="{Binding CoverPath, Converter={StaticResource PathToImage}, ConverterParameter=320}" />
                                         </Border.Background>
                                     </Border>
                                     <Border CornerRadius="14" BorderThickness="1" BorderBrush="#33FFFFFF" />
@@ -98,8 +98,8 @@
                     <Grid.LayoutTransform>
                         <ScaleTransform ScaleX="1" ScaleY="1" />
                     </Grid.LayoutTransform>
-                    <Border Width="{Binding IconSize, RelativeSource={RelativeSource AncestorType=Window}}"
-                            Height="{Binding IconSize, RelativeSource={RelativeSource AncestorType=Window}}"
+                    <Border Width="{Binding IconWidth, RelativeSource={RelativeSource AncestorType=Window}}"
+                            Height="{Binding IconHeight, RelativeSource={RelativeSource AncestorType=Window}}"
                             CornerRadius="14" Background="{StaticResource Brush.Accent}">
                         <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="Bold" FontSize="18"
                                    Foreground="{StaticResource Brush.OnAccent}" Text="OG" />

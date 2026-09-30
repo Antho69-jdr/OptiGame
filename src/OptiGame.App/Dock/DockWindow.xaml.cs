@@ -56,8 +56,11 @@ public partial class DockWindow : Window
         };
     }
 
-    public static readonly DependencyProperty IconSizeProperty =
-        DependencyProperty.Register(nameof(IconSize), typeof(double), typeof(DockWindow), new PropertyMetadata(64.0));
+    public static readonly DependencyProperty IconWidthProperty =
+        DependencyProperty.Register(nameof(IconWidth), typeof(double), typeof(DockWindow), new PropertyMetadata(64.0));
+
+    public static readonly DependencyProperty IconHeightProperty =
+        DependencyProperty.Register(nameof(IconHeight), typeof(double), typeof(DockWindow), new PropertyMetadata(64.0));
 
     public static readonly DependencyProperty OrientationProperty =
         DependencyProperty.Register(nameof(Orientation), typeof(Orientation), typeof(DockWindow), new PropertyMetadata(Orientation.Horizontal));
@@ -65,11 +68,23 @@ public partial class DockWindow : Window
     public static readonly DependencyProperty TipPlacementProperty =
         DependencyProperty.Register(nameof(TipPlacement), typeof(PlacementMode), typeof(DockWindow), new PropertyMetadata(PlacementMode.Top));
 
-    public double IconSize
+    public double IconWidth
     {
-        get => (double)GetValue(IconSizeProperty);
-        set => SetValue(IconSizeProperty, value);
+        get => (double)GetValue(IconWidthProperty);
+        set => SetValue(IconWidthProperty, value);
     }
+
+    public double IconHeight
+    {
+        get => (double)GetValue(IconHeightProperty);
+        set => SetValue(IconHeightProperty, value);
+    }
+
+    /// <summary>Dimension d'une icône le long du dock (espacement, grossissement).</summary>
+    private double Along => Horizontal ? IconWidth : IconHeight;
+
+    /// <summary>Dimension d'une icône en travers du dock (épaisseur du plateau).</summary>
+    private double Across => Horizontal ? IconHeight : IconWidth;
 
     public Orientation Orientation
     {
@@ -87,11 +102,11 @@ public partial class DockWindow : Window
 
     // ---- Réglages et placement ----
 
-    public void ApplySettings(DockEdge edge, int iconSize, bool autoHide)
+    public void ApplySettings(DockEdge edge, int iconSize, DockIconShape shape, double opacity, bool autoHide)
     {
         _edge = edge;
         _autoHide = autoHide;
-        IconSize = Math.Clamp(iconSize, 32, 128);
+        (IconWidth, IconHeight) = Core.Dock.DockLayout.IconSize(iconSize, shape);
         Orientation = Horizontal ? Orientation.Horizontal : Orientation.Vertical;
         Row.Orientation = Orientation;
         TipPlacement = edge switch
@@ -105,7 +120,7 @@ public partial class DockWindow : Window
         // Fenêtre : toute la longueur du bord (zone de travail de l'écran principal, hors barre des tâches),
         // épaisse de la taille d'une icône agrandie + place pour l'info-bulle.
         var area = SystemParameters.WorkArea;
-        var thickness = IconSize * MaxScale + ShelfPadding * 2 + EdgeGap + 40;
+        var thickness = Across * MaxScale + ShelfPadding * 2 + EdgeGap + 40;
         switch (edge)
         {
             case DockEdge.Top:
@@ -123,7 +138,7 @@ public partial class DockWindow : Window
         }
 
         // Étagère collée au bord, centrée ; plateau épais d'une icône au repos (les icônes agrandies en débordent).
-        var plate = IconSize + ShelfPadding * 2;
+        var plate = Across + ShelfPadding * 2;
         Shelf.HorizontalAlignment = edge switch { DockEdge.Left => HorizontalAlignment.Left, DockEdge.Right => HorizontalAlignment.Right, _ => HorizontalAlignment.Center };
         Shelf.VerticalAlignment = edge switch { DockEdge.Top => VerticalAlignment.Top, DockEdge.Bottom => VerticalAlignment.Bottom, _ => VerticalAlignment.Center };
         Shelf.Margin = edge switch
@@ -140,8 +155,8 @@ public partial class DockWindow : Window
         Row.HorizontalAlignment = Plate.HorizontalAlignment == HorizontalAlignment.Stretch ? HorizontalAlignment.Center : Plate.HorizontalAlignment;
         Row.VerticalAlignment = Plate.VerticalAlignment == VerticalAlignment.Stretch ? VerticalAlignment.Center : Plate.VerticalAlignment;
 
-        Divider.Width = Horizontal ? 1 : IconSize * 0.7;
-        Divider.Height = Horizontal ? IconSize * 0.7 : 1;
+        Divider.Width = Horizontal ? 1 : Across * 0.7;
+        Divider.Height = Horizontal ? Across * 0.7 : 1;
         Divider.Margin = Horizontal ? new Thickness(6, 0, 6, 0) : new Thickness(0, 6, 0, 6);
 
         Trigger.Width = Horizontal ? double.NaN : 2;
@@ -196,7 +211,7 @@ public partial class DockWindow : Window
     private void SlideOut(bool animate = true)
     {
         _shown = false;
-        var distance = IconSize + ShelfPadding * 2 + EdgeGap + 12;
+        var distance = Across + ShelfPadding * 2 + EdgeGap + 12;
         AnimateSlide(_edge is DockEdge.Top or DockEdge.Left ? -distance : distance, animate);
     }
 
@@ -224,14 +239,14 @@ public partial class DockWindow : Window
         // Centres calculés sur la disposition AU REPOS, dans le repère de la fenêtre : stable même pendant
         // que les icônes grossissent et écartent leurs voisines.
         var cells = Cells().ToList();
-        var cell = IconSize + CellMargin;
+        var cell = Along + CellMargin;
         var extra = Horizontal ? Divider.Width + Divider.Margin.Left + Divider.Margin.Right : Divider.Height + Divider.Margin.Top + Divider.Margin.Bottom;
         var length = Horizontal ? Root.ActualWidth : Root.ActualHeight;
         var total = cells.Count * cell + extra + (_vm.IsEmpty ? EmptyHint.ActualWidth : 0);
         var start = (length - total - RowMargin * 2) / 2 + RowMargin;
         var mouse = e.GetPosition(Root);
         var axis = Horizontal ? mouse.X : mouse.Y;
-        var range = IconSize * 2.2;
+        var range = Along * 2.2;
 
         for (var i = 0; i < cells.Count; i++)
         {
@@ -335,7 +350,7 @@ public partial class DockWindow : Window
         // Position d'arrivée : la cellule (au repos) la plus proche du point de dépôt.
         var position = e.GetPosition(ItemsHost);
         var axis = Horizontal ? position.X : position.Y;
-        var index = (int)Math.Floor(axis / (IconSize + CellMargin));
+        var index = (int)Math.Floor(axis / (Along + CellMargin));
         _vm.Move(id, Math.Clamp(index, 0, _vm.Items.Count - 1));
     }
 

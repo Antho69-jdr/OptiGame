@@ -10,6 +10,15 @@ public enum DockEdge
     Right,
 }
 
+public enum DockIconShape
+{
+    /// <summary>Jaquette recadrée au carré.</summary>
+    Square,
+
+    /// <summary>Jaquette entière, au format portrait 2:3 des jaquettes IGDB.</summary>
+    Cover,
+}
+
 /// <summary>Préférences de l'appli (settings.json).</summary>
 public sealed class AppSettings
 {
@@ -32,8 +41,14 @@ public sealed class AppSettings
 
     public DockEdge DockEdge { get; set; } = DockEdge.Bottom;
 
-    /// <summary>Taille des icônes au repos, en pixels (48, 64 ou 80).</summary>
+    /// <summary>Largeur des icônes au repos, en pixels (32 à 128).</summary>
     public int DockIconSize { get; set; } = 64;
+
+    /// <summary>Carré (jaquette recadrée) ou format d'origine de la jaquette (portrait 2:3).</summary>
+    public DockIconShape DockIconShape { get; set; } = DockIconShape.Square;
+
+    /// <summary>Opacité du fond du dock, de 0,2 à 1 (les icônes restent opaques).</summary>
+    public double DockOpacity { get; set; } = 0.9;
 
     /// <summary>Le dock se replie au bord de l'écran quand la souris s'en éloigne.</summary>
     public bool DockAutoHide { get; set; } = true;
@@ -48,6 +63,8 @@ public sealed class AppSettings
         DockEnabled = DockEnabled,
         DockEdge = DockEdge,
         DockIconSize = DockIconSize,
+        DockIconShape = DockIconShape,
+        DockOpacity = DockOpacity,
         DockAutoHide = DockAutoHide,
     };
 }

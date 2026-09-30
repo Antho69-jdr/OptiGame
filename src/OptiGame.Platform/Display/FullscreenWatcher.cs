@@ -1,5 +1,6 @@
-using System.Runtime.InteropServices;
+﻿using System.Runtime.InteropServices;
 using System.Text;
+using OptiGame.Core.Dock;
 
 namespace OptiGame.Platform.Display;
 
@@ -16,10 +17,9 @@ public sealed class FullscreenWatcher : IDisposable
     private const uint WinEventSkipOwnProcess = 0x0002;
     private const uint MonitorDefaultToNearest = 2;
 
-    // QUERY_USER_NOTIFICATION_STATE : 2 = application plein écran, 3 = Direct3D plein écran, 4 = présentation.
-    private const int QunsBusy = 2;
-    private const int QunsRunningD3dFullScreen = 3;
-    private const int QunsPresentationMode = 4;
+    private const uint MonitorDefaultToPrimary = 1;
+    private const int GwlStyle = -16;
+    private const int WsCaption = 0x00C00000;
 
     private readonly WinEventDelegate _callback; // gardé en champ : sinon le GC le libère et Windows appelle un pointeur mort
     private IntPtr _hook;
@@ -59,23 +59,33 @@ public sealed class FullscreenWatcher : IDisposable
         _hook = IntPtr.Zero;
     }
 
+    /// <summary>Relevé Win32 ; la décision est dans Core (<see cref="FullscreenRules"/>, testée).</summary>
     private static bool DetectFullscreen()
     {
-        if (SHQueryUserNotificationState(out var state) == 0 &&
-            state is QunsBusy or QunsRunningD3dFullScreen or QunsPresentationMode)
-        {
-            return true;
-        }
+        var state = SHQueryUserNotificationState(out var s) == 0 ? s : 0;
+        return FullscreenRules.ShouldHideDock(state, ReadForeground());
+    }
 
-        // Jeux en « plein écran fenêtré » (fenêtre sans bordure à la taille de l'écran) : non signalés par l'API ci-dessus.
+    private static ForegroundWindowInfo? ReadForeground()
+    {
         var window = GetForegroundWindow();
-        if (window == IntPtr.Zero || IsShellWindow(window) || !GetWindowRect(window, out var rect)) return false;
+        if (window == IntPtr.Zero || !GetWindowRect(window, out var rect)) return null;
 
+        var monitor = MonitorFromWindow(window, MonitorDefaultToNearest);
         var info = new MonitorInfo { cbSize = Marshal.SizeOf<MonitorInfo>() };
-        if (!GetMonitorInfo(MonitorFromWindow(window, MonitorDefaultToNearest), ref info)) return false;
+        if (!GetMonitorInfo(monitor, ref info)) return null;
 
+        // Le dock est sur l'écran principal (celui qui contient le point 0,0).
+        var dockMonitor = MonitorFromPoint(new Point { X = 0, Y = 0 }, MonitorDefaultToPrimary);
+        var style = GetWindowLong(window, GwlStyle);
         var m = info.rcMonitor;
-        return rect.Left <= m.Left && rect.Top <= m.Top && rect.Right >= m.Right && rect.Bottom >= m.Bottom;
+        return new ForegroundWindowInfo(
+            IsShell: IsShellWindow(window),
+            OnDockMonitor: monitor == dockMonitor,
+            IsMaximized: IsZoomed(window),
+            HasCaption: (style & WsCaption) == WsCaption,
+            Window: new ScreenRect(rect.Left, rect.Top, rect.Right, rect.Bottom),
+            Monitor: new ScreenRect(m.Left, m.Top, m.Right, m.Bottom));
     }
 
     /// <summary>Bureau et barre des tâches : couvrent l'écran mais ne sont pas des applications plein écran.</summary>
@@ -124,6 +134,18 @@ public sealed class FullscreenWatcher : IDisposable
 
     [DllImport("user32.dll")]
     private static extern IntPtr MonitorFromWindow(IntPtr window, uint flags);
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct Point { public int X, Y; }
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr MonitorFromPoint(Point point, uint flags);
+
+    [DllImport("user32.dll")]
+    private static extern bool IsZoomed(IntPtr window);
+
+    [DllImport("user32.dll")]
+    private static extern int GetWindowLong(IntPtr window, int index);
 
     [DllImport("user32.dll", CharSet = CharSet.Unicode)]
     private static extern bool GetMonitorInfo(IntPtr monitor, ref MonitorInfo info);
