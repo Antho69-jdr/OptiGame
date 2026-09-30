@@ -86,6 +86,8 @@ public static class ServiceCollectionExtensions
             sp.GetRequiredService<IPowerSchemeProvider>(),
             sp.GetRequiredService<IProcessControl>(),
             sp.GetRequiredService<TimeProvider>()));
+        services.AddSingleton(_ => new Core.Playtime.PlaytimeStore(new JsonStateStore<Core.Playtime.PlaytimeDocument>(paths.Playtime)));
+        services.AddSingleton<Core.Playtime.PlaytimeTracker>();
         services.AddSingleton<GameMonitor>();
         services.AddSingleton<GameLauncher>();
         services.AddSingleton<Startup.AutoStartService>();

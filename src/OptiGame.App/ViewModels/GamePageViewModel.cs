@@ -1,5 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using OptiGame.Core.Playtime;
 using OptiGame.Core.Profiles;
 
 namespace OptiGame.App.ViewModels;
@@ -43,6 +44,23 @@ public sealed partial class GamePageViewModel(
     [NotifyCanExecuteChangedFor(nameof(PlayCommand))]
     private bool _isPlaying = isPlaying;
 
+    // ---- Temps de jeu ----
+
+    [ObservableProperty] private string _playtimeTotal = "Jamais joué";
+    [ObservableProperty] private string _playtimeDetail = "";
+    [ObservableProperty] private IReadOnlyList<SessionRow> _recentSessions = [];
+
+    public void SetPlaytime(PlaytimeStats stats, IReadOnlyList<PlaySession> recent, DateTimeOffset now)
+    {
+        PlaytimeTotal = stats.SessionCount == 0 ? "Jamais joué" : PlaytimeText.Duration(stats.Total);
+        PlaytimeDetail = stats.LastPlayed is { } last
+            ? $"{stats.SessionCount} partie{(stats.SessionCount > 1 ? "s" : "")} — dernière {PlaytimeText.LastPlayed(last, now)}"
+            : "Le temps est compté automatiquement pendant les sessions détectées par OptiGame.";
+        RecentSessions = recent.Select(s => new SessionRow(
+            s.StartedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm"),
+            s.Incomplete ? "durée inconnue" : s.Duration is { } d ? PlaytimeText.Duration(d) : "en cours")).ToList();
+    }
+
     [RelayCommand]
     private void Back() => back();
 
@@ -57,3 +75,6 @@ public sealed partial class GamePageViewModel(
     [RelayCommand(CanExecute = nameof(CanPlay))]
     private Task PlayAsync() => play();
 }
+
+/// <summary>Ligne « Dernières parties » de la page du jeu.</summary>
+public sealed record SessionRow(string Date, string Duration);

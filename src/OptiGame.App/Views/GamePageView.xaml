@@ -245,6 +245,26 @@
                     </StackPanel>
 
                     <StackPanel Grid.Column="2">
+                        <!-- Temps de jeu -->
+                        <Border Margin="0,0,0,16" Style="{StaticResource Card}">
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource Text.Caption}" Text="TEMPS DE JEU" FontWeight="SemiBold" />
+                                <TextBlock Margin="0,4,0,0" FontFamily="{StaticResource Font.Display}" FontSize="30" FontWeight="SemiBold"
+                                           Foreground="{StaticResource Brush.Text}" Text="{Binding PlaytimeTotal}" />
+                                <TextBlock Margin="0,2,0,0" Style="{StaticResource Text.Secondary}" Text="{Binding PlaytimeDetail}" />
+                                <ItemsControl Margin="0,10,0,0" ItemsSource="{Binding RecentSessions}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate DataType="{x:Type vm:SessionRow}">
+                                            <DockPanel Margin="0,3">
+                                                <TextBlock DockPanel.Dock="Right" Style="{StaticResource Text.Body}" FontSize="13" Text="{Binding Duration}" />
+                                                <TextBlock Style="{StaticResource Text.Caption}" FontSize="13" Text="{Binding Date}" />
+                                            </DockPanel>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                        </Border>
+
                         <!-- Profil -->
                         <Border Style="{StaticResource Card}">
                             <StackPanel>

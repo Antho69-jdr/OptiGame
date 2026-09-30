@@ -75,7 +75,10 @@
                             </Grid>
                             <TextBlock Margin="2,10,2,0" Style="{StaticResource Text.Body}" FontWeight="SemiBold" Text="{Binding Name}"
                                        TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" ToolTip="{Binding Name}" />
-                            <TextBlock Margin="2,2,2,0" Style="{StaticResource Text.Caption}" Text="{Binding ExeName}" TextTrimming="CharacterEllipsis" />
+                            <StackPanel Margin="2,3,2,0" Orientation="Horizontal">
+                                <TextBlock Style="{StaticResource Text.Icon}" FontSize="11" Foreground="{StaticResource Brush.TextMuted}" Text="&#xE823;" />
+                                <TextBlock Margin="5,0,0,0" Style="{StaticResource Text.Caption}" Text="{Binding PlaytimeText}" TextTrimming="CharacterEllipsis" />
+                            </StackPanel>
                         </StackPanel>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
@@ -113,6 +116,8 @@
         <DockPanel Margin="32,24,32,0" Visibility="{Binding IsGridVisible, Converter={StaticResource BoolToVisibility}}">
             <DockPanel DockPanel.Dock="Top" Margin="0,0,0,20">
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                    <ComboBox Width="170" Margin="0,0,10,0" VerticalAlignment="Center" ItemsSource="{Binding SortOptions}"
+                              SelectedItem="{Binding SelectedSort}" AutomationProperties.Name="Trier les jeux" ToolTip="Trier" />
                     <Grid Width="220" Margin="0,0,10,0">
                         <TextBox x:Name="SearchBox" VerticalContentAlignment="Center" Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
                                  AutomationProperties.Name="Filtrer les jeux" />
@@ -157,8 +162,15 @@
                 </StackPanel>
             </DockPanel>
 
-            <TextBlock DockPanel.Dock="Top" Margin="0,0,0,4" FontWeight="SemiBold" Foreground="{StaticResource Brush.Accent}" Text="{Binding LaunchStatus}" />
-            <TextBlock DockPanel.Dock="Top" Margin="0,0,0,12" Style="{StaticResource Text.Caption}" Text="{Binding ArtworkStatus}" />
+            <TextBlock DockPanel.Dock="Top" Margin="0,0,0,12" Style="{StaticResource Text.Status}" Text="{Binding LaunchStatus}" />
+            <TextBlock DockPanel.Dock="Top" Margin="0,0,0,12" Text="{Binding ArtworkStatus}">
+                <TextBlock.Style>
+                    <Style TargetType="TextBlock" BasedOn="{StaticResource Text.Status}">
+                        <Setter Property="FontWeight" Value="Normal" />
+                        <Setter Property="Foreground" Value="{StaticResource Brush.TextMuted}" />
+                    </Style>
+                </TextBlock.Style>
+            </TextBlock>
 
             <Grid>
                 <!-- Bibliothèque vide -->

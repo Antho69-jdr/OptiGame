@@ -105,6 +105,8 @@ public partial class App : Application
         var sessions = services.GetRequiredService<GameSessionManager>();
         var monitor = services.GetRequiredService<GameMonitor>();
         monitor.Error += (_, message) => notifications.Show("OptiGame : erreur de détection", message, isWarning: true);
+        // Avant Recover : le temps de jeu doit entendre la fin d'une session interrompue par un crash.
+        var playtime = services.GetRequiredService<Core.Playtime.PlaytimeTracker>();
 
         try
         {
@@ -120,6 +122,7 @@ public partial class App : Application
             notifications.Show("OptiGame : restauration impossible",
                 $"La session précédente n'a pas pu être restaurée : {ex.Message}", isWarning: true);
         }
+        playtime.ReconcileAtStartup();
 
         try
         {
@@ -147,6 +150,7 @@ public partial class App : Application
             services.GetRequiredService<ProfileStore>();
             services.GetRequiredService<Core.Settings.AppSettingsStore>();
             services.GetRequiredService<Core.Measurement.CaptureStore>();
+            services.GetRequiredService<Core.Playtime.PlaytimeStore>();
             return true;
         }
         catch (StateFileCorruptException ex)

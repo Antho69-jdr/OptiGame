@@ -27,6 +27,9 @@ public sealed class AppPaths
 
     public string Profiles => Path.Combine(Root, "profiles.json");
 
+    /// <summary>Temps de jeu (sessions détectées).</summary>
+    public string Playtime => Path.Combine(Root, "playtime.json");
+
     public string Settings => Path.Combine(Root, "settings.json");
 
     public string CapturesDir => Path.Combine(Root, "captures");

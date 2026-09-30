@@ -44,6 +44,9 @@ src/OptiGame.Core/       net10.0, aucune dépendance Windows, 100 % testable
                          P99), CaptureRequest (arguments PresentMon 2.x vérifiés via --help), CaptureStore
   Settings/              AppSettings (settings.json : dossiers de jeux, chemin de PresentMon, identifiants IGDB)
   Artwork/               Igdb (requête Apicalypse, lecture des réponses, meilleur résultat, URL d'images)
+  Launching/             LaunchPlanner (Automatique / Steam / Exécutable / Lanceur)
+  Playtime/              PlaytimeStore (playtime.json, session écrite « ouverte » dès le début de partie ; fin inconnue
+                         après crash = Incomplete, jamais de durée inventée), PlaytimeTracker (branché AVANT Recover)
 src/OptiGame.Platform/   net10.0-windows : implémentations réelles (registre, WMI, P/Invoke), Privileged/,
                          Processes/, Startup/ (tâche planifiée), Measurement/ (runner PresentMon)
 src/OptiGame.App/        WPF : composition DI, tray, vues/viewmodels, dialogue de confirmation

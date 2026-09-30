@@ -98,6 +98,17 @@
         <Setter Property="Foreground" Value="{StaticResource Brush.TextSecondary}" />
         <Setter Property="TextWrapping" Value="Wrap" />
     </Style>
+    <!-- Ligne de statut : ne prend aucune place quand elle est vide -->
+    <Style x:Key="Text.Status" TargetType="TextBlock">
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Foreground" Value="{StaticResource Brush.Accent}" />
+        <Setter Property="TextWrapping" Value="Wrap" />
+        <Style.Triggers>
+            <Trigger Property="Text" Value="">
+                <Setter Property="Visibility" Value="Collapsed" />
+            </Trigger>
+        </Style.Triggers>
+    </Style>
     <Style x:Key="Text.Icon" TargetType="TextBlock">
         <Setter Property="FontFamily" Value="{StaticResource Font.Icons}" />
         <Setter Property="FontSize" Value="16" />

@@ -11,6 +11,7 @@ using OptiGame.Core.Launching;
 using OptiGame.Core.Library;
 using OptiGame.Core.Logging;
 using OptiGame.Core.Measurement;
+using OptiGame.Core.Playtime;
 using OptiGame.Core.Profiles;
 using OptiGame.Core.Sessions;
 using OptiGame.Core.Settings;
@@ -37,6 +38,7 @@ public sealed partial class LibraryViewModel : ObservableObject
     private readonly TimeProvider _time;
     private readonly FileLog _log;
     private readonly GameLauncher _launcher;
+    private readonly PlaytimeStore _playtime;
 
     /// <summary>Profils déjà cherchés sur IGDB pendant cette exécution (on ne redemande pas un jeu introuvable).</summary>
     private readonly HashSet<Guid> _artworkSearched = [];
@@ -46,7 +48,7 @@ public sealed partial class LibraryViewModel : ObservableObject
     public LibraryViewModel(ProfileStore store, IPowerSchemeProvider power, IRunningProgramsProvider programs, IDialogService dialogs,
         IGameLibraryScanner scanner, AppSettingsStore settings, IgdbClient igdb, ArtworkCache artwork, GameSessionManager sessions,
         CaptureStore captures, MeasuresViewModel measures, NavigationService navigation, SettingsViewModel settingsPage,
-        TimeProvider time, FileLog log, GameLauncher launcher)
+        TimeProvider time, FileLog log, GameLauncher launcher, PlaytimeStore playtime)
     {
         _store = store;
         _power = power;
@@ -63,12 +65,15 @@ public sealed partial class LibraryViewModel : ObservableObject
         _time = time;
         _log = log;
         _launcher = launcher;
+        _playtime = playtime;
 
         GamesView = CollectionViewSource.GetDefaultView(Games);
         GamesView.Filter = o => o is GameCardViewModel card &&
                                 (string.IsNullOrWhiteSpace(SearchText) || card.Name.Contains(SearchText.Trim(), StringComparison.CurrentCultureIgnoreCase));
 
         store.ArtworkChanged += (_, id) => OnUi(() => _ = RefreshCoverAsync(id));
+        playtime.Changed += (_, _) => OnUi(RefreshPlaytime);
+        ApplySort();
         sessions.SessionStarted += (_, _) => OnUi(RefreshPlaying);
         sessions.SessionEnded += (_, _) => OnUi(RefreshPlaying);
         settingsPage.IgdbCredentialsChanged += (_, _) =>
@@ -87,6 +92,41 @@ public sealed partial class LibraryViewModel : ObservableObject
 
     [ObservableProperty]
     private string _searchText = "";
+
+    public IReadOnlyList<string> SortOptions { get; } = ["Récemment joués", "Nom"];
+
+    [ObservableProperty]
+    private string _selectedSort = "Récemment joués";
+
+    partial void OnSelectedSortChanged(string value) => ApplySort();
+
+    private void ApplySort()
+    {
+        using (GamesView.DeferRefresh())
+        {
+            GamesView.SortDescriptions.Clear();
+            if (SelectedSort == "Récemment joués")
+            {
+                GamesView.SortDescriptions.Add(new SortDescription(nameof(GameCardViewModel.LastPlayedTicks), ListSortDirection.Descending));
+            }
+            GamesView.SortDescriptions.Add(new SortDescription(nameof(GameCardViewModel.Name), ListSortDirection.Ascending));
+        }
+    }
+
+    /// <summary>Temps de jeu modifié (début/fin de partie) : jaquettes, page ouverte et tri.</summary>
+    private void RefreshPlaytime()
+    {
+        var now = _time.GetLocalNow();
+        foreach (var card in Games) card.Playtime = _playtime.StatsFor(card.Id, now);
+        if (OpenGame is not null) RefreshPagePlaytime(OpenGame);
+        GamesView.Refresh();
+    }
+
+    private void RefreshPagePlaytime(GamePageViewModel page)
+    {
+        var now = _time.GetLocalNow();
+        page.SetPlaytime(_playtime.StatsFor(page.Id, now), _playtime.RecentSessions(page.Id, 5), now);
+    }
 
     partial void OnSearchTextChanged(string value) => GamesView.Refresh();
 
@@ -282,6 +322,7 @@ public sealed partial class LibraryViewModel : ObservableObject
             },
             play: () => PlayAsync(id),
             isPlaying: _sessions.Current?.Profile.Id == id);
+        RefreshPagePlaytime(OpenGame);
         _ = LoadPageImagesAsync(OpenGame, profile);
     }
 
@@ -385,6 +426,7 @@ public sealed partial class LibraryViewModel : ObservableObject
             var card = new GameCardViewModel(profile, playing == profile.Id)
             {
                 CoverPath = _artwork.TryGetCached(profile.CoverImageId, Igdb.CoverSize),
+                Playtime = _playtime.StatsFor(profile.Id, _time.GetLocalNow()),
             };
             Games.Add(card);
             if (card.CoverPath is null && profile.CoverImageId is not null)
@@ -448,4 +490,14 @@ public sealed partial class GameCardViewModel(GameProfile profile, bool isPlayin
 
     [ObservableProperty]
     private bool _isPlaying = isPlaying;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(PlaytimeText), nameof(LastPlayedTicks))]
+    private PlaytimeStats _playtime = PlaytimeStats.None;
+
+    /// <summary>Sous le nom de la jaquette : « 12 h 05 » ou « Jamais joué ».</summary>
+    public string PlaytimeText => Playtime.SessionCount == 0 ? "Jamais joué" : Core.Playtime.PlaytimeText.Duration(Playtime.Total);
+
+    /// <summary>Clé de tri « Récemment joués » (0 = jamais joué, en fin de liste).</summary>
+    public long LastPlayedTicks => Playtime.LastPlayed?.UtcTicks ?? 0;
 }
