@@ -17,12 +17,23 @@ public sealed class DockLayoutTests
 
     [Theory]
     [InlineData(0.9, 0.9)]
-    [InlineData(0.05, 0.2)]
+    [InlineData(0, 0)]
+    [InlineData(-1, 0)]
     [InlineData(3, 1)]
     [InlineData(double.NaN, 0.9)]
     public void Opacity_is_clamped(double input, double expected)
     {
         Assert.Equal(expected, DockLayout.Opacity(input));
+    }
+
+    [Theory]
+    [InlineData(1.0, 255, 64)]
+    [InlineData(0.5, 128, 32)]
+    [InlineData(0.01, 3, 1)]
+    [InlineData(0.0, 1, 0)] // invisible mais jamais 0 : le dock garde la souris entre les icônes
+    public void Plate_alpha_follows_opacity_and_never_reaches_zero(double opacity, byte background, byte border)
+    {
+        Assert.Equal((background, border), DockLayout.PlateAlpha(opacity));
     }
 
     [Fact]

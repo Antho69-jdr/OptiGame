@@ -107,6 +107,9 @@ public partial class DockWindow : Window
         _edge = edge;
         _autoHide = autoHide;
         (IconWidth, IconHeight) = Core.Dock.DockLayout.IconSize(iconSize, shape);
+        var (background, border) = Core.Dock.DockLayout.PlateAlpha(opacity);
+        Plate.Background = new SolidColorBrush(Color.FromArgb(background, 0x12, 0x16, 0x20));
+        Plate.BorderBrush = new SolidColorBrush(Color.FromArgb(border, 0xFF, 0xFF, 0xFF));
         Orientation = Horizontal ? Orientation.Horizontal : Orientation.Vertical;
         Row.Orientation = Orientation;
         TipPlacement = edge switch

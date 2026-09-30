@@ -90,7 +90,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         }
     }
 
-    /// <summary>Opacité du fond du dock, en pourcents (20 à 100).</summary>
+    /// <summary>Opacité du fond du dock, en pourcents (0 à 100).</summary>
     public int DockOpacityPercent
     {
         get => (int)Math.Round(_settings.Get().DockOpacity * 100);
