@@ -36,8 +36,7 @@
             <Border x:Name="Plate" CornerRadius="20" Background="#E6121620" BorderBrush="#40FFFFFF" BorderThickness="1" />
 
             <StackPanel x:Name="Row" Margin="5">
-                <ItemsControl x:Name="ItemsHost" ItemsSource="{Binding Items}" AllowDrop="True" Drop="OnDrop" DragOver="OnDragOver"
-                              Focusable="False">
+                <ItemsControl x:Name="ItemsHost" ItemsSource="{Binding Items}" Focusable="False">
                     <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate>
                             <StackPanel Orientation="{Binding Orientation, RelativeSource={RelativeSource AncestorType=Window}}" />
@@ -45,11 +44,14 @@
                     </ItemsControl.ItemsPanel>
                     <ItemsControl.ItemTemplate>
                         <DataTemplate DataType="{x:Type vm:DockItemViewModel}">
+                            <!-- RenderTransform (soulèvement + déplacement pendant un glisser) créé par le code, une instance par cellule -->
                             <Grid x:Name="Cell" Margin="5" Background="Transparent" Cursor="Hand" ToolTip="{Binding Name}"
+                                  RenderTransformOrigin="0.5,0.5"
                                   ToolTipService.InitialShowDelay="150" ToolTipService.BetweenShowDelay="0"
                                   ToolTipService.Placement="{Binding TipPlacement, RelativeSource={RelativeSource AncestorType=Window}}"
                                   PreviewMouseLeftButtonDown="OnItemMouseDown" PreviewMouseMove="OnItemMouseMove"
-                                  MouseLeftButtonUp="OnItemMouseUp" MouseRightButtonUp="OnItemRightClick"
+                                  PreviewMouseLeftButtonUp="OnItemMouseUp" LostMouseCapture="OnItemLostCapture"
+                                  MouseRightButtonUp="OnItemRightClick"
                                   AutomationProperties.Name="{Binding Name}">
                                 <Grid.LayoutTransform>
                                     <ScaleTransform ScaleX="1" ScaleY="1" />

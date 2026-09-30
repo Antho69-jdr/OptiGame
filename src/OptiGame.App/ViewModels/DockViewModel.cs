@@ -51,14 +51,31 @@ public sealed partial class DockViewModel : ObservableObject
     [RelayCommand]
     private static void OpenOptiGame() => ((App)Application.Current).ShowMainWindow();
 
-    /// <summary>Glisser-déposer dans le dock.</summary>
-    public void Move(Guid id, int newIndex) => _store.MoveInDock(id, newIndex);
+    /// <summary>
+    /// Glisser-déposer dans le dock : l'élément est déplacé tout de suite (le dock anime son arrivée), puis l'ordre est
+    /// enregistré ; le rechargement qui suit ne reconstruit rien puisque l'ordre affiché est déjà le bon.
+    /// </summary>
+    public void Move(Guid id, int newIndex)
+    {
+        var from = Items.ToList().FindIndex(i => i.Id == id);
+        if (from < 0) return;
+        var to = Math.Clamp(newIndex, 0, Items.Count - 1);
+        if (from != to) Items.Move(from, to);
+        _store.MoveInDock(id, to);
+    }
 
     private void Reload()
     {
-        Items.Clear();
+        var dock = _store.GetDock();
         var playing = _sessions.Current?.Profile.Id;
-        foreach (var profile in _store.GetDock())
+        if (dock.Count == Items.Count && dock.Zip(Items).All(p => p.First.Id == p.Second.Id && p.First.Name == p.Second.Name && p.First.CoverImageId == p.Second.CoverImageId))
+        {
+            RefreshPlaying(); // rien de visible n'a changé : on garde les éléments (et les animations en cours)
+            return;
+        }
+
+        Items.Clear();
+        foreach (var profile in dock)
         {
             var item = new DockItemViewModel(profile, playing == profile.Id)
             {
@@ -90,6 +107,8 @@ public sealed partial class DockItemViewModel(GameProfile profile, bool isPlayin
     public Guid Id { get; } = profile.Id;
 
     public string Name { get; } = profile.Name;
+
+    public string? CoverImageId { get; } = profile.CoverImageId;
 
     public string Initials { get; } = string.Concat(profile.Name
         .Split(' ', StringSplitOptions.RemoveEmptyEntries).Where(w => char.IsLetterOrDigit(w[0])).Take(2).Select(w => char.ToUpperInvariant(w[0])));
