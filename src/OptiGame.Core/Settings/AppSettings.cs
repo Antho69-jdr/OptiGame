@@ -62,6 +62,12 @@ public sealed class AppSettings
     /// <summary>Nom du jeu affiché au survol d'une jaquette du dock.</summary>
     public bool DockShowNames { get; set; } = true;
 
+    /// <summary>
+    /// Jeux Steam déjà vus (installés au premier passage, proposés, ajoutés ou ignorés) : jamais reproposés. Null = premier
+    /// passage pas encore fait (les jeux déjà installés sont alors mémorisés sans être proposés).
+    /// </summary>
+    public List<string>? SteamKnownAppIds { get; set; }
+
     public AppSettings Clone() => new()
     {
         Version = Version,
@@ -78,6 +84,7 @@ public sealed class AppSettings
         DockHideDelay = DockHideDelay,
         DockShowOptiGame = DockShowOptiGame,
         DockShowNames = DockShowNames,
+        SteamKnownAppIds = SteamKnownAppIds is null ? null : [.. SteamKnownAppIds],
     };
 }
 

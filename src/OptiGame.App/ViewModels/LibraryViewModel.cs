@@ -56,10 +56,16 @@ public sealed partial class LibraryViewModel : ObservableObject
         IGameLibraryScanner scanner, AppSettingsStore settings, IgdbClient igdb, ArtworkCache artwork, GameSessionManager sessions,
         CaptureStore captures, MeasuresViewModel measures, NavigationService navigation, SettingsViewModel settingsPage,
         TimeProvider time, FileLog log, GameLauncher launcher, PlaytimeStore playtime, SteamPlaytimeReader steamReader,
-        GameGraphicsService graphics)
+        GameGraphicsService graphics, NewSteamGamesViewModel newGames)
     {
         _steamReader = steamReader;
         _graphics = graphics;
+        NewGames = newGames;
+        newGames.GameAdded += (_, _) =>
+        {
+            ReloadCards();
+            _ = FetchMissingArtworkAsync();
+        };
         _store = store;
         _power = power;
         _programs = programs;
@@ -101,6 +107,9 @@ public sealed partial class LibraryViewModel : ObservableObject
         ReloadCards();
         _ = FetchMissingArtworkAsync();
     }
+
+    /// <summary>Nouveaux jeux Steam installés, proposés en haut de la grille.</summary>
+    public NewSteamGamesViewModel NewGames { get; }
 
     public ObservableCollection<GameCardViewModel> Games { get; } = [];
 
@@ -537,7 +546,7 @@ public sealed partial class LibraryViewModel : ObservableObject
         if (OpenGame is not null) OpenGame.IsPlaying = OpenGame.Id == playing;
     }
 
-    private static string CleanName(string name) => name.Replace("®", "").Replace("™", "").Trim();
+    internal static string CleanName(string name) => name.Replace("®", "").Replace("™", "").Trim();
 
     private static void OnUi(Action action) => Application.Current?.Dispatcher.BeginInvoke(action);
 }

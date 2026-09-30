@@ -69,8 +69,8 @@ public sealed class GameLibraryScanner : IGameLibraryScanner
             .ToList();
     }
 
-    /// <summary>Jeu Steam installé, d'après son manifeste appmanifest_*.acf.</summary>
-    public sealed record SteamApp(string AppId, string Name, string InstallDir, string Folder);
+    /// <summary>Jeu Steam installé, d'après son manifeste appmanifest_*.acf (StateFlags : bit 4 = entièrement installé).</summary>
+    public sealed record SteamApp(string AppId, string Name, string InstallDir, string Folder, int? StateFlags = null);
 
     /// <summary>Jeux Steam de toutes les bibliothèques (hors redistribuables), dossier d'installation existant.</summary>
     public static IReadOnlyList<SteamApp> SteamApps() => SteamApps(SteamLibraries());
@@ -101,7 +101,8 @@ public sealed class GameLibraryScanner : IGameLibraryScanner
                 if (appId is null || name is null || installDir is null || NonGameAppIds.Contains(appId)) continue;
 
                 var folder = Path.Combine(steamapps, "common", installDir);
-                if (Directory.Exists(folder)) apps.Add(new SteamApp(appId, name, installDir, folder));
+                var flags = int.TryParse(app?.GetString("StateFlags"), out var f) ? f : (int?)null;
+                if (Directory.Exists(folder)) apps.Add(new SteamApp(appId, name, installDir, folder, flags));
             }
         }
         return apps;
@@ -136,9 +137,11 @@ public sealed class GameLibraryScanner : IGameLibraryScanner
             : null;
     }
 
-    private static IEnumerable<InstalledGame> ScanSteam() =>
-        SteamApps().Select(a => new InstalledGame(a.Name, GameSource.Steam, a.Folder,
-            ExeRanking.Rank(a.Name, a.InstallDir, FindExes(a.Folder)), a.AppId));
+    private static IEnumerable<InstalledGame> ScanSteam() => SteamApps().Select(ToInstalledGame);
+
+    /// <summary>Jeu Steam avec ses exécutables classés (le premier est le plus probable). Parcourt le dossier : hors du thread UI.</summary>
+    public static InstalledGame ToInstalledGame(SteamApp app) =>
+        new(app.Name, GameSource.Steam, app.Folder, ExeRanking.Rank(app.Name, app.InstallDir, FindExes(app.Folder)), app.AppId);
 
     private static IEnumerable<InstalledGame> ScanFolder(string root)
     {

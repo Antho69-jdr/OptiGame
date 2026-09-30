@@ -172,6 +172,35 @@
                 </TextBlock.Style>
             </TextBlock>
 
+            <!-- Nouveaux jeux Steam installés : rien n'est ajouté sans clic -->
+            <ItemsControl DockPanel.Dock="Top" ItemsSource="{Binding NewGames.Proposals}"
+                          Visibility="{Binding NewGames.HasProposals, Converter={StaticResource BoolToVisibility}}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Border Margin="0,0,0,12" Style="{StaticResource Banner}" Background="{StaticResource Brush.AccentSoft}" BorderBrush="{StaticResource Brush.Accent}">
+                            <DockPanel>
+                                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                                    <Button Margin="0,0,8,0" Style="{StaticResource Button.Primary}" Content="Ajouter à Mes jeux"
+                                            Command="{Binding DataContext.NewGames.AddCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                            CommandParameter="{Binding}" AutomationProperties.Name="{Binding Name, StringFormat='Ajouter {0} à Mes jeux'}" />
+                                    <Button Style="{StaticResource Button.Ghost}" Content="Ignorer"
+                                            Command="{Binding DataContext.NewGames.IgnoreCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                            CommandParameter="{Binding}" AutomationProperties.Name="{Binding Name, StringFormat='Ignorer {0}'}" />
+                                </StackPanel>
+                                <TextBlock DockPanel.Dock="Left" Margin="0,0,12,0" VerticalAlignment="Center" Style="{StaticResource Text.Icon}"
+                                           FontSize="18" Foreground="{StaticResource Brush.Accent}" Text="&#xE7FC;" />
+                                <StackPanel VerticalAlignment="Center">
+                                    <TextBlock Style="{StaticResource Text.Body}" FontWeight="SemiBold">
+                                        <Run Text="Nouveau jeu Steam installé : " /><Run Text="{Binding Name, Mode=OneWay}" />
+                                    </TextBlock>
+                                    <TextBlock Margin="0,2,0,0" Style="{StaticResource Text.Caption}" Text="{Binding Detail}" />
+                                </StackPanel>
+                            </DockPanel>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
             <Grid>
                 <!-- Bibliothèque vide -->
                 <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="460"
