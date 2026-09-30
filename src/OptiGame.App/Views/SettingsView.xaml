@@ -60,6 +60,19 @@
                             Value="{Binding DockOpacityPercent, Delay=250}" AutomationProperties.Name="Opacité du fond du dock" />
                     <CheckBox Margin="28,14,0,0" IsChecked="{Binding DockAutoHide}"
                               Content="Masquer automatiquement (approchez la souris du bord de l'écran pour l'afficher)" />
+                    <TextBlock Margin="56,6,0,0" Style="{StaticResource Text.Caption}"
+                               Text="Sans masquage automatique, le dock reste collé au bureau : derrière vos fenêtres, visible quand rien ne le recouvre." />
+                    <StackPanel Margin="56,8,0,0" IsEnabled="{Binding DockAutoHide}">
+                        <TextBlock Style="{StaticResource Text.Label}">
+                            <Run Text="Se masque après : " /><Run Text="{Binding Value, ElementName=HideDelaySlider, Mode=OneWay, StringFormat='{}{0:0.0} s', ConverterCulture=fr-FR}" />
+                        </TextBlock>
+                        <Slider x:Name="HideDelaySlider" HorizontalAlignment="Left" Width="392"
+                                Minimum="{Binding MinDockHideDelay, Mode=OneTime}" Maximum="{Binding MaxDockHideDelay, Mode=OneTime}"
+                                TickFrequency="0.1" IsSnapToTickEnabled="True" SmallChange="0.1" LargeChange="0.5"
+                                Value="{Binding DockHideDelay, Delay=250}" AutomationProperties.Name="Délai avant le masquage du dock" />
+                    </StackPanel>
+                    <CheckBox Margin="28,14,0,0" IsChecked="{Binding DockShowNames}" Content="Afficher le nom du jeu au survol d'une jaquette" />
+                    <CheckBox Margin="28,10,0,0" IsChecked="{Binding DockShowOptiGame}" Content="Afficher le raccourci vers OptiGame au bout du dock" />
                     <TextBlock Margin="28,6,0,0" Style="{StaticResource Text.Caption}"
                                Text="Limite : OptiGame fonctionnant en administrateur, Windows interdit d'y glisser un fichier depuis l'Explorateur ; l'ajout de jeux se fait depuis « Mes jeux »." />
                 </StackPanel>

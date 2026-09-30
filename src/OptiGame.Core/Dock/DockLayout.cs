@@ -18,7 +18,13 @@ public static class DockLayout
         return (width, shape == DockIconShape.Cover ? Math.Round(width * CoverAspect) : width);
     }
 
+    public const double MinHideDelay = 0.2;
+    public const double MaxHideDelay = 5;
+
     public static double Opacity(double opacity) => double.IsFinite(opacity) ? Math.Clamp(opacity, MinOpacity, 1) : 0.9;
+
+    /// <summary>Délai de masquage automatique en secondes, ramené dans les bornes (0,7 s si la valeur est illisible).</summary>
+    public static double HideDelay(double seconds) => double.IsFinite(seconds) ? Math.Clamp(seconds, MinHideDelay, MaxHideDelay) : 0.7;
 
     /// <summary>
     /// Alpha (0-255) du fond et de la bordure du plateau. Jamais 0 : sur une fenêtre transparente, Windows fait

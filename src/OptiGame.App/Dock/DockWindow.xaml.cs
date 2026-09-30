@@ -44,6 +44,8 @@ public partial class DockWindow : Window
     private bool _autoHide = true;
     private bool _shown;
     private bool _suppressed;
+    private bool _pinnedToDesktop;
+    private bool _showNames = true;
 
     // Grossissement : dernière position de la souris le long du dock (repère de la rangée) et intensité de l'effet
     // (0 = icônes au repos, 1 = grossissement complet), animée par un ressort.
@@ -135,12 +137,17 @@ public partial class DockWindow : Window
 
     // ---- Réglages et placement ----
 
-    public void ApplySettings(DockEdge edge, int iconSize, DockIconShape shape, double opacity, bool autoHide)
+    public void ApplySettings(AppSettings settings)
     {
+        var edge = settings.DockEdge;
+        var autoHide = settings.DockAutoHide;
         _edge = edge;
         _autoHide = autoHide;
-        (IconWidth, IconHeight) = DockLayout.IconSize(iconSize, shape);
-        var (background, border) = DockLayout.PlateAlpha(opacity);
+        _showNames = settings.DockShowNames;
+        _hideTimer.Interval = TimeSpan.FromSeconds(DockLayout.HideDelay(settings.DockHideDelay));
+        OgCell.Visibility = Divider.Visibility = settings.DockShowOptiGame ? Visibility.Visible : Visibility.Collapsed;
+        (IconWidth, IconHeight) = DockLayout.IconSize(settings.DockIconSize, settings.DockIconShape);
+        var (background, border) = DockLayout.PlateAlpha(settings.DockOpacity);
         Plate.Background = new SolidColorBrush(Color.FromArgb(background, 0x12, 0x16, 0x20));
         Plate.BorderBrush = new SolidColorBrush(Color.FromArgb(border, 0xFF, 0xFF, 0xFF));
         Orientation = Horizontal ? Orientation.Horizontal : Orientation.Vertical;
@@ -204,6 +211,20 @@ public partial class DockWindow : Window
 
         if (autoHide) SlideOut(animate: false);
         else SlideIn(animate: false);
+
+        // Masquage automatique : au premier plan (il n'apparaît que sur demande). Sinon : collé au bureau, derrière
+        // toutes les fenêtres, comme un widget ; OnWindowMessage l'y maintient.
+        _pinnedToDesktop = !autoHide;
+        Topmost = autoHide;
+        if (_pinnedToDesktop) PinToDesktop();
+    }
+
+    private void PinToDesktop()
+    {
+        var handle = new WindowInteropHelper(this).Handle;
+        if (handle == IntPtr.Zero) return;
+        // Le vrai emplacement (juste au-dessus du bureau) est calculé dans OnWindowMessage.
+        SetWindowPos(handle, HwndBottom, 0, 0, 0, 0, SwpNoMove | SwpNoSize | SwpNoActivate);
     }
 
     /// <summary>Masque complètement le dock (partie en cours, application plein écran).</summary>
@@ -220,6 +241,36 @@ public partial class DockWindow : Window
         var handle = new WindowInteropHelper(this).Handle;
         var style = GetWindowLong(handle, GwlExStyle);
         SetWindowLong(handle, GwlExStyle, style | WsExToolWindow | WsExNoActivate);
+        HwndSource.FromHwnd(handle)?.AddHook(OnWindowMessage);
+    }
+
+    /// <summary>
+    /// Dock collé au bureau : toute modification de sa place dans la pile des fenêtres est redirigée juste au-dessus
+    /// du bureau. Pas « tout en bas » (HWND_BOTTOM) : il passerait sous le bureau lui-même (Progman), invisible.
+    /// </summary>
+    private IntPtr OnWindowMessage(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
+    {
+        if (msg != WmWindowPosChanging || !_pinnedToDesktop) return IntPtr.Zero;
+        var pos = Marshal.PtrToStructure<WindowPos>(lParam);
+        if ((pos.Flags & SwpNoZOrder) != 0) return IntPtr.Zero;
+        pos.InsertAfter = LowestWindowAboveDesktop(hwnd);
+        Marshal.StructureToPtr(pos, lParam, false);
+        return IntPtr.Zero;
+    }
+
+    /// <summary>Fenêtre la plus basse hors bureau et hors dock : le dock se place juste en dessous d'elle.</summary>
+    private static IntPtr LowestWindowAboveDesktop(IntPtr self)
+    {
+        var window = GetWindow(self, GwHwndLast);
+        while (window != IntPtr.Zero && (window == self || IsDesktop(window))) window = GetWindow(window, GwHwndPrev);
+        return window == IntPtr.Zero ? HwndTop : window;
+    }
+
+    private static bool IsDesktop(IntPtr window)
+    {
+        var name = new System.Text.StringBuilder(32);
+        GetClassName(window, name, name.Capacity);
+        return name.ToString() is "Progman" or "WorkerW";
     }
 
     // ---- Apparition / retrait ----
@@ -366,11 +417,11 @@ public partial class DockWindow : Window
         return Horizontal ? point.X : point.Y;
     }
 
-    /// <summary>Cellules des jeux dans l'ordre, puis celle d'OptiGame.</summary>
+    /// <summary>Cellules des jeux dans l'ordre, puis celle d'OptiGame si elle est affichée.</summary>
     private IEnumerable<FrameworkElement> Cells()
     {
         foreach (var (_, cell, _) in GameCells()) yield return cell;
-        yield return OgCell;
+        if (OgCell.Visibility == Visibility.Visible) yield return OgCell;
     }
 
     private IEnumerable<(DockItemViewModel Item, FrameworkElement Cell, ContentPresenter Presenter)> GameCells()
@@ -469,7 +520,6 @@ public partial class DockWindow : Window
         foreach (var (_, cell, presenter) in GameCells())
         {
             Panel.SetZIndex(presenter, ReferenceEquals(cell, press.Cell) ? 1 : 0); // la jaquette tenue passe au-dessus
-            ToolTipService.SetIsEnabled(cell, false);
             if (cell.ToolTip is ToolTip { IsOpen: true } tip) tip.IsOpen = false;
         }
         AnimateLift(press.Cell, LiftScale, TimeSpan.FromMilliseconds(150), Smooth);
@@ -494,7 +544,6 @@ public partial class DockWindow : Window
             var from = before.TryGetValue(item.Id, out var old) ? old - SlotPosition(presenter) - MagnifyShift(cell) : 0;
             MoveCell(cell, from, animate: false);
             MoveCell(cell, 0, animate: true);
-            ToolTipService.SetIsEnabled(cell, true);
             Panel.SetZIndex(presenter, item.Id == press.Item.Id ? 1 : 0);
             if (item.Id == press.Item.Id)
             {
@@ -632,6 +681,12 @@ public partial class DockWindow : Window
         e.Handled = true;
     }
 
+    /// <summary>Nom au survol : selon le réglage, et jamais pendant un glisser.</summary>
+    private void OnTipOpening(object sender, ToolTipEventArgs e)
+    {
+        if (!_showNames || _dragging) e.Handled = true;
+    }
+
     private void OnOptiGameClick(object sender, MouseButtonEventArgs e) => _vm.OpenOptiGameCommand.Execute(null);
 
     private static MenuItem MenuItem(string header, Action action)
@@ -646,10 +701,40 @@ public partial class DockWindow : Window
     private const int GwlExStyle = -20;
     private const int WsExToolWindow = 0x00000080;
     private const int WsExNoActivate = 0x08000000;
+    private const int WmWindowPosChanging = 0x0046;
+    private const uint SwpNoSize = 0x0001;
+    private const uint SwpNoMove = 0x0002;
+    private const uint SwpNoZOrder = 0x0004;
+    private const uint SwpNoActivate = 0x0010;
+    private const uint GwHwndLast = 1;
+    private const uint GwHwndPrev = 3;
+    private static readonly IntPtr HwndTop = IntPtr.Zero;
+    private static readonly IntPtr HwndBottom = new(1);
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct WindowPos
+    {
+        public IntPtr Hwnd;
+        public IntPtr InsertAfter;
+        public int X;
+        public int Y;
+        public int Cx;
+        public int Cy;
+        public uint Flags;
+    }
 
     [DllImport("user32.dll")]
     private static extern int GetWindowLong(IntPtr window, int index);
 
     [DllImport("user32.dll")]
     private static extern int SetWindowLong(IntPtr window, int index, int value);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    private static extern bool SetWindowPos(IntPtr window, IntPtr insertAfter, int x, int y, int cx, int cy, uint flags);
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr GetWindow(IntPtr window, uint command);
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    private static extern int GetClassName(IntPtr window, System.Text.StringBuilder name, int capacity);
 }

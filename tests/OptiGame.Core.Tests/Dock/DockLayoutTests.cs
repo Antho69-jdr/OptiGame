@@ -36,13 +36,25 @@ public sealed class DockLayoutTests
         Assert.Equal((background, border), DockLayout.PlateAlpha(opacity));
     }
 
+    [Theory]
+    [InlineData(0.7, 0.7)]
+    [InlineData(0, 0.2)]
+    [InlineData(60, 5)]
+    [InlineData(double.NaN, 0.7)]
+    public void Hide_delay_is_clamped(double input, double expected)
+    {
+        Assert.Equal(expected, DockLayout.HideDelay(input));
+    }
+
     [Fact]
     public void New_dock_settings_have_sensible_defaults()
     {
         var settings = new AppSettings();
         Assert.Equal((64, DockIconShape.Square, 0.9), (settings.DockIconSize, settings.DockIconShape, settings.DockOpacity));
+        Assert.Equal((0.7, true, true), (settings.DockHideDelay, settings.DockShowOptiGame, settings.DockShowNames));
         var clone = settings.Clone();
-        clone.DockOpacity = 0.5;
+        (clone.DockOpacity, clone.DockHideDelay, clone.DockShowOptiGame, clone.DockShowNames) = (0.5, 2, false, false);
+        Assert.Equal((0.5, 2.0, false, false), (clone.DockOpacity, clone.DockHideDelay, clone.DockShowOptiGame, clone.DockShowNames));
         Assert.Equal(0.9, settings.DockOpacity);
     }
 }

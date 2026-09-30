@@ -49,7 +49,7 @@
                                   ToolTipService.InitialShowDelay="150" ToolTipService.BetweenShowDelay="0"
                                   ToolTipService.Placement="{Binding TipPlacement, RelativeSource={RelativeSource AncestorType=Window}}"
                                   PreviewMouseLeftButtonDown="OnItemMouseDown" PreviewMouseMove="OnItemMouseMove"
-                                  PreviewMouseLeftButtonUp="OnItemMouseUp" LostMouseCapture="OnItemLostCapture"
+                                  PreviewMouseLeftButtonUp="OnItemMouseUp" LostMouseCapture="OnItemLostCapture" ToolTipOpening="OnTipOpening"
                                   MouseRightButtonUp="OnItemRightClick"
                                   AutomationProperties.Name="{Binding Name}">
                                 <Grid Width="{Binding IconWidth, RelativeSource={RelativeSource AncestorType=Window}}"
@@ -92,7 +92,7 @@
                 <Grid x:Name="OgCell" Margin="5" Background="Transparent" Cursor="Hand" ToolTip="OptiGame"
                       ToolTipService.InitialShowDelay="150"
                       ToolTipService.Placement="{Binding TipPlacement, RelativeSource={RelativeSource AncestorType=Window}}"
-                      MouseLeftButtonUp="OnOptiGameClick" AutomationProperties.Name="Ouvrir OptiGame">
+                      MouseLeftButtonUp="OnOptiGameClick" ToolTipOpening="OnTipOpening" AutomationProperties.Name="Ouvrir OptiGame">
                     <Border Width="{Binding IconWidth, RelativeSource={RelativeSource AncestorType=Window}}"
                             Height="{Binding IconHeight, RelativeSource={RelativeSource AncestorType=Window}}"
                             CornerRadius="14" Background="{StaticResource Brush.Accent}">

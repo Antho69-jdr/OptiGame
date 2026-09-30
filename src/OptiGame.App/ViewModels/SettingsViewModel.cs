@@ -65,6 +65,35 @@ public sealed partial class SettingsViewModel : ObservableObject
         set { _settings.Update(s => s.DockAutoHide = value); OnPropertyChanged(); }
     }
 
+    public double MinDockHideDelay => Core.Dock.DockLayout.MinHideDelay;
+
+    public double MaxDockHideDelay => Core.Dock.DockLayout.MaxHideDelay;
+
+    /// <summary>Délai de masquage automatique, en secondes (curseur ; enregistré une fois le curseur immobile).</summary>
+    public double DockHideDelay
+    {
+        get => _settings.Get().DockHideDelay;
+        set
+        {
+            var delay = Math.Round(Core.Dock.DockLayout.HideDelay(value), 1);
+            if (Math.Abs(delay - _settings.Get().DockHideDelay) < 0.001) return;
+            _settings.Update(s => s.DockHideDelay = delay);
+            OnPropertyChanged();
+        }
+    }
+
+    public bool DockShowOptiGame
+    {
+        get => _settings.Get().DockShowOptiGame;
+        set { _settings.Update(s => s.DockShowOptiGame = value); OnPropertyChanged(); }
+    }
+
+    public bool DockShowNames
+    {
+        get => _settings.Get().DockShowNames;
+        set { _settings.Update(s => s.DockShowNames = value); OnPropertyChanged(); }
+    }
+
     public DockEdgeOption SelectedDockEdge
     {
         get => DockEdgeOptions.FirstOrDefault(o => o.Value == _settings.Get().DockEdge) ?? DockEdgeOptions[0];

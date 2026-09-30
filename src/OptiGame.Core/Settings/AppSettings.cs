@@ -47,11 +47,20 @@ public sealed class AppSettings
     /// <summary>Carré (jaquette recadrée) ou format d'origine de la jaquette (portrait 3:4).</summary>
     public DockIconShape DockIconShape { get; set; } = DockIconShape.Square;
 
-    /// <summary>Opacité du fond du dock, de 0,2 à 1 (les icônes restent opaques).</summary>
+    /// <summary>Opacité du fond du dock, de 0 à 1 (les icônes restent opaques).</summary>
     public double DockOpacity { get; set; } = 0.9;
 
-    /// <summary>Le dock se replie au bord de l'écran quand la souris s'en éloigne.</summary>
+    /// <summary>Le dock se replie au bord de l'écran quand la souris s'en éloigne ; sinon, il reste collé au bureau (derrière les fenêtres).</summary>
     public bool DockAutoHide { get; set; } = true;
+
+    /// <summary>Délai avant que le dock se replie une fois la souris partie, en secondes (0,2 à 5).</summary>
+    public double DockHideDelay { get; set; } = 0.7;
+
+    /// <summary>Raccourci vers OptiGame affiché au bout du dock.</summary>
+    public bool DockShowOptiGame { get; set; } = true;
+
+    /// <summary>Nom du jeu affiché au survol d'une jaquette du dock.</summary>
+    public bool DockShowNames { get; set; } = true;
 
     public AppSettings Clone() => new()
     {
@@ -66,6 +75,9 @@ public sealed class AppSettings
         DockIconShape = DockIconShape,
         DockOpacity = DockOpacity,
         DockAutoHide = DockAutoHide,
+        DockHideDelay = DockHideDelay,
+        DockShowOptiGame = DockShowOptiGame,
+        DockShowNames = DockShowNames,
     };
 }
 
