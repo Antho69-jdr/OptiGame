@@ -45,6 +45,7 @@ public partial class DockWindow : Window
     private bool _shown;
     private bool _suppressed;
     private bool _pinnedToDesktop;
+    private bool _desktopShown;
     private bool _showNames = true;
 
     // Grossissement : dernière position de la souris le long du dock (repère de la rangée) et intensité de l'effet
@@ -215,8 +216,21 @@ public partial class DockWindow : Window
         // Masquage automatique : au premier plan (il n'apparaît que sur demande). Sinon : collé au bureau, derrière
         // toutes les fenêtres, comme un widget ; OnWindowMessage l'y maintient.
         _pinnedToDesktop = !autoHide;
+        _desktopShown = false;
         Topmost = autoHide;
         if (_pinnedToDesktop) PinToDesktop();
+    }
+
+    /// <summary>
+    /// « Afficher le bureau » (Win+D) : le bureau passe devant les applications et cacherait le dock collé au bureau.
+    /// Tant qu'il est affiché, le dock passe au premier plan ; il se recolle au bureau dès qu'une application revient.
+    /// </summary>
+    public void SetDesktopShown(bool shown)
+    {
+        if (!_pinnedToDesktop || shown == _desktopShown) return;
+        _desktopShown = shown; // avant Topmost : OnWindowMessage ne doit plus (ou de nouveau) rediriger la position
+        Topmost = shown;
+        if (!shown) PinToDesktop();
     }
 
     private void PinToDesktop()
@@ -250,7 +264,7 @@ public partial class DockWindow : Window
     /// </summary>
     private IntPtr OnWindowMessage(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
     {
-        if (msg != WmWindowPosChanging || !_pinnedToDesktop) return IntPtr.Zero;
+        if (msg != WmWindowPosChanging || !_pinnedToDesktop || _desktopShown) return IntPtr.Zero;
         var pos = Marshal.PtrToStructure<WindowPos>(lParam);
         if ((pos.Flags & SwpNoZOrder) != 0) return IntPtr.Zero;
         pos.InsertAfter = LowestWindowAboveDesktop(hwnd);

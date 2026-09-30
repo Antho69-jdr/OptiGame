@@ -131,7 +131,9 @@ vit dans Core ; Platform ne fait que lire/écrire le système.
   `DiagDump -- --steam-playtime` affiche ce qui est lu pour chaque profil.
 - Pile des fenêtres : le bureau (`Progman`) est tout en bas. Une fenêtre « collée au bureau » (dock sans masquage auto)
   doit se placer juste AU-DESSUS de lui (WM_WINDOWPOSCHANGING, cf. `DockWindow.LowestWindowAboveDesktop`) : avec
-  HWND_BOTTOM, elle passerait sous le bureau, invisible. RocketDock fait de même.
+  HWND_BOTTOM, elle passerait sous le bureau, invisible. RocketDock fait de même. « Afficher le bureau » (Win+D) fait
+  passer le bureau devant : tant qu'aucune application ne le recouvre (`Core/Dock/DesktopRules`, fenêtres « cloaked »
+  ignorées : 9 sur la machine de dev), le dock passe au premier plan (méthode de Rainmeter), puis se recolle.
 - WPF gèle les Freezable (ScaleTransform, brushes…) déclarés dans un DataTemplate : pour les animer, donner à
   chaque élément sa propre instance (cf. `DockWindow.SetScale`). Toute erreur d'interface passe par
   `DispatcherUnhandledException` (journalisée, l'appli continue).

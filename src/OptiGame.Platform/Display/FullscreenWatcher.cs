@@ -20,6 +20,11 @@ public sealed class FullscreenWatcher : IDisposable
     private const uint MonitorDefaultToPrimary = 1;
     private const int GwlStyle = -16;
     private const int WsCaption = 0x00C00000;
+    private const int GwlExStyle = -20;
+    private const int WsExTopmost = 0x00000008;
+    private const int WsExToolWindow = 0x00000080;
+    private const uint GwHwndPrev = 3;
+    private const int DwmwaCloaked = 14;
 
     private readonly WinEventDelegate _callback; // gardé en champ : sinon le GC le libère et Windows appelle un pointeur mort
     private IntPtr _hook;
@@ -33,6 +38,11 @@ public sealed class FullscreenWatcher : IDisposable
 
     public event EventHandler<bool>? FullscreenChanged;
 
+    /// <summary>Bureau affiché par « Afficher le bureau » (Win+D) : aucune application au-dessus de lui.</summary>
+    public bool IsDesktopShown { get; private set; }
+
+    public event EventHandler<bool>? DesktopShownChanged;
+
     public void Start()
     {
         if (_hook != IntPtr.Zero) return;
@@ -44,6 +54,13 @@ public sealed class FullscreenWatcher : IDisposable
     /// <summary>Réévalue l'état et prévient en cas de changement. Renvoie l'état courant.</summary>
     public bool Evaluate()
     {
+        var desktopShown = DetectDesktopShown();
+        if (desktopShown != IsDesktopShown)
+        {
+            IsDesktopShown = desktopShown;
+            DesktopShownChanged?.Invoke(this, desktopShown);
+        }
+
         var fullscreen = DetectFullscreen();
         if (fullscreen != IsFullscreen)
         {
@@ -64,6 +81,31 @@ public sealed class FullscreenWatcher : IDisposable
     {
         var state = SHQueryUserNotificationState(out var s) == 0 ? s : 0;
         return FullscreenRules.ShouldHideDock(state, ReadForeground());
+    }
+
+    /// <summary>Relevé des fenêtres au-dessus du bureau au premier plan ; décision dans Core (<see cref="DesktopRules"/>, testée).</summary>
+    private static bool DetectDesktopShown()
+    {
+        var desktop = GetForegroundWindow();
+        if (desktop == IntPtr.Zero || ClassName(desktop) is not ("Progman" or "WorkerW")) return false;
+
+        var above = new List<WindowAbove>();
+        for (var window = GetWindow(desktop, GwHwndPrev); window != IntPtr.Zero; window = GetWindow(window, GwHwndPrev))
+        {
+            var exStyle = GetWindowLong(window, GwlExStyle);
+            var cloaked = DwmGetWindowAttribute(window, DwmwaCloaked, out var value, sizeof(int)) == 0 && value != 0;
+            var hasArea = GetWindowRect(window, out var r) && r.Right > r.Left && r.Bottom > r.Top;
+            above.Add(new WindowAbove(IsWindowVisible(window), cloaked, IsIconic(window),
+                (exStyle & WsExTopmost) != 0, (exStyle & WsExToolWindow) != 0, hasArea));
+        }
+        return DesktopRules.IsDesktopShown(desktopIsForeground: true, above);
+    }
+
+    private static string ClassName(IntPtr window)
+    {
+        var name = new StringBuilder(64);
+        GetClassName(window, name, name.Capacity);
+        return name.ToString();
     }
 
     private static ForegroundWindowInfo? ReadForeground()
@@ -149,6 +191,18 @@ public sealed class FullscreenWatcher : IDisposable
 
     [DllImport("user32.dll", CharSet = CharSet.Unicode)]
     private static extern bool GetMonitorInfo(IntPtr monitor, ref MonitorInfo info);
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr GetWindow(IntPtr window, uint command);
+
+    [DllImport("user32.dll")]
+    private static extern bool IsWindowVisible(IntPtr window);
+
+    [DllImport("user32.dll")]
+    private static extern bool IsIconic(IntPtr window);
+
+    [DllImport("dwmapi.dll")]
+    private static extern int DwmGetWindowAttribute(IntPtr window, int attribute, out int value, int size);
 
     [DllImport("user32.dll", CharSet = CharSet.Unicode)]
     private static extern int GetClassName(IntPtr window, StringBuilder name, int max);

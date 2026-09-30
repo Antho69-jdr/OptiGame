@@ -29,6 +29,11 @@ public sealed class DockController(
         sessions.SessionStarted += (_, _) => OnUi(UpdateSuppression);
         sessions.SessionEnded += (_, _) => OnUi(UpdateSuppression);
         fullscreen.FullscreenChanged += (_, _) => UpdateSuppression();
+        fullscreen.DesktopShownChanged += (_, shown) =>
+        {
+            log.Info(shown ? "Bureau affiché (Win+D) : dock au premier plan." : "Bureau recouvert : dock recollé au bureau.");
+            _window?.SetDesktopShown(shown);
+        };
         Apply();
     }
 
@@ -62,6 +67,7 @@ public sealed class DockController(
             log.Info("Dock activé.");
         }
         _window.ApplySettings(s);
+        _window.SetDesktopShown(fullscreen.IsDesktopShown);
         UpdateSuppression();
     }
 
