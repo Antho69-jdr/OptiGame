@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using OptiGame.App.Services;
@@ -7,24 +8,16 @@ using OptiGame.Core.Settings;
 
 namespace OptiGame.App.ViewModels;
 
-public sealed record AutoHdrOption(AutoHdrChoice Value, string Label);
-
 public sealed record GpuOption(GpuChoice Value, string Label);
 
 /// <summary>
-/// Carte « Graphismes (Windows) » de la page du jeu : Auto HDR et carte graphique pour ce jeu. L'état affiché est relu
-/// dans Windows ; « Appliquer » passe par la confirmation habituelle et le journal des corrections (annulable).
+/// Carte « Graphismes (Windows) » de la page du jeu. Auto HDR : affiché seulement (encodage de Windows non documenté),
+/// réglé dans les paramètres de Windows. Carte graphique (PC à plusieurs cartes) : « Appliquer » passe par la
+/// confirmation habituelle et le journal des corrections (annulable). L'état affiché est toujours relu dans Windows.
 /// </summary>
 public sealed partial class GameGraphicsViewModel(GameProfile profile, GameGraphicsService service, IDialogService dialogs, FileLog log) : ObservableObject
 {
     private GameGraphicsSnapshot? _snapshot;
-
-    public IReadOnlyList<AutoHdrOption> AutoHdrOptions { get; } =
-    [
-        new(AutoHdrChoice.Windows, "Réglage de Windows"),
-        new(AutoHdrChoice.On, "Activé"),
-        new(AutoHdrChoice.Off, "Désactivé"),
-    ];
 
     public IReadOnlyList<GpuOption> GpuOptions { get; } =
     [
@@ -35,17 +28,13 @@ public sealed partial class GameGraphicsViewModel(GameProfile profile, GameGraph
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(ApplyCommand))]
-    private AutoHdrOption? _selectedAutoHdr;
-
-    [ObservableProperty]
-    [NotifyCanExecuteChangedFor(nameof(ApplyCommand))]
     private GpuOption? _selectedGpu;
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(ApplyCommand))]
     private bool _isBusy = true;
 
-    [ObservableProperty] private string _currentText = "Lecture des réglages de Windows…";
+    [ObservableProperty] private string _autoHdrText = "Lecture des réglages de Windows…";
     [ObservableProperty] private string _hdrText = "";
     [ObservableProperty] private bool _showGpu;
     [ObservableProperty] private string _gpuNote = "";
@@ -61,7 +50,7 @@ public sealed partial class GameGraphicsViewModel(GameProfile profile, GameGraph
         catch (Exception ex) when (ex is UnauthorizedAccessException or System.Security.SecurityException or IOException or System.Management.ManagementException)
         {
             log.Error($"Réglages graphiques de « {profile.Name} » illisibles", ex);
-            CurrentText = $"Réglages de Windows illisibles : {ex.Message}";
+            AutoHdrText = $"Réglages de Windows illisibles : {ex.Message}";
             return;
         }
         finally
@@ -69,16 +58,9 @@ public sealed partial class GameGraphicsViewModel(GameProfile profile, GameGraph
             IsBusy = false;
         }
 
-        var state = _snapshot.State;
-        SelectedAutoHdr = AutoHdrOptions.First(o => o.Value == state.AutoHdr);
-        SelectedGpu = GpuOptions.First(o => o.Value == state.Gpu);
-        CurrentText = "Actuellement : Auto HDR " + state.AutoHdr switch
-        {
-            AutoHdrChoice.On => "activé",
-            AutoHdrChoice.Off => "désactivé",
-            _ when state.AutoHdrRaw is { } raw => $"réglé par Windows (valeur {raw}, non documentée par Microsoft)",
-            _ => "réglé par Windows (réglage global)",
-        } + (_snapshot.PhysicalGpus.Count > 1 ? $" ; carte graphique : {SelectedGpu.Label.ToLowerInvariant()}." : ".");
+        AutoHdrText = _snapshot.State.AutoHdrRaw is { } raw
+            ? $"Auto HDR de ce jeu : géré par Windows (valeur {raw}, encodage non documenté par Microsoft). Pour le changer : bouton ci-dessous, puis ce jeu dans la liste."
+            : "Auto HDR de ce jeu : réglage global de Windows. Pour le régler jeu par jeu : bouton ci-dessous.";
 
         var hdr = _snapshot.Displays.Where(d => d.HdrEnabled).Select(d => d.Name).ToList();
         HdrText = hdr.Count > 0
@@ -88,26 +70,30 @@ public sealed partial class GameGraphicsViewModel(GameProfile profile, GameGraph
                 : "Aucun écran HDR détecté : l'Auto HDR n'a pas d'effet sur ce PC.";
 
         ShowGpu = _snapshot.PhysicalGpus.Count > 1;
+        SelectedGpu = GpuOptions.First(o => o.Value == _snapshot.State.Gpu);
         GpuNote = _snapshot.PhysicalGpus.Count == 1
             ? $"Une seule carte graphique ({_snapshot.PhysicalGpus[0]}) : le choix de la carte est sans objet sur ce PC."
             : "";
         AppliedText = _snapshot.AppliedChange is { } applied
-            ? $"Réglé par OptiGame le {applied.AppliedAt.ToLocalTime():dd/MM/yyyy à HH:mm}. « Réglage de Windows » + Appliquer (ou le Diagnostic) rétablit la valeur d'origine."
+            ? $"Réglé par OptiGame le {applied.AppliedAt.ToLocalTime():dd/MM/yyyy à HH:mm}. « Laisser Windows décider » + Appliquer (ou le Diagnostic) rétablit la valeur d'origine."
             : "";
     }
 
+    [RelayCommand]
+    private static void OpenWindowsGraphicsSettings() =>
+        // Page « Graphiques » des Paramètres (adresse ms-settings documentée) ; explorer.exe l'ouvre sans droits administrateur.
+        Process.Start(new ProcessStartInfo("explorer.exe", "ms-settings:display-advancedgraphics") { UseShellExecute = true });
+
     private bool CanApply() =>
-        !IsBusy && _snapshot is { } snapshot && SelectedAutoHdr is { } hdr && SelectedGpu is { } gpu &&
-        (hdr.Value != snapshot.State.AutoHdr || gpu.Value != snapshot.State.Gpu ||
-         // « Réglage de Windows » alors qu'OptiGame a modifié la valeur : l'annulation reste possible.
-         (snapshot.AppliedChange is not null && hdr.Value == AutoHdrChoice.Windows && gpu.Value == GpuChoice.Windows));
+        !IsBusy && ShowGpu && _snapshot is { } snapshot && SelectedGpu is { } gpu &&
+        (gpu.Value != snapshot.State.Gpu || (snapshot.AppliedChange is not null && gpu.Value == GpuChoice.Windows));
 
     [RelayCommand(CanExecute = nameof(CanApply))]
     private async Task ApplyAsync()
     {
-        if (_snapshot is not { } snapshot || SelectedAutoHdr is not { } hdr || SelectedGpu is not { } gpu) return;
+        if (_snapshot is not { } snapshot || SelectedGpu is not { } gpu) return;
 
-        var change = GameGraphics.Change(profile.Id, profile.Name, snapshot.Targets, hdr.Value, ShowGpu ? gpu.Value : GpuChoice.Windows);
+        var change = GameGraphics.Change(profile.Id, profile.Name, snapshot.Targets, gpu.Value);
         IsBusy = true;
         try
         {

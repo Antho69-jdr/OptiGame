@@ -119,9 +119,13 @@ vit dans Core ; Platform ne fait que lire/écrire le système.
   (+ `AppCaptureEnabled`) ; interrupteur global : `HKCU\System\GameConfigStore\GameDVR_Enabled`.
 - `HKCU\Software\Microsoft\DirectX\UserGpuPreferences` : valeurs `Clé=Valeur;` par chemin d'exe → **fusionner**
   `GpuPreference=N;` avec les paires existantes (ex. `AutoHDREnable`). Windows y écrit de lui-même `AutoHDREnable=2097;`
-  (NON documenté) et parfois `AppStatus=…`, et des noms avec `.\` (« Scrap Mechanic\.\Release\… ») : comparer les chemins
-  normalisés, n'écrire que les valeurs documentées (AutoHDREnable 0/1). Carte « Graphismes (Windows) » de la page du jeu :
-  `Core/Settings/GameGraphics` + `App/Services/GameGraphicsService`, journal fixes.json (annulable), état relu, jamais stocké.
+  et parfois `AppStatus=…`, et des noms avec `.\` (« Scrap Mechanic\.\Release\… ») : comparer les chemins normalisés.
+  Auto HDR par jeu = encodage NON documenté et non élucidé (expérience du 2026-09-30 dans Paramètres > Graphiques : 2097 par
+  défaut, 6193 après désactivation PUIS réactivation — même valeur dans les deux états, aucune autre clé modifiée ; Windows
+  ajoute aussi `SwapEffectUpgradeEnable=1`) → OptiGame n'écrit JAMAIS AutoHDREnable, il l'affiche et ouvre
+  `ms-settings:display-advancedgraphics`. Seule GpuPreference (0/1/2, documentée) est écrite, et seulement sur les PC à
+  plusieurs cartes. Carte « Graphismes (Windows) » : `Core/Settings/GameGraphics` + `App/Services/GameGraphicsService`,
+  journal fixes.json (annulable), état relu, jamais stocké.
 - HDR des écrans : `DisplayConfigGetDeviceInfo(GET_ADVANCED_COLOR_INFO)`, bit 2 = couleur étendue SDR imposée, PAS du HDR
   (BenQ = 0x5, Samsung en HDR = 0x3). En PowerShell, le passage des structures échoue (code 31) : tester en C#.
 - VBS/HVCI : WMI `root\Microsoft\Windows\DeviceGuard` / `Win32_DeviceGuard` ; désactivation avancée via
