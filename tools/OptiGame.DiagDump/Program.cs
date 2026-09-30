@@ -38,6 +38,27 @@ if (args.Length == 4 && args[0] == "--import-capture")
     return;
 }
 
+// --launch-plan : ce que « Jouer » lancerait pour chaque profil (lecture seule des vrais profils, rien n'est lancé).
+if (args.Length == 1 && args[0] == "--launch-plan")
+{
+    var profiles = new OptiGame.Core.Profiles.ProfileStore(
+        new JsonStateStore<OptiGame.Core.Profiles.ProfilesDocument>(AppPaths.Default.Profiles));
+    var launcher = services.GetRequiredService<OptiGame.Platform.Processes.GameLauncher>();
+    foreach (var profile in profiles.GetAll())
+    {
+        try
+        {
+            var plan = launcher.Plan(profile);
+            Console.WriteLine($"{profile.Name} [{profile.LaunchMode}] → {plan.Description}\n      {plan.CommandLine}");
+        }
+        catch (OptiGame.Core.Launching.LaunchException ex)
+        {
+            Console.WriteLine($"{profile.Name} [{profile.LaunchMode}] → ERREUR : {ex.Message}");
+        }
+    }
+    return;
+}
+
 // dotnet run --project tools/OptiGame.DiagDump -- --games [dossier…] : recherche des jeux installés.
 if (args.Length > 0 && args[0] == "--games")
 {

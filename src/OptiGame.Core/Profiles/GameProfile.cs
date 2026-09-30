@@ -36,6 +36,18 @@ public sealed class GameProfile
 
     public List<ProcessToClose> ProcessesToClose { get; set; } = [];
 
+    /// <summary>Façon de lancer le jeu depuis OptiGame (voir <see cref="Launching.LaunchPlanner"/>).</summary>
+    public Launching.LaunchMode LaunchMode { get; set; } = Launching.LaunchMode.Automatic;
+
+    /// <summary>Appid Steam (connu dès la recherche des jeux installés, sinon retrouvé dans les manifestes).</summary>
+    public string? SteamAppId { get; set; }
+
+    /// <summary>Programme à lancer en mode « Lanceur » (ex. RSI Launcher.exe).</summary>
+    public string? LauncherPath { get; set; }
+
+    /// <summary>Arguments de lancement (transmis au jeu, au lanceur, ou après l'appid pour Steam).</summary>
+    public string? LaunchArguments { get; set; }
+
     /// <summary>Jeu IGDB associé (jaquette et bannière) ; null = pas encore cherché ou non trouvé.</summary>
     public long? IgdbGameId { get; set; }
 
@@ -52,6 +64,10 @@ public sealed class GameProfile
         PowerSchemeId = PowerSchemeId,
         Priority = Priority,
         ProcessesToClose = ProcessesToClose.Select(p => new ProcessToClose { ExeName = p.ExeName, Relaunch = p.Relaunch }).ToList(),
+        LaunchMode = LaunchMode,
+        SteamAppId = SteamAppId,
+        LauncherPath = LauncherPath,
+        LaunchArguments = LaunchArguments,
         IgdbGameId = IgdbGameId,
         CoverImageId = CoverImageId,
         HeroImageId = HeroImageId,

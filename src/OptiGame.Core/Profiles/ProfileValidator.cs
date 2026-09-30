@@ -39,6 +39,17 @@ public static class ProfileValidator
             errors.Add("Priorité invalide.");
         }
 
+        if (profile.SteamAppId is not null && !Launching.LaunchPlanner.IsValidSteamAppId(profile.SteamAppId))
+        {
+            errors.Add($"Appid Steam invalide : « {profile.SteamAppId} » (nombre attendu, ex. 578080).");
+        }
+
+        if (profile.LaunchMode == Launching.LaunchMode.Launcher &&
+            (string.IsNullOrWhiteSpace(profile.LauncherPath) || !profile.LauncherPath.EndsWith(".exe", StringComparison.OrdinalIgnoreCase)))
+        {
+            errors.Add("Le lanceur doit être un fichier .exe.");
+        }
+
         var gameExe = Path.GetFileName(profile.ExePath ?? "");
         foreach (var process in profile.ProcessesToClose)
         {

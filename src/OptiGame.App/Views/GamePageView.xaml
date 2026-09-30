@@ -5,6 +5,7 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="clr-namespace:OptiGame.App.ViewModels"
              xmlns:conv="clr-namespace:OptiGame.App.Converters"
+             xmlns:views="clr-namespace:OptiGame.App.Views"
              mc:Ignorable="d"
              d:DataContext="{d:DesignInstance vm:GamePageViewModel}">
     <UserControl.Resources>
@@ -87,10 +88,27 @@
                                     <TextBlock Margin="8,0,0,0" Text="Changer la jaquette" />
                                 </StackPanel>
                             </Button>
-                            <Button Style="{StaticResource Button.Primary}" Command="{Binding MeasureCommand}">
+                            <Button Margin="0,0,8,0" Style="{StaticResource Button.Secondary}" Command="{Binding MeasureCommand}">
                                 <StackPanel Orientation="Horizontal">
                                     <TextBlock Style="{StaticResource Text.Icon}" FontSize="14" Text="&#xE9D2;" />
                                     <TextBlock Margin="8,0,0,0" Text="Mesurer les FPS" />
+                                </StackPanel>
+                            </Button>
+                            <Button Style="{StaticResource Button.Primary}" Padding="28,10" FontSize="16" Command="{Binding PlayCommand}">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Style="{StaticResource Text.Icon}" FontSize="16" Text="&#xE768;" />
+                                    <TextBlock Margin="10,0,0,0">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Text" Value="Jouer" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsPlaying}" Value="True">
+                                                        <Setter Property="Text" Value="En cours" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
                                 </StackPanel>
                             </Button>
                         </StackPanel>
@@ -102,6 +120,8 @@
                             </Border>
                             <TextBlock Style="{StaticResource Text.PageTitle}" FontSize="36" Text="{Binding Name}" TextWrapping="Wrap" />
                             <TextBlock Margin="0,4,0,0" Style="{StaticResource Text.Mono}" Text="{Binding Editor.ExePath}" TextTrimming="CharacterEllipsis" />
+                            <TextBlock Margin="0,6,0,0" FontWeight="SemiBold" Foreground="{StaticResource Brush.Accent}"
+                                       Text="{Binding DataContext.LaunchStatus, RelativeSource={RelativeSource AncestorType=views:LibraryView}}" />
                         </StackPanel>
                     </DockPanel>
                 </Grid>
@@ -133,6 +153,46 @@
                                 <ComboBox ItemsSource="{Binding Editor.PriorityOptions}" SelectedItem="{Binding Editor.SelectedPriority}" DisplayMemberPath="Label" />
                                 <TextBlock Margin="0,6,0,0" Style="{StaticResource Text.Caption}"
                                            Text="Effet généralement faible. « Haute » peut rendre les autres programmes (vocal, streaming) moins réactifs. Certains anti-cheats refusent ce changement : il est alors simplement ignoré." />
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Lancement -->
+                        <Border Margin="0,16,0,0" Style="{StaticResource Card}">
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource Text.SectionTitle}" Text="Lancement" />
+                                <TextBlock Margin="0,4,0,0" Style="{StaticResource Text.Caption}"
+                                           Text="Comment « Jouer » démarre ce jeu. Toujours sans droits administrateur ; le profil s'applique ensuite automatiquement." />
+
+                                <TextBlock Style="{StaticResource Text.Label}" Text="Mode" />
+                                <ComboBox ItemsSource="{Binding Editor.LaunchModeOptions}" SelectedItem="{Binding Editor.SelectedLaunchMode}" DisplayMemberPath="Label" />
+
+                                <StackPanel Visibility="{Binding Editor.IsSteamMode, Converter={StaticResource BoolToVisibility}}">
+                                    <TextBlock Style="{StaticResource Text.Label}" Text="Appid Steam" />
+                                    <TextBox Width="160" HorizontalAlignment="Left" FontFamily="{StaticResource Font.Mono}"
+                                             Text="{Binding Editor.SteamAppId, UpdateSourceTrigger=PropertyChanged}" />
+                                    <TextBlock Margin="0,4,0,0" Style="{StaticResource Text.Caption}"
+                                               Text="Facultatif : retrouvé automatiquement si le jeu est installé dans une bibliothèque Steam." />
+                                </StackPanel>
+
+                                <StackPanel Visibility="{Binding Editor.IsLauncherMode, Converter={StaticResource BoolToVisibility}}">
+                                    <TextBlock Style="{StaticResource Text.Label}" Text="Lanceur" />
+                                    <DockPanel>
+                                        <Button DockPanel.Dock="Right" Margin="8,0,0,0" Style="{StaticResource Button.Secondary}"
+                                                Content="Parcourir…" Command="{Binding Editor.BrowseLauncherCommand}" />
+                                        <TextBox VerticalContentAlignment="Center" FontFamily="{StaticResource Font.Mono}"
+                                                 Text="{Binding Editor.LauncherPath, UpdateSourceTrigger=PropertyChanged}" />
+                                    </DockPanel>
+                                </StackPanel>
+
+                                <TextBlock Style="{StaticResource Text.Label}" Text="Arguments (facultatif)" />
+                                <TextBox FontFamily="{StaticResource Font.Mono}" Text="{Binding Editor.LaunchArguments, UpdateSourceTrigger=PropertyChanged}" />
+
+                                <Border Margin="0,14,0,0" Padding="12,8" CornerRadius="{StaticResource Radius.Control}" Background="{StaticResource Brush.Control}">
+                                    <StackPanel>
+                                        <TextBlock Style="{StaticResource Text.Caption}" Text="Sera lancé :" />
+                                        <TextBlock Style="{StaticResource Text.Mono}" Foreground="{StaticResource Brush.Text}" Text="{Binding Editor.LaunchPreview}" />
+                                    </StackPanel>
+                                </Border>
                             </StackPanel>
                         </Border>
 

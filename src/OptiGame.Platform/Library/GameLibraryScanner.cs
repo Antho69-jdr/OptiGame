@@ -69,9 +69,16 @@ public sealed class GameLibraryScanner : IGameLibraryScanner
             .ToList();
     }
 
-    private static IEnumerable<InstalledGame> ScanSteam()
+    /// <summary>Jeu Steam installé, d'après son manifeste appmanifest_*.acf.</summary>
+    public sealed record SteamApp(string AppId, string Name, string InstallDir, string Folder);
+
+    /// <summary>Jeux Steam de toutes les bibliothèques (hors redistribuables), dossier d'installation existant.</summary>
+    public static IReadOnlyList<SteamApp> SteamApps() => SteamApps(SteamLibraries());
+
+    public static IReadOnlyList<SteamApp> SteamApps(IEnumerable<string> libraries)
     {
-        foreach (var library in SteamLibraries())
+        var apps = new List<SteamApp>();
+        foreach (var library in libraries)
         {
             var steamapps = Path.Combine(library, "steamapps");
             if (!Directory.Exists(steamapps)) continue;
@@ -94,13 +101,31 @@ public sealed class GameLibraryScanner : IGameLibraryScanner
                 if (appId is null || name is null || installDir is null || NonGameAppIds.Contains(appId)) continue;
 
                 var folder = Path.Combine(steamapps, "common", installDir);
-                if (Directory.Exists(folder))
-                {
-                    yield return new InstalledGame(name, GameSource.Steam, folder, ExeRanking.Rank(name, installDir, FindExes(folder)));
-                }
+                if (Directory.Exists(folder)) apps.Add(new SteamApp(appId, name, installDir, folder));
             }
         }
+        return apps;
     }
+
+    /// <summary>Appid Steam du jeu dont l'exe se trouve dans ce dossier d'installation, ou null.</summary>
+    public static string? FindSteamAppId(string exePath, IReadOnlyList<SteamApp> apps)
+    {
+        var full = Core.Profiles.ExePaths.Normalize(exePath);
+        return apps.FirstOrDefault(a => full.StartsWith(Path.GetFullPath(a.Folder).TrimEnd('\\') + '\\', StringComparison.OrdinalIgnoreCase))?.AppId;
+    }
+
+    /// <summary>Chemin de steam.exe (HKCU\Software\Valve\Steam\SteamExe, vérifié sur la machine de dev), ou null.</summary>
+    public static string? SteamExe()
+    {
+        using var steamKey = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(@"Software\Valve\Steam");
+        return steamKey?.GetValue("SteamExe") is string exe && exe.Length > 0 && File.Exists(exe)
+            ? Path.GetFullPath(exe.Replace('/', '\\'))
+            : null;
+    }
+
+    private static IEnumerable<InstalledGame> ScanSteam() =>
+        SteamApps().Select(a => new InstalledGame(a.Name, GameSource.Steam, a.Folder,
+            ExeRanking.Rank(a.Name, a.InstallDir, FindExes(a.Folder)), a.AppId));
 
     private static IEnumerable<InstalledGame> ScanFolder(string root)
     {

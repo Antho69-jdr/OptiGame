@@ -42,6 +42,25 @@
                                     </Border.Background>
                                 </Border>
                                 <Border x:Name="Outline" CornerRadius="10" BorderThickness="2" BorderBrush="Transparent" />
+                                <!-- Bouton « Jouer » au survol -->
+                                <Button x:Name="PlayButton" Width="48" Height="48" Margin="0,0,10,10" HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                                        Visibility="Collapsed" Cursor="Hand" ToolTip="Jouer" AutomationProperties.Name="{Binding Name, StringFormat='Jouer à {0}'}"
+                                        Command="{Binding DataContext.PlayCardCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                        CommandParameter="{Binding}">
+                                    <Button.Template>
+                                        <ControlTemplate TargetType="Button">
+                                            <Border x:Name="Round" CornerRadius="24" Background="{StaticResource Brush.Accent}">
+                                                <TextBlock Margin="3,0,0,0" HorizontalAlignment="Center" VerticalAlignment="Center" Style="{StaticResource Text.Icon}"
+                                                           FontSize="18" Foreground="{StaticResource Brush.OnAccent}" Text="&#xE768;" />
+                                            </Border>
+                                            <ControlTemplate.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter TargetName="Round" Property="Background" Value="{StaticResource Brush.AccentHover}" />
+                                                </Trigger>
+                                            </ControlTemplate.Triggers>
+                                        </ControlTemplate>
+                                    </Button.Template>
+                                </Button>
                                 <!-- Pastilles -->
                                 <StackPanel Margin="8" HorizontalAlignment="Left" VerticalAlignment="Top">
                                     <Border Style="{StaticResource Badge}" Background="{StaticResource Brush.Accent}"
@@ -61,6 +80,7 @@
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
                                 <Setter TargetName="Outline" Property="BorderBrush" Value="{StaticResource Brush.Accent}" />
+                                <Setter TargetName="PlayButton" Property="Visibility" Value="Visible" />
                                 <Trigger.EnterActions>
                                     <BeginStoryboard>
                                         <Storyboard>
@@ -137,6 +157,7 @@
                 </StackPanel>
             </DockPanel>
 
+            <TextBlock DockPanel.Dock="Top" Margin="0,0,0,4" FontWeight="SemiBold" Foreground="{StaticResource Brush.Accent}" Text="{Binding LaunchStatus}" />
             <TextBlock DockPanel.Dock="Top" Margin="0,0,0,12" Style="{StaticResource Text.Caption}" Text="{Binding ArtworkStatus}" />
 
             <Grid>

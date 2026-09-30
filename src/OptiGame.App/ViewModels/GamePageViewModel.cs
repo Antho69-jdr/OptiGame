@@ -12,6 +12,7 @@ public sealed partial class GamePageViewModel(
     Action back,
     Func<Task> changeCover,
     Action measure,
+    Func<Task> play,
     bool isPlaying) : ObservableObject
 {
     public Guid Id { get; } = profile.Id;
@@ -39,6 +40,7 @@ public sealed partial class GamePageViewModel(
     private string? _heroPath;
 
     [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(PlayCommand))]
     private bool _isPlaying = isPlaying;
 
     [RelayCommand]
@@ -49,4 +51,9 @@ public sealed partial class GamePageViewModel(
 
     [RelayCommand]
     private void Measure() => measure();
+
+    private bool CanPlay() => !IsPlaying;
+
+    [RelayCommand(CanExecute = nameof(CanPlay))]
+    private Task PlayAsync() => play();
 }

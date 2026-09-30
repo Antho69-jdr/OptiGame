@@ -3,6 +3,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using OptiGame.App.Services;
 using OptiGame.Core.Abstractions;
+using OptiGame.Core.Launching;
 using OptiGame.Core.Profiles;
 
 namespace OptiGame.App.ViewModels;
@@ -16,10 +17,13 @@ public sealed partial class ProfileEditorViewModel : ObservableObject
     private readonly Action<GameProfile> _delete;
     private readonly Action _revert;
     private readonly IReadOnlyList<PowerScheme> _schemes;
+    private readonly Func<GameProfile, string> _describeLaunch;
 
     public ProfileEditorViewModel(GameProfile profile, IReadOnlyList<PowerScheme> schemes, IRunningProgramsProvider programs,
-        IDialogService dialogs, Func<GameProfile, Task> save, Action<GameProfile> delete, Action revert)
+        IDialogService dialogs, Func<GameProfile, Task> save, Action<GameProfile> delete, Action revert,
+        Func<GameProfile, string> describeLaunch)
     {
+        _describeLaunch = describeLaunch;
         _original = profile;
         _schemes = schemes;
         _programs = programs;
@@ -39,12 +43,66 @@ public sealed partial class ProfileEditorViewModel : ObservableObject
         _enabled = profile.Enabled;
         _selectedPowerScheme = PowerSchemeOptions.First(o => o.Id == profile.PowerSchemeId);
         _selectedPriority = PriorityOptions.First(o => o.Value == profile.Priority);
+        _selectedLaunchMode = LaunchModeOptions.First(o => o.Value == profile.LaunchMode);
+        _steamAppId = profile.SteamAppId ?? "";
+        _launcherPath = profile.LauncherPath ?? "";
+        _launchArguments = profile.LaunchArguments ?? "";
         foreach (var process in profile.ProcessesToClose)
         {
             AddProcessRow(process.ExeName, process.Relaunch);
         }
         IsDirty = false;
         UpdateSummary();
+        UpdateLaunchPreview();
+    }
+
+    public IReadOnlyList<LaunchModeOption> LaunchModeOptions { get; } =
+    [
+        new(LaunchMode.Automatic, "Automatique (recommandé) : Steam si possible, sinon l'exécutable"),
+        new(LaunchMode.Steam, "Par Steam"),
+        new(LaunchMode.Executable, "Exécutable du jeu"),
+        new(LaunchMode.Launcher, "Autre lanceur (ex. RSI Launcher)"),
+    ];
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsSteamMode), nameof(IsLauncherMode))]
+    private LaunchModeOption _selectedLaunchMode;
+
+    public bool IsSteamMode => SelectedLaunchMode?.Value is LaunchMode.Steam or LaunchMode.Automatic;
+
+    public bool IsLauncherMode => SelectedLaunchMode?.Value == LaunchMode.Launcher;
+
+    [ObservableProperty] private string _steamAppId;
+    [ObservableProperty] private string _launcherPath;
+    [ObservableProperty] private string _launchArguments;
+
+    /// <summary>Ce que « Jouer » lancera, avec les réglages en cours d'édition.</summary>
+    [ObservableProperty] private string _launchPreview = "";
+
+    partial void OnSelectedLaunchModeChanged(LaunchModeOption value) => TouchLaunch();
+    partial void OnSteamAppIdChanged(string value) => TouchLaunch();
+    partial void OnLauncherPathChanged(string value) => TouchLaunch();
+    partial void OnLaunchArgumentsChanged(string value) => TouchLaunch();
+
+    [RelayCommand]
+    private void BrowseLauncher()
+    {
+        if (_dialogs.PickProgram("Choisir le lanceur du jeu (ex. RSI Launcher.exe)", LauncherPath.Length > 0 ? LauncherPath : ExePath) is { } exe)
+        {
+            LauncherPath = exe;
+        }
+    }
+
+    private void TouchLaunch()
+    {
+        Touch();
+        UpdateLaunchPreview();
+    }
+
+    private void UpdateLaunchPreview()
+    {
+        if (SelectedLaunchMode is null) return;
+        LaunchPreview = _describeLaunch(ToProfile());
     }
 
     public List<PowerSchemeOption> PowerSchemeOptions { get; }
@@ -131,6 +189,10 @@ public sealed partial class ProfileEditorViewModel : ObservableObject
         PowerSchemeId = SelectedPowerScheme.Id,
         Priority = SelectedPriority.Value,
         ProcessesToClose = ProcessesToClose.Select(p => new ProcessToClose { ExeName = p.ExeName, Relaunch = p.Relaunch }).ToList(),
+        LaunchMode = SelectedLaunchMode?.Value ?? LaunchMode.Automatic,
+        SteamAppId = string.IsNullOrWhiteSpace(SteamAppId) ? null : SteamAppId.Trim(),
+        LauncherPath = string.IsNullOrWhiteSpace(LauncherPath) ? null : LauncherPath.Trim(),
+        LaunchArguments = string.IsNullOrWhiteSpace(LaunchArguments) ? null : LaunchArguments.Trim(),
     };
 
     private void AddIfMissing(string exeName)
@@ -177,6 +239,8 @@ public sealed partial class ProfileEditorViewModel : ObservableObject
 public sealed record PowerSchemeOption(Guid? Id, string Label);
 
 public sealed record PriorityOption(GamePriority Value, string Label);
+
+public sealed record LaunchModeOption(LaunchMode Value, string Label);
 
 public sealed partial class ProcessRowViewModel(string exeName, bool relaunch, Action<ProcessRowViewModel> remove) : ObservableObject
 {

@@ -9,7 +9,7 @@ public enum GameSource
 public sealed record ExeFile(string Path, long SizeBytes);
 
 /// <summary>Jeu trouvé sur le disque, avec ses exécutables candidats classés du plus au moins probable.</summary>
-public sealed record InstalledGame(string Name, GameSource Source, string Folder, IReadOnlyList<ExeFile> Candidates);
+public sealed record InstalledGame(string Name, GameSource Source, string Folder, IReadOnlyList<ExeFile> Candidates, string? SteamAppId = null);
 
 public interface IGameLibraryScanner
 {

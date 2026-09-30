@@ -1,4 +1,4 @@
-using System.Collections.ObjectModel;
+﻿using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Windows;
 using System.Windows.Data;
@@ -7,6 +7,7 @@ using CommunityToolkit.Mvvm.Input;
 using OptiGame.App.Services;
 using OptiGame.Core.Abstractions;
 using OptiGame.Core.Artwork;
+using OptiGame.Core.Launching;
 using OptiGame.Core.Library;
 using OptiGame.Core.Logging;
 using OptiGame.Core.Measurement;
@@ -14,6 +15,7 @@ using OptiGame.Core.Profiles;
 using OptiGame.Core.Sessions;
 using OptiGame.Core.Settings;
 using OptiGame.Platform.Artwork;
+using OptiGame.Platform.Processes;
 
 namespace OptiGame.App.ViewModels;
 
@@ -34,6 +36,7 @@ public sealed partial class LibraryViewModel : ObservableObject
     private readonly NavigationService _navigation;
     private readonly TimeProvider _time;
     private readonly FileLog _log;
+    private readonly GameLauncher _launcher;
 
     /// <summary>Profils déjà cherchés sur IGDB pendant cette exécution (on ne redemande pas un jeu introuvable).</summary>
     private readonly HashSet<Guid> _artworkSearched = [];
@@ -43,7 +46,7 @@ public sealed partial class LibraryViewModel : ObservableObject
     public LibraryViewModel(ProfileStore store, IPowerSchemeProvider power, IRunningProgramsProvider programs, IDialogService dialogs,
         IGameLibraryScanner scanner, AppSettingsStore settings, IgdbClient igdb, ArtworkCache artwork, GameSessionManager sessions,
         CaptureStore captures, MeasuresViewModel measures, NavigationService navigation, SettingsViewModel settingsPage,
-        TimeProvider time, FileLog log)
+        TimeProvider time, FileLog log, GameLauncher launcher)
     {
         _store = store;
         _power = power;
@@ -59,6 +62,7 @@ public sealed partial class LibraryViewModel : ObservableObject
         _navigation = navigation;
         _time = time;
         _log = log;
+        _launcher = launcher;
 
         GamesView = CollectionViewSource.GetDefaultView(Games);
         GamesView.Filter = o => o is GameCardViewModel card &&
@@ -130,6 +134,61 @@ public sealed partial class LibraryViewModel : ObservableObject
     private void OpenCard(GameCardViewModel card) => OpenPage(card.Id);
 
     [RelayCommand]
+    private Task PlayCard(GameCardViewModel card) => PlayAsync(card.Id);
+
+    /// <summary>Message temporaire (lancement en cours, erreur…), affiché en haut de la grille et de la page du jeu.</summary>
+    [ObservableProperty]
+    private string _launchStatus = "";
+
+    /// <summary>Lance le jeu sans droits administrateur ; le profil s'appliquera par la détection habituelle.</summary>
+    private async Task PlayAsync(Guid id)
+    {
+        if (_store.Find(id) is not { } profile) return;
+        if (OpenGame is { Editor.IsDirty: true } page && page.Id == id &&
+            !_dialogs.Confirm("Des modifications de ce jeu ne sont pas enregistrées : le lancement utilisera les réglages enregistrés. Continuer ?"))
+        {
+            return;
+        }
+        if (_sessions.Current?.Profile.Id == id)
+        {
+            _dialogs.ShowInfo($"{profile.Name} est déjà en cours.");
+            return;
+        }
+
+        try
+        {
+            var plan = await Task.Run(() => _launcher.Launch(profile));
+            ShowLaunchStatus($"Lancement de {profile.Name} — {plan.Description}…");
+        }
+        catch (Exception ex) when (ex is LaunchException or System.ComponentModel.Win32Exception or InvalidOperationException)
+        {
+            _log.Error($"Lancement de « {profile.Name} » impossible", ex);
+            _dialogs.ShowError($"Impossible de lancer {profile.Name}.\n\n{ex.Message}");
+        }
+    }
+
+    private async void ShowLaunchStatus(string text)
+    {
+        LaunchStatus = text;
+        await Task.Delay(TimeSpan.FromSeconds(12));
+        if (LaunchStatus == text) LaunchStatus = "";
+    }
+
+    /// <summary>Aperçu du lancement pour l'éditeur (lecture des manifestes Steam, quelques petits fichiers).</summary>
+    private string DescribeLaunch(GameProfile profile)
+    {
+        try
+        {
+            var plan = _launcher.Plan(profile);
+            return $"{plan.Description}\n{plan.CommandLine}";
+        }
+        catch (LaunchException ex)
+        {
+            return "⚠ " + ex.Message;
+        }
+    }
+
+    [RelayCommand]
     private void AddGame()
     {
         var exe = _dialogs.PickExecutable(null);
@@ -186,7 +245,7 @@ public sealed partial class LibraryViewModel : ObservableObject
         {
             try
             {
-                _store.Save(new GameProfile { Name = CleanName(game.Name), ExePath = exe.Path });
+                _store.Save(new GameProfile { Name = CleanName(game.Name), ExePath = exe.Path, SteamAppId = game.SteamAppId });
             }
             catch (ProfileValidationException ex)
             {
@@ -205,7 +264,7 @@ public sealed partial class LibraryViewModel : ObservableObject
     {
         if (_store.Find(id) is not { } profile) return;
 
-        var editor = new ProfileEditorViewModel(profile, Schemes, _programs, _dialogs, SaveProfileAsync, DeleteProfile, () => OpenPage(id));
+        var editor = new ProfileEditorViewModel(profile, Schemes, _programs, _dialogs, SaveProfileAsync, DeleteProfile, () => OpenPage(id), DescribeLaunch);
         var exeName = Path.GetFileName(profile.ExePath);
         var captures = _captures.GetAll()
             .Where(c => c.ProcessName.Equals(exeName, StringComparison.OrdinalIgnoreCase))
@@ -221,6 +280,7 @@ public sealed partial class LibraryViewModel : ObservableObject
                 _measures.SelectTarget(exeName);
                 _navigation.Navigate(_measures);
             },
+            play: () => PlayAsync(id),
             isPlaying: _sessions.Current?.Profile.Id == id);
         _ = LoadPageImagesAsync(OpenGame, profile);
     }
