@@ -73,6 +73,11 @@ public sealed partial class LibraryViewModel : ObservableObject
 
         store.ArtworkChanged += (_, id) => OnUi(() => _ = RefreshCoverAsync(id));
         playtime.Changed += (_, _) => OnUi(RefreshPlaytime);
+        store.DockChanged += (_, _) => OnUi(() =>
+        {
+            if (OpenGame is not null) OpenGame.IsPinned = _store.Find(OpenGame.Id)?.DockOrder is not null;
+            foreach (var card in Games) card.IsPinned = _store.Find(card.Id)?.DockOrder is not null;
+        });
         ApplySort();
         sessions.SessionStarted += (_, _) => OnUi(RefreshPlaying);
         sessions.SessionEnded += (_, _) => OnUi(RefreshPlaying);
@@ -176,12 +181,15 @@ public sealed partial class LibraryViewModel : ObservableObject
     [RelayCommand]
     private Task PlayCard(GameCardViewModel card) => PlayAsync(card.Id);
 
+    [RelayCommand]
+    private void TogglePinCard(GameCardViewModel card) => _store.SetPinned(card.Id, !card.IsPinned);
+
     /// <summary>Message temporaire (lancement en cours, erreur…), affiché en haut de la grille et de la page du jeu.</summary>
     [ObservableProperty]
     private string _launchStatus = "";
 
     /// <summary>Lance le jeu sans droits administrateur ; le profil s'appliquera par la détection habituelle.</summary>
-    private async Task PlayAsync(Guid id)
+    public async Task PlayAsync(Guid id)
     {
         if (_store.Find(id) is not { } profile) return;
         if (OpenGame is { Editor.IsDirty: true } page && page.Id == id &&
@@ -300,6 +308,13 @@ public sealed partial class LibraryViewModel : ObservableObject
 
     // ---- Page du jeu ----
 
+    /// <summary>Affiche « Mes jeux » sur la page de ce jeu (utilisé par le dock).</summary>
+    public void ShowGame(Guid id)
+    {
+        _navigation.Navigate(this);
+        if (OpenGame?.Id != id) OpenPage(id);
+    }
+
     private void OpenPage(Guid id)
     {
         if (_store.Find(id) is not { } profile) return;
@@ -321,6 +336,8 @@ public sealed partial class LibraryViewModel : ObservableObject
                 _navigation.Navigate(_measures);
             },
             play: () => PlayAsync(id),
+            togglePin: () => _store.SetPinned(id, _store.Find(id)?.DockOrder is null),
+            isPinned: profile.DockOrder.HasValue,
             isPlaying: _sessions.Current?.Profile.Id == id);
         RefreshPagePlaytime(OpenGame);
         _ = LoadPageImagesAsync(OpenGame, profile);
@@ -474,6 +491,9 @@ public sealed partial class GameCardViewModel(GameProfile profile, bool isPlayin
     public string ExeName { get; } = Path.GetFileName(profile.ExePath);
 
     public bool Enabled { get; } = profile.Enabled;
+
+    [ObservableProperty]
+    private bool _isPinned = profile.DockOrder.HasValue;
 
     /// <summary>Initiales affichées tant qu'il n'y a pas de jaquette.</summary>
     public string Initials { get; } = string.Concat(profile.Name

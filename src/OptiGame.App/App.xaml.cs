@@ -52,6 +52,7 @@ public partial class App : Application
         _services.GetRequiredService<NotificationService>().Attach(_trayIcon);
 
         StartSessions(_services);
+        _services.GetRequiredService<Dock.DockController>().Start();
 
         var services = _services;
         _quitWatcher = new QuitRequestWatcher(services.GetRequiredService<AppPaths>().Root,
@@ -180,6 +181,8 @@ public partial class App : Application
         services.AddSingleton<LibraryViewModel>();
         services.AddSingleton<SettingsViewModel>();
         services.AddSingleton<MeasuresViewModel>();
+        services.AddSingleton<DockViewModel>();
+        services.AddSingleton<Dock.DockController>();
         services.AddSingleton<MainViewModel>();
         services.AddSingleton<TrayViewModel>();
         services.AddSingleton<MainWindow>();

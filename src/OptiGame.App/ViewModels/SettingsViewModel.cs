@@ -33,6 +33,47 @@ public sealed partial class SettingsViewModel : ObservableObject
         HasIgdbSecret = current.IgdbClientSecretProtected is not null;
     }
 
+    // ---- Dock ----
+
+    public IReadOnlyList<DockEdgeOption> DockEdgeOptions { get; } =
+    [
+        new(DockEdge.Bottom, "En bas"),
+        new(DockEdge.Top, "En haut"),
+        new(DockEdge.Left, "À gauche"),
+        new(DockEdge.Right, "À droite"),
+    ];
+
+    public IReadOnlyList<DockSizeOption> DockSizeOptions { get; } =
+    [
+        new(48, "Petites"),
+        new(64, "Moyennes"),
+        new(80, "Grandes"),
+    ];
+
+    public bool DockEnabled
+    {
+        get => _settings.Get().DockEnabled;
+        set { _settings.Update(s => s.DockEnabled = value); OnPropertyChanged(); }
+    }
+
+    public bool DockAutoHide
+    {
+        get => _settings.Get().DockAutoHide;
+        set { _settings.Update(s => s.DockAutoHide = value); OnPropertyChanged(); }
+    }
+
+    public DockEdgeOption SelectedDockEdge
+    {
+        get => DockEdgeOptions.FirstOrDefault(o => o.Value == _settings.Get().DockEdge) ?? DockEdgeOptions[0];
+        set { if (value is not null) { _settings.Update(s => s.DockEdge = value.Value); OnPropertyChanged(); } }
+    }
+
+    public DockSizeOption SelectedDockSize
+    {
+        get => DockSizeOptions.FirstOrDefault(o => o.Pixels == _settings.Get().DockIconSize) ?? DockSizeOptions[1];
+        set { if (value is not null) { _settings.Update(s => s.DockIconSize = value.Pixels); OnPropertyChanged(); } }
+    }
+
     // ---- IGDB (jaquettes) ----
 
     [ObservableProperty]
@@ -174,3 +215,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         }
     }
 }
+
+public sealed record DockEdgeOption(DockEdge Value, string Label);
+
+public sealed record DockSizeOption(int Pixels, string Label);

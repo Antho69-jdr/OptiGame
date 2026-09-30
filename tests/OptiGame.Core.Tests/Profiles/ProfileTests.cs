@@ -91,6 +91,78 @@ public sealed class ProfileTests : IDisposable
         Assert.Null(store.Find(profile.Id)!.CoverImageId);
     }
 
+    private (ProfileStore Store, GameProfile A, GameProfile B, GameProfile C) ThreeGames()
+    {
+        var store = OpenStore();
+        var a = new GameProfile { Name = "A", ExePath = @"C:\Jeux\a.exe" };
+        var b = new GameProfile { Name = "B", ExePath = @"C:\Jeux\b.exe" };
+        var c = new GameProfile { Name = "C", ExePath = @"C:\Jeux\c.exe" };
+        store.Save(a);
+        store.Save(b);
+        store.Save(c);
+        return (store, a, b, c);
+    }
+
+    [Fact]
+    public void Pinned_games_are_appended_in_order_and_persisted()
+    {
+        var (store, a, b, c) = ThreeGames();
+        var events = 0;
+        store.DockChanged += (_, _) => events++;
+
+        store.SetPinned(c.Id, true);
+        store.SetPinned(a.Id, true);
+        store.SetPinned(a.Id, true); // déjà épinglé : sans effet
+
+        Assert.Equal(["C", "A"], OpenStore().GetDock().Select(p => p.Name));
+        Assert.Equal(2, events);
+        Assert.DoesNotContain(store.GetDock(), p => p.Id == b.Id);
+    }
+
+    [Fact]
+    public void Unpin_and_remove_keep_dock_order_compact()
+    {
+        var (store, a, b, c) = ThreeGames();
+        store.SetPinned(a.Id, true);
+        store.SetPinned(b.Id, true);
+        store.SetPinned(c.Id, true);
+
+        store.SetPinned(a.Id, false);
+        store.Remove(b.Id);
+
+        var dock = OpenStore().GetDock();
+        Assert.Equal("C", Assert.Single(dock).Name);
+        Assert.Equal(0, dock[0].DockOrder);
+    }
+
+    [Fact]
+    public void Move_in_dock_reorders_and_clamps()
+    {
+        var (store, a, b, c) = ThreeGames();
+        store.SetPinned(a.Id, true);
+        store.SetPinned(b.Id, true);
+        store.SetPinned(c.Id, true);
+
+        store.MoveInDock(c.Id, 0);
+        Assert.Equal(["C", "A", "B"], store.GetDock().Select(p => p.Name));
+
+        store.MoveInDock(c.Id, 99);
+        Assert.Equal(["A", "B", "C"], OpenStore().GetDock().Select(p => p.Name));
+    }
+
+    [Fact]
+    public void Saving_from_the_editor_keeps_the_dock_position()
+    {
+        var (store, a, _, _) = ThreeGames();
+        var editorCopy = store.Find(a.Id)!;
+        store.SetPinned(a.Id, true);
+
+        editorCopy.Name = "A modifié";
+        store.Save(editorCopy);
+
+        Assert.Equal(0, store.Find(a.Id)!.DockOrder);
+    }
+
     [Fact]
     public void Exe_matching_ignores_case_and_dot_segments()
     {

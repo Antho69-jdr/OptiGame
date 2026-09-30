@@ -82,6 +82,23 @@
                         </Grid>
 
                         <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Bottom">
+                            <Button Margin="0,0,8,0" Style="{StaticResource Button.Secondary}" Command="{Binding TogglePinCommand}">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Style="{StaticResource Text.Icon}" FontSize="14" Text="&#xE718;" />
+                                    <TextBlock Margin="8,0,0,0">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Text" Value="Épingler au dock" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsPinned}" Value="True">
+                                                        <Setter Property="Text" Value="Retirer du dock" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                </StackPanel>
+                            </Button>
                             <Button Margin="0,0,8,0" Style="{StaticResource Button.Secondary}" Command="{Binding ChangeCoverCommand}">
                                 <StackPanel Orientation="Horizontal">
                                     <TextBlock Style="{StaticResource Text.Icon}" FontSize="14" Text="&#xEB9F;" />

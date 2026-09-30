@@ -90,6 +90,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<Core.Playtime.PlaytimeTracker>();
         services.AddSingleton<GameMonitor>();
         services.AddSingleton<GameLauncher>();
+        services.AddSingleton<Display.FullscreenWatcher>();
         services.AddSingleton<Startup.AutoStartService>();
 
         // Contrôles du diagnostic, dans l'ordre d'affichage.

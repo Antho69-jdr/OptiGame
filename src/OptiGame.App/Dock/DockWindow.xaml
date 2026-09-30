@@ -1,0 +1,111 @@
+﻿<Window x:Class="OptiGame.App.Dock.DockWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="clr-namespace:OptiGame.App.ViewModels"
+        xmlns:conv="clr-namespace:OptiGame.App.Converters"
+        Title="OptiGame — Dock"
+        WindowStyle="None" AllowsTransparency="True" Background="Transparent"
+        Topmost="True" ShowInTaskbar="False" ShowActivated="False" ResizeMode="NoResize"
+        Foreground="{StaticResource Brush.Text}">
+    <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
+        <conv:PathToImageConverter x:Key="PathToImage" />
+
+        <!-- Info-bulle sombre au nom du jeu -->
+        <Style TargetType="ToolTip">
+            <Setter Property="Background" Value="#F0181C23" />
+            <Setter Property="Foreground" Value="{StaticResource Brush.Text}" />
+            <Setter Property="BorderBrush" Value="{StaticResource Brush.Border}" />
+            <Setter Property="Padding" Value="10,5" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="HasDropShadow" Value="False" />
+        </Style>
+    </Window.Resources>
+
+    <Grid x:Name="Root">
+        <!-- Bande de déclenchement du masquage automatique : invisible (alpha 1/255) mais réceptive à la souris.
+             Les zones entièrement transparentes (alpha 0) laissent passer les clics vers les fenêtres en dessous. -->
+        <Border x:Name="Trigger" Background="#01000000" MouseEnter="OnTriggerEnter" />
+
+        <Grid x:Name="Shelf" MouseEnter="OnShelfEnter" MouseLeave="OnShelfLeave" MouseMove="OnShelfMouseMove">
+            <Grid.RenderTransform>
+                <TranslateTransform x:Name="Slide" />
+            </Grid.RenderTransform>
+
+            <!-- Plateau : suit la taille des icônes au repos, les icônes agrandies en débordent -->
+            <Border x:Name="Plate" CornerRadius="20" Background="#E6121620" BorderBrush="#40FFFFFF" BorderThickness="1" />
+
+            <StackPanel x:Name="Row" Margin="5">
+                <ItemsControl x:Name="ItemsHost" ItemsSource="{Binding Items}" AllowDrop="True" Drop="OnDrop" DragOver="OnDragOver"
+                              Focusable="False">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <StackPanel Orientation="{Binding Orientation, RelativeSource={RelativeSource AncestorType=Window}}" />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate DataType="{x:Type vm:DockItemViewModel}">
+                            <Grid x:Name="Cell" Margin="5" Background="Transparent" Cursor="Hand" ToolTip="{Binding Name}"
+                                  ToolTipService.InitialShowDelay="150" ToolTipService.BetweenShowDelay="0"
+                                  ToolTipService.Placement="{Binding TipPlacement, RelativeSource={RelativeSource AncestorType=Window}}"
+                                  PreviewMouseLeftButtonDown="OnItemMouseDown" PreviewMouseMove="OnItemMouseMove"
+                                  MouseLeftButtonUp="OnItemMouseUp" MouseRightButtonUp="OnItemRightClick"
+                                  AutomationProperties.Name="{Binding Name}">
+                                <Grid.LayoutTransform>
+                                    <ScaleTransform ScaleX="1" ScaleY="1" />
+                                </Grid.LayoutTransform>
+                                <Grid Width="{Binding IconSize, RelativeSource={RelativeSource AncestorType=Window}}"
+                                      Height="{Binding IconSize, RelativeSource={RelativeSource AncestorType=Window}}">
+                                    <Border CornerRadius="14">
+                                        <Border.Background>
+                                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                                <GradientStop Color="#2A3646" Offset="0" />
+                                                <GradientStop Color="#171C25" Offset="1" />
+                                            </LinearGradientBrush>
+                                        </Border.Background>
+                                        <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="18" FontWeight="SemiBold"
+                                                   Foreground="{StaticResource Brush.TextSecondary}" Text="{Binding Initials}" />
+                                    </Border>
+                                    <Border CornerRadius="14" Visibility="{Binding HasCover, Converter={StaticResource BoolToVisibility}}">
+                                        <Border.Background>
+                                            <ImageBrush Stretch="UniformToFill" ImageSource="{Binding CoverPath, Converter={StaticResource PathToImage}, ConverterParameter=200}" />
+                                        </Border.Background>
+                                    </Border>
+                                    <Border CornerRadius="14" BorderThickness="1" BorderBrush="#33FFFFFF" />
+                                </Grid>
+                                <!-- Jeu en cours -->
+                                <Ellipse Width="6" Height="6" Margin="0,0,0,-9" HorizontalAlignment="Center" VerticalAlignment="Bottom"
+                                         Fill="{StaticResource Brush.Accent}" Visibility="{Binding IsPlaying, Converter={StaticResource BoolToVisibility}}" />
+                            </Grid>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <!-- Dock vide -->
+                <Border x:Name="EmptyHint" Margin="6,0" Padding="12,0" VerticalAlignment="Center" HorizontalAlignment="Center"
+                        Visibility="{Binding IsEmpty, Converter={StaticResource BoolToVisibility}}">
+                    <TextBlock Style="{StaticResource Text.Caption}" FontSize="13" TextWrapping="NoWrap"
+                               Text="Épinglez des jeux depuis « Mes jeux »" />
+                </Border>
+
+                <Border x:Name="Divider" Background="#40FFFFFF" />
+
+                <!-- OptiGame -->
+                <Grid x:Name="OgCell" Margin="5" Background="Transparent" Cursor="Hand" ToolTip="OptiGame"
+                      ToolTipService.InitialShowDelay="150"
+                      ToolTipService.Placement="{Binding TipPlacement, RelativeSource={RelativeSource AncestorType=Window}}"
+                      MouseLeftButtonUp="OnOptiGameClick" AutomationProperties.Name="Ouvrir OptiGame">
+                    <Grid.LayoutTransform>
+                        <ScaleTransform ScaleX="1" ScaleY="1" />
+                    </Grid.LayoutTransform>
+                    <Border Width="{Binding IconSize, RelativeSource={RelativeSource AncestorType=Window}}"
+                            Height="{Binding IconSize, RelativeSource={RelativeSource AncestorType=Window}}"
+                            CornerRadius="14" Background="{StaticResource Brush.Accent}">
+                        <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="Bold" FontSize="18"
+                                   Foreground="{StaticResource Brush.OnAccent}" Text="OG" />
+                    </Border>
+                </Grid>
+            </StackPanel>
+        </Grid>
+    </Grid>
+</Window>

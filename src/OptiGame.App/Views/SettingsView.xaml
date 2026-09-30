@@ -27,6 +27,30 @@
                 </StackPanel>
             </Border>
 
+            <!-- Dock -->
+            <Border Margin="0,16,0,0" Style="{StaticResource Card}">
+                <StackPanel>
+                    <TextBlock Style="{StaticResource Text.SectionTitle}" Text="Dock" />
+                    <CheckBox Margin="0,14,0,0" IsChecked="{Binding DockEnabled}" Content="Afficher le dock des jeux épinglés" />
+                    <TextBlock Margin="28,6,0,0" Style="{StaticResource Text.Caption}"
+                               Text="Épinglez des jeux depuis « Mes jeux » (page du jeu, ou clic droit sur une jaquette). Clic pour jouer, clic droit pour les options, glisser pour réordonner. Le dock se masque pendant vos parties et quand une application est en plein écran." />
+                    <WrapPanel Margin="28,6,0,0">
+                        <StackPanel Margin="0,0,16,0">
+                            <TextBlock Style="{StaticResource Text.Label}" Text="Position" />
+                            <ComboBox Width="160" ItemsSource="{Binding DockEdgeOptions}" SelectedItem="{Binding SelectedDockEdge}" DisplayMemberPath="Label" />
+                        </StackPanel>
+                        <StackPanel Margin="0,0,16,0">
+                            <TextBlock Style="{StaticResource Text.Label}" Text="Taille des icônes" />
+                            <ComboBox Width="160" ItemsSource="{Binding DockSizeOptions}" SelectedItem="{Binding SelectedDockSize}" DisplayMemberPath="Label" />
+                        </StackPanel>
+                    </WrapPanel>
+                    <CheckBox Margin="28,14,0,0" IsChecked="{Binding DockAutoHide}"
+                              Content="Masquer automatiquement (approchez la souris du bord de l'écran pour l'afficher)" />
+                    <TextBlock Margin="28,6,0,0" Style="{StaticResource Text.Caption}"
+                               Text="Limite : OptiGame fonctionnant en administrateur, Windows interdit d'y glisser un fichier depuis l'Explorateur ; l'ajout de jeux se fait depuis « Mes jeux »." />
+                </StackPanel>
+            </Border>
+
             <!-- Jaquettes IGDB -->
             <Border Margin="0,16,0,0" Style="{StaticResource Card}">
                 <StackPanel>

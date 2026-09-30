@@ -14,8 +14,16 @@ public sealed partial class GamePageViewModel(
     Func<Task> changeCover,
     Action measure,
     Func<Task> play,
+    Action togglePin,
+    bool isPinned,
     bool isPlaying) : ObservableObject
 {
+    [ObservableProperty]
+    private bool _isPinned = isPinned;
+
+    [RelayCommand]
+    private void TogglePin() => togglePin();
+
     public Guid Id { get; } = profile.Id;
 
     public string Name { get; } = profile.Name;

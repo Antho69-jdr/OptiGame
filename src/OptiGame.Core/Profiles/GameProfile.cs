@@ -48,6 +48,9 @@ public sealed class GameProfile
     /// <summary>Arguments de lancement (transmis au jeu, au lanceur, ou après l'appid pour Steam).</summary>
     public string? LaunchArguments { get; set; }
 
+    /// <summary>Position dans le dock flottant ; null = non épinglé.</summary>
+    public int? DockOrder { get; set; }
+
     /// <summary>Jeu IGDB associé (jaquette et bannière) ; null = pas encore cherché ou non trouvé.</summary>
     public long? IgdbGameId { get; set; }
 
@@ -68,6 +71,7 @@ public sealed class GameProfile
         SteamAppId = SteamAppId,
         LauncherPath = LauncherPath,
         LaunchArguments = LaunchArguments,
+        DockOrder = DockOrder,
         IgdbGameId = IgdbGameId,
         CoverImageId = CoverImageId,
         HeroImageId = HeroImageId,

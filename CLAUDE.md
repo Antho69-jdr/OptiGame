@@ -57,6 +57,12 @@ src/OptiGame.App/        WPF : composition DI, tray, vues/viewmodels, dialogue d
   Navigation             barre latérale (MainViewModel.NavItems) ; page = ViewModel, vue choisie par DataTemplate
                          implicite (jamais ContentTemplate explicite : il s'applique même quand le contenu est null)
   Mes jeux               LibraryViewModel (grille de jaquettes) → GamePageViewModel (bannière + éditeur du profil)
+  Dock/                  DockWindow (transparente, Topmost, WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW, zones alpha 0 =
+                         clics traversants) + DockController (crée/ferme selon settings, masque pendant une session
+                         ou une appli plein écran via Platform/Display/FullscreenWatcher = EVENT_SYSTEM_FOREGROUND +
+                         SHQueryUserNotificationState). Animations uniquement pendant les transitions. Ordre du dock =
+                         GameProfile.DockOrder, modifié seulement par ProfileStore.SetPinned / MoveInDock.
+                         Capture de test : PrintWindow sur la fenêtre « OptiGame — Dock » (zones transparentes = noir).
 tests/OptiGame.Core.Tests/      xUnit + fakes en mémoire (journal, logique des contrôles)
 tests/OptiGame.Platform.Tests/  intégration sur le vrai registre, UNIQUEMENT sous HKCU\Software\OptiGame.Tests
 tools/OptiGame.DiagDump/        diagnostic en console (lecture seule), pour vérifier les lectures système
