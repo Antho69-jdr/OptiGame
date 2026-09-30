@@ -36,7 +36,8 @@
                     <TextBlock Margin="0,8,0,0" Style="{StaticResource Text.Secondary}" LineHeight="22">
                         <Run Text="1. Ouvrez la console Twitch et connectez-vous (la double authentification doit être activée sur le compte)." /><LineBreak />
                         <Run Text="2. « Register Your Application » : un nom (ex. OptiGame), l'URL de redirection http://localhost, catégorie Application Integration, type Confidential." /><LineBreak />
-                        <Run Text="3. Copiez le Client ID, puis générez un Client Secret (« New Secret ») et collez-les ci-dessous." />
+                        <Run Text="3. Dans la liste des applications, cliquez « Manage » : copiez le Client ID, puis « New Secret » juste en dessous, et collez-les ci-dessous." /><LineBreak />
+                        <Run Text="Pas de bouton « New Secret » ? L'application est de type « Public » : passez-la en « Confidential », ou recréez-la avec ce type." />
                     </TextBlock>
                     <Button Margin="0,10,0,0" HorizontalAlignment="Left" Style="{StaticResource Button.Secondary}" Command="{Binding OpenTwitchConsoleCommand}">
                         <StackPanel Orientation="Horizontal">
