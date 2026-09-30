@@ -20,7 +20,7 @@
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
-                        <StackPanel Width="176" Background="Transparent">
+                        <StackPanel Width="198" Background="Transparent">
                             <Grid x:Name="Cover" Height="264" RenderTransformOrigin="0.5,0.5">
                                 <Grid.RenderTransform>
                                     <ScaleTransform x:Name="Scale" ScaleX="1" ScaleY="1" />
@@ -38,7 +38,7 @@
                                 </Border>
                                 <Border CornerRadius="10" Visibility="{Binding HasCover, Converter={StaticResource BoolToVisibility}}">
                                     <Border.Background>
-                                        <ImageBrush Stretch="UniformToFill" ImageSource="{Binding CoverPath, Converter={StaticResource PathToImage}, ConverterParameter=352}" />
+                                        <ImageBrush Stretch="UniformToFill" ImageSource="{Binding CoverPath, Converter={StaticResource PathToImage}, ConverterParameter=396}" />
                                     </Border.Background>
                                 </Border>
                                 <Border x:Name="Outline" CornerRadius="10" BorderThickness="2" BorderBrush="Transparent" />

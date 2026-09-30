@@ -9,8 +9,8 @@ public static class DockLayout
     public const int MaxIconSize = 128;
     public const double MinOpacity = 0;
 
-    /// <summary>Rapport hauteur / largeur d'une jaquette IGDB (264 × 374 ≈ 2:3).</summary>
-    public const double CoverAspect = 1.5;
+    /// <summary>Rapport hauteur / largeur d'une jaquette IGDB : 264 × 352 (3:4), mesuré sur les fichiers en cache.</summary>
+    public const double CoverAspect = 4.0 / 3.0;
 
     public static (double Width, double Height) IconSize(int size, DockIconShape shape)
     {

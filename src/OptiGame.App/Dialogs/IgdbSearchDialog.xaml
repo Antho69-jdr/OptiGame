@@ -31,8 +31,8 @@
             </ListBox.ItemsPanel>
             <ListBox.ItemTemplate>
                 <DataTemplate>
-                    <StackPanel Width="140" Margin="4">
-                        <Border Height="198" CornerRadius="8" Background="{StaticResource Brush.Control}">
+                    <StackPanel Width="144" Margin="4">
+                        <Border Height="192" CornerRadius="8" Background="{StaticResource Brush.Control}">
                             <Border.Style>
                                 <Style TargetType="Border" />
                             </Border.Style>

@@ -15,7 +15,7 @@ public enum DockIconShape
     /// <summary>Jaquette recadrée au carré.</summary>
     Square,
 
-    /// <summary>Jaquette entière, au format portrait 2:3 des jaquettes IGDB.</summary>
+    /// <summary>Jaquette entière, au format portrait 3:4 des jaquettes IGDB.</summary>
     Cover,
 }
 
@@ -44,7 +44,7 @@ public sealed class AppSettings
     /// <summary>Largeur des icônes au repos, en pixels (32 à 128).</summary>
     public int DockIconSize { get; set; } = 64;
 
-    /// <summary>Carré (jaquette recadrée) ou format d'origine de la jaquette (portrait 2:3).</summary>
+    /// <summary>Carré (jaquette recadrée) ou format d'origine de la jaquette (portrait 3:4).</summary>
     public DockIconShape DockIconShape { get; set; } = DockIconShape.Square;
 
     /// <summary>Opacité du fond du dock, de 0,2 à 1 (les icônes restent opaques).</summary>

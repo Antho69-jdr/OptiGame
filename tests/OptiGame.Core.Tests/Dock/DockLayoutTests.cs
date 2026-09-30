@@ -7,9 +7,9 @@ public sealed class DockLayoutTests
 {
     [Theory]
     [InlineData(64, DockIconShape.Square, 64, 64)]
-    [InlineData(64, DockIconShape.Cover, 64, 96)]
+    [InlineData(64, DockIconShape.Cover, 64, 85)]
     [InlineData(10, DockIconShape.Square, 32, 32)]
-    [InlineData(500, DockIconShape.Cover, 128, 192)]
+    [InlineData(500, DockIconShape.Cover, 128, 171)]
     public void Icon_size_follows_shape_and_is_clamped(int size, DockIconShape shape, double width, double height)
     {
         Assert.Equal((width, height), DockLayout.IconSize(size, shape));
