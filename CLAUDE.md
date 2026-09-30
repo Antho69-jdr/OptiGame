@@ -83,6 +83,10 @@ Sessions de jeu (Platform/Processes) :
   Relance via le jeton de l'Explorateur (`UnelevatedLauncher`) : jamais de relance élevée. Une relance ratée est
   signalée puis retirée du journal (`ChangeJournal.Discard`) ; les réglages système ratés restent en attente.
 - Démarrage auto : tâche planifiée importée en XML (`Startup/AutoStartService`), argument `--minimized`.
+- Lancement (« Jouer ») : `Core/Launching/LaunchPlanner` (Automatique / Steam / Exécutable / Lanceur) +
+  `Platform/Processes/GameLauncher`, toujours via `UnelevatedLauncher`. Steam = `steam.exe -applaunch <appid>`
+  (SteamExe dans HKCU\Software\Valve\Steam), appid retrouvé dans les manifestes si absent du profil.
+  `DiagDump -- --launch-plan` montre ce qui serait lancé pour chaque profil, sans rien lancer.
 
 Règle de dépendance : `App → Platform → Core`. La logique de décision (statut d'un check, restauration)
 vit dans Core ; Platform ne fait que lire/écrire le système.
