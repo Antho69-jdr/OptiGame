@@ -20,4 +20,9 @@
     <Using Include="Xunit" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- Vraies réponses de services externes, gardées telles quelles pour valider les formats -->
+    <None Include="**\Samples\**" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>

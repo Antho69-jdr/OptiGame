@@ -80,6 +80,18 @@
 
                                     <ItemsControl Margin="22,0,0,0" ItemsSource="{Binding Fixes}" ItemTemplate="{StaticResource FixButtonTemplate}" />
 
+                                    <!-- Lien vers une autre page (n'applique rien) -->
+                                    <Button Margin="22,12,0,0" HorizontalAlignment="Left" Style="{StaticResource Button.Secondary}"
+                                            Command="{Binding DataContext.OpenLinkCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                            CommandParameter="{Binding LinkTarget}"
+                                            AutomationProperties.Name="{Binding LinkLabel}"
+                                            Visibility="{Binding HasLink, Converter={StaticResource BoolToVisibility}}">
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock Style="{StaticResource Text.Icon}" FontSize="13" Text="&#xE896;" />
+                                            <TextBlock Margin="8,0,0,0" Text="{Binding LinkLabel}" />
+                                        </StackPanel>
+                                    </Button>
+
                                     <Expander Margin="22,10,0,0" Header="Détails et explication" Foreground="{StaticResource Brush.TextSecondary}">
                                         <StackPanel Margin="0,8,0,0">
                                             <ItemsControl ItemsSource="{Binding Details}">

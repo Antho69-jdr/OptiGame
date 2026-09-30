@@ -124,6 +124,15 @@ vit dans Core ; Platform ne fait que lire/écrire le système.
 - CSV réel de PresentMon 2.6.0 (`--v2_metrics`) : colonnes `FrameTime`, `CPUBusy`, `GPUTime`, `DisplayedTime`… SANS
   préfixe `Ms`, contrairement à sa documentation. Toujours valider un format sur un vrai fichier, et ne jamais
   supprimer un fichier qu'on n'a pas réussi à lire.
+- Pilotes (page « Pilotes », `Core/Drivers` + `Platform/Drivers`, lecture seule ; `DiagDump -- --drivers`) :
+  - NVIDIA, services NON documentés vérifiés le 2026-09-30 (vraies réponses dans `tests/…/Drivers/Samples`) :
+    liste des produits `www.nvidia.com/Download/API/lookupValueSearch.aspx?TypeID=3` (XML, nom EXACT : « GeForce RTX
+    3070 » ≠ « … Ti » ≠ « … Laptop GPU » ; RTX 3070 = psid 120, pfid 933) puis `gfwsl.geforce.com/…/AjaxDriverService.php
+    ?func=DriverManualLookup` (JSON servi en text/html ; languageCode=1033 → date « Tue Sep 22, 2026 » ; osID 57 = Windows 11).
+  - Version Windows → NVIDIA : 5 derniers chiffres des deux derniers nombres (32.0.15.9186 → 591.86).
+  - Téléchargement autorisé seulement depuis `https://*.download.nvidia.com`.
+  - Windows Update : COM `Microsoft.Update.Session`, « IsInstalled=0 and Type='Driver' and IsHidden=0 », ≈ 25 s, fonctionne
+    sous AtlasOS même sans droits admin. Le pilote NVIDIA de Windows Update est masqué si celui de NVIDIA est plus récent.
 - Temps de jeu Steam : `<SteamPath>\userdata\<accountid>\config\localconfig.vdf`, UserLocalConfigStore > Software > Valve >
   Steam > apps > <appid> > `Playtime` (MINUTES) + `LastPlayed` (secondes Unix), réécrit par Steam à la fin d'une partie.
   Compte : `HKCU\Software\Valve\Steam\ActiveProcess\ActiveUser` (0 si Steam est fermé), sinon `config\loginusers.vdf` :

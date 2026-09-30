@@ -9,6 +9,7 @@ public sealed partial class MainViewModel : ObservableObject
 {
     public MainViewModel(
         DiagnosticViewModel diagnostic,
+        DriversViewModel drivers,
         LibraryViewModel library,
         MeasuresViewModel measures,
         SessionViewModel session,
@@ -21,11 +22,12 @@ public sealed partial class MainViewModel : ObservableObject
         Session = session;
         Settings = settings;
 
-        // Glyphes Segoe Fluent Icons : manette, diagnostic, courbe, engrenage.
+        // Glyphes Segoe Fluent Icons : manette, diagnostic, téléchargement (pilotes), courbe, engrenage.
         NavItems =
         [
             new NavItem("Mes jeux", "", library, this),
             new NavItem("Diagnostic", "", diagnostic, this),
+            new NavItem("Pilotes", "", drivers, this),
             new NavItem("Mesures", "", measures, this),
             new NavItem("Paramètres", "", settings, this),
         ];

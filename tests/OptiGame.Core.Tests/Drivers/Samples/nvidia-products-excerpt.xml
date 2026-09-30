@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<LookupValueSearch>
+<LookupValues>
+<LookupValue ParentID="1">
+<Name>GeForce 8800 Ultra</Name>
+<Value>8</Value>
+</LookupValue>
+<LookupValue ParentID="120">
+<Name>GeForce RTX 3080 Ti</Name>
+<Value>964</Value>
+</LookupValue>
+<LookupValue ParentID="120">
+<Name>GeForce RTX 3080</Name>
+<Value>929</Value>
+</LookupValue>
+<LookupValue ParentID="120">
+<Name>GeForce RTX 3070 Ti</Name>
+<Value>965</Value>
+</LookupValue>
+<LookupValue ParentID="120">
+<Name>GeForce RTX 3070</Name>
+<Value>933</Value>
+</LookupValue>
+<LookupValue ParentID="120">
+<Name>GeForce RTX 3060 Ti</Name>
+<Value>934</Value>
+</LookupValue>
+<LookupValue ParentID="120">
+<Name>GeForce RTX 3060</Name>
+<Value>942</Value>
+</LookupValue>
+<LookupValue ParentID="123">
+<Name>GeForce RTX 3080 Ti Laptop GPU</Name>
+<Value>976</Value>
+</LookupValue>
+<LookupValue ParentID="123">
+<Name>GeForce RTX 3080 Laptop GPU</Name>
+<Value>938</Value>
+</LookupValue>
+<LookupValue ParentID="123">
+<Name>GeForce RTX 3070 Ti Laptop GPU</Name>
+<Value>979</Value>
+</LookupValue>
+<LookupValue ParentID="123">
+<Name>GeForce RTX 3070 Laptop GPU</Name>
+<Value>939</Value>
+</LookupValue>
+<LookupValue ParentID="123">
+<Name>GeForce RTX 3060 Laptop GPU</Name>
+<Value>940</Value>
+</LookupValue>
+</LookupValues>
+</LookupValueSearch>

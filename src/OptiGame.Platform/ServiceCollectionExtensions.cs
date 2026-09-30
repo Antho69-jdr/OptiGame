@@ -91,6 +91,8 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<GameMonitor>();
         services.AddSingleton<GameLauncher>();
         services.AddSingleton<Library.SteamPlaytimeReader>();
+        services.AddSingleton<Drivers.NvidiaDriverClient>();
+        services.AddSingleton<Drivers.WindowsUpdateDriverSearch>();
         services.AddSingleton<Display.FullscreenWatcher>();
         services.AddSingleton<Startup.AutoStartService>();
 

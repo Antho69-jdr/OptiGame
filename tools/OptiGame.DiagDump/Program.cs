@@ -59,6 +59,26 @@ if (args.Length == 1 && args[0] == "--launch-plan")
     return;
 }
 
+// --drivers : pilote graphique (service de NVIDIA) et pilotes proposés par Windows Update. Lecture seule : rien n'est installé.
+if (args.Length == 1 && args[0] == "--drivers")
+{
+    string? nvidiaLatest = null;
+    foreach (var gpu in services.GetRequiredService<OptiGame.Core.Abstractions.IGpuInfoProvider>().GetAdapters().Where(g => g.IsPhysical))
+    {
+        var status = await services.GetRequiredService<OptiGame.Platform.Drivers.NvidiaDriverClient>().CheckAsync(gpu);
+        nvidiaLatest ??= status.Latest?.Version;
+        Console.WriteLine($"{status.GpuName} [{status.Vendor}] : {status.State} — {status.Message}");
+        if (status.Latest is { } l) Console.WriteLine($"      {l.Name} {l.Version} du {l.ReleaseDate:dd/MM/yyyy}, {l.SizeText}\n      {l.DownloadUrl}");
+    }
+    Console.WriteLine("Recherche Windows Update (≈ 30 s)…");
+    foreach (var update in services.GetRequiredService<OptiGame.Platform.Drivers.WindowsUpdateDriverSearch>().Search())
+    {
+        var hidden = OptiGame.Core.Drivers.DriverRules.IsSupersededByNvidia(update, nvidiaLatest) ? "  [masqué : NVIDIA propose plus récent]" : "";
+        Console.WriteLine($"  {update.Title} | {update.DriverClass} | {update.DriverDate:dd/MM/yyyy} | redémarrage possible : {update.MayRequireReboot} | {update.SizeBytes / 1048576.0:N1} Mo{hidden}");
+    }
+    return;
+}
+
 // --steam-playtime : temps de jeu Steam de chaque profil (lecture seule de localconfig.vdf et des vrais profils).
 if (args.Length == 1 && args[0] == "--steam-playtime")
 {

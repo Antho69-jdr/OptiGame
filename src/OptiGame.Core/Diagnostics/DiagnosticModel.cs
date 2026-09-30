@@ -37,7 +37,18 @@ public sealed record DiagnosticResult
     public bool IsEstimate { get; init; }
 
     public IReadOnlyList<DiagnosticFix> Fixes { get; init; } = [];
+
+    /// <summary>Page d'OptiGame qui permet d'aller plus loin (ex. rechercher les mises à jour de pilotes).</summary>
+    public DiagnosticLink? Link { get; init; }
 }
+
+public enum DiagnosticLinkTarget
+{
+    Drivers,
+}
+
+/// <summary>Lien vers une autre page d'OptiGame ; n'applique rien.</summary>
+public sealed record DiagnosticLink(string Label, DiagnosticLinkTarget Target);
 
 public interface IDiagnosticCheck
 {

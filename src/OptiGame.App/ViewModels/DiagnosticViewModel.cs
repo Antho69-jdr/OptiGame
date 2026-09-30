@@ -13,8 +13,22 @@ public sealed partial class DiagnosticViewModel(
     DiagnosticRunner runner,
     [FromKeyedServices(JournalKeys.Fixes)] ChangeJournal fixes,
     IDialogService dialogs,
-    TimeProvider time) : ObservableObject
+    TimeProvider time,
+    NavigationService navigation,
+    DriversViewModel drivers) : ObservableObject
 {
+    /// <summary>Lien d'un contrôle vers une autre page (ex. « Rechercher les mises à jour de pilotes »).</summary>
+    [RelayCommand]
+    private void OpenLink(DiagnosticLinkTarget target)
+    {
+        switch (target)
+        {
+            case DiagnosticLinkTarget.Drivers:
+                navigation.Navigate(drivers);
+                break;
+        }
+    }
+
     public ObservableCollection<DiagnosticItemViewModel> Items { get; } = [];
 
     /// <summary>Corrections appliquées par OptiGame et encore actives (annulables).</summary>
@@ -168,6 +182,12 @@ public sealed class DiagnosticItemViewModel(DiagnosticResult result, IReadOnlyLi
     public IReadOnlyList<FixViewModel> AdvancedFixes { get; } = fixes.Where(f => f.IsAdvanced).ToList();
 
     public bool HasAdvancedFixes => AdvancedFixes.Count > 0;
+
+    public bool HasLink => Result.Link is not null;
+
+    public string LinkLabel => Result.Link?.Label ?? "";
+
+    public DiagnosticLinkTarget LinkTarget => Result.Link?.Target ?? default;
 }
 
 public sealed partial class FixViewModel(DiagnosticFix fix, Func<DiagnosticFix, Task> apply)

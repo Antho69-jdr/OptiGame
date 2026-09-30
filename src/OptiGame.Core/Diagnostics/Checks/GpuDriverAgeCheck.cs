@@ -50,9 +50,11 @@ public sealed class GpuDriverAgeCheck(IGpuInfoProvider gpus, TimeProvider time) 
         Status = status,
         Summary = summary,
         Details = details,
+        Link = new DiagnosticLink("Rechercher les mises à jour de pilotes", DiagnosticLinkTarget.Drivers),
         Explanation =
             "Les pilotes récents apportent souvent des optimisations pour les jeux sortis récemment et des corrections " +
-            "de bugs. Mettez-le à jour depuis l'outil du fabricant (NVIDIA App, AMD Software: Adrenalin, Intel Arc " +
-            "Control) ou son site. Un pilote plus ancien n'est pas un problème en soi si tout fonctionne bien.",
+            "de bugs. La page « Pilotes » compare votre pilote au dernier publié par NVIDIA et liste ceux proposés par " +
+            "Windows Update ; pour AMD et Intel, utilisez l'outil du fabricant (AMD Software: Adrenalin, Intel Graphics " +
+            "Software). Un pilote plus ancien n'est pas un problème en soi si tout fonctionne bien.",
     };
 }
