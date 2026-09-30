@@ -66,7 +66,7 @@ données ; `DiagDump -- --import-capture <csv> <libellé> <date ISO>` y ajoute u
 IGDB (jaquettes) : identifiants Twitch saisis dans Paramètres, secret chiffré DPAPI (`Platform/Artwork/SecretProtector`),
 jeton gardé en mémoire, 4 requêtes/s max, images en cache dans `covers\`. Seul le nom du jeu est envoyé. Les jaquettes
 d'un profil ne changent que par `ProfileStore.SetArtwork` (`Save` conserve celles déjà enregistrées). Format de réponse
-vérifié sur la documentation uniquement tant qu'un vrai appel n'a pas été fait.
+confirmé sur de vrais appels le 2026-09-30 (5 jeux trouvés, jaquettes et bannières).
 
 PresentMon : version console téléchargée depuis github.com/GameTechDev/PresentMon (v2.6.0, signée Intel) dans
 `%LocalAppData%\OptiGame\tools`, détectée automatiquement ; capture = ETW, droits admin requis.
