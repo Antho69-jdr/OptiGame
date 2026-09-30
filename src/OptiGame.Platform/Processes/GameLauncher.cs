@@ -18,6 +18,26 @@ public sealed class GameLauncher(FileLog log)
         return LaunchPlanner.Plan(profile, exe => GameLibraryScanner.FindSteamAppId(exe, apps.Value), GameLibraryScanner.SteamExe());
     }
 
+    /// <summary>Appid Steam du jeu (profil, sinon manifestes Steam), ou null si ce n'est pas un jeu Steam. Hors du thread UI.</summary>
+    public string? SteamAppId(GameProfile profile) =>
+        profile.SteamAppId is { } id && LaunchPlanner.IsValidSteamAppId(id)
+            ? id
+            : GameLibraryScanner.FindSteamAppId(profile.ExePath, GameLibraryScanner.SteamApps());
+
+    /// <summary>Page du jeu dans le magasin : client Steam (sans droits administrateur), sinon navigateur.</summary>
+    public void OpenStorePage(string appId)
+    {
+        if (GameLibraryScanner.SteamExe() is { } steam)
+        {
+            UnelevatedLauncher.Launch(steam, SteamStorePage.ClientCommandLine(steam, appId));
+            log.Info($"Page Steam ouverte dans le client : {SteamStorePage.ClientUrl(appId)}");
+            return;
+        }
+        // explorer.exe transmet l'adresse au navigateur de la session, sans droits administrateur.
+        System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("explorer.exe", SteamStorePage.WebUrl(appId)) { UseShellExecute = true });
+        log.Info($"Steam absent : page ouverte dans le navigateur ({SteamStorePage.WebUrl(appId)})");
+    }
+
     public LaunchPlan Launch(GameProfile profile)
     {
         var plan = Plan(profile);

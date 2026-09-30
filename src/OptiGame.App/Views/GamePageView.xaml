@@ -81,55 +81,6 @@
                             </Border>
                         </Grid>
 
-                        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Bottom">
-                            <Button Margin="0,0,8,0" Style="{StaticResource Button.Secondary}" Command="{Binding TogglePinCommand}">
-                                <StackPanel Orientation="Horizontal">
-                                    <TextBlock Style="{StaticResource Text.Icon}" FontSize="14" Text="&#xE718;" />
-                                    <TextBlock Margin="8,0,0,0">
-                                        <TextBlock.Style>
-                                            <Style TargetType="TextBlock">
-                                                <Setter Property="Text" Value="Épingler au dock" />
-                                                <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding IsPinned}" Value="True">
-                                                        <Setter Property="Text" Value="Retirer du dock" />
-                                                    </DataTrigger>
-                                                </Style.Triggers>
-                                            </Style>
-                                        </TextBlock.Style>
-                                    </TextBlock>
-                                </StackPanel>
-                            </Button>
-                            <Button Margin="0,0,8,0" Style="{StaticResource Button.Secondary}" Command="{Binding ChangeCoverCommand}">
-                                <StackPanel Orientation="Horizontal">
-                                    <TextBlock Style="{StaticResource Text.Icon}" FontSize="14" Text="&#xEB9F;" />
-                                    <TextBlock Margin="8,0,0,0" Text="Changer la jaquette" />
-                                </StackPanel>
-                            </Button>
-                            <Button Margin="0,0,8,0" Style="{StaticResource Button.Secondary}" Command="{Binding MeasureCommand}">
-                                <StackPanel Orientation="Horizontal">
-                                    <TextBlock Style="{StaticResource Text.Icon}" FontSize="14" Text="&#xE9D2;" />
-                                    <TextBlock Margin="8,0,0,0" Text="Mesurer les FPS" />
-                                </StackPanel>
-                            </Button>
-                            <Button Style="{StaticResource Button.Primary}" Padding="28,10" FontSize="16" Command="{Binding PlayCommand}">
-                                <StackPanel Orientation="Horizontal">
-                                    <TextBlock Style="{StaticResource Text.Icon}" FontSize="16" Text="&#xE768;" />
-                                    <TextBlock Margin="10,0,0,0">
-                                        <TextBlock.Style>
-                                            <Style TargetType="TextBlock">
-                                                <Setter Property="Text" Value="Jouer" />
-                                                <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding IsPlaying}" Value="True">
-                                                        <Setter Property="Text" Value="En cours" />
-                                                    </DataTrigger>
-                                                </Style.Triggers>
-                                            </Style>
-                                        </TextBlock.Style>
-                                    </TextBlock>
-                                </StackPanel>
-                            </Button>
-                        </StackPanel>
-
                         <StackPanel VerticalAlignment="Bottom">
                             <Border Style="{StaticResource Badge}" HorizontalAlignment="Left" Margin="0,0,0,8" Background="{StaticResource Brush.Accent}"
                                     Visibility="{Binding IsPlaying, Converter={StaticResource BoolToVisibility}}">
@@ -139,6 +90,64 @@
                             <TextBlock Margin="0,4,0,0" Style="{StaticResource Text.Mono}" Text="{Binding Editor.ExePath}" TextTrimming="CharacterEllipsis" />
                             <TextBlock Margin="0,6,0,0" FontWeight="SemiBold" Foreground="{StaticResource Brush.Accent}"
                                        Text="{Binding DataContext.LaunchStatus, RelativeSource={RelativeSource AncestorType=views:LibraryView}}" />
+                            <!-- Actions : sous le titre, à la ligne si la fenêtre est étroite (le titre garde toute la largeur) -->
+                            <WrapPanel Margin="0,10,0,0" Orientation="Horizontal">
+                                <Button Margin="0,8,8,0" Style="{StaticResource Button.Primary}" Padding="28,10" FontSize="16" Command="{Binding PlayCommand}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Style="{StaticResource Text.Icon}" FontSize="16" Text="&#xE768;" />
+                                        <TextBlock Margin="10,0,0,0">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock">
+                                                    <Setter Property="Text" Value="Jouer" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsPlaying}" Value="True">
+                                                            <Setter Property="Text" Value="En cours" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+                                    </StackPanel>
+                                </Button>
+                                <!-- Jeux Steam uniquement (appid retrouvé à l'ouverture de la page) -->
+                                <Button Margin="0,8,8,0" Style="{StaticResource Button.Secondary}" Command="{Binding OpenStorePageCommand}"
+                                        Visibility="{Binding HasStorePage, Converter={StaticResource BoolToVisibility}}"
+                                        ToolTip="Ouvrir la page du jeu dans le magasin Steam">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Style="{StaticResource Text.Icon}" FontSize="14" Text="&#xE719;" />
+                                        <TextBlock Margin="8,0,0,0" Text="Page Steam" />
+                                    </StackPanel>
+                                </Button>
+                                <Button Margin="0,8,8,0" Style="{StaticResource Button.Secondary}" Command="{Binding TogglePinCommand}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Style="{StaticResource Text.Icon}" FontSize="14" Text="&#xE718;" />
+                                        <TextBlock Margin="8,0,0,0">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock">
+                                                    <Setter Property="Text" Value="Épingler au dock" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsPinned}" Value="True">
+                                                            <Setter Property="Text" Value="Retirer du dock" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+                                    </StackPanel>
+                                </Button>
+                                <Button Margin="0,8,8,0" Style="{StaticResource Button.Secondary}" Command="{Binding ChangeCoverCommand}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Style="{StaticResource Text.Icon}" FontSize="14" Text="&#xEB9F;" />
+                                        <TextBlock Margin="8,0,0,0" Text="Changer la jaquette" />
+                                    </StackPanel>
+                                </Button>
+                                <Button Margin="0,8,8,0" Style="{StaticResource Button.Secondary}" Command="{Binding MeasureCommand}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Style="{StaticResource Text.Icon}" FontSize="14" Text="&#xE9D2;" />
+                                        <TextBlock Margin="8,0,0,0" Text="Mesurer les FPS" />
+                                    </StackPanel>
+                                </Button>
+                            </WrapPanel>
                         </StackPanel>
                     </DockPanel>
                 </Grid>

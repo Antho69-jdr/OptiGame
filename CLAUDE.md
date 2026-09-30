@@ -101,6 +101,8 @@ Sessions de jeu (Platform/Processes) :
   `Platform/Processes/GameLauncher`, toujours via `UnelevatedLauncher`. Steam = `steam.exe -applaunch <appid>`
   (SteamExe dans HKCU\Software\Valve\Steam), appid retrouvé dans les manifestes si absent du profil.
   `DiagDump -- --launch-plan` montre ce qui serait lancé pour chaque profil, sans rien lancer.
+- « Page Steam » (page du jeu) : `Core/Launching/SteamStorePage`, `"steam.exe" -- "steam://store/<appid>"` via
+  `UnelevatedLauncher` (même forme que HKCR\steam\shell\open\command), navigateur si Steam est absent.
 
 Règle de dépendance : `App → Platform → Core`. La logique de décision (statut d'un check, restauration)
 vit dans Core ; Platform ne fait que lire/écrire le système.

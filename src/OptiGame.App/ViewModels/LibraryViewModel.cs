@@ -337,10 +337,38 @@ public sealed partial class LibraryViewModel : ObservableObject
             },
             play: () => PlayAsync(id),
             togglePin: () => _store.SetPinned(id, _store.Find(id)?.DockOrder is null),
+            openStorePage: OpenStorePage,
             isPinned: profile.DockOrder.HasValue,
             isPlaying: _sessions.Current?.Profile.Id == id);
         RefreshPagePlaytime(OpenGame);
         _ = LoadPageImagesAsync(OpenGame, profile);
+        _ = LoadSteamAppIdAsync(OpenGame, profile);
+    }
+
+    /// <summary>Appid Steam de la page (lecture des manifestes Steam, hors du thread UI) : affiche le bouton « Page Steam ».</summary>
+    private async Task LoadSteamAppIdAsync(GamePageViewModel page, GameProfile profile)
+    {
+        try
+        {
+            page.SteamAppId = await Task.Run(() => _launcher.SteamAppId(profile));
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            _log.Error($"Appid Steam de « {profile.Name} » introuvable", ex);
+        }
+    }
+
+    private void OpenStorePage(string appId)
+    {
+        try
+        {
+            _launcher.OpenStorePage(appId);
+        }
+        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException or ArgumentException)
+        {
+            _log.Error($"Ouverture de la page Steam {appId} impossible", ex);
+            _dialogs.ShowError($"Impossible d'ouvrir la page Steam du jeu.\n\n{ex.Message}");
+        }
     }
 
     private void CloseGamePage()

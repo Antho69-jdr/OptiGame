@@ -15,9 +15,23 @@ public sealed partial class GamePageViewModel(
     Action measure,
     Func<Task> play,
     Action togglePin,
+    Action<string> openStorePage,
     bool isPinned,
     bool isPlaying) : ObservableObject
 {
+    /// <summary>Appid Steam, retrouvé en arrière-plan à l'ouverture de la page ; null pour un jeu hors Steam.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasStorePage))]
+    private string? _steamAppId;
+
+    public bool HasStorePage => SteamAppId is not null;
+
+    [RelayCommand]
+    private void OpenStorePage()
+    {
+        if (SteamAppId is { } appId) openStorePage(appId);
+    }
+
     [ObservableProperty]
     private bool _isPinned = isPinned;
 
