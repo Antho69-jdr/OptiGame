@@ -182,6 +182,21 @@ public sealed partial class MeasuresViewModel : ObservableObject
         RefreshCaptures();
     }
 
+    /// <summary>Présélectionne un jeu (bouton « Mesurer les FPS » de la page d'un jeu).</summary>
+    public void SelectTarget(string exeName)
+    {
+        RefreshTargets();
+        if (Targets.FirstOrDefault(t => t.ExeName.Equals(exeName, StringComparison.OrdinalIgnoreCase)) is { } target)
+        {
+            SelectedTarget = target;
+            CustomExeName = "";
+        }
+        else
+        {
+            CustomExeName = exeName;
+        }
+    }
+
     /// <summary>Appelé par la vue quand la sélection de la liste change.</summary>
     public void UpdateSelection(IReadOnlyList<CaptureItemViewModel> selected)
     {

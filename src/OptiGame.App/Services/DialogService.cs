@@ -3,6 +3,7 @@ using System.Windows;
 using Microsoft.Win32;
 using OptiGame.App.Dialogs;
 using OptiGame.Core.Abstractions;
+using OptiGame.Core.Artwork;
 using OptiGame.Core.Changes;
 using OptiGame.Core.Library;
 using OptiGame.Core.State;
@@ -38,6 +39,9 @@ public interface IDialogService
 
     /// <summary>Sélection d'un fichier .exe quelconque ; null si annulé.</summary>
     string? PickProgram(string title, string? initialPath);
+
+    /// <summary>Recherche IGDB avec aperçus ; renvoie le jeu choisi ou null.</summary>
+    IgdbGame? PickIgdbGame(string initialQuery, Func<string, Task<IReadOnlyList<IgdbGame>>> search, Func<string, Task<string?>> loadThumbnail);
 }
 
 public sealed class DialogService : IDialogService
@@ -92,6 +96,12 @@ public sealed class DialogService : IDialogService
     {
         var dialog = new OpenFolderDialog { Title = title };
         return dialog.ShowDialog(ActiveWindow()) == true ? dialog.FolderName : null;
+    }
+
+    public IgdbGame? PickIgdbGame(string initialQuery, Func<string, Task<IReadOnlyList<IgdbGame>>> search, Func<string, Task<string?>> loadThumbnail)
+    {
+        var dialog = new IgdbSearchDialog(initialQuery, search, loadThumbnail);
+        return ShowOwned(dialog) == true ? dialog.Selected : null;
     }
 
     private static bool? ShowOwned(Window dialog)

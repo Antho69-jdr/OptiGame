@@ -1,4 +1,4 @@
-using System.Windows;
+﻿using System.Windows;
 using H.NotifyIcon;
 using Microsoft.Extensions.DependencyInjection;
 using OptiGame.App.Services;
@@ -169,10 +169,11 @@ public partial class App : Application
         services.AddSingleton<IDialogService, DialogService>();
         services.AddSingleton<NotificationService>();
         services.AddSingleton<INotificationService>(sp => sp.GetRequiredService<NotificationService>());
+        services.AddSingleton<NavigationService>();
 
         services.AddSingleton<SessionViewModel>();
         services.AddSingleton<DiagnosticViewModel>();
-        services.AddSingleton<ProfilesViewModel>();
+        services.AddSingleton<LibraryViewModel>();
         services.AddSingleton<SettingsViewModel>();
         services.AddSingleton<MeasuresViewModel>();
         services.AddSingleton<MainViewModel>();

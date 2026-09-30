@@ -42,10 +42,18 @@ src/OptiGame.Core/       net10.0, aucune dépendance Windows, 100 % testable
   Measurement/           PresentMonCsv (colonnes lues par NOM, v1/v2, « NA », chaîne d'affichage principale),
                          FrameStats (FPS moyens pondérés par le temps, 1 %/0,1 % low = moyenne des pires images,
                          P99), CaptureRequest (arguments PresentMon 2.x vérifiés via --help), CaptureStore
-  Settings/              AppSettings (settings.json : dossiers de jeux, chemin de PresentMon)
+  Settings/              AppSettings (settings.json : dossiers de jeux, chemin de PresentMon, identifiants IGDB)
+  Artwork/               Igdb (requête Apicalypse, lecture des réponses, meilleur résultat, URL d'images)
 src/OptiGame.Platform/   net10.0-windows : implémentations réelles (registre, WMI, P/Invoke), Privileged/,
                          Processes/, Startup/ (tâche planifiée), Measurement/ (runner PresentMon)
 src/OptiGame.App/        WPF : composition DI, tray, vues/viewmodels, dialogue de confirmation
+  Themes/Theme.xaml      thème sombre « gaming » : palette (Brush.*), styles Button.Primary/Secondary/Ghost/Danger,
+                         Card, Banner, Badge, NavButton, Text.* — jamais de couleur codée en dur dans les vues
+  App.xaml               ThemeMode="Dark" (Fluent .NET 10) + accent vert : redéfinir les clés
+                         SystemColors.AccentColor…Key (les clés nommées Accent*Brush seules ne suffisent pas)
+  Navigation             barre latérale (MainViewModel.NavItems) ; page = ViewModel, vue choisie par DataTemplate
+                         implicite (jamais ContentTemplate explicite : il s'applique même quand le contenu est null)
+  Mes jeux               LibraryViewModel (grille de jaquettes) → GamePageViewModel (bannière + éditeur du profil)
 tests/OptiGame.Core.Tests/      xUnit + fakes en mémoire (journal, logique des contrôles)
 tests/OptiGame.Platform.Tests/  intégration sur le vrai registre, UNIQUEMENT sous HKCU\Software\OptiGame.Tests
 tools/OptiGame.DiagDump/        diagnostic en console (lecture seule), pour vérifier les lectures système
@@ -54,6 +62,11 @@ tools/OptiGame.DiagDump/        diagnostic en console (lecture seule), pour vér
 Données fictives pour tester l'UI : `$env:OPTIGAME_DATA_DIR='<dossier temporaire>'` redirige tout le dossier de
 données ; `DiagDump -- --import-capture <csv> <libellé> <date ISO>` y ajoute une capture (refusé sans la variable).
 `DiagDump -- --games [dossier…]` affiche la recherche des jeux installés.
+
+IGDB (jaquettes) : identifiants Twitch saisis dans Paramètres, secret chiffré DPAPI (`Platform/Artwork/SecretProtector`),
+jeton gardé en mémoire, 4 requêtes/s max, images en cache dans `covers\`. Seul le nom du jeu est envoyé. Les jaquettes
+d'un profil ne changent que par `ProfileStore.SetArtwork` (`Save` conserve celles déjà enregistrées). Format de réponse
+vérifié sur la documentation uniquement tant qu'un vrai appel n'a pas été fait.
 
 PresentMon : version console téléchargée depuis github.com/GameTechDev/PresentMon (v2.6.0, signée Intel) dans
 `%LocalAppData%\OptiGame\tools`, détectée automatiquement ; capture = ETW, droits admin requis.

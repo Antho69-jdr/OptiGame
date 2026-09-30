@@ -1,5 +1,6 @@
-using System.Collections.ObjectModel;
+﻿using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
+using OptiGame.App.Services;
 
 namespace OptiGame.App.ViewModels;
 
@@ -8,13 +9,14 @@ public sealed partial class MainViewModel : ObservableObject
 {
     public MainViewModel(
         DiagnosticViewModel diagnostic,
-        ProfilesViewModel profiles,
+        LibraryViewModel library,
         MeasuresViewModel measures,
         SessionViewModel session,
-        SettingsViewModel settings)
+        SettingsViewModel settings,
+        NavigationService navigation)
     {
         Diagnostic = diagnostic;
-        Profiles = profiles;
+        Library = library;
         Measures = measures;
         Session = session;
         Settings = settings;
@@ -22,19 +24,20 @@ public sealed partial class MainViewModel : ObservableObject
         // Glyphes Segoe Fluent Icons : manette, diagnostic, courbe, engrenage.
         NavItems =
         [
-            new NavItem("Mes jeux", "", profiles, this),
+            new NavItem("Mes jeux", "", library, this),
             new NavItem("Diagnostic", "", diagnostic, this),
             new NavItem("Mesures", "", measures, this),
             new NavItem("Paramètres", "", settings, this),
         ];
         NavItems[0].IsSelected = true;
+        navigation.NavigateRequested += Navigate;
     }
 
     public string Title => "OptiGame";
 
     public DiagnosticViewModel Diagnostic { get; }
 
-    public ProfilesViewModel Profiles { get; }
+    public LibraryViewModel Library { get; }
 
     public MeasuresViewModel Measures { get; }
 

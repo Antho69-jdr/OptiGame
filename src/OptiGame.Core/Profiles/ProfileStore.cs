@@ -44,13 +44,43 @@ public sealed class ProfileStore
 
         lock (_lock)
         {
+            var copy = profile.Clone();
             var index = _document.Profiles.FindIndex(p => p.Id == profile.Id);
-            if (index >= 0) _document.Profiles[index] = profile.Clone();
-            else _document.Profiles.Add(profile.Clone());
+            if (index >= 0)
+            {
+                // Les jaquettes ne changent que par SetArtwork : un éditeur ouvert avant qu'une jaquette soit trouvée
+                // ne doit pas l'effacer en enregistrant.
+                var stored = _document.Profiles[index];
+                copy.IgdbGameId = stored.IgdbGameId;
+                copy.CoverImageId = stored.CoverImageId;
+                copy.HeroImageId = stored.HeroImageId;
+                _document.Profiles[index] = copy;
+            }
+            else
+            {
+                _document.Profiles.Add(copy);
+            }
             _store.Save(_document);
         }
         Changed?.Invoke(this, EventArgs.Empty);
     }
+
+    /// <summary>Associe (ou retire, avec des null) le jeu IGDB et ses images. Sans effet si le profil n'existe plus.</summary>
+    public void SetArtwork(Guid id, long? igdbGameId, string? coverImageId, string? heroImageId)
+    {
+        lock (_lock)
+        {
+            if (_document.Profiles.FirstOrDefault(p => p.Id == id) is not { } profile) return;
+            profile.IgdbGameId = igdbGameId;
+            profile.CoverImageId = coverImageId;
+            profile.HeroImageId = heroImageId;
+            _store.Save(_document);
+        }
+        ArtworkChanged?.Invoke(this, id);
+    }
+
+    /// <summary>Jaquette modifiée (distinct de <see cref="Changed"/> : n'influe pas sur la détection des jeux).</summary>
+    public event EventHandler<Guid>? ArtworkChanged;
 
     public void Remove(Guid id)
     {

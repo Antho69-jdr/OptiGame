@@ -1,4 +1,4 @@
-<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <!--
         Thème sombre « gaming » d'OptiGame. Les contrôles standard (TextBox, ComboBox, CheckBox, ScrollBar…) viennent du
@@ -26,16 +26,8 @@
     <Color x:Key="Color.Danger">#F05252</Color>
     <Color x:Key="Color.Info">#60A5FA</Color>
 
-    <!-- Accent du thème Fluent (cases cochées, focus, sélection) aligné sur l'accent d'OptiGame -->
-    <Color x:Key="SystemAccentColor">#2FD27A</Color>
-    <Color x:Key="SystemAccentColorLight1">#4BE391</Color>
-    <Color x:Key="SystemAccentColorLight2">#6FEBA8</Color>
-    <Color x:Key="SystemAccentColorLight3">#98F2C1</Color>
-    <Color x:Key="SystemAccentColorDark1">#22B566</Color>
-    <Color x:Key="SystemAccentColorDark2">#198F50</Color>
-    <Color x:Key="SystemAccentColorDark3">#11693A</Color>
-
-    <SolidColorBrush x:Key="Brush.Window" Color="{StaticResource Color.Window}" />
+    <!-- L'accent des contrôles Fluent se redéfinit dans App.xaml (clés SystemColors.AccentColor…) -->
+<SolidColorBrush x:Key="Brush.Window" Color="{StaticResource Color.Window}" />
     <SolidColorBrush x:Key="Brush.Sidebar" Color="{StaticResource Color.Sidebar}" />
     <SolidColorBrush x:Key="Brush.Card" Color="{StaticResource Color.Card}" />
     <SolidColorBrush x:Key="Brush.CardHover" Color="{StaticResource Color.CardHover}" />

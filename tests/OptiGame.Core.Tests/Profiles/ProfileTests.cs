@@ -56,6 +56,42 @@ public sealed class ProfileTests : IDisposable
     }
 
     [Fact]
+    public void Saving_from_a_stale_editor_keeps_artwork_found_meanwhile()
+    {
+        var store = OpenStore();
+        var profile = Profile();
+        store.Save(profile);
+        var editorCopy = store.Find(profile.Id)!;           // éditeur ouvert sans jaquette
+        store.SetArtwork(profile.Id, 42, "co1", "ar1");     // jaquette trouvée pendant l'édition
+
+        editorCopy.Name = "Star Citizen (modifié)";
+        store.Save(editorCopy);
+
+        var saved = OpenStore().Find(profile.Id)!;
+        Assert.Equal("Star Citizen (modifié)", saved.Name);
+        Assert.Equal((42L, "co1", "ar1"), (saved.IgdbGameId!.Value, saved.CoverImageId, saved.HeroImageId));
+    }
+
+    [Fact]
+    public void SetArtwork_can_clear_and_raises_its_own_event()
+    {
+        var store = OpenStore();
+        var profile = Profile();
+        store.Save(profile);
+        var changed = 0;
+        Guid? artworkFor = null;
+        store.Changed += (_, _) => changed++;
+        store.ArtworkChanged += (_, id) => artworkFor = id;
+
+        store.SetArtwork(profile.Id, 42, "co1", null);
+        store.SetArtwork(profile.Id, null, null, null);
+
+        Assert.Equal(0, changed); // la détection des jeux n'a pas à se relancer
+        Assert.Equal(profile.Id, artworkFor);
+        Assert.Null(store.Find(profile.Id)!.CoverImageId);
+    }
+
+    [Fact]
     public void Exe_matching_ignores_case_and_dot_segments()
     {
         var store = OpenStore();
