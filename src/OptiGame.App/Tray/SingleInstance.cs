@@ -6,8 +6,15 @@ namespace OptiGame.App.Tray;
 /// </summary>
 public sealed class SingleInstance : IDisposable
 {
-    private const string MutexName = @"Local\OptiGame.SingleInstance";
-    private const string EventName = @"Local\OptiGame.Activate";
+    // Une instance de développement (OPTIGAME_DATA_DIR défini) a ses propres noms : elle peut tourner à côté
+    // de l'instance normale sans la réveiller ni se fermer.
+    private static readonly string Suffix =
+        Environment.GetEnvironmentVariable("OPTIGAME_DATA_DIR") is { Length: > 0 } dev
+            ? "." + Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(dev.ToUpperInvariant())))[..12]
+            : "";
+
+    private static readonly string MutexName = @"Local\OptiGame.SingleInstance" + Suffix;
+    private static readonly string EventName = @"Local\OptiGame.Activate" + Suffix;
 
     private readonly Mutex _mutex;
     private readonly EventWaitHandle _activateEvent;

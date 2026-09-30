@@ -19,10 +19,11 @@ public sealed class FrametimeChart : FrameworkElement
         nameof(Secondary), typeof(IReadOnlyList<double>), typeof(FrametimeChart),
         new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.AffectsRender));
 
-    private static readonly Brush PrimaryBrush = Frozen(new SolidColorBrush(Color.FromRgb(0x15, 0x65, 0xC0)));
-    private static readonly Brush SecondaryBrush = Frozen(new SolidColorBrush(Color.FromRgb(0xE6, 0x51, 0x00)));
-    private static readonly Pen GridPen = Frozen(new Pen(new SolidColorBrush(Color.FromRgb(0xE0, 0xE0, 0xE0)), 1));
-    private static readonly Brush LabelBrush = Frozen(new SolidColorBrush(Color.FromRgb(0x66, 0x66, 0x66)));
+    // Couleurs du thème sombre (Brush.Info / Brush.Warning / Brush.Border / Brush.TextMuted).
+    private static readonly Brush PrimaryBrush = Frozen(new SolidColorBrush(Color.FromRgb(0x60, 0xA5, 0xFA)));
+    private static readonly Brush SecondaryBrush = Frozen(new SolidColorBrush(Color.FromRgb(0xF5, 0xA5, 0x24)));
+    private static readonly Pen GridPen = Frozen(new Pen(new SolidColorBrush(Color.FromRgb(0x26, 0x2C, 0x36)), 1));
+    private static readonly Brush LabelBrush = Frozen(new SolidColorBrush(Color.FromRgb(0x6B, 0x72, 0x80)));
     private static readonly Typeface LabelFont = new("Segoe UI");
 
     /// <summary>Repères usuels : 240, 144, 60 et 30 FPS.</summary>
@@ -47,7 +48,8 @@ public sealed class FrametimeChart : FrameworkElement
 
     protected override void OnRender(DrawingContext dc)
     {
-        dc.DrawRectangle(Brushes.White, null, new Rect(RenderSize));
+        // Fond transparent : le graphe prend la couleur de la carte qui le contient (hit-test conservé).
+        dc.DrawRectangle(Brushes.Transparent, null, new Rect(RenderSize));
         var plot = new Rect(LeftMargin, 8, Math.Max(0, ActualWidth - LeftMargin - 8), Math.Max(0, ActualHeight - 8 - BottomMargin));
         if (plot.Width < 20 || plot.Height < 20) return;
 

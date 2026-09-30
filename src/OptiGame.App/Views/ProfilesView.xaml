@@ -1,4 +1,4 @@
-<UserControl x:Class="OptiGame.App.Views.ProfilesView"
+﻿<UserControl x:Class="OptiGame.App.Views.ProfilesView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
@@ -13,14 +13,14 @@
             <Setter Property="Margin" Value="0,12,0,4" />
         </Style>
         <Style x:Key="Hint" TargetType="TextBlock">
-            <Setter Property="Foreground" Value="#666" />
+            <Setter Property="Foreground" Value="{StaticResource Brush.TextSecondary}" />
             <Setter Property="FontSize" Value="12" />
             <Setter Property="TextWrapping" Value="Wrap" />
             <Setter Property="Margin" Value="0,4,0,0" />
         </Style>
     </UserControl.Resources>
 
-    <Grid Margin="12">
+    <Grid Margin="32,24,32,24">
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="260" />
             <ColumnDefinition Width="12" />
@@ -42,7 +42,7 @@
                 </Button.Style>
             </Button>
             <Button DockPanel.Dock="Top" Padding="12,6" Margin="0,0,0,8" Content="Ajouter un jeu à la main (.exe)…" Command="{Binding AddGameCommand}" />
-            <TextBlock DockPanel.Dock="Bottom" Margin="0,6,0,0" Foreground="#E65100" FontSize="12" TextWrapping="Wrap"
+            <TextBlock DockPanel.Dock="Bottom" Margin="0,6,0,0" Foreground="{StaticResource Brush.Warning}" FontSize="12" TextWrapping="Wrap"
                        Text="Enregistrez ou annulez les modifications pour changer de profil.">
                 <TextBlock.Style>
                     <Style TargetType="TextBlock">
@@ -60,14 +60,14 @@
                     <DataTemplate DataType="{x:Type vm:ProfileListItem}">
                         <StackPanel Margin="2,4">
                             <TextBlock Text="{Binding Name}" FontWeight="SemiBold" />
-                            <TextBlock Text="{Binding Detail}" Foreground="#666" FontSize="12" />
+                            <TextBlock Text="{Binding Detail}" Foreground="{StaticResource Brush.TextSecondary}" FontSize="12" />
                         </StackPanel>
                     </DataTemplate>
                 </ListBox.ItemTemplate>
             </ListBox>
         </DockPanel>
 
-        <TextBlock Grid.Column="2" Foreground="#666" TextWrapping="Wrap" VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="420"
+        <TextBlock Grid.Column="2" Foreground="{StaticResource Brush.TextSecondary}" TextWrapping="Wrap" VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="420"
                    Text="Ajoutez un jeu en choisissant son fichier .exe. Un profil décrit ce qu'OptiGame fait quand ce jeu démarre ; tout est restauré à sa fermeture.">
             <TextBlock.Style>
                 <Style TargetType="TextBlock">
@@ -91,7 +91,7 @@
                     </Style.Triggers>
                 </Style>
             </ScrollViewer.Style>
-            <Border Background="White" BorderBrush="#DDD" BorderThickness="1" CornerRadius="4" Padding="16">
+            <Border Background="{StaticResource Brush.Card}" BorderBrush="{StaticResource Brush.Border}" BorderThickness="1" CornerRadius="4" Padding="16">
                 <StackPanel d:DataContext="{d:DesignInstance vm:ProfileEditorViewModel}">
                     <TextBlock Style="{StaticResource Label}" Margin="0,0,0,4" Text="Nom du profil" />
                     <TextBox Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}" Padding="4" />
@@ -99,7 +99,7 @@
                     <TextBlock Style="{StaticResource Label}" Text="Exécutable du jeu" />
                     <DockPanel>
                         <Button DockPanel.Dock="Right" Margin="8,0,0,0" Padding="10,2" Content="Changer…" Command="{Binding ChangeExeCommand}" />
-                        <TextBox Text="{Binding ExePath, Mode=OneWay}" IsReadOnly="True" Padding="4" Foreground="#444" />
+                        <TextBox Text="{Binding ExePath, Mode=OneWay}" IsReadOnly="True" Padding="4" />
                     </DockPanel>
 
                     <CheckBox Margin="0,12,0,0" IsChecked="{Binding Enabled}" Content="Appliquer ce profil automatiquement quand le jeu démarre" />
@@ -134,7 +134,7 @@
                     <TextBlock Style="{StaticResource Hint}"
                                Text="Chaque programme est d'abord fermé normalement, puis arrêté de force s'il ne s'est pas fermé après 5 secondes (les données non enregistrées peuvent alors être perdues). Seuls vos programmes sont concernés : jamais les composants de Windows ni les services. La relance se fait sans droits administrateur." />
 
-                    <Border Margin="0,16,0,0" Padding="12" Background="#F1F6FD" BorderBrush="#BBDEFB" BorderThickness="1" CornerRadius="4">
+                    <Border Margin="0,16,0,0" Padding="12" Background="{StaticResource Brush.InfoSoft}" BorderBrush="{StaticResource Brush.Info}" BorderThickness="1" CornerRadius="4">
                         <StackPanel>
                             <TextBlock FontWeight="SemiBold" Text="Ce que fera ce profil" Margin="0,0,0,4" />
                             <ItemsControl ItemsSource="{Binding Summary}">
@@ -150,7 +150,7 @@
                     <DockPanel Margin="0,16,0,0">
                         <Button DockPanel.Dock="Left" Padding="12,6" Content="Supprimer le profil" Command="{Binding DeleteCommand}" />
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                            <TextBlock VerticalAlignment="Center" Margin="0,0,12,0" Foreground="#E65100" Text="Modifications non enregistrées"
+                            <TextBlock VerticalAlignment="Center" Margin="0,0,12,0" Foreground="{StaticResource Brush.Warning}" Text="Modifications non enregistrées"
                                        Visibility="{Binding IsDirty, Converter={StaticResource BoolToVisibility}}" />
                             <Button Padding="12,6" Margin="0,0,8,0" Content="Annuler les modifications" Command="{Binding RevertCommand}"
                                     Visibility="{Binding IsDirty, Converter={StaticResource BoolToVisibility}}" />

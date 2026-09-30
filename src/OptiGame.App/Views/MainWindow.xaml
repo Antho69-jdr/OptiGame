@@ -7,42 +7,82 @@
         xmlns:views="clr-namespace:OptiGame.App.Views"
         mc:Ignorable="d"
         d:DataContext="{d:DesignInstance vm:MainViewModel}"
-        Title="{Binding Title}" Height="820" Width="1000" MinHeight="420" MinWidth="640"
-        WindowStartupLocation="CenterScreen" Background="#F4F5F7">
+        Title="{Binding Title}" Height="860" Width="1240" MinHeight="560" MinWidth="880"
+        WindowStartupLocation="CenterScreen"
+        Background="{StaticResource Brush.Window}" Foreground="{StaticResource Brush.Text}">
     <Window.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
-    </Window.Resources>
-    <DockPanel>
-        <!-- Détection des jeux en panne -->
-        <Border DockPanel.Dock="Top" Margin="8,8,8,0" Padding="12,8" Background="#C62828" CornerRadius="4"
-                DataContext="{Binding Session}"
-                Visibility="{Binding HasDetectionError, Converter={StaticResource BoolToVisibility}}">
-            <TextBlock Foreground="White" TextWrapping="Wrap" Text="{Binding DetectionError}" />
-        </Border>
 
-        <!-- Bandeau de session en cours -->
-        <Border DockPanel.Dock="Top" Margin="8,8,8,0" Padding="12,8" Background="#1F7A4D" CornerRadius="4"
-                DataContext="{Binding Session}"
-                Visibility="{Binding IsActive, Converter={StaticResource BoolToVisibility}}">
-            <DockPanel>
-                <Button DockPanel.Dock="Right" Padding="12,4" Content="Terminer la session et restaurer" Command="{Binding EndNowCommand}" />
-                <TextBlock VerticalAlignment="Center" Foreground="White" FontWeight="SemiBold" Text="{Binding StatusText}" />
+        <!-- Une page = un ViewModel ; la vue correspondante est choisie ici. -->
+        <DataTemplate DataType="{x:Type vm:ProfilesViewModel}"><views:ProfilesView /></DataTemplate>
+        <DataTemplate DataType="{x:Type vm:DiagnosticViewModel}"><views:DiagnosticView /></DataTemplate>
+        <DataTemplate DataType="{x:Type vm:MeasuresViewModel}"><views:MeasuresView /></DataTemplate>
+        <DataTemplate DataType="{x:Type vm:SettingsViewModel}"><views:SettingsView /></DataTemplate>
+    </Window.Resources>
+
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="232" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+
+        <!-- Barre latérale -->
+        <Border Grid.Column="0" Background="{StaticResource Brush.Sidebar}" BorderBrush="{StaticResource Brush.Border}" BorderThickness="0,0,1,0">
+            <DockPanel Margin="14,18">
+                <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="6,0,0,26">
+                    <Border Width="36" Height="36" CornerRadius="10" Background="{StaticResource Brush.Accent}">
+                        <TextBlock Text="OG" FontWeight="Bold" FontSize="15" Foreground="{StaticResource Brush.OnAccent}"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Border>
+                    <TextBlock Margin="12,0,0,0" VerticalAlignment="Center" Text="OptiGame"
+                               FontFamily="{StaticResource Font.Display}" FontSize="20" FontWeight="SemiBold" />
+                </StackPanel>
+
+                <!-- Session en cours (rappel permanent) -->
+                <Border DockPanel.Dock="Bottom" Padding="12" CornerRadius="{StaticResource Radius.Card}"
+                        Background="{StaticResource Brush.AccentSoft}" DataContext="{Binding Session}"
+                        Visibility="{Binding IsActive, Converter={StaticResource BoolToVisibility}}">
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal">
+                            <Ellipse Width="8" Height="8" Fill="{StaticResource Brush.Accent}" VerticalAlignment="Center" />
+                            <TextBlock Margin="8,0,0,0" Text="Session en cours" FontWeight="SemiBold" Foreground="{StaticResource Brush.Accent}" />
+                        </StackPanel>
+                        <TextBlock Margin="0,4,0,8" Style="{StaticResource Text.Caption}" Text="{Binding StatusText}" />
+                        <Button Style="{StaticResource Button.SecondarySmall}" HorizontalAlignment="Stretch"
+                                Content="Terminer et restaurer" Command="{Binding EndNowCommand}" />
+                    </StackPanel>
+                </Border>
+
+                <ItemsControl ItemsSource="{Binding NavItems}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate DataType="{x:Type vm:NavItem}">
+                            <RadioButton Style="{StaticResource NavButton}" GroupName="Navigation" IsChecked="{Binding IsSelected}"
+                                         AutomationProperties.Name="{Binding Title}">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Style="{StaticResource Text.Icon}" Text="{Binding Glyph}" Width="22" />
+                                    <TextBlock Margin="10,0,0,0" VerticalAlignment="Center" Text="{Binding Title}" />
+                                </StackPanel>
+                            </RadioButton>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
             </DockPanel>
         </Border>
 
-        <TabControl Margin="8">
-            <TabItem Header="Diagnostic">
-                <views:DiagnosticView DataContext="{Binding Diagnostic}" />
-            </TabItem>
-            <TabItem Header="Profils de jeu">
-                <views:ProfilesView DataContext="{Binding Profiles}" />
-            </TabItem>
-            <TabItem Header="Mesures">
-                <views:MeasuresView DataContext="{Binding Measures}" />
-            </TabItem>
-            <TabItem Header="Paramètres">
-                <views:SettingsView DataContext="{Binding Settings}" />
-            </TabItem>
-        </TabControl>
-    </DockPanel>
+        <!-- Contenu -->
+        <DockPanel Grid.Column="1">
+            <!-- Détection des jeux en panne : visible même si les notifications Windows sont masquées -->
+            <Border DockPanel.Dock="Top" Margin="24,16,24,0" Style="{StaticResource Banner}"
+                    Background="{StaticResource Brush.DangerSoft}" BorderBrush="{StaticResource Brush.Danger}"
+                    DataContext="{Binding Session}"
+                    Visibility="{Binding HasDetectionError, Converter={StaticResource BoolToVisibility}}">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Style="{StaticResource Text.Icon}" Text="&#xE7BA;" Foreground="{StaticResource Brush.Danger}" />
+                    <TextBlock Margin="10,0,0,0" Style="{StaticResource Text.Body}" Text="{Binding DetectionError}" />
+                </StackPanel>
+            </Border>
+
+            <ContentControl Content="{Binding CurrentPage}" Focusable="False" />
+        </DockPanel>
+    </Grid>
 </Window>
