@@ -54,6 +54,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IPowerStatusProvider, PowerStatusProvider>();
         services.AddSingleton<IMemoryInfoProvider, WmiMemoryInfoProvider>();
         services.AddSingleton<IGpuInfoProvider, WmiGpuInfoProvider>();
+        services.AddSingleton<IDisplayHdrInfo, Display.DisplayHdrReader>();
         services.AddSingleton<IDeviceGuardProvider, WmiDeviceGuardProvider>();
         services.AddSingleton<IGpuSchedulingProvider, GpuSchedulingProvider>();
 

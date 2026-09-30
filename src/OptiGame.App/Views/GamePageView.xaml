@@ -222,6 +222,32 @@
                             </StackPanel>
                         </Border>
 
+                        <!-- Graphismes (Windows) : réglage durable, appliqué à part (pas par « Enregistrer »), annulable -->
+                        <Border Margin="0,16,0,0" Style="{StaticResource Card}" DataContext="{Binding Graphics}">
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource Text.SectionTitle}" Text="Graphismes (Windows)" />
+                                <TextBlock Margin="0,4,0,0" Style="{StaticResource Text.Caption}" TextWrapping="Wrap"
+                                           Text="Préférences graphiques que Windows garde pour ce jeu, prises en compte au prochain lancement. Appliquées à part, avec confirmation, et annulables." />
+
+                                <TextBlock Style="{StaticResource Text.Label}" Text="Auto HDR" />
+                                <ComboBox ItemsSource="{Binding AutoHdrOptions}" SelectedItem="{Binding SelectedAutoHdr}" DisplayMemberPath="Label"
+                                          AutomationProperties.Name="Auto HDR pour ce jeu" />
+                                <TextBlock Margin="0,4,0,0" Style="{StaticResource Text.Caption}" Text="{Binding HdrText}" TextWrapping="Wrap" />
+
+                                <StackPanel Visibility="{Binding ShowGpu, Converter={StaticResource BoolToVisibility}}">
+                                    <TextBlock Style="{StaticResource Text.Label}" Text="Carte graphique" />
+                                    <ComboBox ItemsSource="{Binding GpuOptions}" SelectedItem="{Binding SelectedGpu}" DisplayMemberPath="Label"
+                                              AutomationProperties.Name="Carte graphique pour ce jeu" />
+                                </StackPanel>
+                                <TextBlock Margin="0,8,0,0" Style="{StaticResource Text.Caption}" Text="{Binding GpuNote}" TextWrapping="Wrap" />
+
+                                <TextBlock Margin="0,10,0,0" Style="{StaticResource Text.Secondary}" Text="{Binding CurrentText}" TextWrapping="Wrap" />
+                                <TextBlock Margin="0,4,0,0" Style="{StaticResource Text.Caption}" Text="{Binding AppliedText}" TextWrapping="Wrap" />
+                                <Button Margin="0,12,0,0" HorizontalAlignment="Left" Style="{StaticResource Button.Secondary}" Content="Appliquer"
+                                        Command="{Binding ApplyCommand}" AutomationProperties.Name="Appliquer les graphismes" />
+                            </StackPanel>
+                        </Border>
+
                         <!-- Programmes à fermer -->
                         <Border Margin="0,16,0,0" Style="{StaticResource Card}">
                             <StackPanel>

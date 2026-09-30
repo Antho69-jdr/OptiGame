@@ -41,6 +41,7 @@ public sealed partial class LibraryViewModel : ObservableObject
     private readonly GameLauncher _launcher;
     private readonly PlaytimeStore _playtime;
     private readonly SteamPlaytimeReader _steamReader;
+    private readonly GameGraphicsService _graphics;
 
     /// <summary>Temps de jeu Steam par profil (jeux Steam), relu à chaque changement de la bibliothèque ou de Steam.</summary>
     private IReadOnlyDictionary<Guid, SteamPlaytimeEntry> _steamPlaytime = new Dictionary<Guid, SteamPlaytimeEntry>();
@@ -54,9 +55,11 @@ public sealed partial class LibraryViewModel : ObservableObject
     public LibraryViewModel(ProfileStore store, IPowerSchemeProvider power, IRunningProgramsProvider programs, IDialogService dialogs,
         IGameLibraryScanner scanner, AppSettingsStore settings, IgdbClient igdb, ArtworkCache artwork, GameSessionManager sessions,
         CaptureStore captures, MeasuresViewModel measures, NavigationService navigation, SettingsViewModel settingsPage,
-        TimeProvider time, FileLog log, GameLauncher launcher, PlaytimeStore playtime, SteamPlaytimeReader steamReader)
+        TimeProvider time, FileLog log, GameLauncher launcher, PlaytimeStore playtime, SteamPlaytimeReader steamReader,
+        GameGraphicsService graphics)
     {
         _steamReader = steamReader;
+        _graphics = graphics;
         _store = store;
         _power = power;
         _programs = programs;
@@ -365,11 +368,13 @@ public sealed partial class LibraryViewModel : ObservableObject
             play: () => PlayAsync(id),
             togglePin: () => _store.SetPinned(id, _store.Find(id)?.DockOrder is null),
             openStorePage: OpenStorePage,
+            graphics: new GameGraphicsViewModel(profile, _graphics, _dialogs, _log),
             isPinned: profile.DockOrder.HasValue,
             isPlaying: _sessions.Current?.Profile.Id == id);
         RefreshPagePlaytime(OpenGame);
         _ = LoadPageImagesAsync(OpenGame, profile);
         _ = LoadSteamAppIdAsync(OpenGame, profile);
+        _ = OpenGame.Graphics.LoadAsync();
     }
 
     /// <summary>Appid Steam de la page (lecture des manifestes Steam, hors du thread UI) : affiche le bouton « Page Steam ».</summary>

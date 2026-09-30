@@ -59,6 +59,27 @@ if (args.Length == 1 && args[0] == "--launch-plan")
     return;
 }
 
+// --graphics : état HDR des écrans et préférences graphiques par jeu (lecture seule).
+if (args.Length == 1 && args[0] == "--graphics")
+{
+    foreach (var display in services.GetRequiredService<OptiGame.Core.Abstractions.IDisplayHdrInfo>().GetDisplays())
+        Console.WriteLine($"Écran « {display.Name} » : HDR pris en charge = {display.HdrSupported}, activé = {display.HdrEnabled}");
+    var profiles = new OptiGame.Core.Profiles.ProfileStore(new JsonStateStore<OptiGame.Core.Profiles.ProfilesDocument>(AppPaths.Default.Profiles));
+    var registry = services.GetRequiredService<OptiGame.Core.Abstractions.IRegistryReader>();
+    var settings = services.GetRequiredService<SettingAccessors>();
+    var names = registry.GetValueNames(OptiGame.Core.Settings.KnownSettings.GpuPreferencesKey);
+    foreach (var profile in profiles.GetAll())
+    {
+        Console.WriteLine(profile.Name);
+        foreach (var name in OptiGame.Core.Settings.GameGraphics.TargetNames(profile.ExePath, names))
+        {
+            var value = settings.Read(OptiGame.Core.Settings.KnownSettings.GpuPreference(name));
+            Console.WriteLine($"      {name} = {(value.IsAbsent ? "(absent)" : value.Text)} → {OptiGame.Core.Settings.GameGraphics.Read(value.Text)}");
+        }
+    }
+    return;
+}
+
 // --drivers : pilote graphique (service de NVIDIA) et pilotes proposés par Windows Update. Lecture seule : rien n'est installé.
 if (args.Length == 1 && args[0] == "--drivers")
 {

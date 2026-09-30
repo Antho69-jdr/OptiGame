@@ -16,9 +16,13 @@ public sealed partial class GamePageViewModel(
     Func<Task> play,
     Action togglePin,
     Action<string> openStorePage,
+    GameGraphicsViewModel graphics,
     bool isPinned,
     bool isPlaying) : ObservableObject
 {
+    /// <summary>Carte « Graphismes (Windows) » : Auto HDR et carte graphique pour ce jeu.</summary>
+    public GameGraphicsViewModel Graphics { get; } = graphics;
+
     /// <summary>Appid Steam, retrouvé en arrière-plan à l'ouverture de la page ; null pour un jeu hors Steam.</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasStorePage))]

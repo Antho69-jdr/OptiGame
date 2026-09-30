@@ -95,3 +95,23 @@ public interface IRegistryReader
     /// <summary>Noms des valeurs d'une clé (vide si la clé n'existe pas).</summary>
     IReadOnlyList<string> GetValueNames(string keyPath);
 }
+
+/// <summary>État HDR d'un écran actif (« couleur avancée » de Windows).</summary>
+public sealed record DisplayHdrInfo(string Name, bool HdrSupported, bool HdrEnabled)
+{
+    /// <summary>
+    /// Champ « value » de DISPLAYCONFIG_GET_ADVANCED_COLOR_INFO : bit 0 = couleur avancée prise en charge, bit 1 = activée,
+    /// bit 2 = couleur étendue IMPOSÉE (gestion des couleurs SDR, pas du HDR). Valeurs réelles de la machine de dev
+    /// (2026-09-30) : Samsung LC34G55T en HDR = 0x3 ; BenQ GW2470, écran SDR = 0x5 (bits 0 et 2, sans HDR).
+    /// </summary>
+    public static DisplayHdrInfo FromAdvancedColor(string name, uint value)
+    {
+        var wideColorOnly = (value & 4) != 0;
+        return new DisplayHdrInfo(name, (value & 1) != 0 && !wideColorOnly, (value & 2) != 0 && !wideColorOnly);
+    }
+}
+
+public interface IDisplayHdrInfo
+{
+    IReadOnlyList<DisplayHdrInfo> GetDisplays();
+}
