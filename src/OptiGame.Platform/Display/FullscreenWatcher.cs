@@ -26,12 +26,26 @@ public sealed class FullscreenWatcher : IDisposable
     private const uint GwHwndPrev = 3;
     private const int DwmwaCloaked = 14;
 
+    /// <summary>
+    /// Nouvelles vérifications après un passage du bureau au premier plan sans qu'il paraisse « affiché » : au premier
+    /// Win+D de la session, Windows donne le premier plan au bureau AVANT d'avoir fini d'écarter les fenêtres (constaté
+    /// sur la machine de dev le 2026-09-30). Trois essais ponctuels, puis plus rien : pas de scrutation.
+    /// </summary>
+    private static readonly int[] RecheckDelaysMs = [150, 400, 900];
+
     private readonly WinEventDelegate _callback; // gardé en champ : sinon le GC le libère et Windows appelle un pointeur mort
     private IntPtr _hook;
+    private SynchronizationContext? _ui;
+    private Timer? _recheck;
+    private int _recheckStep;
 
     public FullscreenWatcher()
     {
-        _callback = (_, _, _, _, _, _, _) => Evaluate();
+        _callback = (_, _, _, _, _, _, _) =>
+        {
+            _recheckStep = 0;
+            EvaluateAndRecheck();
+        };
     }
 
     public bool IsFullscreen { get; private set; }
@@ -46,6 +60,7 @@ public sealed class FullscreenWatcher : IDisposable
     public void Start()
     {
         if (_hook != IntPtr.Zero) return;
+        _ui = SynchronizationContext.Current; // thread UI : les événements sont toujours déclenchés sur lui
         _hook = SetWinEventHook(EventSystemForeground, EventSystemForeground, IntPtr.Zero, _callback, 0, 0,
             WinEventOutOfContext | WinEventSkipOwnProcess);
         Evaluate();
@@ -74,6 +89,8 @@ public sealed class FullscreenWatcher : IDisposable
     {
         if (_hook != IntPtr.Zero) UnhookWinEvent(_hook);
         _hook = IntPtr.Zero;
+        _recheck?.Dispose();
+        _recheck = null;
     }
 
     /// <summary>Relevé Win32 ; la décision est dans Core (<see cref="FullscreenRules"/>, testée).</summary>
@@ -83,11 +100,24 @@ public sealed class FullscreenWatcher : IDisposable
         return FullscreenRules.ShouldHideDock(state, ReadForeground());
     }
 
+    private void EvaluateAndRecheck()
+    {
+        if (_hook == IntPtr.Zero) return; // arrêté entre-temps
+        Evaluate();
+        if (IsDesktopShown || _recheckStep >= RecheckDelaysMs.Length || !IsDesktop(GetForegroundWindow())) return;
+
+        var delay = RecheckDelaysMs[_recheckStep++];
+        _recheck ??= new Timer(_ => _ui?.Post(_ => EvaluateAndRecheck(), null));
+        _recheck.Change(delay, Timeout.Infinite);
+    }
+
+    private static bool IsDesktop(IntPtr window) => window != IntPtr.Zero && ClassName(window) is "Progman" or "WorkerW";
+
     /// <summary>Relevé des fenêtres au-dessus du bureau au premier plan ; décision dans Core (<see cref="DesktopRules"/>, testée).</summary>
     private static bool DetectDesktopShown()
     {
         var desktop = GetForegroundWindow();
-        if (desktop == IntPtr.Zero || ClassName(desktop) is not ("Progman" or "WorkerW")) return false;
+        if (!IsDesktop(desktop)) return false;
 
         var above = new List<WindowAbove>();
         for (var window = GetWindow(desktop, GwHwndPrev); window != IntPtr.Zero; window = GetWindow(window, GwHwndPrev))
