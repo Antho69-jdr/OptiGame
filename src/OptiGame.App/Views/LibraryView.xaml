@@ -182,8 +182,11 @@
                                Text="Lancez une recherche des jeux installés (Steam et vos dossiers de jeux), ou ajoutez un jeu en choisissant son fichier .exe." />
                 </StackPanel>
 
-                <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0,4,0,0">
-                    <ItemsControl ItemsSource="{Binding GamesView}">
+                <!-- Le ScrollViewer rogne ce qui dépasse de ses bords : la marge négative + la marge intérieure
+                     laissent 12 px au zoom de survol (1,03) sur la première rangée et la première colonne,
+                     sans déplacer les jaquettes. -->
+                <ScrollViewer VerticalScrollBarVisibility="Auto" Margin="-12,-8,0,0">
+                    <ItemsControl ItemsSource="{Binding GamesView}" Margin="12,12,0,0">
                         <ItemsControl.ItemsPanel>
                             <ItemsPanelTemplate>
                                 <WrapPanel />
