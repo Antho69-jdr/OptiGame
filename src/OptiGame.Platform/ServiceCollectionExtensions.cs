@@ -71,6 +71,8 @@ public static class ServiceCollectionExtensions
         services.AddSingleton(_ => new Core.Measurement.CaptureStore(
             new JsonStateStore<Core.Measurement.CapturesDocument>(Path.Combine(paths.CapturesDir, "captures.json")), paths.CapturesDir));
         services.AddSingleton<Measurement.PresentMonRunner>();
+        services.AddSingleton<Artwork.IgdbClient>();
+        services.AddSingleton<Artwork.ArtworkCache>();
 
         services.AddKeyedSingleton(JournalKeys.Fixes, (sp, _) => new ChangeJournal(
             new JsonStateStore<JournalDocument>(paths.FixesJournal), sp.GetRequiredService<SettingAccessors>(), sp.GetRequiredService<TimeProvider>()));

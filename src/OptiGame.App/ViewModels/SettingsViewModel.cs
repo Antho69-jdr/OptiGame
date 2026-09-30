@@ -1,10 +1,11 @@
-using System.Collections.ObjectModel;
+﻿using System.Collections.ObjectModel;
 using System.Diagnostics;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using OptiGame.App.Services;
 using OptiGame.Core;
 using OptiGame.Core.Settings;
+using OptiGame.Platform.Artwork;
 using OptiGame.Platform.Startup;
 
 namespace OptiGame.App.ViewModels;
@@ -16,15 +17,93 @@ public sealed partial class SettingsViewModel : ObservableObject
     private readonly AppSettingsStore _settings;
     private bool _updating;
 
-    public SettingsViewModel(AutoStartService autoStart, IDialogService dialogs, AppPaths paths, AppSettingsStore settings)
+    private readonly IgdbClient _igdb;
+
+    public SettingsViewModel(AutoStartService autoStart, IDialogService dialogs, AppPaths paths, AppSettingsStore settings, IgdbClient igdb)
     {
         _autoStart = autoStart;
         _dialogs = dialogs;
         _settings = settings;
+        _igdb = igdb;
         DataFolder = paths.Root;
         RefreshAutoStart();
         RefreshGameFolders();
+        var current = settings.Get();
+        IgdbClientId = current.IgdbClientId ?? "";
+        HasIgdbSecret = current.IgdbClientSecretProtected is not null;
     }
+
+    // ---- IGDB (jaquettes) ----
+
+    [ObservableProperty]
+    private string _igdbClientId = "";
+
+    /// <summary>Secret saisi (champ masqué) ; jamais relu depuis le disque, seulement remplacé.</summary>
+    public string IgdbClientSecret { get; set; } = "";
+
+    [ObservableProperty]
+    private bool _hasIgdbSecret;
+
+    [ObservableProperty]
+    private string _igdbStatus = "";
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(TestIgdbCommand))]
+    private bool _isTestingIgdb;
+
+    /// <summary>Enregistre les identifiants (secret chiffré par Windows) puis teste la connexion.</summary>
+    [RelayCommand(CanExecute = nameof(CanTestIgdb))]
+    private async Task TestIgdbAsync()
+    {
+        var clientId = IgdbClientId.Trim();
+        var secret = IgdbClientSecret.Trim();
+        _settings.Update(s =>
+        {
+            s.IgdbClientId = clientId.Length == 0 ? null : clientId;
+            if (secret.Length > 0) s.IgdbClientSecretProtected = SecretProtector.Protect(secret);
+        });
+        IgdbClientSecret = "";
+        HasIgdbSecret = _settings.Get().IgdbClientSecretProtected is not null;
+        IgdbCredentialsChanged?.Invoke(this, EventArgs.Empty);
+
+        IsTestingIgdb = true;
+        IgdbStatus = "Test en cours…";
+        try
+        {
+            IgdbStatus = "✓ " + await _igdb.TestAsync();
+        }
+        catch (Exception ex)
+        {
+            IgdbStatus = "✗ " + ex.Message;
+        }
+        finally
+        {
+            IsTestingIgdb = false;
+        }
+    }
+
+    private bool CanTestIgdb() => !IsTestingIgdb;
+
+    [RelayCommand]
+    private void ForgetIgdb()
+    {
+        _settings.Update(s =>
+        {
+            s.IgdbClientId = null;
+            s.IgdbClientSecretProtected = null;
+        });
+        IgdbClientId = "";
+        HasIgdbSecret = false;
+        IgdbStatus = "Identifiants supprimés.";
+    }
+
+    [RelayCommand]
+    private static void OpenTwitchConsole() =>
+        // explorer.exe transmet l'adresse au navigateur de la session, sans droits administrateur.
+        Process.Start(new ProcessStartInfo("explorer.exe", "https://dev.twitch.tv/console/apps") { UseShellExecute = true });
+
+    /// <summary>Les identifiants ont changé : la bibliothèque peut relancer la recherche des jaquettes.</summary>
+    public event EventHandler? IgdbCredentialsChanged;
 
     public string DataFolder { get; }
 

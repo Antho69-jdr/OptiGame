@@ -6,6 +6,9 @@
              xmlns:vm="clr-namespace:OptiGame.App.ViewModels"
              mc:Ignorable="d"
              d:DataContext="{d:DesignInstance vm:SettingsViewModel}">
+    <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
+    </UserControl.Resources>
     <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="32,24,32,24">
         <StackPanel MaxWidth="820" HorizontalAlignment="Left">
             <TextBlock Style="{StaticResource Text.PageTitle}" Text="Paramètres" />
@@ -21,6 +24,42 @@
                     <TextBlock Margin="28,6,0,0" Style="{StaticResource Text.Caption}">
                         <Run Text="Programme lancé : " /><Run Text="{Binding ExePath, Mode=OneWay}" FontFamily="{StaticResource Font.Mono}" />
                     </TextBlock>
+                </StackPanel>
+            </Border>
+
+            <!-- Jaquettes IGDB -->
+            <Border Margin="0,16,0,0" Style="{StaticResource Card}">
+                <StackPanel>
+                    <TextBlock Style="{StaticResource Text.SectionTitle}" Text="Jaquettes (IGDB)" />
+                    <TextBlock Margin="0,6,0,0" Style="{StaticResource Text.Secondary}"
+                               Text="Les jaquettes de « Mes jeux » viennent d'IGDB, la base de jeux de Twitch. Il faut une application développeur Twitch (gratuite, usage personnel) :" />
+                    <TextBlock Margin="0,8,0,0" Style="{StaticResource Text.Secondary}" LineHeight="22">
+                        <Run Text="1. Ouvrez la console Twitch et connectez-vous (la double authentification doit être activée sur le compte)." /><LineBreak />
+                        <Run Text="2. « Register Your Application » : un nom (ex. OptiGame), l'URL de redirection http://localhost, catégorie Application Integration, type Confidential." /><LineBreak />
+                        <Run Text="3. Copiez le Client ID, puis générez un Client Secret (« New Secret ») et collez-les ci-dessous." />
+                    </TextBlock>
+                    <Button Margin="0,10,0,0" HorizontalAlignment="Left" Style="{StaticResource Button.Secondary}" Command="{Binding OpenTwitchConsoleCommand}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Style="{StaticResource Text.Icon}" FontSize="13" Text="&#xE8A7;" />
+                            <TextBlock Margin="8,0,0,0" Text="Ouvrir la console Twitch" />
+                        </StackPanel>
+                    </Button>
+
+                    <TextBlock Style="{StaticResource Text.Label}" Text="Client ID" />
+                    <TextBox Text="{Binding IgdbClientId, UpdateSourceTrigger=PropertyChanged}" FontFamily="{StaticResource Font.Mono}" />
+                    <TextBlock Style="{StaticResource Text.Label}" Text="Client Secret" />
+                    <PasswordBox x:Name="SecretBox" PasswordChanged="OnSecretChanged" />
+                    <TextBlock Margin="0,6,0,0" Style="{StaticResource Text.Caption}"
+                               Text="Un secret est enregistré (chiffré par Windows pour votre compte). Laissez le champ vide pour le conserver."
+                               Visibility="{Binding HasIgdbSecret, Converter={StaticResource BoolToVisibility}}" />
+
+                    <StackPanel Margin="0,14,0,0" Orientation="Horizontal">
+                        <Button Style="{StaticResource Button.Primary}" Content="Enregistrer et tester" Command="{Binding TestIgdbCommand}" />
+                        <Button Margin="8,0,0,0" Style="{StaticResource Button.Ghost}" Content="Supprimer les identifiants" Command="{Binding ForgetIgdbCommand}" />
+                    </StackPanel>
+                    <TextBlock Margin="0,10,0,0" Style="{StaticResource Text.Body}" Text="{Binding IgdbStatus}" />
+                    <TextBlock Margin="0,10,0,0" Style="{StaticResource Text.Caption}"
+                               Text="Confidentialité : seul le nom de vos jeux est envoyé à IGDB/Twitch pour trouver les images. Les images sont gardées en cache sur ce PC." />
                 </StackPanel>
             </Border>
 

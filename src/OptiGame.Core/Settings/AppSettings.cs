@@ -13,11 +13,19 @@ public sealed class AppSettings
     /// <summary>Chemin de PresentMon (console), pour les mesures.</summary>
     public string? PresentMonPath { get; set; }
 
+    /// <summary>Identifiant d'application Twitch, pour IGDB (jaquettes).</summary>
+    public string? IgdbClientId { get; set; }
+
+    /// <summary>Secret Twitch chiffré par Windows (DPAPI, compte de l'utilisateur), en base 64. Jamais en clair.</summary>
+    public string? IgdbClientSecretProtected { get; set; }
+
     public AppSettings Clone() => new()
     {
         Version = Version,
         GameFolders = [.. GameFolders],
         PresentMonPath = PresentMonPath,
+        IgdbClientId = IgdbClientId,
+        IgdbClientSecretProtected = IgdbClientSecretProtected,
     };
 }
 

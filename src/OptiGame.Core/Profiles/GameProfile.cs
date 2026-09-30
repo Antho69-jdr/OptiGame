@@ -36,6 +36,13 @@ public sealed class GameProfile
 
     public List<ProcessToClose> ProcessesToClose { get; set; } = [];
 
+    /// <summary>Jeu IGDB associé (jaquette et bannière) ; null = pas encore cherché ou non trouvé.</summary>
+    public long? IgdbGameId { get; set; }
+
+    public string? CoverImageId { get; set; }
+
+    public string? HeroImageId { get; set; }
+
     public GameProfile Clone() => new()
     {
         Id = Id,
@@ -45,6 +52,9 @@ public sealed class GameProfile
         PowerSchemeId = PowerSchemeId,
         Priority = Priority,
         ProcessesToClose = ProcessesToClose.Select(p => new ProcessToClose { ExeName = p.ExeName, Relaunch = p.Relaunch }).ToList(),
+        IgdbGameId = IgdbGameId,
+        CoverImageId = CoverImageId,
+        HeroImageId = HeroImageId,
     };
 
     public bool Matches(string exePath) => ExePaths.AreSame(ExePath, exePath);
