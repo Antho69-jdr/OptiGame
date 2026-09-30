@@ -59,6 +59,23 @@ if (args.Length == 1 && args[0] == "--launch-plan")
     return;
 }
 
+// --steam-playtime : temps de jeu Steam de chaque profil (lecture seule de localconfig.vdf et des vrais profils).
+if (args.Length == 1 && args[0] == "--steam-playtime")
+{
+    var profiles = new OptiGame.Core.Profiles.ProfileStore(
+        new JsonStateStore<OptiGame.Core.Profiles.ProfilesDocument>(AppPaths.Default.Profiles));
+    using var reader = services.GetRequiredService<OptiGame.Platform.Library.SteamPlaytimeReader>();
+    Console.WriteLine($"Fichier lu : {OptiGame.Platform.Library.SteamPlaytimeReader.LocalConfigPath() ?? "(aucun)"}");
+    var steam = reader.Read(profiles.GetAll());
+    foreach (var profile in profiles.GetAll())
+    {
+        Console.WriteLine(steam.TryGetValue(profile.Id, out var entry)
+            ? $"{profile.Name} : {OptiGame.Core.Playtime.PlaytimeText.Duration(entry.Total)} selon Steam, dernière partie {entry.LastPlayed?.ToLocalTime():dd/MM/yyyy HH:mm}"
+            : $"{profile.Name} : aucun temps Steam (jeu hors Steam ou jamais lancé par Steam)");
+    }
+    return;
+}
+
 // dotnet run --project tools/OptiGame.DiagDump -- --games [dossier…] : recherche des jeux installés.
 if (args.Length > 0 && args[0] == "--games")
 {

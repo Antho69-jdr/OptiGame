@@ -72,12 +72,23 @@ public sealed partial class GamePageViewModel(
     [ObservableProperty] private string _playtimeDetail = "";
     [ObservableProperty] private IReadOnlyList<SessionRow> _recentSessions = [];
 
-    public void SetPlaytime(PlaytimeStats stats, IReadOnlyList<PlaySession> recent, DateTimeOffset now)
+    public void SetPlaytime(PlaytimeSummary summary, IReadOnlyList<PlaySession> recent, DateTimeOffset now)
     {
-        PlaytimeTotal = stats.SessionCount == 0 ? "Jamais joué" : PlaytimeText.Duration(stats.Total);
-        PlaytimeDetail = stats.LastPlayed is { } last
-            ? $"{stats.SessionCount} partie{(stats.SessionCount > 1 ? "s" : "")} — dernière {PlaytimeText.LastPlayed(last, now)}"
-            : "Le temps est compté automatiquement pendant les sessions détectées par OptiGame.";
+        PlaytimeTotal = summary.EverPlayed ? PlaytimeText.Duration(summary.Total) : "Jamais joué";
+        var last = summary.LastPlayed is { } when ? $"dernière partie {PlaytimeText.LastPlayed(when, now)}" : null;
+        var tracked = summary.OptiGameSessions switch
+        {
+            0 => null,
+            1 => "1 partie suivie par OptiGame",
+            var n => $"{n} parties suivies par OptiGame",
+        };
+        PlaytimeDetail = summary.Source switch
+        {
+            // Steam compte tout, y compris avant OptiGame et en dehors : c'est le total affiché.
+            PlaytimeSource.Steam => string.Join(" · ", new[] { "Selon Steam", last, tracked }.OfType<string>()),
+            PlaytimeSource.OptiGame => string.Join(" — ", new[] { tracked, last }.OfType<string>()),
+            _ => "Le temps est compté automatiquement pendant les sessions détectées par OptiGame (et repris de Steam pour les jeux Steam).",
+        };
         RecentSessions = recent.Select(s => new SessionRow(
             s.StartedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm"),
             s.Incomplete ? "durée inconnue" : s.Duration is { } d ? PlaytimeText.Duration(d) : "en cours")).ToList();

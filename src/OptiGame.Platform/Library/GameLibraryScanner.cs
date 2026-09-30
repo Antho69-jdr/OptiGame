@@ -114,6 +114,19 @@ public sealed class GameLibraryScanner : IGameLibraryScanner
         return apps.FirstOrDefault(a => full.StartsWith(Path.GetFullPath(a.Folder).TrimEnd('\\') + '\\', StringComparison.OrdinalIgnoreCase))?.AppId;
     }
 
+    /// <summary>Appid Steam d'un profil : celui du profil s'il est valide, sinon celui du dossier d'installation de l'exe.</summary>
+    public static string? SteamAppIdFor(Core.Profiles.GameProfile profile, IReadOnlyList<SteamApp> apps) =>
+        profile.SteamAppId is { } id && Core.Launching.LaunchPlanner.IsValidSteamAppId(id) ? id : FindSteamAppId(profile.ExePath, apps);
+
+    /// <summary>Dossier d'installation de Steam (HKCU\Software\Valve\Steam\SteamPath), ou null.</summary>
+    public static string? SteamPath()
+    {
+        using var steamKey = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(@"Software\Valve\Steam");
+        return steamKey?.GetValue("SteamPath") is string path && path.Length > 0 && Directory.Exists(path)
+            ? Path.GetFullPath(path.Replace('/', '\\'))
+            : null;
+    }
+
     /// <summary>Chemin de steam.exe (HKCU\Software\Valve\Steam\SteamExe, vérifié sur la machine de dev), ou null.</summary>
     public static string? SteamExe()
     {

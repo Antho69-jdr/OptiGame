@@ -16,6 +16,7 @@ using OptiGame.Core.Profiles;
 using OptiGame.Core.Sessions;
 using OptiGame.Core.Settings;
 using OptiGame.Platform.Artwork;
+using OptiGame.Platform.Library;
 using OptiGame.Platform.Processes;
 
 namespace OptiGame.App.ViewModels;
@@ -39,6 +40,11 @@ public sealed partial class LibraryViewModel : ObservableObject
     private readonly FileLog _log;
     private readonly GameLauncher _launcher;
     private readonly PlaytimeStore _playtime;
+    private readonly SteamPlaytimeReader _steamReader;
+
+    /// <summary>Temps de jeu Steam par profil (jeux Steam), relu à chaque changement de la bibliothèque ou de Steam.</summary>
+    private IReadOnlyDictionary<Guid, SteamPlaytimeEntry> _steamPlaytime = new Dictionary<Guid, SteamPlaytimeEntry>();
+    private int _steamReadVersion;
 
     /// <summary>Profils déjà cherchés sur IGDB pendant cette exécution (on ne redemande pas un jeu introuvable).</summary>
     private readonly HashSet<Guid> _artworkSearched = [];
@@ -48,8 +54,9 @@ public sealed partial class LibraryViewModel : ObservableObject
     public LibraryViewModel(ProfileStore store, IPowerSchemeProvider power, IRunningProgramsProvider programs, IDialogService dialogs,
         IGameLibraryScanner scanner, AppSettingsStore settings, IgdbClient igdb, ArtworkCache artwork, GameSessionManager sessions,
         CaptureStore captures, MeasuresViewModel measures, NavigationService navigation, SettingsViewModel settingsPage,
-        TimeProvider time, FileLog log, GameLauncher launcher, PlaytimeStore playtime)
+        TimeProvider time, FileLog log, GameLauncher launcher, PlaytimeStore playtime, SteamPlaytimeReader steamReader)
     {
+        _steamReader = steamReader;
         _store = store;
         _power = power;
         _programs = programs;
@@ -73,6 +80,7 @@ public sealed partial class LibraryViewModel : ObservableObject
 
         store.ArtworkChanged += (_, id) => OnUi(() => _ = RefreshCoverAsync(id));
         playtime.Changed += (_, _) => OnUi(RefreshPlaytime);
+        steamReader.Changed += (_, _) => OnUi(() => _ = LoadSteamPlaytimeAsync()); // Steam a écrit le temps d'une partie
         store.DockChanged += (_, _) => OnUi(() =>
         {
             if (OpenGame is not null) OpenGame.IsPinned = _store.Find(OpenGame.Id)?.DockOrder is not null;
@@ -98,7 +106,7 @@ public sealed partial class LibraryViewModel : ObservableObject
     [ObservableProperty]
     private string _searchText = "";
 
-    public IReadOnlyList<string> SortOptions { get; } = ["Récemment joués", "Nom"];
+    public IReadOnlyList<string> SortOptions { get; } = ["Récemment joués", "Temps de jeu", "Nom"];
 
     [ObservableProperty]
     private string _selectedSort = "Récemment joués";
@@ -114,15 +122,19 @@ public sealed partial class LibraryViewModel : ObservableObject
             {
                 GamesView.SortDescriptions.Add(new SortDescription(nameof(GameCardViewModel.LastPlayedTicks), ListSortDirection.Descending));
             }
+            else if (SelectedSort == "Temps de jeu")
+            {
+                GamesView.SortDescriptions.Add(new SortDescription(nameof(GameCardViewModel.TotalTicks), ListSortDirection.Descending));
+            }
             GamesView.SortDescriptions.Add(new SortDescription(nameof(GameCardViewModel.Name), ListSortDirection.Ascending));
         }
     }
 
-    /// <summary>Temps de jeu modifié (début/fin de partie) : jaquettes, page ouverte et tri.</summary>
+    /// <summary>Temps de jeu modifié (début/fin de partie, relecture de Steam) : jaquettes, page ouverte et tri.</summary>
     private void RefreshPlaytime()
     {
         var now = _time.GetLocalNow();
-        foreach (var card in Games) card.Playtime = _playtime.StatsFor(card.Id, now);
+        foreach (var card in Games) card.Playtime = PlaytimeOf(card.Id, now);
         if (OpenGame is not null) RefreshPagePlaytime(OpenGame);
         GamesView.Refresh();
     }
@@ -130,7 +142,22 @@ public sealed partial class LibraryViewModel : ObservableObject
     private void RefreshPagePlaytime(GamePageViewModel page)
     {
         var now = _time.GetLocalNow();
-        page.SetPlaytime(_playtime.StatsFor(page.Id, now), _playtime.RecentSessions(page.Id, 5), now);
+        page.SetPlaytime(PlaytimeOf(page.Id, now), _playtime.RecentSessions(page.Id, 5), now);
+    }
+
+    /// <summary>Suivi d'OptiGame complété par le temps Steam (rétroactif) pour les jeux Steam.</summary>
+    private PlaytimeSummary PlaytimeOf(Guid id, DateTimeOffset now) =>
+        PlaytimeSummary.Combine(_playtime.StatsFor(id, now), _steamPlaytime.GetValueOrDefault(id));
+
+    /// <summary>Relit le temps Steam (localconfig.vdf + manifestes, hors du thread UI) ; la lecture la plus récente l'emporte.</summary>
+    private async Task LoadSteamPlaytimeAsync()
+    {
+        var version = ++_steamReadVersion;
+        var profiles = _store.GetAll();
+        var steam = await Task.Run(() => _steamReader.Read(profiles));
+        if (version != _steamReadVersion) return;
+        _steamPlaytime = steam;
+        RefreshPlaytime();
     }
 
     partial void OnSearchTextChanged(string value) => GamesView.Refresh();
@@ -471,7 +498,7 @@ public sealed partial class LibraryViewModel : ObservableObject
             var card = new GameCardViewModel(profile, playing == profile.Id)
             {
                 CoverPath = _artwork.TryGetCached(profile.CoverImageId, Igdb.CoverSize),
-                Playtime = _playtime.StatsFor(profile.Id, _time.GetLocalNow()),
+                Playtime = PlaytimeOf(profile.Id, _time.GetLocalNow()),
             };
             Games.Add(card);
             if (card.CoverPath is null && profile.CoverImageId is not null)
@@ -481,6 +508,7 @@ public sealed partial class LibraryViewModel : ObservableObject
         }
         OnPropertyChanged(nameof(HasGames));
         OnPropertyChanged(nameof(Subtitle));
+        _ = LoadSteamPlaytimeAsync(); // profils ajoutés, retirés ou modifiés : leur jeu Steam a pu changer
     }
 
     private async Task RefreshCoverAsync(Guid id)
@@ -540,11 +568,14 @@ public sealed partial class GameCardViewModel(GameProfile profile, bool isPlayin
     private bool _isPlaying = isPlaying;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(PlaytimeText), nameof(LastPlayedTicks))]
-    private PlaytimeStats _playtime = PlaytimeStats.None;
+    [NotifyPropertyChangedFor(nameof(PlaytimeText), nameof(LastPlayedTicks), nameof(TotalTicks))]
+    private PlaytimeSummary _playtime = PlaytimeSummary.None;
 
-    /// <summary>Sous le nom de la jaquette : « 12 h 05 » ou « Jamais joué ».</summary>
-    public string PlaytimeText => Playtime.SessionCount == 0 ? "Jamais joué" : Core.Playtime.PlaytimeText.Duration(Playtime.Total);
+    /// <summary>Sous le nom de la jaquette : « 12 h 05 » (temps Steam compris) ou « Jamais joué ».</summary>
+    public string PlaytimeText => Playtime.EverPlayed ? Core.Playtime.PlaytimeText.Duration(Playtime.Total) : "Jamais joué";
+
+    /// <summary>Clé de tri « Temps de jeu ».</summary>
+    public long TotalTicks => Playtime.Total.Ticks;
 
     /// <summary>Clé de tri « Récemment joués » (0 = jamais joué, en fin de liste).</summary>
     public long LastPlayedTicks => Playtime.LastPlayed?.UtcTicks ?? 0;

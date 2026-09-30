@@ -124,6 +124,11 @@ vit dans Core ; Platform ne fait que lire/écrire le système.
 - CSV réel de PresentMon 2.6.0 (`--v2_metrics`) : colonnes `FrameTime`, `CPUBusy`, `GPUTime`, `DisplayedTime`… SANS
   préfixe `Ms`, contrairement à sa documentation. Toujours valider un format sur un vrai fichier, et ne jamais
   supprimer un fichier qu'on n'a pas réussi à lire.
+- Temps de jeu Steam : `<SteamPath>\userdata\<accountid>\config\localconfig.vdf`, UserLocalConfigStore > Software > Valve >
+  Steam > apps > <appid> > `Playtime` (MINUTES) + `LastPlayed` (secondes Unix), réécrit par Steam à la fin d'une partie.
+  Compte : `HKCU\Software\Valve\Steam\ActiveProcess\ActiveUser` (0 si Steam est fermé), sinon `config\loginusers.vdf` :
+  le Steam actuel n'écrit PLUS `MostRecent`, seulement `Timestamp` (accountid = SteamID64 − 76561197960265728).
+  `DiagDump -- --steam-playtime` affiche ce qui est lu pour chaque profil.
 - Pile des fenêtres : le bureau (`Progman`) est tout en bas. Une fenêtre « collée au bureau » (dock sans masquage auto)
   doit se placer juste AU-DESSUS de lui (WM_WINDOWPOSCHANGING, cf. `DockWindow.LowestWindowAboveDesktop`) : avec
   HWND_BOTTOM, elle passerait sous le bureau, invisible. RocketDock fait de même.

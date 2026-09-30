@@ -19,10 +19,7 @@ public sealed class GameLauncher(FileLog log)
     }
 
     /// <summary>Appid Steam du jeu (profil, sinon manifestes Steam), ou null si ce n'est pas un jeu Steam. Hors du thread UI.</summary>
-    public string? SteamAppId(GameProfile profile) =>
-        profile.SteamAppId is { } id && LaunchPlanner.IsValidSteamAppId(id)
-            ? id
-            : GameLibraryScanner.FindSteamAppId(profile.ExePath, GameLibraryScanner.SteamApps());
+    public string? SteamAppId(GameProfile profile) => GameLibraryScanner.SteamAppIdFor(profile, GameLibraryScanner.SteamApps());
 
     /// <summary>Page du jeu dans le magasin : client Steam (sans droits administrateur), sinon navigateur.</summary>
     public void OpenStorePage(string appId)
