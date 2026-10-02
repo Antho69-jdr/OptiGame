@@ -24,7 +24,7 @@ public sealed partial class GamePageViewModel(
     /// <summary>Note du jeu par rapport au PC (mesurée ou estimée) ; null = pas encore de note.</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasRating), nameof(ScoreText), nameof(PresetText), nameof(RatingHeadline), nameof(RatingAdvice),
-        nameof(RatingSource), nameof(RatingDetails), nameof(RatingLevel))]
+        nameof(RatingSource), nameof(RatingDetails), nameof(RatingLevel), nameof(HasRequirementsLink))]
     private Core.Rating.GameRating? _rating;
 
     public bool HasRating => Rating is not null;
@@ -60,7 +60,23 @@ public sealed partial class GamePageViewModel(
 
     public string RatingSource => Rating?.Source == Core.Rating.RatingSource.Measured
         ? "Mesuré pendant vos parties (PresentMon)."
-        : "Estimation d'après la configuration requise du jeu (Steam) et votre PC.";
+        : $"Estimation d'après la configuration requise du jeu ({SourceLabel(Rating?.RequirementsSource)}) et votre PC.";
+
+    private static string SourceLabel(string? source) =>
+        source == Core.Rating.PcGamingWiki.SourceName ? "PCGamingWiki, licence CC BY-NC-SA" : source ?? "Steam";
+
+    /// <summary>Lien vers la page citée (PCGamingWiki) ; absent pour Steam, accessible par « Page Steam ».</summary>
+    public bool HasRequirementsLink => Rating?.RequirementsUrl is not null;
+
+    [RelayCommand]
+    private void OpenRequirementsSource()
+    {
+        // explorer.exe transmet l'adresse au navigateur de la session, sans droits administrateur.
+        if (Rating?.RequirementsUrl is { } url)
+        {
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("explorer.exe", url) { UseShellExecute = true });
+        }
+    }
 
     public IReadOnlyList<string> RatingDetails => Rating?.Details ?? [];
 

@@ -8,7 +8,7 @@ using OptiGame.Platform.Library;
 namespace OptiGame.App.Services;
 
 /// <summary>
-/// Note des jeux : caractéristiques du PC (lues une fois), configuration requise Steam (en cache), captures du jeu
+/// Note des jeux : caractéristiques du PC (lues une fois), configuration requise (Steam, sinon PCGamingWiki ; en cache), captures du jeu
 /// (manuelles et automatiques). Le calcul lui-même est dans Core (<see cref="GameRatings"/>).
 /// </summary>
 public sealed class GameRatingService(
@@ -16,7 +16,7 @@ public sealed class GameRatingService(
     IMemoryInfoProvider memory,
     IDisplayInfoProvider displays,
     CaptureStore captures,
-    SteamRequirementsClient requirements,
+    GameRequirementsClient requirements,
     FileLog log)
 {
     private PcSpecs? _pc;
@@ -44,6 +44,11 @@ public sealed class GameRatingService(
         if (GameLibraryScanner.SteamAppIdFor(profile, steamApps) is { } appId && await requirements.GetAsync(appId) is { } needs)
         {
             estimate = GameRatings.EstimateFrom(pc, needs);
+        }
+        // Jeu hors Steam, ou cartes citées par Steam inconnues de la table : PCGamingWiki, d'après le nom du jeu.
+        if (estimate is null && await requirements.FindByNameAsync(profile.Name) is { } wiki)
+        {
+            estimate = GameRatings.EstimateFrom(pc, wiki);
         }
 
         var exe = Path.GetFileName(profile.ExePath);

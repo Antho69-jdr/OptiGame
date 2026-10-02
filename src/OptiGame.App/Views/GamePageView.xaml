@@ -336,6 +336,9 @@
                                     <TextBlock Style="{StaticResource Text.Body}" FontWeight="SemiBold" Foreground="{StaticResource Brush.Accent}" Text="{Binding PresetText}" />
                                     <TextBlock Margin="0,4,0,0" Style="{StaticResource Text.Secondary}" Text="{Binding RatingAdvice}" TextWrapping="Wrap" />
                                     <TextBlock Margin="0,8,0,0" Style="{StaticResource Text.Caption}" Text="{Binding RatingSource}" TextWrapping="Wrap" />
+                                    <Button Margin="-8,2,0,0" HorizontalAlignment="Left" Style="{StaticResource Button.Ghost}" Content="Voir sur PCGamingWiki"
+                                            Command="{Binding OpenRequirementsSourceCommand}" AutomationProperties.Name="Voir sur PCGamingWiki"
+                                            Visibility="{Binding HasRequirementsLink, Converter={StaticResource BoolToVisibility}}" />
                                     <ItemsControl Margin="0,4,0,0" ItemsSource="{Binding RatingDetails}">
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate>
@@ -346,7 +349,7 @@
                                 </StackPanel>
                                 <TextBlock Margin="0,6,0,0" Style="{StaticResource Text.Secondary}" TextWrapping="Wrap"
                                            Visibility="{Binding HasRating, Converter={StaticResource InverseBoolToVisibility}}"
-                                           Text="Pas encore de note : configuration requise inconnue (jeu hors Steam). Elle apparaîtra après une partie, grâce à la mesure automatique des FPS." />
+                                           Text="Pas encore de note : configuration requise introuvable (ni Steam ni PCGamingWiki, ou cartes graphiques citées inconnues). Elle apparaîtra après une partie, grâce à la mesure automatique des FPS." />
                             </StackPanel>
                         </Border>
 

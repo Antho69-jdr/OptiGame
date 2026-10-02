@@ -39,14 +39,16 @@ public enum Bottleneck
 /// <summary>Un niveau de configuration requise (minimum ou recommandé) : cartes graphiques citées et mémoire vive.</summary>
 public sealed record RequirementLevel(IReadOnlyList<GpuPerformance.Match> Gpus, int? MemoryGb, string GraphicsText);
 
-public sealed record SystemRequirements(RequirementLevel? Minimum, RequirementLevel? Recommended);
+/// <param name="Source">D'où vient la configuration requise (affiché avec la note).</param>
+/// <param name="SourceUrl">Page à citer (PCGamingWiki : licence CC BY-NC-SA) ; null pour Steam, déjà accessible par « Page Steam ».</param>
+public sealed record SystemRequirements(RequirementLevel? Minimum, RequirementLevel? Recommended, string Source = "Steam", string? SourceUrl = null);
 
 /// <summary>Le PC : carte graphique (indice), mémoire, résolution et fréquence de l'écran de jeu.</summary>
 public sealed record PcSpecs(string GpuName, GpuPerformance.Match? Gpu, int MemoryGb, int Width, int Height, int RefreshHz);
 
 /// <summary>Note d'un jeu, sur 100, avec le réglage graphique conseillé et l'explication.</summary>
 public sealed record GameRating(int Score, RatingSource Source, GraphicsPreset? Preset, bool BelowMinimum, string Headline, string Advice,
-    IReadOnlyList<string> Details);
+    IReadOnlyList<string> Details, string? RequirementsSource = null, string? RequirementsUrl = null);
 
 /// <summary>
 /// Configurations requises publiées par Steam (store.steampowered.com/api/appdetails?appids=…&amp;l=english). Format vérifié le
@@ -126,7 +128,8 @@ public static class GameRatings
 
     private const double FullHdPixels = 1920 * 1080;
 
-    public sealed record Estimate(int Score, GraphicsPreset Preset, bool BelowMinimum, IReadOnlyList<string> Details);
+    public sealed record Estimate(int Score, GraphicsPreset Preset, bool BelowMinimum, IReadOnlyList<string> Details, string Source = "Steam",
+        string? SourceUrl = null);
 
     /// <summary>Une capture du jeu : statistiques, charge (null = inconnue) et réglage indiqué à ce moment-là.</summary>
     public sealed record MeasuredCapture(FrameStats Stats, FrameLoad? Load, GraphicsPreset? Preset);
@@ -181,7 +184,7 @@ public static class GameRatings
         var memoryNeeds = requirements.Recommended?.MemoryGb ?? requirements.Minimum?.MemoryGb;
         details.Add($"Mémoire vive : {pc.MemoryGb} Go" + (memoryNeeds is { } needed ? $" (le jeu demande {needed} Go)." : "."));
 
-        return new Estimate((int)Math.Round(score), preset, below, details);
+        return new Estimate((int)Math.Round(score), preset, below, details, requirements.Source, requirements.SourceUrl);
     }
 
     /// <summary>
@@ -271,14 +274,14 @@ public static class GameRatings
                 details.Add("Indiquez le réglage utilisé dans le jeu pour obtenir un réglage conseillé (OptiGame ne peut pas le lire).");
             }
             if (estimate is not null) details.AddRange(estimate.Details);
-            return new GameRating(measured.Score, RatingSource.Measured, preset, false, headline, advice, details);
+            return new GameRating(measured.Score, RatingSource.Measured, preset, false, headline, advice, details, estimate?.Source, estimate?.SourceUrl);
         }
 
         if (estimate is null) return null;
         return new GameRating(estimate.Score, RatingSource.Estimated, estimate.Preset, estimate.BelowMinimum,
             estimate.BelowMinimum ? "Sous la configuration minimale"
                 : estimate.Score >= 85 ? "Large marge" : estimate.Score >= 70 ? "Bonne marge" : estimate.Score >= 50 ? "Marge suffisante" : "Juste",
-            "Une partie mesurée remplacera cette estimation.", estimate.Details);
+            "Une partie mesurée remplacera cette estimation.", estimate.Details, estimate.Source, estimate.SourceUrl);
     }
 
     /// <summary>Conseil d'après la mesure : cran à monter (+1), garder (0) ou baisser (−1), et son explication.</summary>

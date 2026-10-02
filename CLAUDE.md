@@ -167,6 +167,13 @@ vit dans Core ; Platform ne fait que lire/écrire le système.
     `pc_requirements.minimum/recommended` en HTML, lignes « Graphics: » et « Memory: » ; 4 vraies réponses dans les tests),
     gardée 30 jours dans `requirements.json`. Cartes comparées par `GpuPerformance` (indices APPROXIMATIFS, GTX 1060 = 100,
     affichés comme estimation), résolution ramenée au 1080p (pixels^0,7). Recommandé atteint = « Élevé ».
+  - Hors Steam (ou cartes citées par Steam inconnues) : PCGamingWiki (`Core/Rating/PcGamingWiki`, API MediaWiki :
+    `opensearch` puis `parse&prop=wikitext`, bloc `{{System requirements}}` `|OSfamily = Windows`, champs minGPU/minGPU2…/
+    recGPU…/minRAM/recRAM ; 6 jeux vérifiés le 2026-10-02, échantillons dans les tests). Titre IDENTIQUE au nom du profil
+    seulement (sinon rien), seul le nom est envoyé, introuvable = nouvel essai après 7 jours. Licence CC BY-NC-SA : source
+    citée + lien « Voir sur PCGamingWiki ». Écartés : IGDB (pas de configuration requise dans l'API), Can You Run It (ni API
+    ni conditions publiées ; un mauvais identifiant affiche un AUTRE jeu sans erreur), recherche Steam par nom (packs, DLC).
+    Client commun : `Platform/Library/GameRequirementsClient` (cache `requirements.json`, clés appid ou `pcgw:<nom>`).
   - Mesure : `Platform/Measurement/AutoCapture` = 1 capture PresentMon de 60 s après 4 min de partie, session ETW
     `OptiGame_AutoCapture` (jamais celle de la page Mesures), 5 dernières gardées par jeu, désactivable (Paramètres).
     Note = fluidité (60 % FPS moyens + 40 % 1 % low) / min(fréquence de l'écran, 120 Hz), médiane des 5 dernières captures.

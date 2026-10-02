@@ -94,7 +94,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<GameLauncher>();
         services.AddSingleton<Library.SteamPlaytimeReader>();
         services.AddSingleton<Library.SteamLibraryWatcher>();
-        services.AddSingleton<Library.SteamRequirementsClient>();
+        services.AddSingleton<Library.GameRequirementsClient>();
         services.AddSingleton<Drivers.NvidiaDriverClient>();
         services.AddSingleton<Drivers.WindowsUpdateDriverSearch>();
         services.AddSingleton<Drivers.DriverDownloader>();
