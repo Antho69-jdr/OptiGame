@@ -122,6 +122,32 @@ if (args.Length == 1 && args[0] == "--steam-playtime")
     return;
 }
 
+// --disks : disque de chaque lecteur et de chaque profil (type, espace libre, conseil affiché sur la page du jeu).
+if (args.Length == 1 && args[0] == "--disks")
+{
+    foreach (var drive in DriveInfo.GetDrives().Where(d => d.IsReady))
+    {
+        var facts = OptiGame.Platform.Storage.GameDiskReader.Read(drive.RootDirectory.FullName);
+        Console.WriteLine(facts is null ? $"{drive.Name} : illisible"
+            : $"{facts.Drive} {facts.Model} : MediaType={facts.MediaType} BusType={facts.BusType} pénalité={facts.SeekPenalty?.ToString() ?? "?"} " +
+              $"TRIM={facts.Trim?.ToString() ?? "?"} → {OptiGame.Core.Library.GameDisk.KindOf(facts)}");
+    }
+    var profiles = new OptiGame.Core.Profiles.ProfileStore(
+        new JsonStateStore<OptiGame.Core.Profiles.ProfilesDocument>(AppPaths.Default.Profiles));
+    foreach (var profile in profiles.GetAll())
+    {
+        var facts = OptiGame.Platform.Storage.GameDiskReader.Read(profile.ExePath);
+        if (facts is null)
+        {
+            Console.WriteLine($"{profile.Name} : lecteur introuvable");
+            continue;
+        }
+        var report = OptiGame.Core.Library.GameDisk.Assess(facts, profile.SteamAppId is not null);
+        Console.WriteLine($"{profile.Name} : [{report.Level}] {report.Summary} {report.Detail}");
+    }
+    return;
+}
+
 // dotnet run --project tools/OptiGame.DiagDump -- --games [dossier…] : recherche des jeux installés.
 if (args.Length > 0 && args[0] == "--games")
 {

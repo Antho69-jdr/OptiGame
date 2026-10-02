@@ -139,6 +139,12 @@ vit dans Core ; Platform ne fait que lire/écrire le système.
   (`PowerWriteACValueIndex` puis réactivation du plan s'il est actif). Écriture vérifiée sur une copie temporaire d'un plan.
   Machine de dev : Atlas = Offensif, 100 % → OK. Écartés comme placebo : affinité / « tous les cœurs », RAM virtuelle pour
   les FPS, arguments de lancement génériques (-USEALLAVAILABLECORES, -high = priorité déjà gérée, -malloc=system).
+- Disque du jeu (carte « Disque du jeu » de la page du jeu ; `Core/Library/GameDisk` + `Platform/Storage/GameDiskReader`,
+  `DiagDump -- --disks`) : lettre → `MSFT_Partition.DiskNumber` = `MSFT_PhysicalDisk.DeviceId` (root\Microsoft\Windows\Storage,
+  sans admin). `MediaType` NON FIABLE : le disque dur WD10EARX (D:) est déclaré 0 « non précisé » et refuse la question de la
+  pénalité de recherche (IOCTL_STORAGE_QUERY_PROPERTY 7, erreur 31) ; seule la propriété TRIM (8) = false le révèle. Ordre :
+  type déclaré → pénalité de recherche → TRIM. Disque USB 2.0 (E:) : ne répond à aucune → « type inconnu », Info. Alerte si
+  disque dur ou moins de 20 Go / 10 % libres.
 - Une valeur de registre absente se sauvegarde comme `Absent` et se restaure par **suppression**.
 - CSV réel de PresentMon 2.6.0 (`--v2_metrics`) : colonnes `FrameTime`, `CPUBusy`, `GPUTime`, `DisplayedTime`… SANS
   préfixe `Ms`, contrairement à sa documentation. Toujours valider un format sur un vrai fichier, et ne jamais

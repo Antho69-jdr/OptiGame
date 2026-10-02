@@ -373,6 +373,36 @@
                             </StackPanel>
                         </Border>
 
+                        <!-- Disque du jeu : SSD ou disque dur, espace libre -->
+                        <Border Margin="0,0,0,16" Style="{StaticResource Card}" Visibility="{Binding HasDisk, Converter={StaticResource BoolToVisibility}}">
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource Text.Caption}" Text="DISQUE DU JEU" FontWeight="SemiBold" />
+                                <TextBlock Margin="0,4,0,0" FontWeight="SemiBold" FontSize="15" Text="{Binding Disk.Summary}">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Foreground" Value="{StaticResource Brush.Ok}" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding DiskLevel}" Value="Fair">
+                                                    <Setter Property="Foreground" Value="{StaticResource Brush.Warning}" />
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding DiskLevel}" Value="Poor">
+                                                    <Setter Property="Foreground" Value="{StaticResource Brush.Danger}" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                                <TextBlock Margin="0,2,0,0" Style="{StaticResource Text.Secondary}" Text="{Binding Disk.Detail}" TextWrapping="Wrap" />
+                                <ItemsControl Margin="0,4,0,0" ItemsSource="{Binding Disk.Advice}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Margin="0,4,0,0" Style="{StaticResource Text.Caption}" Text="{Binding StringFormat='• {0}'}" TextWrapping="Wrap" />
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                        </Border>
+
                         <!-- Profil -->
                         <Border Style="{StaticResource Card}">
                             <StackPanel>

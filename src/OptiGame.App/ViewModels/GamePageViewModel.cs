@@ -139,6 +139,21 @@ public sealed partial class GamePageViewModel(
     [ObservableProperty] private string _playtimeDetail = "";
     [ObservableProperty] private IReadOnlyList<SessionRow> _recentSessions = [];
 
+    /// <summary>Disque d'installation (lu en arrière-plan à l'ouverture de la page) ; null tant qu'il n'est pas lu.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasDisk), nameof(DiskLevel))]
+    private Core.Library.GameDiskReport? _disk;
+
+    public bool HasDisk => Disk is not null;
+
+    /// <summary>Couleur du titre : Good (bon emplacement), Fair (à surveiller), Poor (disque dur ou presque plein).</summary>
+    public string DiskLevel => Disk?.Level switch
+    {
+        Core.Library.GameDiskLevel.Warning => "Poor",
+        Core.Library.GameDiskLevel.Info => "Fair",
+        _ => "Good",
+    };
+
     public void SetPlaytime(PlaytimeSummary summary, IReadOnlyList<PlaySession> recent, DateTimeOffset now)
     {
         PlaytimeTotal = summary.EverPlayed ? PlaytimeText.Duration(summary.Total) : "Jamais joué";

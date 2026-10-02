@@ -423,10 +423,27 @@ public sealed partial class LibraryViewModel : ObservableObject
         _ = LoadPageImagesAsync(OpenGame, profile);
         _ = LoadSteamAppIdAsync(OpenGame, profile);
         _ = OpenGame.Graphics.LoadAsync();
+        _ = LoadDiskAsync(OpenGame, profile);
         OpenGame.Rating = Games.FirstOrDefault(c => c.Id == id)?.Rating; // déjà calculée pour la jaquette
     }
 
     /// <summary>Appid Steam de la page (lecture des manifestes Steam, hors du thread UI) : affiche le bouton « Page Steam ».</summary>
+    /// <summary>Disque du jeu (WMI + questions au disque, hors du thread UI). Les jeux Steam sont dans « steamapps\common ».</summary>
+    private async Task LoadDiskAsync(GamePageViewModel page, GameProfile profile)
+    {
+        try
+        {
+            var isSteam = profile.ExePath.Contains(@"\steamapps\common\", StringComparison.OrdinalIgnoreCase);
+            page.Disk = await Task.Run(() => Platform.Storage.GameDiskReader.Read(profile.ExePath) is { } facts
+                ? Core.Library.GameDisk.Assess(facts, isSteam)
+                : null);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or System.Management.ManagementException)
+        {
+            _log.Warn($"Disque de « {profile.Name} » illisible : {ex.Message}");
+        }
+    }
+
     private async Task LoadSteamAppIdAsync(GamePageViewModel page, GameProfile profile)
     {
         try

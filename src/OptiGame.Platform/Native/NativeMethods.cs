@@ -120,6 +120,38 @@ internal static class NativeMethods
 
     public const uint ErrorFileNotFound = 2;
 
+    // ---- Disques (IOCTL_STORAGE_QUERY_PROPERTY, vérifié sur la machine de dev le 2026-10-02) ----
+
+    public const uint IoctlStorageQueryProperty = 0x2D1400;
+    public const int StorageDeviceSeekPenaltyProperty = 7;
+    public const int StorageDeviceTrimProperty = 8;
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct StoragePropertyQuery
+    {
+        public int PropertyId;
+        public int QueryType; // 0 = PropertyStandardQuery
+        public int AdditionalParameters;
+    }
+
+    /// <summary>Forme commune de DEVICE_SEEK_PENALTY_DESCRIPTOR et DEVICE_TRIM_DESCRIPTOR.</summary>
+    [StructLayout(LayoutKind.Sequential)]
+    public struct StorageBoolDescriptor
+    {
+        public uint Version;
+        public uint Size;
+        [MarshalAs(UnmanagedType.U1)] public bool Value;
+    }
+
+    [DllImport("kernel32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+    public static extern Microsoft.Win32.SafeHandles.SafeFileHandle CreateFile(string fileName, uint desiredAccess, uint shareMode,
+        IntPtr securityAttributes, uint creationDisposition, uint flagsAndAttributes, IntPtr templateFile);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static extern bool DeviceIoControl(Microsoft.Win32.SafeHandles.SafeFileHandle device, uint ioControlCode, ref StoragePropertyQuery input,
+        int inputSize, out StorageBoolDescriptor output, int outputSize, out int bytesReturned, IntPtr overlapped);
+
     [DllImport("kernel32.dll")]
     public static extern IntPtr LocalFree(IntPtr hMem);
 
