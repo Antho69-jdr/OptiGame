@@ -307,6 +307,12 @@
                         <Border Margin="0,0,0,16" Style="{StaticResource Card}">
                             <StackPanel>
                                 <TextBlock Style="{StaticResource Text.Caption}" Text="NOTE SUR CE PC" FontWeight="SemiBold" />
+                                <DockPanel Margin="0,8,0,4">
+                                    <TextBlock VerticalAlignment="Center" Style="{StaticResource Text.Secondary}" Text="Mon réglage dans le jeu"
+                                               ToolTip="OptiGame ne peut pas lire les réglages d'un jeu : indiquez celui que vous utilisez pour un conseil précis. Il est enregistré avec chaque mesure." />
+                                    <ComboBox Margin="12,0,0,0" MinWidth="130" HorizontalAlignment="Right" ItemsSource="{Binding PlayedPresetOptions}"
+                                              SelectedItem="{Binding PlayedPreset}" DisplayMemberPath="Label" AutomationProperties.Name="Mon réglage dans le jeu" />
+                                </DockPanel>
                                 <StackPanel Visibility="{Binding HasRating, Converter={StaticResource BoolToVisibility}}">
                                     <StackPanel Margin="0,4,0,0" Orientation="Horizontal">
                                         <TextBlock FontFamily="{StaticResource Font.Display}" FontSize="30" FontWeight="SemiBold" Text="{Binding ScoreText}">

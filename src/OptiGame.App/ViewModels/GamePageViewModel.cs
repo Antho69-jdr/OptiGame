@@ -16,6 +16,7 @@ public sealed partial class GamePageViewModel(
     Func<Task> play,
     Action togglePin,
     Action<string> openStorePage,
+    Action<Core.Rating.GraphicsPreset?> setPlayedPreset,
     GameGraphicsViewModel graphics,
     bool isPinned,
     bool isPlaying) : ObservableObject
@@ -30,7 +31,28 @@ public sealed partial class GamePageViewModel(
 
     public string ScoreText => Rating is null ? "" : $"{Rating.Score}";
 
-    public string PresetText => Rating?.Preset is { } preset ? $"Réglage conseillé : {Core.Rating.GameRatings.Label(preset)}" : "";
+    public string PresetText => Rating?.Preset is not { } preset ? ""
+        : $"Réglage conseillé : {Core.Rating.GameRatings.Label(preset)}" +
+          (Rating.Source == Core.Rating.RatingSource.Measured && preset == PlayedPreset.Value ? ", celui que vous utilisez" : "");
+
+    /// <summary>Choix du réglage utilisé dans le jeu (OptiGame ne peut pas le lire dans les fichiers du jeu).</summary>
+    public IReadOnlyList<PlayedPresetOption> PlayedPresetOptions => AllPlayedPresets;
+
+    private static readonly IReadOnlyList<PlayedPresetOption> AllPlayedPresets =
+    [
+        new(null, "Non indiqué"),
+        new(Core.Rating.GraphicsPreset.Low, "Bas"),
+        new(Core.Rating.GraphicsPreset.Medium, "Moyen"),
+        new(Core.Rating.GraphicsPreset.High, "Élevé"),
+        new(Core.Rating.GraphicsPreset.Ultra, "Ultra"),
+    ];
+
+    /// <summary>Réglage utilisé dans le jeu ; enregistré dans le profil, puis la note est recalculée.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(PresetText))]
+    private PlayedPresetOption _playedPreset = AllPlayedPresets.First(o => o.Value == profile.GraphicsPreset);
+
+    partial void OnPlayedPresetChanged(PlayedPresetOption value) => setPlayedPreset(value.Value);
 
     public string RatingHeadline => Rating?.Headline ?? "";
 
@@ -140,3 +162,5 @@ public sealed partial class GamePageViewModel(
 
 /// <summary>Ligne « Dernières parties » de la page du jeu.</summary>
 public sealed record SessionRow(string Date, string Duration);
+
+public sealed record PlayedPresetOption(Core.Rating.GraphicsPreset? Value, string Label);

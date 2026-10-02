@@ -58,6 +58,10 @@ public sealed class GameProfile
 
     public string? HeroImageId { get; set; }
 
+    /// <summary>Réglage graphique utilisé dans le jeu, indiqué par l'utilisateur (note des jeux) ; ne change que par
+    /// <see cref="ProfileStore.SetGraphicsPreset"/>.</summary>
+    public Rating.GraphicsPreset? GraphicsPreset { get; set; }
+
     public GameProfile Clone() => new()
     {
         Id = Id,
@@ -75,6 +79,7 @@ public sealed class GameProfile
         IgdbGameId = IgdbGameId,
         CoverImageId = CoverImageId,
         HeroImageId = HeroImageId,
+        GraphicsPreset = GraphicsPreset,
     };
 
     public bool Matches(string exePath) => ExePaths.AreSame(ExePath, exePath);

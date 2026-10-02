@@ -104,6 +104,13 @@ public sealed class GameRatingTests
 
     private static FrameStats Stats(double avg, double low, int frames = 5000) => new(frames, 60, avg, low, low * 0.8, 1000 / avg, 1000 / low, 1000 / low * 2);
 
+    private static GameRatings.MeasuredCapture Capture(double avg, double low, int frames = 5000, FrameLoad? load = null, GraphicsPreset? preset = null) =>
+        new(Stats(avg, low, frames), load, preset);
+
+    // Charges relevées sur de vraies captures PresentMon (2026-10-02).
+    private static readonly FrameLoad OverwatchCapped = new(0.76, 0.43);
+    private static readonly FrameLoad VoidCrewGpuBound = new(0.98, 0.02);
+
     [Theory]
     [InlineData(144, 120, 100)]
     [InlineData(98, 71, 80)]
@@ -111,39 +118,113 @@ public sealed class GameRatingTests
     [InlineData(30, 20, 34)]
     public void Measured_score_reflects_smoothness(double avg, double low, int score)
     {
-        Assert.Equal(score, GameRatings.MeasureFrom([Stats(avg, low)], 165)!.Score);
+        Assert.Equal(score, GameRatings.MeasureFrom([Capture(avg, low)], 165)!.Score);
     }
 
     [Fact]
     public void Measured_score_uses_the_median_of_the_last_five_reliable_captures()
     {
-        var captures = new[] { Stats(30, 20), Stats(98, 71), Stats(144, 120), Stats(60, 45), Stats(10, 5, frames: 50), Stats(100, 80), Stats(20, 10) };
+        var captures = new[] { Capture(30, 20), Capture(98, 71), Capture(144, 120), Capture(60, 45), Capture(10, 5, frames: 50), Capture(100, 80), Capture(20, 10) };
         var measured = GameRatings.MeasureFrom(captures, 165)!;
 
         Assert.Equal(5, measured.Captures); // la capture de 50 images est ignorée, la 7e est trop ancienne
         Assert.Equal(80, measured.Score);
-        Assert.Null(GameRatings.MeasureFrom([Stats(100, 80, frames: 20)], 165));
+        Assert.Null(GameRatings.MeasureFrom([Capture(100, 80, frames: 20)], 165));
     }
 
     [Fact]
-    public void Measurement_replaces_the_estimate_and_adjusts_the_setting()
+    public void Reads_the_load_columns_of_a_real_PresentMon_capture()
     {
-        var estimate = GameRatings.EstimateFrom(Dev, Requirements("578080")); // Élevé
+        // En-tête et 2 lignes d'une vraie capture d'Overwatch (PresentMon 2.6.0, --v2_metrics), répétées.
+        const string header = "Application,ProcessID,SwapChainAddress,PresentRuntime,SyncInterval,PresentFlags,AllowsTearing,PresentMode,CPUStartTime,FrameTime,CPUBusy,CPUWait,GPULatency,GPUTime,GPUBusy,GPUWait,DisplayLatency,DisplayedTime,AnimationError,AnimationTime,MsFlipDelay,AllInputToPhotonLatency,ClickToPhotonLatency";
+        const string a = "Overwatch.exe,2416,0x1CB732B1060,DXGI,0,0,1,Hardware Composed: Independent Flip,5004.7366,6.2291,3.4179,2.8112,1.3188,5.8195,4.5946,1.2249,11.9221,6.1469,-0.0716,5004.7366,NA,16.4738,NA";
+        const string b = "Overwatch.exe,2416,0x1CB732B1060,DXGI,0,0,1,Hardware Composed: Independent Flip,5010.9657,6.0092,5.4723,0.5369,1.1948,5.7305,4.4662,1.2643,11.8399,5.9703,0.0822,5010.9657,NA,NA,NA";
+        var csv = header + "\n" + string.Join("\n", Enumerable.Repeat(a + "\n" + b, 60));
+        var frames = PresentMonCsv.Parse(new StringReader(csv));
 
-        var headroom = GameRatings.Combine(estimate, GameRatings.MeasureFrom([Stats(200, 140)], 165))!;
-        Assert.Equal((RatingSource.Measured, GraphicsPreset.Ultra, 100, "Très fluide"), (headroom.Source, headroom.Preset, headroom.Score, headroom.Headline));
+        Assert.Equal((2.8112, 4.5946), (frames[0].CpuWait, frames[0].GpuBusy));
+        var load = FrameLoad.Compute(frames)!;
+        Assert.Equal(0.74, load.GpuBusy, 2);   // (4,5946 + 4,4662) / (6,2291 + 6,0092)
+        Assert.Equal(0.27, load.CpuWait, 2);
+        Assert.Null(FrameLoad.Compute(frames.Take(50).ToList())); // trop peu d'images
+        Assert.Null(FrameLoad.Compute(frames.Select(f => f with { GpuBusy = null }).ToList())); // CSV 1.x
+    }
 
-        var struggling = GameRatings.Combine(estimate, GameRatings.MeasureFrom([Stats(40, 25)], 165))!;
-        Assert.Equal((GraphicsPreset.Medium, "Peu fluide"), (struggling.Preset, struggling.Headline));
+    [Theory]
+    [InlineData(0.98, 0.02, 102, Bottleneck.Gpu)]       // Void Crew
+    [InlineData(0.76, 0.43, 164, Bottleneck.FrameCap)]  // Overwatch, limiteur de FPS
+    [InlineData(0.82, 0.64, 165, Bottleneck.FrameCap)]  // Overwatch en V-Sync (mesure automatique réelle)
+    [InlineData(0.60, 0.01, 163, Bottleneck.FrameCap)]  // FPS collés à la fréquence de l'écran sans attente visible
+    [InlineData(0.55, 0.02, 90, Bottleneck.Cpu)]
+    public void Finds_what_limits_the_frame_rate(double gpuBusy, double cpuWait, double fps, Bottleneck expected)
+    {
+        Assert.Equal(expected, GameRatings.Classify(new FrameLoad(gpuBusy, cpuWait), fps, 165));
+    }
 
-        var fine = GameRatings.Combine(estimate, GameRatings.MeasureFrom([Stats(98, 71)], 165))!;
-        Assert.Equal((GraphicsPreset.High, "Fluide"), (fine.Preset, fine.Headline));
+    [Fact]
+    public void Advice_starts_from_the_setting_the_user_plays_with()
+    {
+        var estimate = GameRatings.EstimateFrom(Dev, Requirements("578080")); // Élevé estimé : ignoré une fois mesuré
+
+        // Bas à 200 FPS (carte graphique à fond) : monter d'un cran, depuis Bas.
+        var low = GameRatings.Combine(estimate, GameRatings.MeasureFrom([Capture(200, 140, load: VoidCrewGpuBound, preset: GraphicsPreset.Low)], 165))!;
+        Assert.Equal((RatingSource.Measured, GraphicsPreset.Medium, 100, "Très fluide"), (low.Source, low.Preset, low.Score, low.Headline));
+
+        // Ultra à 40 FPS, carte graphique à fond : baisser d'un cran.
+        var ultra = GameRatings.Combine(estimate, GameRatings.MeasureFrom([Capture(40, 25, load: VoidCrewGpuBound, preset: GraphicsPreset.Ultra)], 165))!;
+        Assert.Equal((GraphicsPreset.High, "Peu fluide"), (ultra.Preset, ultra.Headline));
+        Assert.Contains("98 %", ultra.Advice);
+
+        // Bas à 40 FPS, carte graphique à fond : impossible de baisser encore.
+        var floor = GameRatings.Combine(null, GameRatings.MeasureFrom([Capture(40, 25, load: VoidCrewGpuBound, preset: GraphicsPreset.Low)], 165))!;
+        Assert.Equal(GraphicsPreset.Low, floor.Preset);
+        Assert.Contains("upscaling", floor.Advice);
+
+        // Processeur limitant : baisser les graphismes ne servirait à rien, le réglage est gardé.
+        var cpu = GameRatings.Combine(null, GameRatings.MeasureFrom([Capture(60, 40, load: new FrameLoad(0.55, 0.02), preset: GraphicsPreset.High)], 165))!;
+        Assert.Equal(GraphicsPreset.High, cpu.Preset);
+        Assert.Contains("processeur", cpu.Advice);
+
+        // Overwatch : plafonné à 164 FPS, carte graphique à 76 % : réglage gardé.
+        var capped = GameRatings.Combine(null, GameRatings.MeasureFrom([Capture(164, 117, load: OverwatchCapped, preset: GraphicsPreset.Ultra)], 164))!;
+        Assert.Equal((GraphicsPreset.Ultra, 100), (capped.Preset, capped.Score));
+        Assert.Contains(capped.Details, d => d.Contains("plafond de FPS"));
+    }
+
+    [Fact]
+    public void Without_the_users_setting_the_advice_is_only_relative()
+    {
+        var estimate = GameRatings.EstimateFrom(Dev, Requirements("578080"));
+        var rating = GameRatings.Combine(estimate, GameRatings.MeasureFrom([Capture(200, 140, load: VoidCrewGpuBound)], 165))!;
+
+        Assert.Null(rating.Preset); // OptiGame ne peut pas savoir si ces 200 FPS sont en Bas ou en Ultra
+        Assert.Contains("monter les réglages d'un cran", rating.Advice);
+        Assert.Contains(rating.Details, d => d.StartsWith("Indiquez le réglage"));
 
         var onlyEstimate = GameRatings.Combine(estimate, null)!;
-        Assert.Equal((RatingSource.Estimated, 77, "Bonne marge"), (onlyEstimate.Source, onlyEstimate.Score, onlyEstimate.Headline));
-
-        var measuredOnly = GameRatings.Combine(null, GameRatings.MeasureFrom([Stats(98, 71)], 165))!;
-        Assert.Null(measuredOnly.Preset); // jeu hors Steam : pas de configuration requise, conseil relatif seulement
+        Assert.Equal((RatingSource.Estimated, GraphicsPreset.High, 77, "Bonne marge"), (onlyEstimate.Source, onlyEstimate.Preset, onlyEstimate.Score, onlyEstimate.Headline));
         Assert.Null(GameRatings.Combine(null, null));
+    }
+
+    [Fact]
+    public void Prefers_captures_made_at_the_current_setting()
+    {
+        var captures = new[]
+        {
+            Capture(60, 45, preset: GraphicsPreset.Ultra),
+            Capture(144, 120, preset: GraphicsPreset.Low),
+            Capture(98, 71), // réglage non enregistré : supposé être le réglage actuel
+        };
+
+        var ultra = GameRatings.MeasureFrom(captures, 165, GraphicsPreset.Ultra)!;
+        Assert.Equal((2, GraphicsPreset.Ultra), (ultra.Captures, ultra.Preset));
+
+        var medium = GameRatings.MeasureFrom([captures[0], captures[1]], 165, GraphicsPreset.Medium)!; // aucune mesure en Moyen
+        Assert.Equal((2, GraphicsPreset.Medium), (medium.Captures, medium.CurrentPreset));
+        var rating = GameRatings.Combine(null, medium)!;
+        Assert.Contains(rating.Details, d => d.StartsWith("Pas encore de mesure en Moyen"));
+
+        var assumed = GameRatings.MeasureFrom([captures[2]], 165, GraphicsPreset.High)!;
+        Assert.Equal((GraphicsPreset.High, true), (assumed.Preset, assumed.PresetAssumed));
     }
 }

@@ -3,7 +3,10 @@ using System.Globalization;
 namespace OptiGame.Core.Measurement;
 
 /// <summary>Une image (un appel à Present) d'une capture PresentMon.</summary>
-public sealed record FrameSample(string Application, int ProcessId, string SwapChain, double MsBetweenPresents, double? MsBetweenDisplayChange);
+/// <param name="CpuWait">Temps (ms) où le jeu a attendu avant de commencer l'image suivante (limiteur de FPS…) ; métriques 2.x.</param>
+/// <param name="GpuBusy">Temps (ms) où la carte graphique a réellement travaillé sur cette image ; métriques 2.x.</param>
+public sealed record FrameSample(string Application, int ProcessId, string SwapChain, double MsBetweenPresents, double? MsBetweenDisplayChange,
+    double? CpuWait = null, double? GpuBusy = null);
 
 /// <summary>
 /// Lecture d'un CSV PresentMon. Les colonnes sont repérées par leur nom dans l'en-tête, ce qui couvre les métriques
@@ -35,6 +38,8 @@ public static class PresentMonCsv
         var processId = Index("ProcessID");
         var swapChain = Index("SwapChainAddress");
         var betweenDisplay = Index("MsBetweenDisplayChange", "DisplayedTime");
+        var cpuWait = Index("CPUWait");
+        var gpuBusy = Index("GPUBusy");
 
         var frames = new List<FrameSample>();
         string? line;
@@ -49,7 +54,9 @@ public static class PresentMonCsv
                 int.TryParse(Field(fields, processId), NumberStyles.Integer, CultureInfo.InvariantCulture, out var pid) ? pid : 0,
                 Field(fields, swapChain) ?? "",
                 frameTime,
-                ParseDouble(Field(fields, betweenDisplay))));
+                ParseDouble(Field(fields, betweenDisplay)),
+                ParseDouble(Field(fields, cpuWait)),
+                ParseDouble(Field(fields, gpuBusy))));
         }
         return frames;
     }

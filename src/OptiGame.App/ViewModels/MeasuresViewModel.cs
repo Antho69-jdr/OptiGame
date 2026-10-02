@@ -218,7 +218,9 @@ public sealed partial class MeasuresViewModel : ObservableObject
                             Path.GetFileName(session.Profile.ExePath).Equals(request.ProcessName, StringComparison.OrdinalIgnoreCase)
             ? session.Profile.Name
             : null;
-        return Platform.Measurement.CaptureReader.Build(request, label, csvName, capturedAt, presentMonOutput, activeProfile);
+        var preset = _profiles.GetAll()
+            .FirstOrDefault(p => Path.GetFileName(p.ExePath).Equals(request.ProcessName, StringComparison.OrdinalIgnoreCase))?.GraphicsPreset;
+        return Platform.Measurement.CaptureReader.Build(request, label, csvName, capturedAt, presentMonOutput, activeProfile, preset: preset);
     }
 
     private IReadOnlyList<double>? LoadFrames(CaptureItemViewModel? item)

@@ -8,7 +8,7 @@ public static class CaptureReader
     /// <exception cref="InvalidOperationException">Aucun fichier, ou aucune image du jeu.</exception>
     /// <exception cref="FormatException">Fichier produit mais non reconnu (à garder pour analyse).</exception>
     public static CaptureRecord Build(CaptureRequest request, string label, string csvName, DateTimeOffset capturedAt, string presentMonOutput,
-        string? activeProfile, bool automatic = false)
+        string? activeProfile, bool automatic = false, Core.Rating.GraphicsPreset? preset = null)
     {
         if (!File.Exists(request.OutputCsv))
         {
@@ -36,6 +36,8 @@ public static class CaptureReader
             CsvFile = csvName,
             Stats = FrameStats.Compute(frames.Select(f => f.MsBetweenPresents).ToList()),
             Automatic = automatic,
+            Load = FrameLoad.Compute(frames),
+            Preset = preset,
         };
     }
 }

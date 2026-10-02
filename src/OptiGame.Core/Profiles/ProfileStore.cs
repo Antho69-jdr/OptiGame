@@ -55,6 +55,7 @@ public sealed class ProfileStore
                 copy.CoverImageId = stored.CoverImageId;
                 copy.HeroImageId = stored.HeroImageId;
                 copy.DockOrder = stored.DockOrder; // idem pour le dock : ne change que par SetPinned / MoveInDock
+                copy.GraphicsPreset = stored.GraphicsPreset; // idem : ne change que par SetGraphicsPreset
                 _document.Profiles[index] = copy;
             }
             else
@@ -78,6 +79,17 @@ public sealed class ProfileStore
             _store.Save(_document);
         }
         ArtworkChanged?.Invoke(this, id);
+    }
+
+    /// <summary>Réglage graphique indiqué pour ce jeu (null = non indiqué). Sans effet si le profil n'existe plus.</summary>
+    public void SetGraphicsPreset(Guid id, Rating.GraphicsPreset? preset)
+    {
+        lock (_lock)
+        {
+            if (_document.Profiles.FirstOrDefault(p => p.Id == id) is not { } profile) return;
+            profile.GraphicsPreset = preset;
+            _store.Save(_document);
+        }
     }
 
     /// <summary>Jaquette modifiée (distinct de <see cref="Changed"/> : n'influe pas sur la détection des jeux).</summary>

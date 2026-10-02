@@ -411,6 +411,11 @@ public sealed partial class LibraryViewModel : ObservableObject
             play: () => PlayAsync(id),
             togglePin: () => _store.SetPinned(id, _store.Find(id)?.DockOrder is null),
             openStorePage: OpenStorePage,
+            setPlayedPreset: preset =>
+            {
+                _store.SetGraphicsPreset(id, preset);
+                _ = LoadRatingsAsync(); // le conseil part de ce réglage
+            },
             graphics: new GameGraphicsViewModel(profile, _graphics, _dialogs, _log),
             isPinned: profile.DockOrder.HasValue,
             isPlaying: _sessions.Current?.Profile.Id == id);

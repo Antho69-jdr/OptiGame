@@ -47,11 +47,37 @@ public sealed class GameRatingService(
         }
 
         var exe = Path.GetFileName(profile.ExePath);
-        var stats = captures.GetAll()
+        var measured = captures.GetAll()
             .Where(c => c.ProcessName.Equals(exe, StringComparison.OrdinalIgnoreCase))
             .OrderByDescending(c => c.CapturedAt)
-            .Select(c => c.Stats)
+            .Select(c => new GameRatings.MeasuredCapture(c.Stats, c.Load ?? LoadOf(c), c.Preset))
             .ToList();
-        return GameRatings.Combine(estimate, GameRatings.MeasureFrom(stats, pc.RefreshHz));
+        return GameRatings.Combine(estimate, GameRatings.MeasureFrom(measured, pc.RefreshHz, profile.GraphicsPreset));
+    }
+
+    private readonly HashSet<Guid> _loadTried = [];
+
+    /// <summary>
+    /// Charge d'une capture antérieure à sa prise en compte : recalculée une fois depuis son CSV, puis enregistrée.
+    /// Un CSV sans ces colonnes ou illisible n'est relu qu'une fois par lancement (et n'est jamais supprimé).
+    /// </summary>
+    private FrameLoad? LoadOf(CaptureRecord capture)
+    {
+        lock (_loadTried)
+        {
+            if (!_loadTried.Add(capture.Id)) return null;
+        }
+        try
+        {
+            using var reader = new StreamReader(captures.CsvPath(capture));
+            var load = FrameLoad.Compute(PresentMonCsv.MainSwapChain(PresentMonCsv.Parse(reader)));
+            if (load is not null) captures.SetLoad(capture.Id, load);
+            return load;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or FormatException)
+        {
+            log.Warn($"Charge de la capture « {capture.Label} » illisible : {ex.Message}");
+            return null;
+        }
     }
 }

@@ -62,6 +62,32 @@ public sealed record FrameStats(
     }
 }
 
+/// <summary>
+/// Charge pendant une capture, en fraction du temps entre images (métriques 2.x de PresentMon : GPUBusy et CPUWait) :
+/// GpuBusy proche de 1 = la carte graphique limite les FPS ; CpuWait élevé = le jeu attend volontairement (limiteur de FPS).
+/// Vérifié sur de vraies captures le 2026-10-02 : Overwatch plafonné à 164 FPS = GPU 0,76 / attente 0,43 ;
+/// Void Crew à 102 FPS = GPU 0,97-0,99 / attente 0,02.
+/// </summary>
+public sealed record FrameLoad(double GpuBusy, double CpuWait)
+{
+    /// <summary>Null si le CSV n'a pas ces colonnes (métriques 1.x) ou trop peu d'images.</summary>
+    public static FrameLoad? Compute(IReadOnlyList<FrameSample> frames)
+    {
+        double frameTime = 0, gpu = 0, wait = 0;
+        var count = 0;
+        foreach (var frame in frames)
+        {
+            if (frame.MsBetweenPresents <= 0 || frame.GpuBusy is not { } busy || frame.CpuWait is not { } waited) continue;
+            frameTime += frame.MsBetweenPresents;
+            gpu += busy;
+            wait += waited;
+            count++;
+        }
+        if (count < FrameStats.MinimumFrames) return null;
+        return new FrameLoad(Math.Clamp(gpu / frameTime, 0, 1), Math.Clamp(wait / frameTime, 0, 1));
+    }
+}
+
 /// <summary>Écart entre une capture de référence (« avant ») et une autre (« après »).</summary>
 public sealed record FrameStatsComparison(FrameStats Before, FrameStats After)
 {

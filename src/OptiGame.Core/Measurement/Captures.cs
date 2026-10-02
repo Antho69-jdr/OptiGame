@@ -59,6 +59,12 @@ public sealed class CaptureRecord
 
     /// <summary>Capture faite automatiquement pendant une partie (note des jeux) ; seules les 5 dernières par jeu sont gardées.</summary>
     public bool Automatic { get; set; }
+
+    /// <summary>Charge carte graphique / attente du jeu ; null = CSV sans ces colonnes, ou capture antérieure (recalculée depuis le CSV).</summary>
+    public FrameLoad? Load { get; set; }
+
+    /// <summary>Réglage graphique indiqué par l'utilisateur pour ce jeu au moment de la capture (null = non indiqué).</summary>
+    public Rating.GraphicsPreset? Preset { get; set; }
 }
 
 public sealed class CapturesDocument
@@ -109,6 +115,17 @@ public sealed class CaptureStore(IStateStore<CapturesDocument> store, string cap
             _document.Captures.Remove(record);
             store.Save(_document);
             File.Delete(CsvPath(record));
+        }
+    }
+
+    /// <summary>Enregistre la charge recalculée d'une capture antérieure.</summary>
+    public void SetLoad(Guid id, FrameLoad load)
+    {
+        lock (_lock)
+        {
+            if (_document.Captures.FirstOrDefault(c => c.Id == id) is not { } record) return;
+            record.Load = load;
+            store.Save(_document);
         }
     }
 

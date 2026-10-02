@@ -1,5 +1,6 @@
 using OptiGame.Core.Logging;
 using OptiGame.Core.Measurement;
+using OptiGame.Core.Profiles;
 using OptiGame.Core.Sessions;
 using OptiGame.Core.Settings;
 
@@ -11,7 +12,7 @@ namespace OptiGame.Platform.Measurement;
 /// capture manuelle n'est jamais interrompue). Annulée si la partie se termine avant. Seules les 5 dernières captures
 /// automatiques de chaque jeu sont gardées. Désactivable dans les paramètres ; sans PresentMon, rien n'est fait.
 /// </summary>
-public sealed class AutoCapture(GameSessionManager sessions, CaptureStore store, PresentMonRunner runner, AppSettingsStore settings,
+public sealed class AutoCapture(GameSessionManager sessions, CaptureStore store, PresentMonRunner runner, AppSettingsStore settings, ProfileStore profiles,
     FileLog log, TimeProvider time)
 {
     public const int DelaySeconds = 240;
@@ -70,7 +71,9 @@ public sealed class AutoCapture(GameSessionManager sessions, CaptureStore store,
         try
         {
             var output = await runner.RunAsync(request, cancellation);
-            var record = CaptureReader.Build(request, "Automatique", csvName, now.AddSeconds(DelaySeconds), output, session.Profile.Name, automatic: true);
+            // Réglage relu à la fin de la mesure : l'utilisateur a pu l'indiquer pendant la partie.
+            var preset = profiles.Find(session.Profile.Id)?.GraphicsPreset;
+            var record = CaptureReader.Build(request, "Automatique", csvName, now.AddSeconds(DelaySeconds), output, session.Profile.Name, automatic: true, preset);
             store.Add(record);
             log.Info($"Mesure automatique de « {session.Profile.Name} » : {record.Stats.AverageFps:0} FPS moyens, 1 % low {record.Stats.OnePercentLowFps:0} ({record.Stats.FrameCount} images).");
             Prune(exe);
