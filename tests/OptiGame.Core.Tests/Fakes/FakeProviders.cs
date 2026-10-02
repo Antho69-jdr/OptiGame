@@ -54,3 +54,8 @@ internal sealed class FixedTime(DateTimeOffset now) : TimeProvider
 
     public override TimeZoneInfo LocalTimeZone => TimeZoneInfo.Utc;
 }
+
+internal sealed class FakeNvidia(IReadOnlyList<OptiGame.Core.Gpu.NvidiaGpuMemory>? memory) : INvidiaInfoProvider
+{
+    public IReadOnlyList<OptiGame.Core.Gpu.NvidiaGpuMemory>? GetMemory() => memory;
+}

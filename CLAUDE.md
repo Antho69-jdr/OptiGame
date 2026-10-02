@@ -145,6 +145,13 @@ vit dans Core ; Platform ne fait que lire/écrire le système.
   pénalité de recherche (IOCTL_STORAGE_QUERY_PROPERTY 7, erreur 31) ; seule la propriété TRIM (8) = false le révèle. Ordre :
   type déclaré → pénalité de recherche → TRIM. Disque USB 2.0 (E:) : ne répond à aucune → « type inconnu », Info. Alerte si
   disque dur ou moins de 20 Go / 10 % libres.
+- Resizable BAR (`ResizableBarCheck`, information seulement : BIOS) : lu par `nvidia-smi -q -x` (`Core/Gpu/NvidiaSmi`,
+  `Platform/Gpu/NvidiaSmiProvider`, System32 ou NVSMI, 10 s max, sans admin ; DOCTYPE vers un .dtd absent → DtdProcessing.Ignore) :
+  BAR1 > 256 Mio = actif (RTX 3070 : 8192/8192). Signalé désactivé seulement pour Ampere / Ada / Blackwell. La lecture générique
+  `Win32_DeviceMemoryAddress` NE VOIT PAS la fenêtre de 8 Gio → non utilisée ; AMD / Intel = « non lu », outil du fabricant.
+- Jeux fenêtrés (`WindowedGamesCheck`) : `SwapEffectUpgradeEnable` dans `DirectXUserGlobalSettings` (fusion des paires,
+  `GpuPreferenceString`) : 1 = OK (machine de dev, avec AutoHDREnable=1), 0 = à corriger (posé par des scripts « gaming »),
+  absente = défaut NON documenté par Microsoft → Info + activation explicite proposée. L'Auto HDR force ce réglage.
 - Une valeur de registre absente se sauvegarde comme `Absent` et se restaure par **suppression**.
 - CSV réel de PresentMon 2.6.0 (`--v2_metrics`) : colonnes `FrameTime`, `CPUBusy`, `GPUTime`, `DisplayedTime`… SANS
   préfixe `Ms`, contrairement à sa documentation. Toujours valider un format sur un vrai fichier, et ne jamais

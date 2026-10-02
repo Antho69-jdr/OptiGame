@@ -51,6 +51,9 @@ public static class KnownSettings
 
     public static SettingTarget GpuPreference(string exePath) => new(RegistryKind, GpuPreferencesKey, exePath);
 
+    /// <summary>Réglages graphiques globaux (« Clé=Valeur; ») ; SwapEffectUpgradeEnable = « Optimisations pour les jeux en mode fenêtré ».</summary>
+    public static readonly SettingTarget DirectXGlobalSettings = new(RegistryKind, GpuPreferencesKey, GpuPreferencesGlobalValue);
+
     /// <summary>Plan d'alimentation actif (valeur = GUID en texte).</summary>
     public static readonly SettingTarget ActivePowerScheme = new(PowerSchemeKind, "active");
 

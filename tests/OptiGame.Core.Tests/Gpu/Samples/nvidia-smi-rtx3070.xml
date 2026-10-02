@@ -1,0 +1,13 @@
+<?xml version="1.0" ?>
+<!DOCTYPE nvidia_smi_log SYSTEM "nvsmi_device_v13.dtd">
+<!-- Extrait réel de « nvidia-smi -q -x » (pilote 617.14, RTX 3070, Resizable BAR actif), 2026-10-03 ; identifiants retirés. -->
+<nvidia_smi_log>
+	<driver_version>617.14</driver_version>
+	<attached_gpus>1</attached_gpus>
+	<gpu>
+		<product_name>NVIDIA GeForce RTX 3070</product_name>
+		<product_architecture>Ampere</product_architecture>
+		<fb_memory_usage><total>8192 MiB</total><reserved>175 MiB</reserved><used>5706 MiB</used><free>2312 MiB</free></fb_memory_usage>
+		<bar1_memory_usage><total>8192 MiB</total><used>8163 MiB</used><free>29 MiB</free></bar1_memory_usage>
+	</gpu>
+</nvidia_smi_log>

@@ -118,3 +118,9 @@ public interface IDisplayHdrInfo
 {
     IReadOnlyList<DisplayHdrInfo> GetDisplays();
 }
+
+/// <summary>Cartes NVIDIA vues par nvidia-smi ; null si l'outil est absent (pas de pilote NVIDIA) ou n'a pas répondu.</summary>
+public interface INvidiaInfoProvider
+{
+    IReadOnlyList<Gpu.NvidiaGpuMemory>? GetMemory();
+}
