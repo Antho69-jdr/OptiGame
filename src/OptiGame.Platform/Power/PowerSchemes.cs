@@ -43,6 +43,14 @@ public sealed class PowerSchemeService : IPowerSchemeProvider, ISettingAccessor
         return schemes;
     }
 
+    public uint? ReadAcValue(Guid scheme, Guid subgroup, Guid setting)
+    {
+        var result = PowerReadACValueIndex(IntPtr.Zero, ref scheme, ref subgroup, ref setting, out var value);
+        if (result == ErrorFileNotFound) return null;
+        Check(result, nameof(PowerReadACValueIndex));
+        return value;
+    }
+
     public SettingValue Read(SettingTarget target) => SettingValue.String(GetActiveScheme().ToString());
 
     public void Write(SettingTarget target, SettingValue value)
@@ -97,5 +105,39 @@ public sealed class PowerStatusProvider : IPowerStatusProvider
         bool? onAc = s.ACLineStatus switch { 0 => false, 1 => true, _ => null };
         int? percent = hasBattery && s.BatteryLifePercent <= 100 ? s.BatteryLifePercent : null;
         return new PowerStatus(hasBattery, onAc, percent, EnergySaverOn: s.SystemStatusFlag == 1);
+    }
+}
+
+/// <summary>
+/// Réglages d'un plan d'alimentation, sur secteur (cible <see cref="KnownSettings.PowerSetting"/>). Lecture directe ; écriture
+/// par <see cref="Privileged.IPrivilegedOperations"/> (les plans du système appartiennent à l'administrateur).
+/// </summary>
+public sealed class PowerSettingAccessor(PowerSchemeService schemes, Privileged.IPrivilegedOperations privileged) : ISettingAccessor
+{
+    public string Kind => KnownSettings.PowerSettingKind;
+
+    public SettingValue Read(SettingTarget target)
+    {
+        var (scheme, subgroup, setting) = Parse(target);
+        return schemes.ReadAcValue(scheme, subgroup, setting) is { } value ? SettingValue.DWord(value) : SettingValue.Absent;
+    }
+
+    public void Write(SettingTarget target, SettingValue value)
+    {
+        var (scheme, subgroup, setting) = Parse(target);
+        // Un réglage absent du plan ne peut pas être « supprimé » : OptiGame ne corrige qu'un réglage existant.
+        var number = value.AsDWord() ?? throw new ArgumentException($"Valeur de réglage d'alimentation invalide : {value}");
+        privileged.WriteAcPowerSetting(scheme, subgroup, setting, number);
+    }
+
+    private static (Guid Scheme, Guid Subgroup, Guid Setting) Parse(SettingTarget target)
+    {
+        var parts = target.Path.Split('/');
+        if (parts.Length != 3 || !Guid.TryParse(parts[0], out var scheme) || !Guid.TryParse(parts[1], out var subgroup) ||
+            !Guid.TryParse(parts[2], out var setting) || target.Name != "ac")
+        {
+            throw new ArgumentException($"Réglage d'alimentation invalide : {target.Path} ({target.Name})");
+        }
+        return (scheme, subgroup, setting);
     }
 }

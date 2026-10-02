@@ -57,6 +57,9 @@ public interface IPowerSchemeProvider
     Guid GetActiveScheme();
 
     IReadOnlyList<PowerScheme> GetSchemes();
+
+    /// <summary>Valeur sur secteur d'un réglage du plan ; null si le plan ne le définit pas.</summary>
+    uint? ReadAcValue(Guid scheme, Guid subgroup, Guid setting);
 }
 
 public sealed record PowerStatus(bool HasBattery, bool? OnAcPower, int? BatteryPercent, bool EnergySaverOn);

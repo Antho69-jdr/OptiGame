@@ -11,6 +11,7 @@ public static class KnownSettings
     public const string PowerSchemeKind = "power-scheme";
     public const string DisplayModeKind = "display-mode";
     public const string ProcessKind = "process";
+    public const string PowerSettingKind = "power-setting";
 
     /// <summary>Mode Jeu. Absente = activé (défaut Windows).</summary>
     public static readonly SettingTarget GameMode =
@@ -53,6 +54,10 @@ public static class KnownSettings
     /// <summary>Plan d'alimentation actif (valeur = GUID en texte).</summary>
     public static readonly SettingTarget ActivePowerScheme = new(PowerSchemeKind, "active");
 
+    /// <summary>Réglage d'un plan d'alimentation, sur secteur (valeur = DWord). Path = « plan/sous-groupe/réglage ».</summary>
+    public static SettingTarget PowerSetting(Guid scheme, Guid subgroup, Guid setting) =>
+        new(PowerSettingKind, $"{scheme}/{subgroup}/{setting}", "ac");
+
     /// <summary>Mode d'affichage d'un écran (valeur = « largeur x hauteur @ Hz »).</summary>
     public static SettingTarget DisplayMode(string deviceName) => new(DisplayModeKind, deviceName);
 
@@ -69,4 +74,16 @@ public static class PowerSchemes
     public static readonly Guid Balanced = new("381b4222-f694-41f0-9685-ff5bb260df2e");
     public static readonly Guid HighPerformance = new("8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c");
     public static readonly Guid UltimatePerformance = new("e9a42b02-d5df-448d-aa00-03f14749eb61");
+}
+
+/// <summary>Réglages des plans d'alimentation (GUID vérifiés avec powercfg /qh sur la machine de dev le 2026-10-02).</summary>
+public static class PowerSettings
+{
+    public static readonly Guid SubProcessor = new("54533251-82be-4824-96c1-47b60b740d00");
+
+    /// <summary>PERFBOOSTMODE : 0 = désactivé, 1 = activé, 2 = offensif (défaut de Windows sur secteur), 3-6 = variantes.</summary>
+    public static readonly Guid PerfBoostMode = new("be337238-0d82-4146-a960-4f3749d470c7");
+
+    /// <summary>PROCTHROTTLEMAX : état maximal du processeur, en %. Moins de 100 % bloque le boost.</summary>
+    public static readonly Guid ProcThrottleMax = new("bc5038f7-23e0-4960-96da-33abaf5935ec");
 }

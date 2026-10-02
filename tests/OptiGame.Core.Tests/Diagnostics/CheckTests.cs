@@ -212,6 +212,47 @@ public sealed class CheckTests
         Assert.Equal(DiagnosticStatus.Ok, new PowerPlanCheck(new FakePowerSchemes(PowerSchemes.HighPerformance, StandardSchemes)).Run().Status);
     }
 
+    // ---- Boost du processeur ----
+
+    private static readonly Guid Atlas = new("11111111-1111-1111-1111-111111111111");
+
+    private static FakePowerSchemes AtlasWith(uint? boost, uint? max)
+    {
+        var power = new FakePowerSchemes(Atlas, [new(Atlas, "Atlas Power Scheme"), .. StandardSchemes]);
+        if (boost is { } b) power.AcValues[(Atlas, PowerSettings.PerfBoostMode)] = b;
+        if (max is { } m) power.AcValues[(Atlas, PowerSettings.ProcThrottleMax)] = m;
+        return power;
+    }
+
+    [Fact]
+    public void Boost_of_the_dev_machine_is_ok()
+    {
+        var result = new CpuBoostCheck(AtlasWith(boost: 2, max: 100)).Run(); // valeurs relevées le 2026-10-02
+        Assert.Equal(DiagnosticStatus.Ok, result.Status);
+        Assert.Contains("Offensif", result.Summary);
+        Assert.Empty(result.Fixes);
+    }
+
+    [Fact]
+    public void Disabled_boost_and_capped_max_state_are_fixed_back_to_windows_defaults()
+    {
+        var result = new CpuBoostCheck(AtlasWith(boost: 0, max: 99)).Run(); // « 99 % » : astuce courante pour couper le turbo
+
+        Assert.Equal(DiagnosticStatus.NeedsAttention, result.Status);
+        Assert.Equal(["fix.power.boost", "fix.power.maxstate"], result.Fixes.Select(f => f.Change.Id));
+        var boost = Assert.Single(result.Fixes[0].Change.Writes);
+        Assert.Equal(KnownSettings.PowerSetting(Atlas, PowerSettings.SubProcessor, PowerSettings.PerfBoostMode), boost.Target);
+        Assert.Equal(2u, boost.NewValue.AsDWord());
+        Assert.Equal(100u, Assert.Single(result.Fixes[1].Change.Writes).NewValue.AsDWord());
+        Assert.All(result.Fixes, f => Assert.True(f.Change.RequiresAdmin));
+    }
+
+    [Fact]
+    public void Boost_missing_from_the_plan_is_info()
+    {
+        Assert.Equal(DiagnosticStatus.Info, new CpuBoostCheck(AtlasWith(boost: null, max: null)).Run().Status);
+    }
+
     // ---- Alimentation ----
 
     [Fact]

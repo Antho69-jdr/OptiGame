@@ -132,6 +132,13 @@ vit dans Core ; Platform ne fait que lire/écrire le système.
   `HKLM\SYSTEM\CurrentControlSet\Control\DeviceGuard\Scenarios\HypervisorEnforcedCodeIntegrity\Enabled`.
 - `powercfg` a une sortie localisée → ne jamais la parser ; utiliser `powrprof.dll`. Les plans personnalisés
   (ex. « Atlas Power Scheme ») sont un statut Info.
+- Boost du processeur (`Diagnostics/Checks/CpuBoostCheck`) : réglages du plan ACTIF sur secteur, `PERFBOOSTMODE`
+  (0 = désactivé ; défaut Windows = 2 « Offensif », relevé dans Utilisation normale et Haute performance) et `PROCTHROTTLEMAX`
+  (< 100 % coupe le turbo). Cible `KnownSettings.PowerSetting` (kind `power-setting`, Path = « plan/sous-groupe/réglage ») :
+  lecture `PowerReadACValueIndex` (code 2 = réglage absent du plan), écriture `IPrivilegedOperations.WriteAcPowerSetting`
+  (`PowerWriteACValueIndex` puis réactivation du plan s'il est actif). Écriture vérifiée sur une copie temporaire d'un plan.
+  Machine de dev : Atlas = Offensif, 100 % → OK. Écartés comme placebo : affinité / « tous les cœurs », RAM virtuelle pour
+  les FPS, arguments de lancement génériques (-USEALLAVAILABLECORES, -high = priorité déjà gérée, -malloc=system).
 - Une valeur de registre absente se sauvegarde comme `Absent` et se restaure par **suppression**.
 - CSV réel de PresentMon 2.6.0 (`--v2_metrics`) : colonnes `FrameTime`, `CPUBusy`, `GPUTime`, `DisplayedTime`… SANS
   préfixe `Ms`, contrairement à sa documentation. Toujours valider un format sur un vrai fichier, et ne jamais

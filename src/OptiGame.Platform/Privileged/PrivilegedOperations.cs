@@ -29,6 +29,9 @@ public interface IPrivilegedOperations
 
     /// <summary>Point de restauration du système « installation de pilote ».</summary>
     RestorePointReport CreateRestorePoint(string description);
+
+    /// <summary>Écrit un réglage d'un plan d'alimentation (sur secteur) ; pris en compte tout de suite si le plan est actif.</summary>
+    void WriteAcPowerSetting(Guid scheme, Guid subgroup, Guid setting, uint value);
 }
 
 public sealed class InProcessPrivilegedOperations(AppPaths paths) : IPrivilegedOperations
@@ -52,6 +55,20 @@ public sealed class InProcessPrivilegedOperations(AppPaths paths) : IPrivilegedO
         WindowsUpdateDriverInstaller.Install(updateIds, progress);
 
     public RestorePointReport CreateRestorePoint(string description) => SystemRestore.Create(description);
+
+    public void WriteAcPowerSetting(Guid scheme, Guid subgroup, Guid setting, uint value)
+    {
+        var result = Native.NativeMethods.PowerWriteACValueIndex(IntPtr.Zero, ref scheme, ref subgroup, ref setting, value);
+        if (result != 0) throw new System.ComponentModel.Win32Exception((int)result, $"PowerWriteACValueIndex a échoué ({result}).");
+
+        // Un plan modifié n'est relu par Windows qu'en le (ré)activant.
+        var active = new Power.PowerSchemeService().GetActiveScheme();
+        if (active == scheme)
+        {
+            result = Native.NativeMethods.PowerSetActiveScheme(IntPtr.Zero, ref scheme);
+            if (result != 0) throw new System.ComponentModel.Win32Exception((int)result, $"PowerSetActiveScheme a échoué ({result}).");
+        }
+    }
 
     public void WriteMachineRegistryValue(string keyPath, string? name, SettingValue value)
     {

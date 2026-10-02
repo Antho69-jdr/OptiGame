@@ -27,6 +27,10 @@ internal sealed class FakePowerSchemes(Guid active, params PowerScheme[] schemes
     public Guid GetActiveScheme() => active;
 
     public IReadOnlyList<PowerScheme> GetSchemes() => schemes;
+
+    public Dictionary<(Guid Scheme, Guid Setting), uint> AcValues { get; } = [];
+
+    public uint? ReadAcValue(Guid scheme, Guid subgroup, Guid setting) => AcValues.TryGetValue((scheme, setting), out var v) ? v : null;
 }
 
 internal sealed class FakePowerStatus(PowerStatus status) : IPowerStatusProvider

@@ -110,6 +110,16 @@ internal static class NativeMethods
     public static extern uint PowerReadFriendlyName(IntPtr rootPowerKey, ref Guid schemeGuid, IntPtr subGroupOfPowerSettingsGuid,
         IntPtr powerSettingGuid, IntPtr buffer, ref uint bufferSize);
 
+    [DllImport("powrprof.dll")]
+    public static extern uint PowerReadACValueIndex(IntPtr rootPowerKey, ref Guid schemeGuid, ref Guid subGroupOfPowerSettingsGuid,
+        ref Guid powerSettingGuid, out uint acValueIndex);
+
+    [DllImport("powrprof.dll")]
+    public static extern uint PowerWriteACValueIndex(IntPtr rootPowerKey, ref Guid schemeGuid, ref Guid subGroupOfPowerSettingsGuid,
+        ref Guid powerSettingGuid, uint acValueIndex);
+
+    public const uint ErrorFileNotFound = 2;
+
     [DllImport("kernel32.dll")]
     public static extern IntPtr LocalFree(IntPtr hMem);
 

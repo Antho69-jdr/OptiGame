@@ -46,6 +46,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<PowerSchemeService>();
         services.AddSingleton<ISettingAccessor>(sp => sp.GetRequiredService<PowerSchemeService>());
         services.AddSingleton<IPowerSchemeProvider>(sp => sp.GetRequiredService<PowerSchemeService>());
+        services.AddSingleton<ISettingAccessor, PowerSettingAccessor>();
 
         services.AddSingleton<DisplayService>();
         services.AddSingleton<ISettingAccessor>(sp => sp.GetRequiredService<DisplayService>());
@@ -108,6 +109,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IDiagnosticCheck, MemoryChannelCheck>();
         services.AddSingleton<IDiagnosticCheck, GpuDriverAgeCheck>();
         services.AddSingleton<IDiagnosticCheck, PowerPlanCheck>();
+        services.AddSingleton<IDiagnosticCheck, CpuBoostCheck>();
         services.AddSingleton<IDiagnosticCheck, PowerSourceCheck>();
         services.AddSingleton<IDiagnosticCheck, GameModeCheck>();
         services.AddSingleton<IDiagnosticCheck, HagsCheck>();
