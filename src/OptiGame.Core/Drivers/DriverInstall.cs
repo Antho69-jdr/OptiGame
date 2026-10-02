@@ -45,6 +45,20 @@ public static class DriverInstallPlans
         Rollback: DeviceManagerRollback + " Vous pouvez aussi réinstaller l'ancienne version depuis nvidia.com.",
         RestorePoint: restorePoint);
 
+    public static DriverInstallPlan ForAmdChipset(ChipsetDriverStatus status, AmdChipsetRelease latest, RestorePointAvailability restorePoint) => new(
+        Title: $"Installer le logiciel de chipset AMD {latest.Version}",
+        What: $"{status.Description}\n{status.InstalledText}\n→ AMD Chipset Software {latest.Version}" +
+              (latest.ReleaseDate is { } date ? $" du {date:dd/MM/yyyy}" : "") + "\n" +
+              $"Téléchargement : {latest.DownloadUrl.Host}{(latest.SizeText is { } size ? $" ({FrenchSize(size)})" : "")}\n" +
+              "Puis ouverture de l'installeur officiel d'AMD : vous y choisissez les composants à installer.",
+        Why: "Le logiciel de chipset installe les pilotes de la carte mère (PSP, GPIO, SMBus, PCI…) et les réglages d'énergie " +
+             "des processeurs Ryzen. OptiGame le télécharge depuis le site d'AMD et vérifie sa signature (Advanced Micro " +
+             "Devices) avant de l'ouvrir.",
+        MayRequireReboot: true,
+        NotReversible: NotReversible,
+        Rollback: DeviceManagerRollback + " Le logiciel de chipset se désinstalle aussi depuis Paramètres > Applications.",
+        RestorePoint: restorePoint);
+
     public static DriverInstallPlan ForWindowsUpdate(IReadOnlyList<WindowsUpdateDriver> drivers, RestorePointAvailability restorePoint) => new(
         Title: drivers.Count == 1 ? "Installer 1 pilote de Windows Update" : $"Installer {drivers.Count} pilotes de Windows Update",
         What: string.Join("\n", drivers.Select(d => d.Title)),
@@ -69,32 +83,47 @@ public static class DriverInstallPlans
     };
 }
 
-public static partial class InstallerFiles
+/// <summary>Fabricant dont OptiGame sait télécharger et vérifier l'installeur officiel.</summary>
+public enum InstallerVendor
 {
-    /// <summary>
-    /// Nom local de l'installeur : dernier segment de l'adresse officielle, lettres, chiffres, point, tiret et soulignés
-    /// seulement, terminé par .exe. Null sinon (jamais de chemin fabriqué à partir d'une adresse douteuse).
-    /// </summary>
-    public static string? FileNameFor(Uri url)
-    {
-        if (!NvidiaDrivers.IsOfficialDownload(url)) return null;
-        var name = url.Segments.LastOrDefault()?.Trim('/') ?? "";
-        return SafeName().IsMatch(name) ? name : null;
-    }
-
-    [GeneratedRegex(@"^[A-Za-z0-9][A-Za-z0-9._-]{0,150}\.exe$")]
-    private static partial Regex SafeName();
+    Nvidia,
+    Amd,
 }
 
-public static class InstallerSignature
+/// <summary>
+/// Règles des installeurs officiels, par fabricant : serveur de téléchargement (https uniquement, redirections comprises),
+/// signataire exigé (CN et O du certificat) et page d'origine à annoncer. Vérifié sur de vrais installeurs :
+/// <list type="bullet">
+/// <item>NVIDIA 617.14 (2026-09-30) : *.download.nvidia.com, « CN=NVIDIA Corporation, OU=2008B9F, O=NVIDIA Corporation… »
+/// (DigiCert Trusted G4 Code Signing RSA4096 SHA384 2021 CA1).</item>
+/// <item>AMD Chipset Software 8.08.12.551 (2026-10-02) : drivers.amd.com, « CN=Advanced Micro Devices, O=Advanced Micro
+/// Devices, S=California, C=US » (Sectigo Public Code Signing CA R36). SANS l'en-tête Referer « https://www.amd.com/ », le
+/// serveur redirige vers une page HTML « Download-Incomplete » au lieu de l'installeur.</item>
+/// </list>
+/// La validité de la signature elle-même est vérifiée à part (WinVerifyTrust).
+/// </summary>
+public static partial class OfficialInstallers
 {
-    /// <summary>
-    /// Signataire attendu de l'installeur NVIDIA : CN et O « NVIDIA Corporation ». Vérifié sur l'installeur 617.14 le
-    /// 2026-09-30 : « CN=NVIDIA Corporation, OU=2008B9F, O=NVIDIA Corporation, L=Santa Clara, S=California, C=US »
-    /// (émis par DigiCert Trusted G4 Code Signing RSA4096 SHA384 2021 CA1). La validité de la signature elle-même est
-    /// vérifiée à part (WinVerifyTrust).
-    /// </summary>
-    public static bool IsNvidia(string? signerSubject)
+    public static bool IsOfficialDownload(InstallerVendor vendor, Uri url) =>
+        url.Scheme == Uri.UriSchemeHttps && vendor switch
+        {
+            InstallerVendor.Nvidia => url.Host.EndsWith(".download.nvidia.com", StringComparison.OrdinalIgnoreCase),
+            InstallerVendor.Amd => url.Host.Equals("drivers.amd.com", StringComparison.OrdinalIgnoreCase),
+            _ => false,
+        };
+
+    /// <summary>Page d'origine exigée par le serveur de téléchargement, ou null.</summary>
+    public static Uri? Referer(InstallerVendor vendor) => vendor == InstallerVendor.Amd ? new Uri("https://www.amd.com/") : null;
+
+    public static string SignerName(InstallerVendor vendor) => vendor switch
+    {
+        InstallerVendor.Nvidia => "NVIDIA Corporation",
+        InstallerVendor.Amd => "Advanced Micro Devices",
+        _ => throw new ArgumentOutOfRangeException(nameof(vendor)),
+    };
+
+    /// <summary>Signataire attendu : CN et O égaux au nom du fabricant (aucune ressemblance approximative).</summary>
+    public static bool IsExpectedSigner(InstallerVendor vendor, string? signerSubject)
     {
         if (string.IsNullOrWhiteSpace(signerSubject)) return false;
         try
@@ -109,13 +138,39 @@ public static class InstallerSignature
                     case "2.5.4.10": o = rdn.GetSingleElementValue(); break;
                 }
             }
-            return cn == "NVIDIA Corporation" && o == "NVIDIA Corporation";
+            var expected = SignerName(vendor);
+            return cn == expected && o == expected;
         }
         catch (System.Security.Cryptography.CryptographicException)
         {
             return false;
         }
     }
+
+    /// <summary>
+    /// Nom local de l'installeur : dernier segment de l'adresse officielle, lettres, chiffres, point, tiret et soulignés
+    /// seulement, terminé par .exe. Null sinon (jamais de chemin fabriqué à partir d'une adresse douteuse).
+    /// </summary>
+    public static string? FileNameFor(InstallerVendor vendor, Uri url)
+    {
+        if (!IsOfficialDownload(vendor, url)) return null;
+        var name = url.Segments.LastOrDefault()?.Trim('/') ?? "";
+        return SafeName().IsMatch(name) ? name : null;
+    }
+
+    [GeneratedRegex(@"^[A-Za-z0-9][A-Za-z0-9._-]{0,150}\.exe$")]
+    private static partial Regex SafeName();
+}
+
+/// <summary>Raccourcis NVIDIA (historiques, testés).</summary>
+public static class InstallerFiles
+{
+    public static string? FileNameFor(Uri url) => OfficialInstallers.FileNameFor(InstallerVendor.Nvidia, url);
+}
+
+public static class InstallerSignature
+{
+    public static bool IsNvidia(string? signerSubject) => OfficialInstallers.IsExpectedSigner(InstallerVendor.Nvidia, signerSubject);
 }
 
 /// <summary>Résultat d'une installation Windows Update, par pilote (codes OperationResultCode de l'API).</summary>

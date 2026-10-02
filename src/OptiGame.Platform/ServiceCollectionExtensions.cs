@@ -96,6 +96,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<Drivers.NvidiaDriverClient>();
         services.AddSingleton<Drivers.WindowsUpdateDriverSearch>();
         services.AddSingleton<Drivers.DriverDownloader>();
+        services.AddSingleton<Drivers.AmdChipsetClient>();
         services.AddSingleton<Display.FullscreenWatcher>();
         services.AddSingleton<Startup.AutoStartService>();
 

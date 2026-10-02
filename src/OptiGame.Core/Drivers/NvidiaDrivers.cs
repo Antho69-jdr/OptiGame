@@ -30,8 +30,7 @@ public static class NvidiaDrivers
     public static readonly Uri ProductListUri = new("https://www.nvidia.com/Download/API/lookupValueSearch.aspx?TypeID=3");
 
     /// <summary>Hôtes autorisés pour le téléchargement : jamais d'installeur venant d'ailleurs.</summary>
-    public static bool IsOfficialDownload(Uri url) =>
-        url.Scheme == Uri.UriSchemeHttps && url.Host.EndsWith(".download.nvidia.com", StringComparison.OrdinalIgnoreCase);
+    public static bool IsOfficialDownload(Uri url) => OfficialInstallers.IsOfficialDownload(InstallerVendor.Nvidia, url);
 
     public static Uri LookupUri(int seriesId, int productId) => new(
         "https://gfwsl.geforce.com/services_toolkit/services/com/nvidia/services/AjaxDriverService.php?func=DriverManualLookup" +

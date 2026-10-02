@@ -19,10 +19,10 @@ public interface IPrivilegedOperations
     void WriteMachineRegistryValue(string keyPath, string? name, SettingValue value);
 
     /// <summary>
-    /// Ouvre l'installeur NVIDIA téléchargé (il hérite des droits administrateur). Refusé hors du dossier des
+    /// Ouvre l'installeur officiel téléchargé, NVIDIA ou AMD (il hérite des droits administrateur). Refusé hors du dossier des
     /// téléchargements d'OptiGame, et si la signature n'est plus valide au moment de l'ouvrir.
     /// </summary>
-    Process StartVerifiedInstaller(string path);
+    Process StartVerifiedInstaller(string path, InstallerVendor vendor);
 
     /// <summary>Télécharge et installe, par Windows Update, les pilotes choisis par l'utilisateur. Long : hors du thread UI.</summary>
     WindowsUpdateInstallReport InstallWindowsUpdateDrivers(IReadOnlyList<string> updateIds, Action<string> progress);
@@ -33,7 +33,7 @@ public interface IPrivilegedOperations
 
 public sealed class InProcessPrivilegedOperations(AppPaths paths) : IPrivilegedOperations
 {
-    public Process StartVerifiedInstaller(string path)
+    public Process StartVerifiedInstaller(string path, InstallerVendor vendor)
     {
         var full = Path.GetFullPath(path);
         var downloads = Path.GetFullPath(paths.DownloadsDir).TrimEnd('\\') + '\\';
@@ -42,7 +42,7 @@ public sealed class InProcessPrivilegedOperations(AppPaths paths) : IPrivilegedO
             throw new InvalidOperationException($"Installeur refusé : il doit venir du dossier des téléchargements d'OptiGame ({full}).");
         }
         // Revérifié juste avant l'ouverture : le fichier a pu changer depuis le téléchargement.
-        if (DriverDownloader.Check(full) is { } problem) throw new InstallerRejectedException(problem);
+        if (DriverDownloader.Check(full, vendor) is { } problem) throw new InstallerRejectedException(problem);
 
         return Process.Start(new ProcessStartInfo(full) { UseShellExecute = false, WorkingDirectory = Path.GetDirectoryName(full)! })
                ?? throw new InvalidOperationException("L'installeur ne s'est pas lancé.");

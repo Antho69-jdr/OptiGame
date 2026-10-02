@@ -97,6 +97,73 @@
                     </StackPanel>
                 </Border>
 
+                <!-- Carte mère : logiciel de chipset AMD (processeurs AMD uniquement) -->
+                <Border Margin="0,0,0,16" Style="{StaticResource Card}" Visibility="{Binding HasChipset, Converter={StaticResource BoolToVisibility}}">
+                    <StackPanel>
+                        <TextBlock Style="{StaticResource Text.SectionTitle}" Text="Carte mère (chipset AMD)" />
+                        <TextBlock Margin="0,4,0,0" Style="{StaticResource Text.Caption}" Text="{Binding ChipsetStatus}" />
+                        <ContentControl Margin="0,6,0,0" Content="{Binding Chipset}">
+                            <!-- Modèle implicite (par type) : jamais appliqué quand Chipset est null -->
+                            <ContentControl.Resources>
+                                <DataTemplate DataType="{x:Type vm:ChipsetDriverItemViewModel}">
+                                    <StackPanel Margin="0,10,0,0">
+                                        <DockPanel>
+                                            <Border x:Name="StateBadge" DockPanel.Dock="Right" Style="{StaticResource Badge}" Background="{StaticResource Brush.InfoSoft}">
+                                                <TextBlock x:Name="StateText" Text="{Binding StateLabel}" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource Brush.Info}" />
+                                            </Border>
+                                            <TextBlock Style="{StaticResource Text.Body}" FontWeight="SemiBold" FontSize="16" Text="{Binding Name}" TextWrapping="Wrap" />
+                                        </DockPanel>
+                                        <TextBlock Margin="0,6,0,0" Style="{StaticResource Text.Body}" Text="{Binding Message}" TextWrapping="Wrap" />
+                                        <TextBlock Margin="0,6,0,0" Style="{StaticResource Text.Secondary}" Text="{Binding Installed}" TextWrapping="Wrap" />
+                                        <TextBlock Style="{StaticResource Text.Secondary}" Text="{Binding Latest}" TextWrapping="Wrap"
+                                                   Visibility="{Binding HasLatest, Converter={StaticResource BoolToVisibility}}" />
+                                        <WrapPanel Margin="0,4,0,0">
+                                            <Button Margin="0,8,8,0" Style="{StaticResource Button.Primary}"
+                                                    Command="{Binding DataContext.InstallChipsetCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                    Visibility="{Binding CanInstall, Converter={StaticResource BoolToVisibility}}"
+                                                    AutomationProperties.Name="{Binding InstallLabel}">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock Style="{StaticResource Text.Icon}" FontSize="14" Text="&#xE896;" />
+                                                    <TextBlock Margin="8,0,0,0" Text="{Binding InstallLabel}" />
+                                                </StackPanel>
+                                            </Button>
+                                            <Button Margin="0,8,8,0" Style="{StaticResource Button.Secondary}"
+                                                    Command="{Binding DataContext.OpenLinkCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                    CommandParameter="{Binding DetailsUrl}"
+                                                    Visibility="{Binding HasDetails, Converter={StaticResource BoolToVisibility}}">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock Style="{StaticResource Text.Icon}" FontSize="13" Text="&#xE8A7;" />
+                                                    <TextBlock Margin="8,0,0,0" Text="{Binding DetailsLabel}" />
+                                                </StackPanel>
+                                            </Button>
+                                        </WrapPanel>
+                                        <DockPanel Margin="0,12,0,0" Visibility="{Binding IsDownloading, Converter={StaticResource BoolToVisibility}}">
+                                            <Button DockPanel.Dock="Right" Margin="12,0,0,0" Style="{StaticResource Button.Ghost}" Content="Annuler le téléchargement"
+                                                    Command="{Binding DataContext.CancelDownloadCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+                                            <ProgressBar Height="6" VerticalAlignment="Center" Minimum="0" Maximum="100" Value="{Binding Progress}"
+                                                         Foreground="{StaticResource Brush.Accent}" Background="{StaticResource Brush.Control}" BorderThickness="0" />
+                                        </DockPanel>
+                                        <TextBlock Margin="0,8,0,0" Style="{StaticResource Text.Secondary}" Text="{Binding ProgressText}" TextWrapping="Wrap"
+                                                   Visibility="{Binding HasProgressText, Converter={StaticResource BoolToVisibility}}" />
+                                    </StackPanel>
+                                    <DataTemplate.Triggers>
+                                        <DataTrigger Binding="{Binding IsUpdateAvailable}" Value="True">
+                                            <Setter TargetName="StateText" Property="Foreground" Value="{StaticResource Brush.Warning}" />
+                                            <Setter TargetName="StateBadge" Property="Background" Value="{StaticResource Brush.WarningSoft}" />
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding IsUpToDate}" Value="True">
+                                            <Setter TargetName="StateText" Property="Foreground" Value="{StaticResource Brush.Ok}" />
+                                            <Setter TargetName="StateBadge" Property="Background" Value="{StaticResource Brush.OkSoft}" />
+                                        </DataTrigger>
+                                    </DataTemplate.Triggers>
+                                </DataTemplate>
+                            </ContentControl.Resources>
+                        </ContentControl>
+                        <TextBlock Margin="0,14,0,0" Style="{StaticResource Text.Caption}" TextWrapping="Wrap"
+                                   Text="Lu sur le site d'AMD (page de téléchargement de votre chipset). Rien n'est envoyé à AMD à part la consultation de cette page." />
+                    </StackPanel>
+                </Border>
+
                 <!-- Windows Update -->
                 <Border Style="{StaticResource Card}">
                     <StackPanel>

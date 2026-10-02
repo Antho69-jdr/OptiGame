@@ -17,13 +17,21 @@ public sealed class DriverDownloader(AppPaths paths, FileLog log)
 {
     private static readonly HttpClient Http = CreateClient();
 
-    public async Task<string> DownloadNvidiaInstallerAsync(Uri url, IProgress<DownloadProgress> progress, CancellationToken cancellation)
-    {
-        var name = InstallerFiles.FileNameFor(url) ?? throw new InstallerRejectedException($"Adresse de téléchargement refusée : {url}");
-        Directory.CreateDirectory(paths.DownloadsDir);
-        var target = Path.Combine(paths.DownloadsDir, name);
+    public Task<string> DownloadNvidiaInstallerAsync(Uri url, IProgress<DownloadProgress> progress, CancellationToken cancellation) =>
+        DownloadInstallerAsync(InstallerVendor.Nvidia, url, progress, cancellation);
 
-        if (File.Exists(target) && Check(target) is null)
+    /// <summary>
+    /// Installeur officiel d'un fabricant, dans downloads&lt;fabricant&gt; (le nettoyage des anciennes versions ne touche pas
+    /// aux installeurs des autres fabricants). La page d'origine est annoncée quand le serveur l'exige (AMD).
+    /// </summary>
+    public async Task<string> DownloadInstallerAsync(InstallerVendor vendor, Uri url, IProgress<DownloadProgress> progress, CancellationToken cancellation)
+    {
+        var name = OfficialInstallers.FileNameFor(vendor, url) ?? throw new InstallerRejectedException($"Adresse de téléchargement refusée : {url}");
+        var folder = Path.Combine(paths.DownloadsDir, vendor.ToString().ToLowerInvariant());
+        Directory.CreateDirectory(folder);
+        var target = Path.Combine(folder, name);
+
+        if (File.Exists(target) && Check(target, vendor) is null)
         {
             log.Info($"Installeur déjà téléchargé et vérifié, réutilisé : {target}");
             return target;
@@ -32,10 +40,12 @@ public sealed class DriverDownloader(AppPaths paths, FileLog log)
         var part = target + ".part";
         try
         {
-            using var response = await Http.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, cancellation);
+            using var request = new HttpRequestMessage(HttpMethod.Get, url);
+            if (OfficialInstallers.Referer(vendor) is { } referer) request.Headers.Referrer = referer;
+            using var response = await Http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellation);
             response.EnsureSuccessStatusCode();
-            // Une redirection ne doit pas mener hors des serveurs de NVIDIA.
-            if (response.RequestMessage?.RequestUri is { } final && !NvidiaDrivers.IsOfficialDownload(final))
+            // Une redirection ne doit pas mener hors des serveurs du fabricant (sans Referer, AMD redirige vers une page HTML).
+            if (response.RequestMessage?.RequestUri is { } final && !OfficialInstallers.IsOfficialDownload(vendor, final))
             {
                 throw new InstallerRejectedException($"Redirection vers une adresse non officielle refusée : {final}");
             }
@@ -73,7 +83,7 @@ public sealed class DriverDownloader(AppPaths paths, FileLog log)
             throw;
         }
 
-        if (Check(target) is { } problem)
+        if (Check(target, vendor) is { } problem)
         {
             // Jamais ouvert ; gardé sous un nom non exécutable pour examen, comme tout fichier rejeté.
             File.Move(target, target + ".non-verifie", overwrite: true);
@@ -81,20 +91,20 @@ public sealed class DriverDownloader(AppPaths paths, FileLog log)
             throw new InstallerRejectedException(problem);
         }
 
-        foreach (var old in Directory.EnumerateFiles(paths.DownloadsDir, "*.exe").Where(f => !f.Equals(target, StringComparison.OrdinalIgnoreCase)))
+        foreach (var old in Directory.EnumerateFiles(folder, "*.exe").Where(f => !f.Equals(target, StringComparison.OrdinalIgnoreCase)))
         {
             TryDelete(old);
         }
-        log.Info($"Installeur NVIDIA téléchargé et vérifié : {target}");
+        log.Info($"Installeur {OfficialInstallers.SignerName(vendor)} téléchargé et vérifié : {target}");
         return target;
     }
 
-    /// <summary>Null si la signature est valide et vient de NVIDIA Corporation ; sinon la raison du refus.</summary>
-    public static string? Check(string path)
+    /// <summary>Null si la signature est valide et vient du fabricant attendu ; sinon la raison du refus.</summary>
+    public static string? Check(string path, InstallerVendor vendor)
     {
         var signature = AuthenticodeVerifier.Verify(path);
         if (!signature.IsValid) return signature.Detail;
-        return InstallerSignature.IsNvidia(signature.Signer) ? null : $"Signataire inattendu : {signature.Signer}";
+        return OfficialInstallers.IsExpectedSigner(vendor, signature.Signer) ? null : $"Signataire inattendu : {signature.Signer}";
     }
 
     private void TryDelete(string path)

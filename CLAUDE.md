@@ -146,6 +146,14 @@ vit dans Core ; Platform ne fait que lire/écrire le système.
     `%LocalAppData%\OptiGame\downloads`. Avant ouverture (et encore juste avant, dans `IPrivilegedOperations`) :
     WinVerifyTrust + signataire « CN=NVIDIA Corporation, O=NVIDIA Corporation » (lu sur l'installeur 617.14 par requêtes
     partielles : le serveur accepte les Range). Installeur refusé → renommé `.non-verifie`, jamais ouvert.
+  - Chipset AMD (`Core/Drivers/AmdChipset`, `Platform/Drivers/AmdChipsetClient`) : pas de service, la page
+    `www.amd.com/en/support/downloads/drivers.html/chipsets/<am4|am5>/<chipset>.html` est lue (blocs `<article …
+    driver-download-details>` ; extrait réel B450 dans les tests). Chipset déduit du nom de carte mère (Win32_BaseBoard).
+    Paquet « AMD Chipset Software » absent de la machine de dev (pilotes séparés) → comparaison par dates. Téléchargement
+    depuis `https://drivers.amd.com` UNIQUEMENT avec `Referer: https://www.amd.com/` (sinon redirection vers une page HTML
+    « Download-Incomplete ») ; signataire « CN=Advanced Micro Devices, O=Advanced Micro Devices » (Sectigo). Chaîne complète
+    vérifiée sur le vrai installeur 8.08.12.551 (81 537 472 octets), sans l'exécuter. Règles par fabricant :
+    `OfficialInstallers` ; installeurs rangés dans `downloads\<fabricant>\`.
   - Protection du système : `HKLM\…\SPP\Clients` n'est lisible QU'EN ADMIN (accès refusé sinon) → état « Unknown » hors
     admin ; l'état réel est journalisé à chaque installation. Création de point : WMI `root\default:SystemRestore`.
   - Windows Update : COM `Microsoft.Update.Session`, « IsInstalled=0 and Type='Driver' and IsHidden=0 », ≈ 25 s, fonctionne

@@ -91,6 +91,11 @@ if (args.Length == 1 && args[0] == "--drivers")
         Console.WriteLine($"{status.GpuName} [{status.Vendor}] : {status.State} — {status.Message}");
         if (status.Latest is { } l) Console.WriteLine($"      {l.Name} {l.Version} du {l.ReleaseDate:dd/MM/yyyy}, {l.SizeText}\n      {l.DownloadUrl}");
     }
+    if (await services.GetRequiredService<OptiGame.Platform.Drivers.AmdChipsetClient>().CheckAsync() is { } chipset)
+    {
+        Console.WriteLine($"Chipset : {chipset.Description}\n      {chipset.InstalledText}\n      {chipset.State} — {chipset.Message}");
+        if (chipset.Latest is { } l) Console.WriteLine($"      {l.Version} du {l.ReleaseDate:dd/MM/yyyy}, {l.SizeText}\n      {l.DownloadUrl}\n      notes : {l.ReleaseNotes}");
+    }
     Console.WriteLine("Recherche Windows Update (≈ 30 s)…");
     foreach (var update in services.GetRequiredService<OptiGame.Platform.Drivers.WindowsUpdateDriverSearch>().Search())
     {

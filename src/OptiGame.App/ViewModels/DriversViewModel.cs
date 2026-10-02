@@ -22,6 +22,7 @@ namespace OptiGame.App.ViewModels;
 public sealed partial class DriversViewModel(
     IGpuInfoProvider gpus,
     NvidiaDriverClient nvidia,
+    AmdChipsetClient chipsetClient,
     WindowsUpdateDriverSearch windowsUpdate,
     DriverDownloader downloader,
     IPrivilegedOperations privileged,
@@ -37,12 +38,24 @@ public sealed partial class DriversViewModel(
     public ObservableCollection<WindowsUpdateDriverItemViewModel> Updates { get; } = [];
 
     [ObservableProperty]
-    [NotifyCanExecuteChangedFor(nameof(SearchCommand), nameof(InstallGpuCommand), nameof(InstallUpdatesCommand))]
+    [NotifyCanExecuteChangedFor(nameof(SearchCommand), nameof(InstallGpuCommand), nameof(InstallChipsetCommand), nameof(InstallUpdatesCommand))]
     private bool _isSearching;
 
     [ObservableProperty]
-    [NotifyCanExecuteChangedFor(nameof(SearchCommand), nameof(InstallGpuCommand), nameof(InstallUpdatesCommand))]
+    [NotifyCanExecuteChangedFor(nameof(SearchCommand), nameof(InstallGpuCommand), nameof(InstallChipsetCommand), nameof(InstallUpdatesCommand))]
     private bool _isInstalling;
+
+    /// <summary>Logiciel de chipset AMD ; null sur un PC sans processeur AMD (la carte est alors masquée).</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasChipset))]
+    [NotifyCanExecuteChangedFor(nameof(InstallChipsetCommand))]
+    private ChipsetDriverItemViewModel? _chipset;
+
+    public bool HasChipset => Chipset is not null || ChipsetStatus.Length > 0;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasChipset))]
+    private string _chipsetStatus = "";
 
     [ObservableProperty]
     private string _gpuStatus = "";
@@ -73,10 +86,13 @@ public sealed partial class DriversViewModel(
         HiddenUpdatesNote = "";
         GpuStatus = "Recherche du dernier pilote auprès de NVIDIA…";
         UpdatesStatus = "Recherche dans Windows Update (environ 30 secondes)…";
+        Chipset = null;
+        ChipsetStatus = "";
         try
         {
-            // Les deux recherches en parallèle : Windows Update est long, NVIDIA répond en une seconde.
+            // Recherches en parallèle : Windows Update est long, NVIDIA et AMD répondent en quelques secondes.
             var updatesTask = Task.Run(windowsUpdate.Search);
+            var chipsetTask = Task.Run(() => chipsetClient.CheckAsync());
             var adapters = await Task.Run(() => gpus.GetAdapters().Where(g => g.IsPhysical).ToList());
             string? nvidiaLatest = null;
             foreach (var gpu in adapters)
@@ -86,6 +102,20 @@ public sealed partial class DriversViewModel(
                 Gpus.Add(new GpuDriverItemViewModel(status, gpu.DriverDate));
             }
             GpuStatus = adapters.Count == 0 ? "Aucune carte graphique physique détectée." : $"Vérifié à {time.GetLocalNow():HH:mm}.";
+
+            try
+            {
+                if (await chipsetTask is { } chipset)
+                {
+                    Chipset = new ChipsetDriverItemViewModel(chipset);
+                    ChipsetStatus = $"Vérifié à {time.GetLocalNow():HH:mm}.";
+                }
+            }
+            catch (Exception ex) when (ex is System.Management.ManagementException or UnauthorizedAccessException or System.Security.SecurityException)
+            {
+                log.Error("Vérification du chipset AMD impossible", ex);
+                ChipsetStatus = $"Vérification du chipset impossible : {ex.Message}";
+            }
 
             try
             {
@@ -124,31 +154,54 @@ public sealed partial class DriversViewModel(
     private async Task InstallGpuAsync(GpuDriverItemViewModel? item)
     {
         if (item?.Status.Latest is not { } latest) return;
-        var choice = dialogs.ConfirmDriverInstall(DriverInstallPlans.ForNvidia(item.Status, latest, RestoreAvailability()));
+        await InstallOfficialAsync(item, InstallerVendor.Nvidia, latest.DownloadUrl, $"pilote NVIDIA {latest.Version}",
+            DriverInstallPlans.ForNvidia(item.Status, latest, RestoreAvailability()));
+    }
+
+    // ---- Installation du logiciel de chipset AMD ----
+
+    private bool CanInstallChipset() => Chipset is { CanInstall: true } && !IsSearching && !IsInstalling;
+
+    [RelayCommand(CanExecute = nameof(CanInstallChipset))]
+    private async Task InstallChipsetAsync()
+    {
+        if (Chipset?.Status.Latest is not { } latest) return;
+        await InstallOfficialAsync(Chipset, InstallerVendor.Amd, latest.DownloadUrl, $"logiciel de chipset AMD {latest.Version}",
+            DriverInstallPlans.ForAmdChipset(Chipset.Status, latest, RestoreAvailability()));
+    }
+
+    /// <summary>
+    /// Installeur officiel d'un fabricant : confirmation (non annulable par OptiGame), point de restauration éventuel,
+    /// téléchargement depuis son serveur, signature vérifiée, ouverture de son installeur, puis nouvelle vérification.
+    /// </summary>
+    private async Task InstallOfficialAsync(InstallableDriverViewModel item, InstallerVendor vendor, Uri url, string label, DriverInstallPlan plan)
+    {
+        var choice = dialogs.ConfirmDriverInstall(plan);
         if (choice is null) return;
 
+        var vendorName = OfficialInstallers.SignerName(vendor);
         IsInstalling = true;
         var installerRan = false;
         _download = new CancellationTokenSource();
         try
         {
-            if (choice.CreateRestorePoint && !await CreateRestorePointAsync($"OptiGame : pilote NVIDIA {latest.Version}", text => item.ProgressText = text))
+            if (choice.CreateRestorePoint && !await CreateRestorePointAsync($"OptiGame : {label}", text => item.ProgressText = text))
             {
                 return;
             }
 
             item.IsDownloading = true;
-            item.ProgressText = "Téléchargement depuis NVIDIA…";
-            var path = await downloader.DownloadNvidiaInstallerAsync(latest.DownloadUrl, new Progress<DownloadProgress>(item.Report), _download.Token);
+            item.ProgressText = $"Téléchargement depuis {url.Host}…";
+            var path = await downloader.DownloadInstallerAsync(vendor, url, new Progress<DownloadProgress>(item.Report), _download.Token);
             item.IsDownloading = false;
 
-            using var installer = await Task.Run(() => privileged.StartVerifiedInstaller(path));
+            using var installer = await Task.Run(() => privileged.StartVerifiedInstaller(path, vendor));
             installerRan = true;
-            log.Info($"Installeur NVIDIA {latest.Version} ouvert : {path}");
-            item.ProgressText = "Signature vérifiée (NVIDIA Corporation). L'installeur de NVIDIA est ouvert : suivez ses étapes. " +
-                                "OptiGame revérifiera le pilote quand il sera fermé.";
+            log.Info($"Installeur ouvert ({label}) : {path}");
+            item.ProgressText = $"Signature vérifiée ({vendorName}). L'installeur officiel est ouvert : suivez ses étapes. " +
+                                "OptiGame revérifiera quand il sera fermé.";
             await installer.WaitForExitAsync();
-            log.Info($"Installeur NVIDIA fermé (code {installer.ExitCode}).");
+            log.Info($"Installeur fermé ({label}, code {installer.ExitCode}).");
         }
         catch (OperationCanceledException)
         {
@@ -162,9 +215,9 @@ public sealed partial class DriversViewModel(
         catch (Exception ex) when (ex is System.Net.Http.HttpRequestException or IOException or UnauthorizedAccessException or InvalidOperationException
                                        or System.ComponentModel.Win32Exception)
         {
-            log.Error($"Installation du pilote NVIDIA {latest.Version} impossible", ex);
+            log.Error($"Installation impossible ({label})", ex);
             item.ProgressText = "Installation interrompue.";
-            dialogs.ShowError($"L'installation du pilote NVIDIA n'a pas abouti ; rien n'a été installé par OptiGame.\n\n{ex.Message}");
+            dialogs.ShowError($"L'installation du {label} n'a pas abouti ; rien n'a été installé par OptiGame.\n\n{ex.Message}");
         }
         finally
         {
@@ -174,7 +227,7 @@ public sealed partial class DriversViewModel(
             IsInstalling = false;
         }
 
-        if (installerRan) await SearchAsync(); // version installée à jour
+        if (installerRan) await SearchAsync(); // versions installées à jour
     }
 
     [RelayCommand]
@@ -260,52 +313,16 @@ public sealed partial class DriversViewModel(
     [RelayCommand]
     private static void OpenLink(Uri? url)
     {
-        // Pages officielles uniquement (notes de version NVIDIA) ; explorer.exe les ouvre sans droits administrateur.
-        if (url is null || url.Scheme != Uri.UriSchemeHttps || !url.Host.EndsWith("nvidia.com", StringComparison.OrdinalIgnoreCase)) return;
+        // Pages officielles uniquement (notes de version NVIDIA et AMD) ; explorer.exe les ouvre sans droits administrateur.
+        if (url is null || url.Scheme != Uri.UriSchemeHttps) return;
+        if (!url.Host.EndsWith("nvidia.com", StringComparison.OrdinalIgnoreCase) && !url.Host.EndsWith("amd.com", StringComparison.OrdinalIgnoreCase)) return;
         Process.Start(new ProcessStartInfo("explorer.exe", url.ToString()) { UseShellExecute = true });
     }
 }
 
-public sealed partial class GpuDriverItemViewModel(GpuDriverStatus status, DateTime? installedDate) : ObservableObject
+/// <summary>Élément dont l'installeur officiel peut être téléchargé : progression et message affichés sous l'élément.</summary>
+public abstract partial class InstallableDriverViewModel : ObservableObject
 {
-    private static readonly CultureInfo Fr = CultureInfo.GetCultureInfo("fr-FR");
-
-    public GpuDriverStatus Status { get; } = status;
-
-    public string Name => Status.GpuName;
-
-    public string StateLabel => Status.State switch
-    {
-        DriverState.UpdateAvailable => "Mise à jour disponible",
-        DriverState.UpToDate => "À jour",
-        _ => "Non vérifié",
-    };
-
-    public bool IsUpdateAvailable => Status.State == DriverState.UpdateAvailable;
-
-    public bool IsUpToDate => Status.State == DriverState.UpToDate;
-
-    /// <summary>Installation proposée : nouveau pilote NVIDIA, téléchargeable depuis les serveurs officiels.</summary>
-    public bool CanInstall => IsUpdateAvailable && Status.Vendor == GpuVendor.Nvidia && Status.Latest is { } l && InstallerFiles.FileNameFor(l.DownloadUrl) is not null;
-
-    public string InstallLabel => $"Télécharger et installer le {Status.Latest?.Version}";
-
-    public string Message => Status.Message;
-
-    public string Installed => $"Installé : {Status.InstalledVersion ?? "?"}" +
-                               (installedDate is { } d ? $" du {d.ToString("d MMMM yyyy", Fr)}" : "");
-
-    public bool HasLatest => Status.Latest is not null;
-
-    public string Latest => Status.Latest is { } l
-        ? $"Dernier publié par NVIDIA : {l.Version}" + (l.ReleaseDate is { } r ? $" du {r.ToString("d MMMM yyyy", Fr)}" : "") +
-          (l.SizeText is { } size ? $" ({DriverInstallPlans.FrenchSize(size)})" : "")
-        : "";
-
-    public Uri? DetailsUrl => Status.Latest?.DetailsUrl;
-
-    public bool HasDetails => DetailsUrl is not null;
-
     [ObservableProperty]
     private bool _isDownloading;
 
@@ -332,6 +349,88 @@ public sealed partial class GpuDriverItemViewModel(GpuDriverStatus status, DateT
             ProgressText = $"Téléchargement : {progress.Received / MiB:N0} Mo";
         }
     }
+
+    protected static string StateText(DriverState state) => state switch
+    {
+        DriverState.UpdateAvailable => "Mise à jour disponible",
+        DriverState.UpToDate => "À jour",
+        _ => "Non vérifié",
+    };
+}
+
+public sealed partial class GpuDriverItemViewModel(GpuDriverStatus status, DateTime? installedDate) : InstallableDriverViewModel
+{
+    private static readonly CultureInfo Fr = CultureInfo.GetCultureInfo("fr-FR");
+
+    public GpuDriverStatus Status { get; } = status;
+
+    public string Name => Status.GpuName;
+
+    public string StateLabel => StateText(Status.State);
+
+    public bool IsUpdateAvailable => Status.State == DriverState.UpdateAvailable;
+
+    public bool IsUpToDate => Status.State == DriverState.UpToDate;
+
+    /// <summary>Installation proposée : nouveau pilote NVIDIA, téléchargeable depuis les serveurs officiels.</summary>
+    public bool CanInstall => IsUpdateAvailable && Status.Vendor == GpuVendor.Nvidia && Status.Latest is { } l && InstallerFiles.FileNameFor(l.DownloadUrl) is not null;
+
+    public string InstallLabel => $"Télécharger et installer le {Status.Latest?.Version}";
+
+    public string Message => Status.Message;
+
+    public string Installed => $"Installé : {Status.InstalledVersion ?? "?"}" +
+                               (installedDate is { } d ? $" du {d.ToString("d MMMM yyyy", Fr)}" : "");
+
+    public bool HasLatest => Status.Latest is not null;
+
+    public string Latest => Status.Latest is { } l
+        ? $"Dernier publié par NVIDIA : {l.Version}" + (l.ReleaseDate is { } r ? $" du {r.ToString("d MMMM yyyy", Fr)}" : "") +
+          (l.SizeText is { } size ? $" ({DriverInstallPlans.FrenchSize(size)})" : "")
+        : "";
+
+    public Uri? DetailsUrl => Status.Latest?.DetailsUrl;
+
+    public bool HasDetails => DetailsUrl is not null;
+}
+
+/// <summary>Logiciel de chipset AMD (carte mère).</summary>
+public sealed class ChipsetDriverItemViewModel(ChipsetDriverStatus status) : InstallableDriverViewModel
+{
+    private static readonly CultureInfo Fr = CultureInfo.GetCultureInfo("fr-FR");
+
+    public ChipsetDriverStatus Status { get; } = status;
+
+    public string Name => Status.Description;
+
+    public string StateLabel => StateText(Status.State);
+
+    public bool IsUpdateAvailable => Status.State == DriverState.UpdateAvailable;
+
+    public bool IsUpToDate => Status.State == DriverState.UpToDate;
+
+    /// <summary>Installation proposée : version plus récente, téléchargeable depuis drivers.amd.com.</summary>
+    public bool CanInstall => IsUpdateAvailable && Status.Latest is { } l && OfficialInstallers.FileNameFor(InstallerVendor.Amd, l.DownloadUrl) is not null;
+
+    public string InstallLabel => $"Télécharger et installer le {Status.Latest?.Version}";
+
+    public string Message => Status.Message;
+
+    public string Installed => Status.InstalledText;
+
+    public bool HasLatest => Status.Latest is not null;
+
+    public string Latest => Status.Latest is { } l
+        ? $"Dernier publié par AMD : AMD Chipset Software {l.Version}" + (l.ReleaseDate is { } r ? $" du {r.ToString("d MMMM yyyy", Fr)}" : "") +
+          (l.SizeText is { } size ? $" ({DriverInstallPlans.FrenchSize(size)})" : "")
+        : "";
+
+    /// <summary>Notes de version si AMD les publie, sinon la page de téléchargement du chipset.</summary>
+    public Uri? DetailsUrl => Status.Latest?.ReleaseNotes ?? Status.SupportPage;
+
+    public string DetailsLabel => Status.Latest?.ReleaseNotes is not null ? "Notes de version (amd.com)" : "Page des pilotes (amd.com)";
+
+    public bool HasDetails => DetailsUrl is not null;
 }
 
 public sealed partial class WindowsUpdateDriverItemViewModel(WindowsUpdateDriver update) : ObservableObject
