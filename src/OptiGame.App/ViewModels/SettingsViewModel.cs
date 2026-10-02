@@ -88,6 +88,13 @@ public sealed partial class SettingsViewModel : ObservableObject
         set { _settings.Update(s => s.DockShowOptiGame = value); OnPropertyChanged(); }
     }
 
+    /// <summary>Mesure automatique des FPS pendant les parties (note des jeux).</summary>
+    public bool AutoMeasureFps
+    {
+        get => _settings.Get().AutoMeasureFps;
+        set { _settings.Update(s => s.AutoMeasureFps = value); OnPropertyChanged(); }
+    }
+
     public bool DockShowNames
     {
         get => _settings.Get().DockShowNames;

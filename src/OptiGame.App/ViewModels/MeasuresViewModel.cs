@@ -213,38 +213,12 @@ public sealed partial class MeasuresViewModel : ObservableObject
 
     private CaptureRecord BuildRecord(CaptureRequest request, string label, string csvName, DateTimeOffset capturedAt, string presentMonOutput)
     {
-        if (!File.Exists(request.OutputCsv))
-        {
-            throw new InvalidOperationException(
-                $"PresentMon n'a produit aucun fichier. Le jeu ({request.ProcessName}) était-il lancé pendant la capture ?\n\n{presentMonOutput}");
-        }
-
-        IReadOnlyList<FrameSample> frames;
-        using (var reader = new StreamReader(request.OutputCsv))
-        {
-            frames = PresentMonCsv.MainSwapChain(PresentMonCsv.Parse(reader));
-        }
-        if (frames.Count == 0)
-        {
-            throw new InvalidOperationException(
-                $"Aucune image capturée pour {request.ProcessName}. Le jeu était-il lancé et affiché pendant la capture ?");
-        }
-
         var session = _sessions.Current;
         var activeProfile = session is not null &&
                             Path.GetFileName(session.Profile.ExePath).Equals(request.ProcessName, StringComparison.OrdinalIgnoreCase)
             ? session.Profile.Name
             : null;
-
-        return new CaptureRecord
-        {
-            Label = label,
-            ProcessName = request.ProcessName,
-            CapturedAt = capturedAt,
-            ActiveProfile = activeProfile,
-            CsvFile = csvName,
-            Stats = FrameStats.Compute(frames.Select(f => f.MsBetweenPresents).ToList()),
-        };
+        return Platform.Measurement.CaptureReader.Build(request, label, csvName, capturedAt, presentMonOutput, activeProfile);
     }
 
     private IReadOnlyList<double>? LoadFrames(CaptureItemViewModel? item)

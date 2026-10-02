@@ -140,7 +140,7 @@ public sealed class GameRatingTests
         Assert.Equal((GraphicsPreset.High, "Fluide"), (fine.Preset, fine.Headline));
 
         var onlyEstimate = GameRatings.Combine(estimate, null)!;
-        Assert.Equal((RatingSource.Estimated, 77, "Réglages élevé conseillés"), (onlyEstimate.Source, onlyEstimate.Score, onlyEstimate.Headline));
+        Assert.Equal((RatingSource.Estimated, 77, "Bonne marge"), (onlyEstimate.Source, onlyEstimate.Score, onlyEstimate.Headline));
 
         var measuredOnly = GameRatings.Combine(null, GameRatings.MeasureFrom([Stats(98, 71)], 165))!;
         Assert.Null(measuredOnly.Preset); // jeu hors Steam : pas de configuration requise, conseil relatif seulement

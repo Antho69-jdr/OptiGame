@@ -68,6 +68,9 @@ public sealed class AppSettings
     /// </summary>
     public List<string>? SteamKnownAppIds { get; set; }
 
+    /// <summary>Mesure automatique des FPS pendant les parties (1 min après 4 min de jeu), pour la note des jeux.</summary>
+    public bool AutoMeasureFps { get; set; } = true;
+
     public AppSettings Clone() => new()
     {
         Version = Version,
@@ -85,6 +88,7 @@ public sealed class AppSettings
         DockShowOptiGame = DockShowOptiGame,
         DockShowNames = DockShowNames,
         SteamKnownAppIds = SteamKnownAppIds is null ? null : [.. SteamKnownAppIds],
+        AutoMeasureFps = AutoMeasureFps,
     };
 }
 

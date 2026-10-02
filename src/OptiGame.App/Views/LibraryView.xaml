@@ -61,6 +61,12 @@
                                         </ControlTemplate>
                                     </Button.Template>
                                 </Button>
+                                <!-- Coin haut droit : note du jeu sur ce PC (« ≈ » = estimation) -->
+                                <Border Margin="8" HorizontalAlignment="Right" VerticalAlignment="Top" Style="{StaticResource Badge}" Background="#CC0E1014"
+                                        Visibility="{Binding HasRating, Converter={StaticResource BoolToVisibility}}" ToolTip="{Binding RatingTooltip}"
+                                        AutomationProperties.Name="{Binding RatingTooltip}">
+                                    <TextBlock x:Name="RatingText" Text="{Binding RatingBadge}" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource Brush.Ok}" />
+                                </Border>
                                 <!-- Coin haut gauche : épingle du dock, puis pastilles -->
                                 <StackPanel Margin="8" HorizontalAlignment="Left" VerticalAlignment="Top" Orientation="Horizontal">
                                     <!-- Épinglé : toujours visible (épingle pleine) ; sinon seulement au survol. Hidden et non
@@ -121,6 +127,12 @@
                         <ControlTemplate.Triggers>
                             <DataTrigger Binding="{Binding IsPinned}" Value="True">
                                 <Setter TargetName="PinButton" Property="Visibility" Value="Visible" />
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding RatingLevel}" Value="Fair">
+                                <Setter TargetName="RatingText" Property="Foreground" Value="{StaticResource Brush.Warning}" />
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding RatingLevel}" Value="Poor">
+                                <Setter TargetName="RatingText" Property="Foreground" Value="{StaticResource Brush.Danger}" />
                             </DataTrigger>
                             <Trigger Property="IsMouseOver" Value="True">
                                 <Setter TargetName="Outline" Property="BorderBrush" Value="{StaticResource Brush.Accent}" />

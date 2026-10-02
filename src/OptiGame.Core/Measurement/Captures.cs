@@ -4,9 +4,13 @@ using OptiGame.Core.State;
 namespace OptiGame.Core.Measurement;
 
 /// <summary>Paramètres d'une capture PresentMon.</summary>
-public sealed record CaptureRequest(string PresentMonPath, string ProcessName, int DurationSeconds, int DelaySeconds, string OutputCsv)
+/// <param name="Session">Session ETW : distincte pour les captures automatiques, pour ne jamais arrêter une capture manuelle.</param>
+public sealed record CaptureRequest(string PresentMonPath, string ProcessName, int DurationSeconds, int DelaySeconds, string OutputCsv,
+    string Session = CaptureRequest.SessionName)
 {
     public const string SessionName = "OptiGame_Capture";
+
+    public const string AutoSessionName = "OptiGame_AutoCapture";
 
     /// <summary>
     /// Arguments PresentMon 2.x (options vérifiées avec « PresentMon-2.6.0-x64.exe --help ») :
@@ -23,7 +27,7 @@ public sealed record CaptureRequest(string PresentMonPath, string ProcessName, i
             "--terminate_after_timed",
             "--v2_metrics",
             "--no_console_stats",
-            "--session_name", SessionName,
+            "--session_name", Session,
             "--stop_existing_session",
         };
         if (DelaySeconds > 0)
@@ -52,6 +56,9 @@ public sealed class CaptureRecord
     public required string CsvFile { get; set; }
 
     public required FrameStats Stats { get; set; }
+
+    /// <summary>Capture faite automatiquement pendant une partie (note des jeux) ; seules les 5 dernières par jeu sont gardées.</summary>
+    public bool Automatic { get; set; }
 }
 
 public sealed class CapturesDocument

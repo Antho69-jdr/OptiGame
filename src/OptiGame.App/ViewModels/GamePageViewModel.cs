@@ -20,6 +20,31 @@ public sealed partial class GamePageViewModel(
     bool isPinned,
     bool isPlaying) : ObservableObject
 {
+    /// <summary>Note du jeu par rapport au PC (mesurée ou estimée) ; null = pas encore de note.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasRating), nameof(ScoreText), nameof(PresetText), nameof(RatingHeadline), nameof(RatingAdvice),
+        nameof(RatingSource), nameof(RatingDetails), nameof(RatingLevel))]
+    private Core.Rating.GameRating? _rating;
+
+    public bool HasRating => Rating is not null;
+
+    public string ScoreText => Rating is null ? "" : $"{Rating.Score}";
+
+    public string PresetText => Rating?.Preset is { } preset ? $"Réglage conseillé : {Core.Rating.GameRatings.Label(preset)}" : "";
+
+    public string RatingHeadline => Rating?.Headline ?? "";
+
+    public string RatingAdvice => Rating?.Advice ?? "";
+
+    public string RatingSource => Rating?.Source == Core.Rating.RatingSource.Measured
+        ? "Mesuré pendant vos parties (PresentMon)."
+        : "Estimation d'après la configuration requise du jeu (Steam) et votre PC.";
+
+    public IReadOnlyList<string> RatingDetails => Rating?.Details ?? [];
+
+    /// <summary>Couleur : Good (75 et plus), Fair (50 et plus), Poor.</summary>
+    public string RatingLevel => Rating?.Score switch { >= 75 => "Good", >= 50 => "Fair", _ => "Poor" };
+
     /// <summary>Carte « Graphismes (Windows) » : Auto HDR et carte graphique pour ce jeu.</summary>
     public GameGraphicsViewModel Graphics { get; } = graphics;
 

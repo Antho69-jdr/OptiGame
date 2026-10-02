@@ -78,6 +78,17 @@
                 </StackPanel>
             </Border>
 
+            <!-- Note des jeux -->
+            <Border Margin="0,16,0,0" Style="{StaticResource Card}">
+                <StackPanel>
+                    <TextBlock Style="{StaticResource Text.SectionTitle}" Text="Note des jeux" />
+                    <CheckBox Margin="0,14,0,0" IsChecked="{Binding AutoMeasureFps}"
+                              Content="Mesurer automatiquement les FPS pendant les parties" />
+                    <TextBlock Margin="28,6,0,0" Style="{StaticResource Text.Caption}" TextWrapping="Wrap"
+                               Text="Une seule mesure par partie : 1 minute avec PresentMon, après 4 minutes de jeu (menus et chargements passés). Elle donne la note mesurée des jeux, plus fiable que l'estimation tirée de la configuration requise. Les 5 dernières mesures de chaque jeu sont gardées (page « Mesures »). Nécessite PresentMon." />
+                </StackPanel>
+            </Border>
+
             <!-- Jaquettes IGDB -->
             <Border Margin="0,16,0,0" Style="{StaticResource Card}">
                 <StackPanel>

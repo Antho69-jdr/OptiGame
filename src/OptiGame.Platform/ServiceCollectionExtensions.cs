@@ -72,6 +72,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton(_ => new Core.Measurement.CaptureStore(
             new JsonStateStore<Core.Measurement.CapturesDocument>(Path.Combine(paths.CapturesDir, "captures.json")), paths.CapturesDir));
         services.AddSingleton<Measurement.PresentMonRunner>();
+        services.AddSingleton<Measurement.AutoCapture>();
         services.AddSingleton<Artwork.IgdbClient>();
         services.AddSingleton<Artwork.ArtworkCache>();
 
@@ -93,6 +94,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<GameLauncher>();
         services.AddSingleton<Library.SteamPlaytimeReader>();
         services.AddSingleton<Library.SteamLibraryWatcher>();
+        services.AddSingleton<Library.SteamRequirementsClient>();
         services.AddSingleton<Drivers.NvidiaDriverClient>();
         services.AddSingleton<Drivers.WindowsUpdateDriverSearch>();
         services.AddSingleton<Drivers.DriverDownloader>();

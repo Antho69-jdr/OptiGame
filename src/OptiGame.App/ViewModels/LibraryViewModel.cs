@@ -42,6 +42,8 @@ public sealed partial class LibraryViewModel : ObservableObject
     private readonly PlaytimeStore _playtime;
     private readonly SteamPlaytimeReader _steamReader;
     private readonly GameGraphicsService _graphics;
+    private readonly GameRatingService _ratings;
+    private int _ratingVersion;
 
     /// <summary>Temps de jeu Steam par profil (jeux Steam), relu à chaque changement de la bibliothèque ou de Steam.</summary>
     private IReadOnlyDictionary<Guid, SteamPlaytimeEntry> _steamPlaytime = new Dictionary<Guid, SteamPlaytimeEntry>();
@@ -56,10 +58,12 @@ public sealed partial class LibraryViewModel : ObservableObject
         IGameLibraryScanner scanner, AppSettingsStore settings, IgdbClient igdb, ArtworkCache artwork, GameSessionManager sessions,
         CaptureStore captures, MeasuresViewModel measures, NavigationService navigation, SettingsViewModel settingsPage,
         TimeProvider time, FileLog log, GameLauncher launcher, PlaytimeStore playtime, SteamPlaytimeReader steamReader,
-        GameGraphicsService graphics, NewSteamGamesViewModel newGames)
+        GameGraphicsService graphics, NewSteamGamesViewModel newGames, GameRatingService ratings, Platform.Measurement.AutoCapture autoCapture)
     {
         _steamReader = steamReader;
         _graphics = graphics;
+        _ratings = ratings;
+        autoCapture.CaptureAdded += (_, _) => OnUi(() => _ = LoadRatingsAsync()); // nouvelle mesure : la note change
         NewGames = newGames;
         newGames.GameAdded += (_, _) =>
         {
@@ -160,6 +164,36 @@ public sealed partial class LibraryViewModel : ObservableObject
     /// <summary>Suivi d'OptiGame complété par le temps Steam (rétroactif) pour les jeux Steam.</summary>
     private PlaytimeSummary PlaytimeOf(Guid id, DateTimeOffset now) =>
         PlaytimeSummary.Combine(_playtime.StatsFor(id, now), _steamPlaytime.GetValueOrDefault(id));
+
+    /// <summary>
+    /// Notes des jeux (configuration requise Steam en cache, captures), hors du thread UI ; la lecture la plus récente
+    /// l'emporte. Une note introuvable laisse simplement la jaquette sans pastille.
+    /// </summary>
+    private async Task LoadRatingsAsync()
+    {
+        var version = ++_ratingVersion;
+        var profiles = _store.GetAll();
+        var ratings = await Task.Run(async () =>
+        {
+            var apps = Platform.Library.GameLibraryScanner.SteamApps();
+            var result = new Dictionary<Guid, Core.Rating.GameRating?>();
+            foreach (var profile in profiles)
+            {
+                try
+                {
+                    result[profile.Id] = await _ratings.RateAsync(profile, apps);
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Management.ManagementException or InvalidOperationException)
+                {
+                    _log.Error($"Note de « {profile.Name} » impossible", ex);
+                }
+            }
+            return result;
+        });
+        if (version != _ratingVersion) return;
+        foreach (var card in Games) card.Rating = ratings.GetValueOrDefault(card.Id);
+        if (OpenGame is not null) OpenGame.Rating = ratings.GetValueOrDefault(OpenGame.Id);
+    }
 
     /// <summary>Relit le temps Steam (localconfig.vdf + manifestes, hors du thread UI) ; la lecture la plus récente l'emporte.</summary>
     private async Task LoadSteamPlaytimeAsync()
@@ -384,6 +418,7 @@ public sealed partial class LibraryViewModel : ObservableObject
         _ = LoadPageImagesAsync(OpenGame, profile);
         _ = LoadSteamAppIdAsync(OpenGame, profile);
         _ = OpenGame.Graphics.LoadAsync();
+        OpenGame.Rating = Games.FirstOrDefault(c => c.Id == id)?.Rating; // déjà calculée pour la jaquette
     }
 
     /// <summary>Appid Steam de la page (lecture des manifestes Steam, hors du thread UI) : affiche le bouton « Page Steam ».</summary>
@@ -523,6 +558,7 @@ public sealed partial class LibraryViewModel : ObservableObject
         OnPropertyChanged(nameof(HasGames));
         OnPropertyChanged(nameof(Subtitle));
         _ = LoadSteamPlaytimeAsync(); // profils ajoutés, retirés ou modifiés : leur jeu Steam a pu changer
+        _ = LoadRatingsAsync();
     }
 
     private async Task RefreshCoverAsync(Guid id)
@@ -590,6 +626,24 @@ public sealed partial class GameCardViewModel(GameProfile profile, bool isPlayin
 
     /// <summary>Clé de tri « Temps de jeu ».</summary>
     public long TotalTicks => Playtime.Total.Ticks;
+
+    /// <summary>Note du jeu (mesurée ou estimée) ; null = pas de pastille.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasRating), nameof(RatingBadge), nameof(RatingLevel), nameof(RatingTooltip))]
+    private Core.Rating.GameRating? _rating;
+
+    public bool HasRating => Rating is not null;
+
+    /// <summary>« 77 » mesuré, « ≈ 77 » estimé.</summary>
+    public string RatingBadge => Rating is null ? "" : Rating.Source == Core.Rating.RatingSource.Measured ? $"{Rating.Score}" : $"≈ {Rating.Score}";
+
+    /// <summary>Couleur de la pastille : Good (75 et plus), Fair (50 et plus), Poor.</summary>
+    public string RatingLevel => Rating?.Score switch { >= 75 => "Good", >= 50 => "Fair", _ => "Poor" };
+
+    public string RatingTooltip => Rating is null ? ""
+        : $"{Rating.Headline} — {Rating.Score}/100" +
+          (Rating.Preset is { } preset ? $", réglage conseillé : {Core.Rating.GameRatings.Label(preset)}" : "") +
+          (Rating.Source == Core.Rating.RatingSource.Measured ? " (mesuré)" : " (estimation)");
 
     /// <summary>Clé de tri « Récemment joués » (0 = jamais joué, en fin de liste).</summary>
     public long LastPlayedTicks => Playtime.LastPlayed?.UtcTicks ?? 0;

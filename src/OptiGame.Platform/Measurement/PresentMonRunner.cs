@@ -52,7 +52,7 @@ public sealed class PresentMonRunner(AppPaths paths, FileLog log)
         catch (OperationCanceledException)
         {
             process.Kill();
-            await StopSessionAsync(request.PresentMonPath);
+            await StopSessionAsync(request.PresentMonPath, request.Session);
             log.Info("Capture annulée par l'utilisateur.");
             throw;
         }
@@ -63,11 +63,11 @@ public sealed class PresentMonRunner(AppPaths paths, FileLog log)
     }
 
     /// <summary>Ferme la session ETW si PresentMon a été arrêté de force.</summary>
-    private static async Task StopSessionAsync(string presentMonPath)
+    private static async Task StopSessionAsync(string presentMonPath, string session)
     {
         var start = new ProcessStartInfo(presentMonPath) { CreateNoWindow = true, UseShellExecute = false };
         start.ArgumentList.Add("--session_name");
-        start.ArgumentList.Add(CaptureRequest.SessionName);
+        start.ArgumentList.Add(session);
         start.ArgumentList.Add("--terminate_existing_session");
         using var stop = Process.Start(start);
         if (stop is not null)

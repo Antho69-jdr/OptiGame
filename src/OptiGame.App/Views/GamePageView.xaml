@@ -303,6 +303,47 @@
                     </StackPanel>
 
                     <StackPanel Grid.Column="2">
+                        <!-- Note du jeu sur ce PC : mesurée (PresentMon) ou estimée (configuration requise) -->
+                        <Border Margin="0,0,0,16" Style="{StaticResource Card}">
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource Text.Caption}" Text="NOTE SUR CE PC" FontWeight="SemiBold" />
+                                <StackPanel Visibility="{Binding HasRating, Converter={StaticResource BoolToVisibility}}">
+                                    <StackPanel Margin="0,4,0,0" Orientation="Horizontal">
+                                        <TextBlock FontFamily="{StaticResource Font.Display}" FontSize="30" FontWeight="SemiBold" Text="{Binding ScoreText}">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock">
+                                                    <Setter Property="Foreground" Value="{StaticResource Brush.Ok}" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding RatingLevel}" Value="Fair">
+                                                            <Setter Property="Foreground" Value="{StaticResource Brush.Warning}" />
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding RatingLevel}" Value="Poor">
+                                                            <Setter Property="Foreground" Value="{StaticResource Brush.Danger}" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+                                        <TextBlock Margin="4,0,0,6" VerticalAlignment="Bottom" Style="{StaticResource Text.Secondary}" Text="/ 100" />
+                                        <TextBlock Margin="14,0,0,6" VerticalAlignment="Bottom" Style="{StaticResource Text.Body}" FontWeight="SemiBold" Text="{Binding RatingHeadline}" />
+                                    </StackPanel>
+                                    <TextBlock Style="{StaticResource Text.Body}" FontWeight="SemiBold" Foreground="{StaticResource Brush.Accent}" Text="{Binding PresetText}" />
+                                    <TextBlock Margin="0,4,0,0" Style="{StaticResource Text.Secondary}" Text="{Binding RatingAdvice}" TextWrapping="Wrap" />
+                                    <TextBlock Margin="0,8,0,0" Style="{StaticResource Text.Caption}" Text="{Binding RatingSource}" TextWrapping="Wrap" />
+                                    <ItemsControl Margin="0,4,0,0" ItemsSource="{Binding RatingDetails}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Margin="0,2,0,0" Style="{StaticResource Text.Caption}" Text="{Binding StringFormat='• {0}'}" TextWrapping="Wrap" />
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </StackPanel>
+                                <TextBlock Margin="0,6,0,0" Style="{StaticResource Text.Secondary}" TextWrapping="Wrap"
+                                           Visibility="{Binding HasRating, Converter={StaticResource InverseBoolToVisibility}}"
+                                           Text="Pas encore de note : configuration requise inconnue (jeu hors Steam). Elle apparaîtra après une partie, grâce à la mesure automatique des FPS." />
+                            </StackPanel>
+                        </Border>
+
                         <!-- Temps de jeu -->
                         <Border Margin="0,0,0,16" Style="{StaticResource Card}">
                             <StackPanel>

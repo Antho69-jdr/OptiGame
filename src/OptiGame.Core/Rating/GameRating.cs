@@ -204,8 +204,9 @@ public static class GameRatings
 
         if (estimate is null) return null;
         return new GameRating(estimate.Score, RatingSource.Estimated, estimate.Preset, estimate.BelowMinimum,
-            estimate.BelowMinimum ? "Sous la configuration minimale" : $"Réglages {Label(estimate.Preset).ToLowerInvariant()} conseillés",
-            "Estimation d'après la configuration requise du jeu ; une partie mesurée la remplacera.", estimate.Details);
+            estimate.BelowMinimum ? "Sous la configuration minimale"
+                : estimate.Score >= 85 ? "Large marge" : estimate.Score >= 70 ? "Bonne marge" : estimate.Score >= 50 ? "Marge suffisante" : "Juste",
+            "Une partie mesurée remplacera cette estimation.", estimate.Details);
     }
 
     /// <summary>Carte d'un niveau de configuration : du même fabricant de préférence, la plus faible citée (une seule suffit).</summary>

@@ -64,6 +64,7 @@ public partial class App : Application
 
         StartSessions(_services);
         _services.GetRequiredService<Dock.DockController>().Start();
+        _services.GetRequiredService<Platform.Measurement.AutoCapture>().Start();
 
         _quitWatcher = new QuitRequestWatcher(services.GetRequiredService<AppPaths>().Root,
             () => Dispatcher.BeginInvoke(async () =>
@@ -190,6 +191,7 @@ public partial class App : Application
         services.AddSingleton<DiagnosticViewModel>();
         services.AddSingleton<DriversViewModel>();
         services.AddSingleton<GameGraphicsService>();
+        services.AddSingleton<GameRatingService>();
         services.AddSingleton<NewSteamGamesViewModel>();
         services.AddSingleton<LibraryViewModel>();
         services.AddSingleton<SettingsViewModel>();
