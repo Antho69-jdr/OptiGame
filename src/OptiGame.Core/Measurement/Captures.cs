@@ -65,6 +65,9 @@ public sealed class CaptureRecord
 
     /// <summary>Réglage graphique indiqué par l'utilisateur pour ce jeu au moment de la capture (null = non indiqué).</summary>
     public Rating.GraphicsPreset? Preset { get; set; }
+
+    /// <summary>État de la carte graphique NVIDIA pendant une mesure automatique (température, bridage) ; null = non relevé.</summary>
+    public OptiGame.Core.Gpu.GpuHealth? GpuHealth { get; set; }
 }
 
 public sealed class CapturesDocument

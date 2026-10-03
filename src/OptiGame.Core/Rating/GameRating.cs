@@ -132,14 +132,14 @@ public static class GameRatings
         string? SourceUrl = null);
 
     /// <summary>Une capture du jeu : statistiques, charge (null = inconnue) et réglage indiqué à ce moment-là.</summary>
-    public sealed record MeasuredCapture(FrameStats Stats, FrameLoad? Load, GraphicsPreset? Preset);
+    public sealed record MeasuredCapture(FrameStats Stats, FrameLoad? Load, GraphicsPreset? Preset, Gpu.GpuHealth? GpuHealth = null);
 
     /// <param name="Preset">Réglage du jeu pendant les mesures (null = non indiqué).</param>
     /// <param name="PresetAssumed">Captures sans réglage enregistré : on suppose le réglage indiqué actuellement.</param>
     /// <param name="CurrentPreset">Réglage indiqué actuellement (peut différer de celui des mesures).</param>
     public sealed record Measurement(int Score, int Captures, double AverageFps, double OnePercentLowFps, bool HasHeadroom, int RefreshHz,
         GraphicsPreset? Preset = null, bool PresetAssumed = false, GraphicsPreset? CurrentPreset = null, FrameLoad? Load = null,
-        Bottleneck? Bottleneck = null);
+        Bottleneck? Bottleneck = null, Gpu.GpuHealth? GpuHealth = null);
 
     public static Estimate? EstimateFrom(PcSpecs pc, SystemRequirements requirements)
     {
@@ -206,7 +206,8 @@ public static class GameRatings
         var preset = median.Preset ?? (atCurrent.Count > 0 ? currentPreset : null);
         return new Measurement(ScoreOf(stats), chosen.Count, stats.AverageFps, stats.OnePercentLowFps, headroom, refreshHz,
             preset, median.Preset is null && preset is not null, currentPreset, median.Load,
-            median.Load is { } load ? Classify(load, stats.AverageFps, refreshHz) : null);
+            median.Load is { } load ? Classify(load, stats.AverageFps, refreshHz) : null,
+            chosen.Select(c => c.GpuHealth).FirstOrDefault(g => g is not null)); // relevés de la mesure la plus récente
     }
 
     /// <summary>
@@ -259,6 +260,18 @@ public static class GameRatings
                 Bottleneck.Cpu => $"Limité par le processeur ; carte graphique occupée {gpu} % du temps seulement.",
                 _ => "Charge de la carte graphique inconnue pour ces mesures.",
             });
+            if (measured.GpuHealth is { } health)
+            {
+                details.Add(GpuHealthText(health));
+                advice += health.Throttle switch
+                {
+                    Gpu.GpuThrottle.Thermal => " La carte graphique a aussi ralenti parce qu'elle chauffait trop : dépoussiérez-la, vérifiez la " +
+                                               "ventilation du boîtier et la courbe de ses ventilateurs.",
+                    Gpu.GpuThrottle.Hardware => " La carte graphique a aussi été ralentie par une protection matérielle : vérifiez son alimentation " +
+                                                "(câbles PCIe bien enfoncés, bloc d'alimentation suffisant).",
+                    _ => "",
+                };
+            }
             if (measured.Preset is { } during)
             {
                 details.Add(measured.PresetAssumed
@@ -317,6 +330,23 @@ public static class GameRatings
     }
 
     private static int Percent(double? fraction) => (int)Math.Round(100 * (fraction ?? 0));
+
+    /// <summary>« Carte graphique pendant la dernière mesure : 74 °C au plus, 1905 MHz en moyenne, 210 W sur 220 W ; … ».</summary>
+    public static string GpuHealthText(Gpu.GpuHealth h)
+    {
+        var facts = new List<string>();
+        if (h.MaxTemperatureC is { } t) facts.Add($"{t} °C au plus");
+        if (h.AverageClockMhz is { } c) facts.Add($"{c} MHz en moyenne");
+        if (h.AveragePowerW is { } w) facts.Add(h.PowerLimitW is { } limit ? $"{w:0} W sur {limit:0} W autorisés" : $"{w:0} W");
+        var state = h.Throttle switch
+        {
+            Gpu.GpuThrottle.Thermal => $"bridée par la température {Percent(h.ThermalShare)} % du temps",
+            Gpu.GpuThrottle.Hardware => $"ralentie par une protection matérielle {Percent(h.HardwareShare)} % du temps",
+            Gpu.GpuThrottle.PowerLimit => $"limite de puissance atteinte {Percent(h.PowerCapShare)} % du temps (normal quand elle tourne à fond)",
+            _ => "aucun bridage",
+        };
+        return $"Carte graphique pendant la dernière mesure : {(facts.Count > 0 ? string.Join(", ", facts) + " ; " : "")}{state}.";
+    }
 
     /// <summary>Carte d'un niveau de configuration : du même fabricant de préférence, la plus faible citée (une seule suffit).</summary>
     private static GpuPerformance.Match? Pick(RequirementLevel? level, string vendor)

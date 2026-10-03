@@ -122,6 +122,18 @@ if (args.Length == 1 && args[0] == "--steam-playtime")
     return;
 }
 
+// --gpu-sample [secondes] : relevés nvidia-smi comme pendant la mesure automatique (lecture seule), puis résumé.
+if (args.Length is 1 or 2 && args[0] == "--gpu-sample")
+{
+    var seconds = args.Length == 2 ? int.Parse(args[1], System.Globalization.CultureInfo.InvariantCulture) : 10;
+    var smi = services.GetRequiredService<OptiGame.Platform.Gpu.NvidiaSmiProvider>();
+    var samples = await smi.SampleAsync(TimeSpan.FromSeconds(seconds), CancellationToken.None);
+    foreach (var s in samples) Console.WriteLine(s);
+    var health = OptiGame.Core.Gpu.GpuSampling.Summarize(samples);
+    Console.WriteLine(health is null ? "Moins de 5 relevés : pas de résumé." : OptiGame.Core.Rating.GameRatings.GpuHealthText(health));
+    return;
+}
+
 // --disks : disque de chaque lecteur et de chaque profil (type, espace libre, conseil affiché sur la page du jeu).
 if (args.Length == 1 && args[0] == "--disks")
 {

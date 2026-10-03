@@ -13,6 +13,7 @@ namespace OptiGame.Platform.Measurement;
 /// automatiques de chaque jeu sont gardées. Désactivable dans les paramètres ; sans PresentMon, rien n'est fait.
 /// </summary>
 public sealed class AutoCapture(GameSessionManager sessions, CaptureStore store, PresentMonRunner runner, AppSettingsStore settings, ProfileStore profiles,
+    Gpu.NvidiaSmiProvider nvidia,
     FileLog log, TimeProvider time)
 {
     public const int DelaySeconds = 240;
@@ -70,12 +71,15 @@ public sealed class AutoCapture(GameSessionManager sessions, CaptureStore store,
         var request = new CaptureRequest(presentMon, exe, DurationSeconds, DelaySeconds, Path.Combine(store.Directory, csvName), CaptureRequest.AutoSessionName);
         try
         {
+            var gpu = SampleGpuAsync(session.Profile.Name, cancellation); // mêmes 60 s que PresentMon
             var output = await runner.RunAsync(request, cancellation);
             // Réglage relu à la fin de la mesure : l'utilisateur a pu l'indiquer pendant la partie.
             var preset = profiles.Find(session.Profile.Id)?.GraphicsPreset;
             var record = CaptureReader.Build(request, "Automatique", csvName, now.AddSeconds(DelaySeconds), output, session.Profile.Name, automatic: true, preset);
+            record.GpuHealth = await gpu;
             store.Add(record);
             log.Info($"Mesure automatique de « {session.Profile.Name} » : {record.Stats.AverageFps:0} FPS moyens, 1 % low {record.Stats.OnePercentLowFps:0} ({record.Stats.FrameCount} images).");
+            if (record.GpuHealth is { } health) log.Info(Core.Rating.GameRatings.GpuHealthText(health));
             Prune(exe);
             CaptureAdded?.Invoke(this, record);
         }
@@ -94,6 +98,28 @@ public sealed class AutoCapture(GameSessionManager sessions, CaptureStore store,
         catch (Exception ex) when (ex is InvalidOperationException or IOException or System.ComponentModel.Win32Exception or UnauthorizedAccessException)
         {
             log.Error($"Mesure automatique de « {session.Profile.Name} » impossible", ex);
+        }
+    }
+
+    /// <summary>
+    /// État de la carte graphique NVIDIA pendant la mesure (1 relevé par seconde, après le même délai que PresentMon).
+    /// Ne lève jamais d'exception : sans nvidia-smi, en cas d'échec ou de partie terminée avant, null.
+    /// </summary>
+    private async Task<Core.Gpu.GpuHealth?> SampleGpuAsync(string game, CancellationToken cancellation)
+    {
+        try
+        {
+            await Task.Delay(TimeSpan.FromSeconds(DelaySeconds), time, cancellation);
+            return Core.Gpu.GpuSampling.Summarize(await nvidia.SampleAsync(TimeSpan.FromSeconds(DurationSeconds), cancellation));
+        }
+        catch (OperationCanceledException)
+        {
+            return null;
+        }
+        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException or IOException)
+        {
+            log.Warn($"Relevés de la carte graphique impossibles pendant la mesure de « {game} » : {ex.Message}");
+            return null;
         }
     }
 

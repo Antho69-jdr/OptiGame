@@ -55,7 +55,7 @@ public sealed class GameRatingService(
         var measured = captures.GetAll()
             .Where(c => c.ProcessName.Equals(exe, StringComparison.OrdinalIgnoreCase))
             .OrderByDescending(c => c.CapturedAt)
-            .Select(c => new GameRatings.MeasuredCapture(c.Stats, c.Load ?? LoadOf(c), c.Preset))
+            .Select(c => new GameRatings.MeasuredCapture(c.Stats, c.Load ?? LoadOf(c), c.Preset, c.GpuHealth))
             .ToList();
         return GameRatings.Combine(estimate, GameRatings.MeasureFrom(measured, pc.RefreshHz, profile.GraphicsPreset));
     }

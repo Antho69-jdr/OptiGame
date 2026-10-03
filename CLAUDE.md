@@ -203,6 +203,12 @@ vit dans Core ; Platform ne fait que lire/écrire le système.
     vérifiées sur de vrais CSV 2.6.0) : GPU ≥ 85 % = carte graphique ; sinon attente ≥ 15 % ou FPS ≈ fréquence = plafond ;
     sinon processeur. Réel : Overwatch plafonné 76 %/43 %, en V-Sync 82 %/64 % ; Void Crew 98 %/2 %. Captures antérieures :
     charge recalculée une fois depuis le CSV (`GameRatingService`, `CaptureStore.SetLoad`).
+  - Bridage de la carte NVIDIA (`Core/Gpu/GpuSampling`, `NvidiaSmiProvider.SampleAsync`, `DiagDump -- --gpu-sample [s]`) :
+    pendant les 60 s de la mesure auto, UN processus `nvidia-smi --query-gpu=… -lms 1000` (champs `clocks_event_reasons.*`
+    vérifiés avec --help-query-gpu, pilote 617.14), arrêté à la fin. Résumé dans `CaptureRecord.GpuHealth`, carte la plus
+    utilisée, seuil 10 % des relevés. Thermique (sw/hw_thermal) → conseil refroidissement ; hw_slowdown SANS thermique →
+    alimentation ; sw_power_cap = NORMAL à pleine charge (GPU Boost), seulement affiché. clocks.max.gr (2100) = maximum
+    absolu, pas la fréquence de boost : non utilisé.
 - Temps de jeu Steam : `<SteamPath>\userdata\<accountid>\config\localconfig.vdf`, UserLocalConfigStore > Software > Valve >
   Steam > apps > <appid> > `Playtime` (MINUTES) + `LastPlayed` (secondes Unix), réécrit par Steam à la fin d'une partie.
   Compte : `HKCU\Software\Valve\Steam\ActiveProcess\ActiveUser` (0 si Steam est fermé), sinon `config\loginusers.vdf` :

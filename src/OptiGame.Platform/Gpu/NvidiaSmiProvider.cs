@@ -35,6 +35,54 @@ public sealed class NvidiaSmiProvider(FileLog log) : INvidiaInfoProvider
         }
     }
 
+    /// <summary>
+    /// Relevés d'une seconde pendant <paramref name="duration"/> (mesure automatique) ; liste vide si l'outil est absent.
+    /// Un seul processus nvidia-smi, arrêté à la fin ou à l'annulation (partie terminée).
+    /// </summary>
+    public async Task<IReadOnlyList<GpuSample>> SampleAsync(TimeSpan duration, CancellationToken cancellation)
+    {
+        if (FindExe() is not { } exe) return [];
+        var start = new ProcessStartInfo(exe)
+        {
+            UseShellExecute = false,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            CreateNoWindow = true,
+        };
+        foreach (var argument in GpuSampling.Arguments(1000)) start.ArgumentList.Add(argument);
+
+        var samples = new List<GpuSample>();
+        using var process = Process.Start(start);
+        if (process is null) return [];
+        _ = process.StandardError.ReadToEndAsync();
+        using var window = CancellationTokenSource.CreateLinkedTokenSource(cancellation);
+        window.CancelAfter(duration);
+        try
+        {
+            while (await process.StandardOutput.ReadLineAsync(window.Token) is { } line)
+            {
+                if (GpuSampling.ParseLine(line) is { } sample) samples.Add(sample);
+            }
+        }
+        catch (OperationCanceledException) when (!cancellation.IsCancellationRequested)
+        {
+            // Durée écoulée : fin normale des relevés.
+        }
+        finally
+        {
+            try
+            {
+                if (!process.HasExited) process.Kill();
+            }
+            catch (InvalidOperationException)
+            {
+                // déjà terminé
+            }
+        }
+        cancellation.ThrowIfCancellationRequested();
+        return samples;
+    }
+
     /// <summary>Sortie standard, ou null si l'outil est absent, échoue ou dépasse 10 s.</summary>
     public string? Run(IReadOnlyList<string> arguments)
     {
