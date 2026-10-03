@@ -122,6 +122,58 @@ if (args.Length == 1 && args[0] == "--steam-playtime")
     return;
 }
 
+// --nvidia-profiles : profil NVIDIA appliqué à chaque jeu et son plafond de FPS (lecture seule).
+if (args.Length == 1 && args[0] == "--nvidia-profiles")
+{
+    Console.WriteLine($"Pilote NVIDIA (nvapi64.dll) : {(OptiGame.Platform.Gpu.NvidiaProfiles.IsAvailable ? "présent" : "absent")}");
+    var profiles = new OptiGame.Core.Profiles.ProfileStore(
+        new JsonStateStore<OptiGame.Core.Profiles.ProfilesDocument>(AppPaths.Default.Profiles));
+    foreach (var profile in profiles.GetAll())
+    {
+        try
+        {
+            var s = OptiGame.Platform.Gpu.NvidiaProfiles.Read(profile.ExePath, 0x10835002);
+            Console.WriteLine($"{profile.Name} : profil {(s.ProfileName is null ? "(aucun : profil global)" : $"« {s.ProfileName} »{(s.ProfileIsPredefined ? " (NVIDIA)" : "")}")}, " +
+                              $"plafond propre au profil = {s.Value?.ToString() ?? "non défini"}, appliqué = {s.EffectiveValue?.ToString() ?? "?"}");
+        }
+        catch (OptiGame.Platform.Gpu.NvidiaApiException ex)
+        {
+            Console.WriteLine($"{profile.Name} : {ex.Message}");
+        }
+    }
+    return;
+}
+
+// --nvidia-selftest <chemin d'un exe FACTICE> : écrit puis retire un plafond de FPS sur ce seul exe (profil « OptiGame - … »
+// créé puis supprimé). Ne jamais lui donner un vrai jeu. Écriture : droits administrateur probablement nécessaires.
+if (args.Length == 2 && args[0] == "--nvidia-selftest")
+{
+    var exe = args[1];
+    if (File.Exists(exe)) { Console.WriteLine("Refusé : donnez le chemin d'un exe qui N'EXISTE PAS."); return; }
+    string Show() { var s = OptiGame.Platform.Gpu.NvidiaProfiles.Read(exe, 0x10835002); return $"profil={s.ProfileName ?? "(aucun)"} propre={s.Value?.ToString() ?? "-"} appliqué={s.EffectiveValue?.ToString() ?? "défaut"}"; }
+    try
+    {
+        // Chaîne complète de l'appli : journal (fichier temporaire) → accesseur → pilote, puis annulation.
+        var journalFile = Path.Combine(Path.GetTempPath(), $"optigame-nvidia-selftest-{Guid.NewGuid():N}.json");
+        var journal = new ChangeJournal(new JsonStateStore<JournalDocument>(journalFile),
+            new SettingAccessors([new OptiGame.Platform.Gpu.NvidiaProfileSettingAccessor()]));
+        var id = Guid.NewGuid();
+        Console.WriteLine($"avant      : {Show()}");
+        journal.Apply(OptiGame.Core.Gpu.FrameRateCap.Change(id, "test", exe, null, null, 100));
+        Console.WriteLine($"appliqué   : {Show()}");
+        journal.Apply(OptiGame.Core.Gpu.FrameRateCap.Change(id, "test", exe, "OptiGame - test", 100, 60));
+        Console.WriteLine($"réappliqué : {Show()}");
+        var report = journal.Undo(OptiGame.Core.Gpu.FrameRateCap.ChangeId(id));
+        Console.WriteLine($"annulé     : {Show()} (succès : {report.Success})");
+        File.Delete(journalFile);
+    }
+    catch (OptiGame.Platform.Gpu.NvidiaApiException ex)
+    {
+        Console.WriteLine($"Échec : {ex.Message}");
+    }
+    return;
+}
+
 // --gpu-sample [secondes] : relevés nvidia-smi comme pendant la mesure automatique (lecture seule), puis résumé.
 if (args.Length is 1 or 2 && args[0] == "--gpu-sample")
 {

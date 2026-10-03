@@ -42,6 +42,7 @@ public sealed partial class LibraryViewModel : ObservableObject
     private readonly PlaytimeStore _playtime;
     private readonly SteamPlaytimeReader _steamReader;
     private readonly GameGraphicsService _graphics;
+    private readonly FrameCapService _frameCap;
     private readonly GameRatingService _ratings;
     private int _ratingVersion;
 
@@ -58,10 +59,12 @@ public sealed partial class LibraryViewModel : ObservableObject
         IGameLibraryScanner scanner, AppSettingsStore settings, IgdbClient igdb, ArtworkCache artwork, GameSessionManager sessions,
         CaptureStore captures, MeasuresViewModel measures, NavigationService navigation, SettingsViewModel settingsPage,
         TimeProvider time, FileLog log, GameLauncher launcher, PlaytimeStore playtime, SteamPlaytimeReader steamReader,
-        GameGraphicsService graphics, NewSteamGamesViewModel newGames, GameRatingService ratings, Platform.Measurement.AutoCapture autoCapture)
+        GameGraphicsService graphics, NewSteamGamesViewModel newGames, GameRatingService ratings, Platform.Measurement.AutoCapture autoCapture,
+        FrameCapService frameCap)
     {
         _steamReader = steamReader;
         _graphics = graphics;
+        _frameCap = frameCap;
         _ratings = ratings;
         autoCapture.CaptureAdded += (_, _) => OnUi(() => _ = LoadRatingsAsync()); // nouvelle mesure : la note change
         NewGames = newGames;
@@ -417,12 +420,14 @@ public sealed partial class LibraryViewModel : ObservableObject
                 _ = LoadRatingsAsync(); // le conseil part de ce réglage
             },
             graphics: new GameGraphicsViewModel(profile, _graphics, _dialogs, _log),
+            frameCap: new FrameCapViewModel(profile, _frameCap, _dialogs, _log),
             isPinned: profile.DockOrder.HasValue,
             isPlaying: _sessions.Current?.Profile.Id == id);
         RefreshPagePlaytime(OpenGame);
         _ = LoadPageImagesAsync(OpenGame, profile);
         _ = LoadSteamAppIdAsync(OpenGame, profile);
         _ = OpenGame.Graphics.LoadAsync();
+        _ = OpenGame.FrameCap.LoadAsync();
         _ = LoadDiskAsync(OpenGame, profile);
         OpenGame.Rating = Games.FirstOrDefault(c => c.Id == id)?.Rating; // déjà calculée pour la jaquette
     }

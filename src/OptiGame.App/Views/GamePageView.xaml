@@ -254,6 +254,29 @@
                             </StackPanel>
                         </Border>
 
+                        <!-- Pilote NVIDIA : plafond de FPS dans le profil du pilote ; durable, confirmé, annulable -->
+                        <Border Margin="0,16,0,0" Style="{StaticResource Card}" DataContext="{Binding FrameCap}"
+                                Visibility="{Binding IsAvailable, Converter={StaticResource BoolToVisibility}}">
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource Text.SectionTitle}" Text="Pilote NVIDIA" />
+                                <TextBlock Margin="0,4,0,0" Style="{StaticResource Text.Caption}" Text="{Binding ProfileText}" TextWrapping="Wrap" />
+                                <TextBlock Style="{StaticResource Text.Label}" Text="Plafond de FPS" />
+                                <TextBlock Style="{StaticResource Text.Secondary}" Text="{Binding CurrentText}" TextWrapping="Wrap" />
+                                <StackPanel Margin="0,8,0,0" Orientation="Horizontal">
+                                    <TextBox Width="90" Text="{Binding FpsText, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Plafond de FPS" />
+                                    <TextBlock Margin="8,0,0,0" VerticalAlignment="Center" Style="{StaticResource Text.Secondary}" Text="FPS" />
+                                    <Button Margin="16,0,0,0" Style="{StaticResource Button.Secondary}" Content="Appliquer"
+                                            Command="{Binding ApplyCommand}" AutomationProperties.Name="Appliquer le plafond de FPS" />
+                                    <Button Margin="8,0,0,0" Style="{StaticResource Button.Ghost}" Content="Annuler"
+                                            Command="{Binding UndoCommand}" AutomationProperties.Name="Annuler le plafond de FPS"
+                                            Visibility="{Binding HasAppliedChange, Converter={StaticResource BoolToVisibility}}" />
+                                </StackPanel>
+                                <TextBlock Margin="0,4,0,0" Style="{StaticResource Text.Caption}" Foreground="{StaticResource Brush.Danger}" Text="{Binding InputError}" />
+                                <TextBlock Margin="0,4,0,0" Style="{StaticResource Text.Caption}" Text="{Binding SuggestionText}" TextWrapping="Wrap" />
+                                <TextBlock Margin="0,4,0,0" Style="{StaticResource Text.Caption}" Text="{Binding AppliedText}" TextWrapping="Wrap" />
+                            </StackPanel>
+                        </Border>
+
                         <!-- Programmes à fermer -->
                         <Border Margin="0,16,0,0" Style="{StaticResource Card}">
                             <StackPanel>

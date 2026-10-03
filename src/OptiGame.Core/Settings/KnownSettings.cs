@@ -12,6 +12,7 @@ public static class KnownSettings
     public const string DisplayModeKind = "display-mode";
     public const string ProcessKind = "process";
     public const string PowerSettingKind = "power-setting";
+    public const string NvidiaProfileKind = "nvidia-profile";
 
     /// <summary>Mode Jeu. Absente = activé (défaut Windows).</summary>
     public static readonly SettingTarget GameMode =
@@ -53,6 +54,9 @@ public static class KnownSettings
 
     /// <summary>Réglages graphiques globaux (« Clé=Valeur; ») ; SwapEffectUpgradeEnable = « Optimisations pour les jeux en mode fenêtré ».</summary>
     public static readonly SettingTarget DirectXGlobalSettings = new(RegistryKind, GpuPreferencesKey, GpuPreferencesGlobalValue);
+
+    /// <summary>Plafond de FPS du pilote NVIDIA (FRL_FPS, 0x10835002) dans le profil que le pilote applique à cet exe ; DWord, Absent = non défini.</summary>
+    public static SettingTarget NvidiaFrameRateLimit(string exePath) => new(NvidiaProfileKind, exePath, "0x10835002");
 
     /// <summary>Plan d'alimentation actif (valeur = GUID en texte).</summary>
     public static readonly SettingTarget ActivePowerScheme = new(PowerSchemeKind, "active");

@@ -18,6 +18,7 @@ public sealed partial class GamePageViewModel(
     Action<string> openStorePage,
     Action<Core.Rating.GraphicsPreset?> setPlayedPreset,
     GameGraphicsViewModel graphics,
+    FrameCapViewModel frameCap,
     bool isPinned,
     bool isPlaying) : ObservableObject
 {
@@ -85,6 +86,9 @@ public sealed partial class GamePageViewModel(
 
     /// <summary>Carte « Graphismes (Windows) » : Auto HDR et carte graphique pour ce jeu.</summary>
     public GameGraphicsViewModel Graphics { get; } = graphics;
+
+    /// <summary>Carte « Pilote NVIDIA » : plafond de FPS dans le profil du pilote.</summary>
+    public FrameCapViewModel FrameCap { get; } = frameCap;
 
     /// <summary>Appid Steam, retrouvé en arrière-plan à l'ouverture de la page ; null pour un jeu hors Steam.</summary>
     [ObservableProperty]

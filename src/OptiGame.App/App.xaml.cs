@@ -191,6 +191,7 @@ public partial class App : Application
         services.AddSingleton<DiagnosticViewModel>();
         services.AddSingleton<DriversViewModel>();
         services.AddSingleton<GameGraphicsService>();
+        services.AddSingleton<FrameCapService>();
         services.AddSingleton<GameRatingService>();
         services.AddSingleton<NewSteamGamesViewModel>();
         services.AddSingleton<LibraryViewModel>();

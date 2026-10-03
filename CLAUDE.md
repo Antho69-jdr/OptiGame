@@ -152,6 +152,17 @@ vit dans Core ; Platform ne fait que lire/écrire le système.
 - Jeux fenêtrés (`WindowedGamesCheck`) : `SwapEffectUpgradeEnable` dans `DirectXUserGlobalSettings` (fusion des paires,
   `GpuPreferenceString`) : 1 = OK (machine de dev, avec AutoHDREnable=1), 0 = à corriger (posé par des scripts « gaming »),
   absente = défaut NON documenté par Microsoft → Info + activation explicite proposée. L'Auto HDR force ce réglage.
+- Plafond de FPS par jeu (carte « Pilote NVIDIA » ; `Core/Gpu/FrameRateCap`, `Platform/Gpu/NvidiaProfiles` +
+  `NvidiaProfileSettingAccessor`, `App/Services/FrameCapService`) : NVAPI DRS (profils du pilote), en-têtes officiels
+  github.com/NVIDIA/nvapi lus le 2026-10-03 : réglage `FRL_FPS_ID = 0x10835002` (0 = désactivé, ≤ 1023), identifiants
+  QueryInterface de nvapi_interface.h, codes de nvapi_lite_common.h. Structures écrites OCTET PAR OCTET (NVDRS_SETTING en
+  pack(4) = 12320 octets ; NVDRS_APPLICATION_V4 = 20492 ; NVDRS_PROFILE_V1 = 4116). Chaînes NvAPI_UnicodeString passées en
+  `ushort[]` de 2048 : un `char[]` est converti en ANSI par défaut et AUCUN profil n'était trouvé. FindApplicationByName avec
+  le CHEMIN COMPLET = profil réellement appliqué (machine de dev : « Overwatch 2 », « PLAYERUNKNOWN'S BATTLEGROUNDS »,
+  « Scrap Mechanic », « Squadron 42 - Star Citizen » ; Void Crew : aucun → profil « OptiGame - <exe> » créé, supprimé à
+  l'annulation s'il est vide). Valeur NVIDIA prédéfinie = « non définie » (la retirer la rétablit). Lecture ET écriture sans
+  admin (vérifié). `DiagDump -- --nvidia-profiles` (lecture) ; `--nvidia-selftest <exe INEXISTANT>` = journal → pilote →
+  annulation sur un profil factice. Ne JAMAIS cliquer « Appliquer » sur l'instance de test : le pilote est celui du vrai PC.
 - Une valeur de registre absente se sauvegarde comme `Absent` et se restaure par **suppression**.
 - CSV réel de PresentMon 2.6.0 (`--v2_metrics`) : colonnes `FrameTime`, `CPUBusy`, `GPUTime`, `DisplayedTime`… SANS
   préfixe `Ms`, contrairement à sa documentation. Toujours valider un format sur un vrai fichier, et ne jamais
