@@ -216,6 +216,21 @@
                 </StackPanel>
             </DockPanel>
 
+            <!-- Filtres : genre et type (catégories du magasin Steam), jeux possédés non installés -->
+            <DockPanel DockPanel.Dock="Top" Margin="0,-8,0,16">
+                <CheckBox DockPanel.Dock="Right" VerticalAlignment="Center" IsChecked="{Binding ShowUninstalled}" Content="{Binding UninstalledToggleText}"
+                          Visibility="{Binding HasUninstalled, Converter={StaticResource BoolToVisibility}}"
+                          ToolTip="Afficher, grisés, les jeux de votre bibliothèque Steam qui ne sont pas installés (lus dans les fichiers du client Steam)." />
+                <StackPanel Orientation="Horizontal">
+                    <ComboBox Width="190" Margin="0,0,10,0" ItemsSource="{Binding GenreOptions}" SelectedItem="{Binding SelectedGenre}" DisplayMemberPath="Label"
+                              AutomationProperties.Name="Filtrer par genre" ToolTip="Genre (d'après le magasin Steam ; les jeux hors Steam n'en ont pas)" />
+                    <ComboBox Width="190" Margin="0,0,10,0" ItemsSource="{Binding KindOptions}" SelectedItem="{Binding SelectedKind}" DisplayMemberPath="Label"
+                              AutomationProperties.Name="Filtrer par type" ToolTip="Type de jeu (d'après le magasin Steam)" />
+                    <Button Style="{StaticResource Button.Ghost}" Content="Effacer les filtres" Command="{Binding ClearFiltersCommand}"
+                            Visibility="{Binding IsFiltered, Converter={StaticResource BoolToVisibility}}" />
+                </StackPanel>
+            </DockPanel>
+
             <TextBlock DockPanel.Dock="Top" Margin="0,0,0,12" Style="{StaticResource Text.Status}" Text="{Binding LaunchStatus}" />
             <TextBlock DockPanel.Dock="Top" Margin="0,0,0,12" Text="{Binding ArtworkStatus}">
                 <TextBlock.Style>
@@ -269,6 +284,7 @@
                      laissent 12 px au zoom de survol (1,03) sur la première rangée et la première colonne,
                      sans déplacer les jaquettes. -->
                 <ScrollViewer VerticalScrollBarVisibility="Auto" Margin="-12,-8,0,0">
+                    <StackPanel>
                     <ItemsControl ItemsSource="{Binding GamesView}" Margin="12,12,0,0">
                         <ItemsControl.ItemsPanel>
                             <ItemsPanelTemplate>
@@ -308,6 +324,73 @@
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
+
+                    <!-- Jeux Steam possédés, non installés : jaquettes grisées (cache du client Steam), installer ou voir la page -->
+                    <StackPanel Margin="12,8,0,0" Visibility="{Binding IsUninstalledSectionVisible, Converter={StaticResource BoolToVisibility}}">
+                        <TextBlock Margin="2,0,0,14" Style="{StaticResource Text.Caption}" FontWeight="SemiBold" Text="{Binding UninstalledHeader}" />
+                        <ItemsControl ItemsSource="{Binding UninstalledView}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <WrapPanel />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="{x:Type vm:OwnedGameCardViewModel}">
+                                    <Grid x:Name="Root" Width="198" Margin="0,0,20,24" Background="Transparent" ToolTip="{Binding Name}">
+                                        <StackPanel>
+                                            <Grid Height="264">
+                                                <Border CornerRadius="10">
+                                                    <Border.Background>
+                                                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                                            <GradientStop Color="#1B222D" Offset="0" />
+                                                            <GradientStop Color="#12161D" Offset="1" />
+                                                        </LinearGradientBrush>
+                                                    </Border.Background>
+                                                    <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" FontFamily="{StaticResource Font.Display}"
+                                                               FontSize="44" FontWeight="SemiBold" Foreground="{StaticResource Brush.TextMuted}" Text="{Binding Initials}"
+                                                               Visibility="{Binding HasCover, Converter={StaticResource InverseBoolToVisibility}}" />
+                                                </Border>
+                                                <Border x:Name="Cover" CornerRadius="10" Opacity="0.45" Visibility="{Binding HasCover, Converter={StaticResource BoolToVisibility}}">
+                                                    <Border.Background>
+                                                        <ImageBrush Stretch="UniformToFill" ImageSource="{Binding CoverPath, Converter={StaticResource PathToImage}, ConverterParameter='396,gray'}" />
+                                                    </Border.Background>
+                                                </Border>
+                                                <Border x:Name="Outline" CornerRadius="10" BorderThickness="1" BorderBrush="{StaticResource Brush.Border}" />
+                                                <Border Margin="8" HorizontalAlignment="Left" VerticalAlignment="Top" Style="{StaticResource Badge}" Background="#CC0E1014">
+                                                    <TextBlock Text="Non installé" FontSize="11" Foreground="{StaticResource Brush.TextSecondary}" />
+                                                </Border>
+                                                <!-- Au survol : installer (fenêtre de Steam) ou ouvrir la page Steam -->
+                                                <StackPanel x:Name="Actions" Margin="12" VerticalAlignment="Bottom" Visibility="Collapsed">
+                                                    <Button Style="{StaticResource Button.Primary}" HorizontalAlignment="Stretch"
+                                                            Command="{Binding DataContext.InstallOwnedCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                            CommandParameter="{Binding}" AutomationProperties.Name="{Binding Name, StringFormat='Installer {0}'}">
+                                                        <StackPanel Orientation="Horizontal">
+                                                            <TextBlock Style="{StaticResource Text.Icon}" FontSize="13" Text="&#xE896;" />
+                                                            <TextBlock Margin="8,0,0,0" Text="Installer" />
+                                                        </StackPanel>
+                                                    </Button>
+                                                    <Button Margin="0,6,0,0" Style="{StaticResource Button.Secondary}" HorizontalAlignment="Stretch" Content="Page Steam"
+                                                            Command="{Binding DataContext.OpenOwnedStorePageCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                            CommandParameter="{Binding}" AutomationProperties.Name="{Binding Name, StringFormat='Page Steam de {0}'}" />
+                                                </StackPanel>
+                                            </Grid>
+                                            <TextBlock Margin="2,10,2,0" Style="{StaticResource Text.Body}" FontWeight="SemiBold" Foreground="{StaticResource Brush.TextSecondary}"
+                                                       Text="{Binding Name}" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" />
+                                            <TextBlock Margin="2,3,2,0" Style="{StaticResource Text.Caption}" Text="{Binding GenresText}" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" />
+                                        </StackPanel>
+                                    </Grid>
+                                    <DataTemplate.Triggers>
+                                        <Trigger SourceName="Root" Property="IsMouseOver" Value="True">
+                                            <Setter TargetName="Actions" Property="Visibility" Value="Visible" />
+                                            <Setter TargetName="Cover" Property="Opacity" Value="0.7" />
+                                            <Setter TargetName="Outline" Property="BorderBrush" Value="{StaticResource Brush.Accent}" />
+                                        </Trigger>
+                                    </DataTemplate.Triggers>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                    </StackPanel>
                 </ScrollViewer>
             </Grid>
         </DockPanel>

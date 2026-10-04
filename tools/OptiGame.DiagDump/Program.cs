@@ -122,6 +122,63 @@ if (args.Length == 1 && args[0] == "--steam-playtime")
     return;
 }
 
+// --steam-owned : jeux Steam possédés d'après les caches du client (appinfo.vdf + packageinfo.vdf), lecture seule.
+if (args.Length == 1 && args[0] == "--steam-owned")
+{
+    var cache = Path.Combine(OptiGame.Platform.Library.GameLibraryScanner.SteamPath() ?? @"C:\Program Files (x86)\Steam", "appcache");
+    var apps = OptiGame.Core.Library.SteamBinaryCache.ParseAppInfo(File.ReadAllBytes(Path.Combine(cache, "appinfo.vdf")));
+    var packages = OptiGame.Core.Library.SteamBinaryCache.ParsePackageInfo(File.ReadAllBytes(Path.Combine(cache, "packageinfo.vdf")));
+    Console.WriteLine($"appinfo : {apps.Count} applications ; packageinfo : {packages.Count} paquets");
+    foreach (var g in apps.GroupBy(a => a.Type).OrderByDescending(g => g.Count())) Console.WriteLine($"  type « {g.Key} » : {g.Count()}");
+    var licensed = packages.SelectMany(p => p.AppIds).ToHashSet();
+    var games = apps.Where(a => a.Type == "game" && licensed.Contains(a.AppId)).OrderBy(a => a.Name).ToList();
+    var library = Directory.Exists(Path.Combine(cache, "librarycache"))
+        ? Directory.GetDirectories(Path.Combine(cache, "librarycache")).Select(d => uint.TryParse(Path.GetFileName(d), out var id) ? id : 0).ToHashSet()
+        : [];
+    Console.WriteLine($"Jeux sous licence : {games.Count} (dont {games.Count(g => library.Contains(g.AppId))} présents dans librarycache) ; paquet 0 : {packages.FirstOrDefault(p => p.PackageId == 0)?.AppIds.Count ?? 0} applications");
+    foreach (var g in games.Where(g => !library.Contains(g.AppId))) Console.WriteLine($"  absent de librarycache : {g.AppId} {g.Name}");
+    var package0 = packages.FirstOrDefault(p => p.PackageId == 0)?.AppIds.ToHashSet() ?? [];
+    foreach (var g in games.Where(g => package0.Contains(g.AppId))) Console.WriteLine($"  dans le paquet 0 : {g.AppId} {g.Name}");
+    foreach (var g in games.Take(5)) Console.WriteLine($"  {g.AppId,8} {g.Name}  genres=[{string.Join(",", g.Genres)}] catégories=[{string.Join(",", g.Categories)}]");
+    // Un jeu représentatif par genre et par catégorie (pour vérifier leurs noms sur le magasin).
+    Console.WriteLine("GENRES " + string.Join(" ", games.SelectMany(g => g.Genres.Select(id => (id, g.AppId))).GroupBy(x => x.id).OrderBy(x => x.Key).Select(x => $"{x.Key}:{x.First().AppId}({x.Count()})")));
+    Console.WriteLine("CATEGORIES " + string.Join(" ", games.SelectMany(g => g.Categories.Select(id => (id, g.AppId))).GroupBy(x => x.id).OrderBy(x => x.Key).Select(x => $"{x.Key}:{x.First().AppId}({x.Count()})")));
+    return;
+}
+
+// --steam-cache-sample <dossier> <appid…> : extrait réel et réduit d'appinfo.vdf / packageinfo.vdf pour les tests
+// (les applications demandées + la table de noms entière ; le paquet 0 et les paquets qui contiennent ces applications).
+if (args.Length >= 3 && args[0] == "--steam-cache-sample")
+{
+    var cache = Path.Combine(OptiGame.Platform.Library.GameLibraryScanner.SteamPath() ?? @"C:\Program Files (x86)\Steam", "appcache");
+    var wanted = args.Skip(2).Select(uint.Parse).ToHashSet();
+    var appData = File.ReadAllBytes(Path.Combine(cache, "appinfo.vdf"));
+    var (entries, table) = OptiGame.Core.Library.SteamBinaryCache.AppEntries(appData);
+    using (var output = new MemoryStream())
+    {
+        var body = entries.Where(e => wanted.Contains(e.AppId)).SelectMany(e => appData[e.Start..e.End]).ToArray();
+        output.Write(appData, 0, 8); // magic, univers
+        output.Write(BitConverter.GetBytes((long)(16 + body.Length + 4)), 0, 8); // nouvelle position de la table de noms
+        output.Write(body);
+        output.Write(new byte[4]); // appid 0 : fin des entrées
+        output.Write(appData, table, appData.Length - table);
+        File.WriteAllBytes(Path.Combine(args[1], "appinfo-excerpt.vdf"), output.ToArray());
+    }
+    var packageData = File.ReadAllBytes(Path.Combine(cache, "packageinfo.vdf"));
+    using (var output = new MemoryStream())
+    {
+        output.Write(packageData, 0, 8);
+        foreach (var p in OptiGame.Core.Library.SteamBinaryCache.PackageEntries(packageData).Where(p => p.Id == 0 || p.AppIds.Any(wanted.Contains)))
+        {
+            output.Write(packageData, p.Start, p.End - p.Start);
+        }
+        output.Write(BitConverter.GetBytes(uint.MaxValue));
+        File.WriteAllBytes(Path.Combine(args[1], "packageinfo-excerpt.vdf"), output.ToArray());
+    }
+    Console.WriteLine("Extraits écrits.");
+    return;
+}
+
 // --nvidia-profiles : profil NVIDIA appliqué à chaque jeu et son plafond de FPS (lecture seule).
 if (args.Length == 1 && args[0] == "--nvidia-profiles")
 {

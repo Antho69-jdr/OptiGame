@@ -35,6 +35,17 @@ public sealed class GameLauncher(FileLog log)
         log.Info($"Steam absent : page ouverte dans le navigateur ({SteamStorePage.WebUrl(appId)})");
     }
 
+    /// <summary>
+    /// Installation d'un jeu Steam possédé : le client Steam ouvre sa propre fenêtre (choix du disque, taille). Sans droits
+    /// administrateur, comme le lancement. Lève <see cref="LaunchException"/> si Steam est introuvable.
+    /// </summary>
+    public void InstallSteamGame(string appId)
+    {
+        var steam = GameLibraryScanner.SteamExe() ?? throw new LaunchException("Steam est introuvable sur ce PC.");
+        UnelevatedLauncher.Launch(steam, SteamStorePage.InstallCommandLine(steam, appId));
+        log.Info($"Installation demandée au client Steam : {SteamStorePage.InstallUrl(appId)}");
+    }
+
     public LaunchPlan Launch(GameProfile profile)
     {
         var plan = Plan(profile);

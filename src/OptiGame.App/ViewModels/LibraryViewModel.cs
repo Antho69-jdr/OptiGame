@@ -91,8 +91,13 @@ public sealed partial class LibraryViewModel : ObservableObject
         _playtime = playtime;
 
         GamesView = CollectionViewSource.GetDefaultView(Games);
-        GamesView.Filter = o => o is GameCardViewModel card &&
-                                (string.IsNullOrWhiteSpace(SearchText) || card.Name.Contains(SearchText.Trim(), StringComparison.CurrentCultureIgnoreCase));
+        GamesView.Filter = o => o is GameCardViewModel card && Matches(card.Name, card.Genres, card.Kinds);
+        UninstalledView = CollectionViewSource.GetDefaultView(UninstalledGames);
+        UninstalledView.Filter = o => o is OwnedGameCardViewModel game && Matches(game.Name, game.Genres, game.Kinds);
+        UninstalledView.SortDescriptions.Add(new SortDescription(nameof(OwnedGameCardViewModel.Name), ListSortDirection.Ascending));
+        _selectedGenre = GenreOptions[0];
+        _selectedKind = KindOptions[0];
+        newGames.Proposals.CollectionChanged += (_, _) => _ = LoadSteamLibraryAsync(); // un jeu vient d'être installé
 
         store.ArtworkChanged += (_, id) => OnUi(() => _ = RefreshCoverAsync(id));
         playtime.Changed += (_, _) => OnUi(RefreshPlaytime);
@@ -209,7 +214,162 @@ public sealed partial class LibraryViewModel : ObservableObject
         RefreshPlaytime();
     }
 
-    partial void OnSearchTextChanged(string value) => GamesView.Refresh();
+    partial void OnSearchTextChanged(string value) => RefreshFilters();
+
+    // ---- Filtres (nom, genre, type) et jeux Steam non installés ----
+
+    /// <summary>Genres présents dans la bibliothèque (jeux installés et possédés), relus avec la bibliothèque Steam.</summary>
+    public ObservableCollection<GenreOption> GenreOptions { get; } = [new(null, "Tous les genres")];
+
+    [ObservableProperty]
+    private GenreOption _selectedGenre;
+
+    partial void OnSelectedGenreChanged(GenreOption value) => RefreshFilters();
+
+    public IReadOnlyList<KindOption> KindOptions { get; } =
+    [
+        new(null, "Tous les types"),
+        .. Enum.GetValues<Core.Library.GameKind>().Select(k => new KindOption(k, Core.Library.SteamTaxonomy.Label(k))),
+    ];
+
+    [ObservableProperty]
+    private KindOption _selectedKind;
+
+    partial void OnSelectedKindChanged(KindOption value) => RefreshFilters();
+
+    /// <summary>Un jeu hors Steam n'a ni genre ni type : il disparaît seulement quand un de ces filtres est choisi.</summary>
+    private bool Matches(string name, IReadOnlyList<int> genres, IReadOnlySet<Core.Library.GameKind> kinds) =>
+        (string.IsNullOrWhiteSpace(SearchText) || name.Contains(SearchText.Trim(), StringComparison.CurrentCultureIgnoreCase)) &&
+        (SelectedGenre?.Id is not { } genre || genres.Contains(genre)) &&
+        (SelectedKind?.Kind is not { } kind || kinds.Contains(kind));
+
+    private void RefreshFilters()
+    {
+        GamesView.Refresh();
+        UninstalledView.Refresh();
+        OnPropertyChanged(nameof(UninstalledHeader));
+        OnPropertyChanged(nameof(IsFiltered));
+    }
+
+    public bool IsFiltered => SelectedGenre?.Id is not null || SelectedKind?.Kind is not null || !string.IsNullOrWhiteSpace(SearchText);
+
+    [RelayCommand]
+    private void ClearFilters()
+    {
+        SearchText = "";
+        SelectedGenre = GenreOptions[0];
+        SelectedKind = KindOptions[0];
+    }
+
+    public ObservableCollection<OwnedGameCardViewModel> UninstalledGames { get; } = [];
+
+    public ICollectionView UninstalledView { get; }
+
+    /// <summary>Afficher les jeux Steam possédés mais non installés (mémorisé).</summary>
+    public bool ShowUninstalled
+    {
+        get => _settings.Get().LibraryShowUninstalled;
+        set
+        {
+            if (value == ShowUninstalled) return;
+            _settings.Update(s => s.LibraryShowUninstalled = value);
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(IsUninstalledSectionVisible));
+        }
+    }
+
+    public bool HasUninstalled => UninstalledGames.Count > 0;
+
+    public bool IsUninstalledSectionVisible => ShowUninstalled && HasUninstalled;
+
+    public string UninstalledToggleText => $"Jeux Steam non installés ({UninstalledGames.Count})";
+
+    public string UninstalledHeader => $"DANS VOTRE BIBLIOTHÈQUE STEAM, NON INSTALLÉS ({UninstalledView.Cast<object>().Count()})";
+
+    private int _steamLibraryVersion;
+
+    /// <summary>
+    /// Bibliothèque Steam (caches du client, hors du thread UI) : genres et types des jeux installés, et jeux possédés non
+    /// installés. Un cache illisible (format changé par Steam) laisse simplement la bibliothèque sans ces informations.
+    /// </summary>
+    private async Task LoadSteamLibraryAsync()
+    {
+        var version = ++_steamLibraryVersion;
+        var profiles = _store.GetAll();
+        Platform.Library.SteamOwnedSnapshot? snapshot;
+        Dictionary<Guid, uint> profileApps;
+        List<OwnedGameCardViewModel> uninstalled;
+        try
+        {
+            (snapshot, profileApps, uninstalled) = await Task.Run(() =>
+            {
+                var owned = Platform.Library.SteamOwnedLibrary.Read();
+                var apps = Platform.Library.GameLibraryScanner.SteamApps();
+                var installed = apps.Select(a => uint.TryParse(a.AppId, out var id) ? id : 0).ToHashSet();
+                var byProfile = profiles
+                    .Select(p => (p.Id, AppId: Platform.Library.GameLibraryScanner.SteamAppIdFor(p, apps)))
+                    .Where(x => uint.TryParse(x.AppId, out _))
+                    .ToDictionary(x => x.Id, x => uint.Parse(x.AppId!, System.Globalization.CultureInfo.InvariantCulture));
+                var cards = owned?.Games.Values
+                    .Where(g => !installed.Contains(g.AppId) && !byProfile.ContainsValue(g.AppId))
+                    .Select(g => new OwnedGameCardViewModel(g, Platform.Library.SteamOwnedLibrary.CoverPath(g.AppId)))
+                    .ToList() ?? [];
+                return (owned, byProfile, cards);
+            });
+        }
+        catch (Exception ex) when (ex is FormatException or IOException or UnauthorizedAccessException or IndexOutOfRangeException or ArgumentException)
+        {
+            _log.Warn($"Bibliothèque Steam illisible (caches du client) : {ex.Message}");
+            return;
+        }
+        if (version != _steamLibraryVersion || snapshot is null) return;
+
+        foreach (var card in Games)
+        {
+            if (profileApps.TryGetValue(card.Id, out var appId) && snapshot.Games.TryGetValue(appId, out var game))
+            {
+                card.Genres = game.Genres;
+                card.Kinds = Core.Library.SteamTaxonomy.Kinds(game.Categories);
+            }
+        }
+        UninstalledGames.Clear();
+        foreach (var card in uninstalled) UninstalledGames.Add(card);
+
+        var selected = SelectedGenre?.Id;
+        var genres = snapshot.Games.Values.SelectMany(g => g.Genres).Distinct()
+            .Select(id => (Id: id, Name: Core.Library.SteamTaxonomy.Genre(id)))
+            .Where(g => g.Name is not null)
+            .OrderBy(g => g.Name, StringComparer.CurrentCultureIgnoreCase)
+            .ToList();
+        GenreOptions.Clear();
+        GenreOptions.Add(new GenreOption(null, "Tous les genres"));
+        foreach (var (id, name) in genres) GenreOptions.Add(new GenreOption(id, name!));
+        SelectedGenre = GenreOptions.FirstOrDefault(o => o.Id == selected) ?? GenreOptions[0];
+
+        OnPropertyChanged(nameof(HasUninstalled));
+        OnPropertyChanged(nameof(IsUninstalledSectionVisible));
+        OnPropertyChanged(nameof(UninstalledToggleText));
+        OnPropertyChanged(nameof(Subtitle));
+        RefreshFilters();
+    }
+
+    [RelayCommand]
+    private void InstallOwned(OwnedGameCardViewModel game)
+    {
+        try
+        {
+            _launcher.InstallSteamGame(game.AppId);
+            LaunchStatus = $"Steam ouvre l'installation de « {game.Name} ». Une fois installé, il vous sera proposé ici.";
+        }
+        catch (Exception ex) when (ex is LaunchException or System.ComponentModel.Win32Exception or InvalidOperationException)
+        {
+            _log.Error($"Installation de « {game.Name} » impossible", ex);
+            _dialogs.ShowError($"Impossible de demander l'installation à Steam.\n\n{ex.Message}");
+        }
+    }
+
+    [RelayCommand]
+    private void OpenOwnedStorePage(OwnedGameCardViewModel game) => OpenStorePage(game.AppId);
 
     /// <summary>Page du jeu ouverte ; null = grille.</summary>
     [ObservableProperty]
@@ -227,12 +387,12 @@ public sealed partial class LibraryViewModel : ObservableObject
     [ObservableProperty]
     private string _artworkStatus = "";
 
-    public string Subtitle => Games.Count switch
+    public string Subtitle => (Games.Count switch
     {
         0 => "Aucun jeu pour l'instant.",
         1 => "1 jeu",
         var n => $"{n} jeux",
-    };
+    });
 
     private IReadOnlyList<PowerScheme> Schemes
     {
@@ -586,6 +746,7 @@ public sealed partial class LibraryViewModel : ObservableObject
         OnPropertyChanged(nameof(Subtitle));
         _ = LoadSteamPlaytimeAsync(); // profils ajoutés, retirés ou modifiés : leur jeu Steam a pu changer
         _ = LoadRatingsAsync();
+        _ = LoadSteamLibraryAsync(); // genres et types des cartes recréées, jeux non installés
     }
 
     private async Task RefreshCoverAsync(Guid id)
@@ -674,4 +835,38 @@ public sealed partial class GameCardViewModel(GameProfile profile, bool isPlayin
 
     /// <summary>Clé de tri « Récemment joués » (0 = jamais joué, en fin de liste).</summary>
     public long LastPlayedTicks => Playtime.LastPlayed?.UtcTicks ?? 0;
+
+    /// <summary>Genres et types Steam (vides pour un jeu hors Steam, ou tant que la bibliothèque Steam n'est pas lue).</summary>
+    public IReadOnlyList<int> Genres { get; set; } = [];
+
+    public IReadOnlySet<Core.Library.GameKind> Kinds { get; set; } = new HashSet<Core.Library.GameKind>();
 }
+
+/// <summary>Jeu Steam possédé mais non installé (section grisée de « Mes jeux ») : installer ou voir la page Steam.</summary>
+public sealed class OwnedGameCardViewModel(Core.Library.OwnedSteamGame game, string? coverPath)
+{
+    public string AppId { get; } = game.AppId.ToString(System.Globalization.CultureInfo.InvariantCulture);
+
+    public string Name { get; } = game.Name;
+
+    public IReadOnlyList<int> Genres { get; } = game.Genres;
+
+    public IReadOnlySet<Core.Library.GameKind> Kinds { get; } = Core.Library.SteamTaxonomy.Kinds(game.Categories);
+
+    public string? CoverPath { get; } = coverPath;
+
+    public bool HasCover => CoverPath is not null;
+
+    public string Initials { get; } = string.Concat(game.Name
+        .Split(' ', StringSplitOptions.RemoveEmptyEntries)
+        .Where(w => char.IsLetterOrDigit(w[0]))
+        .Take(2)
+        .Select(w => char.ToUpperInvariant(w[0])));
+
+    public string GenresText { get; } = string.Join(" · ", game.Genres.Select(Core.Library.SteamTaxonomy.Genre).OfType<string>().Take(2));
+}
+
+/// <summary>Choix d'un filtre de « Mes jeux » (valeur null = tous).</summary>
+public sealed record GenreOption(int? Id, string Label);
+
+public sealed record KindOption(Core.Library.GameKind? Kind, string Label);

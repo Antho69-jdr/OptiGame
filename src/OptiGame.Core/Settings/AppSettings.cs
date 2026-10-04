@@ -74,6 +74,9 @@ public sealed class AppSettings
     /// <summary>Diagnostic en vue « Avancé » (chaque correction à la main) plutôt que « Simple » (un bouton).</summary>
     public bool DiagnosticAdvanced { get; set; }
 
+    /// <summary>« Mes jeux » affiche aussi les jeux Steam possédés mais non installés (jaquettes grisées).</summary>
+    public bool LibraryShowUninstalled { get; set; }
+
     public AppSettings Clone() => new()
     {
         Version = Version,
@@ -93,6 +96,7 @@ public sealed class AppSettings
         SteamKnownAppIds = SteamKnownAppIds is null ? null : [.. SteamKnownAppIds],
         AutoMeasureFps = AutoMeasureFps,
         DiagnosticAdvanced = DiagnosticAdvanced,
+        LibraryShowUninstalled = LibraryShowUninstalled,
     };
 }
 

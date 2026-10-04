@@ -16,6 +16,11 @@ public static class SteamStorePage
     /// </summary>
     public static string ClientCommandLine(string steamExe, string appId) => $"\"{steamExe}\" -- \"{ClientUrl(appId)}\"";
 
+    /// <summary>Installation d'un jeu possédé : le client Steam ouvre sa fenêtre d'installation (choix du disque), rien de plus.</summary>
+    public static string InstallUrl(string appId) => $"steam://install/{Checked(appId)}";
+
+    public static string InstallCommandLine(string steamExe, string appId) => $"\"{steamExe}\" -- \"{InstallUrl(appId)}\"";
+
     private static string Checked(string appId) =>
         LaunchPlanner.IsValidSteamAppId(appId) ? appId : throw new ArgumentException($"Appid Steam invalide : « {appId} ».", nameof(appId));
 }

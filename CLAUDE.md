@@ -223,6 +223,17 @@ vit dans Core ; Platform ne fait que lire/écrire le système.
     utilisée, seuil 10 % des relevés. Thermique (sw/hw_thermal) → conseil refroidissement ; hw_slowdown SANS thermique →
     alimentation ; sw_power_cap = NORMAL à pleine charge (GPU Boost), seulement affiché. clocks.max.gr (2100) = maximum
     absolu, pas la fréquence de boost : non utilisé.
+- Jeux Steam possédés non installés + genres/types (« Mes jeux » ; `Core/Library/SteamBinaryCache` + `SteamOwnedGames`,
+  `Platform/Library/SteamOwnedLibrary`, `DiagDump -- --steam-owned`) : caches BINAIRES du client, format non documenté par
+  Valve (SteamDB) : `appcache\appinfo.vdf` v29 (magic 0x07564429, clés = index d'une table de noms en fin de fichier ;
+  entrée = appid, taille, 60 octets d'en-tête puis KeyValues ; common/name, type, genres, category_N) et
+  `appcache\packageinfo.vdf` v28 (magic 0x06565528, clés texte, pas de taille : parcourir les KeyValues). Autre version =
+  FormatException, jamais de lecture approximative. Possédé = type « game » + licence d'un paquet ≠ 0 (le paquet 0 donne
+  Dota 2, TF2, Spacewar à tous) + dossier dans `appcache\librarycache` (5 licences sans : FOR HONOR, Hunt, R.E.P.O.…
+  écartées). Machine de dev : 738 apps, 380 paquets, 277 jeux, 271 non installés. Jaquettes locales :
+  `librarycache\<appid>\library_600x900.jpg` ou `…\<hash>\library_capsule.jpg` (300×450), rien n'est téléchargé.
+  Noms français des genres / catégories relevés sur appdetails (l=french) : `SteamTaxonomy`. Installer =
+  `"steam.exe" -- "steam://install/<appid>"` via `UnelevatedLauncher` (fenêtre d'installation de Steam).
 - Temps de jeu Steam : `<SteamPath>\userdata\<accountid>\config\localconfig.vdf`, UserLocalConfigStore > Software > Valve >
   Steam > apps > <appid> > `Playtime` (MINUTES) + `LastPlayed` (secondes Unix), réécrit par Steam à la fin d'une partie.
   Compte : `HKCU\Software\Valve\Steam\ActiveProcess\ActiveUser` (0 si Steam est fermé), sinon `config\loginusers.vdf` :
