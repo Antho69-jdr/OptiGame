@@ -245,7 +245,7 @@ public sealed partial class LibraryViewModel : ObservableObject
     public IReadOnlyList<StoreOption> StoreOptions { get; } =
     [
         new(null, "Toutes les plateformes"),
-        .. new[] { GameSource.Steam, GameSource.Epic, GameSource.Gog, GameSource.Ubisoft, GameSource.Ea }
+        .. new[] { GameSource.Steam, GameSource.Epic, GameSource.Gog }
             .Select(s => new StoreOption(s, Core.Library.StoreCatalogs.Label(s))),
     ];
 
@@ -311,7 +311,7 @@ public sealed partial class LibraryViewModel : ObservableObject
 
     /// <summary>
     /// Bibliothèques des magasins, hors du thread UI : Steam (caches du client : genres et types des jeux installés, jeux possédés
-    /// non installés) puis Epic, GOG, Ubisoft et EA (catalogue d'Epic, copie de la base de GOG Galaxy). Une source illisible est
+    /// non installés) puis Epic et GOG (catalogue d'Epic, copie de la base de GOG Galaxy). Une source illisible est
     /// simplement ignorée (journalisée).
     /// </summary>
     private async Task LoadLibrariesAsync()
@@ -382,11 +382,6 @@ public sealed partial class LibraryViewModel : ObservableObject
         foreach (var genre in genres) GenreOptions.Add(new GenreOption(genre, genre));
         SelectedGenre = GenreOptions.FirstOrDefault(o => o.Name == selected) ?? GenreOptions[0];
 
-        LauncherShortcuts = new[] { GameSource.Ubisoft, GameSource.Ea }
-            .Where(s => GameLauncher.LauncherExe(s) is not null)
-            .Select(s => new LauncherShortcut(s, s == GameSource.Ea ? "Ouvrir l'EA app" : "Ouvrir Ubisoft Connect"))
-            .ToList();
-
         OnPropertyChanged(nameof(HasUninstalled));
         OnPropertyChanged(nameof(IsUninstalledSectionVisible));
         OnPropertyChanged(nameof(UninstalledToggleText));
@@ -428,27 +423,6 @@ public sealed partial class LibraryViewModel : ObservableObject
         finally
         {
             _fetchingStoreCovers = false;
-        }
-    }
-
-    /// <summary>Ubisoft Connect et l'EA app (s'ils sont installés) : leur liste de jeux est chiffrée, on propose de les ouvrir.</summary>
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HasLauncherShortcuts))]
-    private IReadOnlyList<LauncherShortcut> _launcherShortcuts = [];
-
-    public bool HasLauncherShortcuts => LauncherShortcuts.Count > 0;
-
-    [RelayCommand]
-    private void OpenLauncher(LauncherShortcut shortcut)
-    {
-        try
-        {
-            _launcher.OpenLauncher(shortcut.Store);
-        }
-        catch (Exception ex) when (ex is LaunchException or System.ComponentModel.Win32Exception or InvalidOperationException)
-        {
-            _log.Error($"{shortcut.Label} impossible", ex);
-            _dialogs.ShowError($"{shortcut.Label} : impossible.\n\n{ex.Message}");
         }
     }
 
@@ -643,7 +617,7 @@ public sealed partial class LibraryViewModel : ObservableObject
                     Name = CleanName(game.Name),
                     ExePath = exe.Path,
                     SteamAppId = game.SteamAppId,
-                    // Jeux Epic, GOG, Ubisoft : lancés par leur lanceur, comme leurs raccourcis (sinon l'exe ou Steam).
+                    // Jeux Epic et GOG : lancés par leur lanceur, comme leurs raccourcis (sinon l'exe ou Steam).
                     LaunchMode = game.LauncherPath is null ? LaunchMode.Automatic : LaunchMode.Launcher,
                     LauncherPath = game.LauncherPath,
                     LaunchArguments = game.LaunchArguments,
@@ -965,7 +939,7 @@ public sealed partial class GameCardViewModel(GameProfile profile, bool isPlayin
 
 /// <summary>
 /// Jeu possédé mais non installé (section grisée de « Mes jeux »), quel que soit le magasin : Steam (caches du client, jaquette
-/// locale) ou Epic, GOG, Ubisoft, EA (jaquette téléchargée une fois depuis le CDN du magasin).
+/// locale) ou Epic et GOG (jaquette téléchargée une fois depuis le CDN du magasin).
 /// </summary>
 public sealed partial class OwnedGameCardViewModel : ObservableObject
 {
@@ -1028,5 +1002,3 @@ public sealed record GenreOption(string? Name, string Label);
 
 public sealed record StoreOption(GameSource? Store, string Label);
 public sealed record KindOption(Core.Library.GameKind? Kind, string Label);
-
-public sealed record LauncherShortcut(GameSource Store, string Label);

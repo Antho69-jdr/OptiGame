@@ -29,13 +29,10 @@ public sealed class StoreLaunchersTests
         // Absolute Drift.url (bureau), créé par Epic.
         Assert.Equal("com.epicgames.launcher://apps/9d2f484bbec64aa8ad234b3199dcaf1c%3A9f5250193e914b849201a40d21b30939%3A19927295d6e3467887d4e830d8c85963?action=launch&silent=true",
             StoreLaunchers.EpicUri("9d2f484bbec64aa8ad234b3199dcaf1c", "9f5250193e914b849201a40d21b30939", "19927295d6e3467887d4e830d8c85963", "launch"));
-        // Steep.url, créé par Ubisoft Connect.
-        Assert.Equal("uplay://launch/3279/0", StoreLaunchers.UbisoftLaunchUri("3279"));
         // Raccourci du menu Démarrer créé par GOG Galaxy.
         Assert.Equal(@"/command=runGame /gameId=1443606025 /path=""C:\Program Files\GOG Galaxy\Games\WARHAMMER 40K Rites of War""",
             StoreLaunchers.GogRunArguments("1443606025", @"C:\Program Files\GOG Galaxy\Games\WARHAMMER 40K Rites of War\"));
 
-        Assert.Throws<ArgumentException>(() => StoreLaunchers.UbisoftLaunchUri("3279 & calc"));
         Assert.Throws<ArgumentException>(() => StoreLaunchers.EpicUri("ns", "item?x=1", "app", "launch"));
     }
 

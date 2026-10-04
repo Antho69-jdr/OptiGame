@@ -220,10 +220,10 @@
             <DockPanel DockPanel.Dock="Top" Margin="0,-8,0,16">
                 <CheckBox DockPanel.Dock="Right" VerticalAlignment="Center" IsChecked="{Binding ShowUninstalled}" Content="{Binding UninstalledToggleText}"
                           Visibility="{Binding HasUninstalled, Converter={StaticResource BoolToVisibility}}"
-                          ToolTip="Afficher, grisés, les jeux de vos bibliothèques qui ne sont pas installés (Steam, Epic Games, GOG), lus dans les fichiers des lanceurs ; jaquettes Epic et GOG téléchargées une fois. Ubisoft Connect et l'EA app ne partagent pas cette liste." />
+                          ToolTip="Afficher, grisés, les jeux de vos bibliothèques qui ne sont pas installés (Steam, Epic Games, GOG), lus dans les fichiers des lanceurs ; jaquettes Epic et GOG téléchargées une fois." />
                 <StackPanel Orientation="Horizontal">
                     <ComboBox Width="190" Margin="0,0,10,0" ItemsSource="{Binding StoreOptions}" SelectedItem="{Binding SelectedStore}" DisplayMemberPath="Label"
-                              AutomationProperties.Name="Filtrer par plateforme" ToolTip="Magasin du jeu (Steam, Epic Games, GOG, Ubisoft, EA)" />
+                              AutomationProperties.Name="Filtrer par plateforme" ToolTip="Magasin du jeu (Steam, Epic Games, GOG)" />
                     <ComboBox Width="190" Margin="0,0,10,0" ItemsSource="{Binding GenreOptions}" SelectedItem="{Binding SelectedGenre}" DisplayMemberPath="Label"
                               AutomationProperties.Name="Filtrer par genre" ToolTip="Genre (d'après le magasin Steam ; les jeux hors Steam n'en ont pas)" />
                     <ComboBox Width="190" Margin="0,0,10,0" ItemsSource="{Binding KindOptions}" SelectedItem="{Binding SelectedKind}" DisplayMemberPath="Label"
@@ -330,28 +330,6 @@
                     <!-- Jeux Steam possédés, non installés : jaquettes grisées (cache du client Steam), installer ou voir la page -->
                     <StackPanel Margin="12,8,0,0" Visibility="{Binding IsUninstalledSectionVisible, Converter={StaticResource BoolToVisibility}}">
                         <TextBlock Margin="2,0,0,14" Style="{StaticResource Text.Caption}" FontWeight="SemiBold" Text="{Binding UninstalledHeader}" />
-                        <!-- Ubisoft Connect et l'EA app chiffrent leur liste de jeux : un bouton pour ouvrir le lanceur -->
-                        <Border Margin="0,0,20,18" Style="{StaticResource Banner}" Background="{StaticResource Brush.InfoSoft}" BorderBrush="{StaticResource Brush.Info}"
-                                Visibility="{Binding HasLauncherShortcuts, Converter={StaticResource BoolToVisibility}}">
-                            <DockPanel>
-                                <ItemsControl DockPanel.Dock="Right" VerticalAlignment="Center" ItemsSource="{Binding LauncherShortcuts}">
-                                    <ItemsControl.ItemsPanel>
-                                        <ItemsPanelTemplate>
-                                            <StackPanel Orientation="Horizontal" />
-                                        </ItemsPanelTemplate>
-                                    </ItemsControl.ItemsPanel>
-                                    <ItemsControl.ItemTemplate>
-                                        <DataTemplate DataType="{x:Type vm:LauncherShortcut}">
-                                            <Button Margin="8,0,0,0" Style="{StaticResource Button.Secondary}" Content="{Binding Label}"
-                                                    Command="{Binding DataContext.OpenLauncherCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                    CommandParameter="{Binding}" AutomationProperties.Name="{Binding Label}" />
-                                        </DataTemplate>
-                                    </ItemsControl.ItemTemplate>
-                                </ItemsControl>
-                                <TextBlock VerticalAlignment="Center" Style="{StaticResource Text.Body}" TextWrapping="Wrap"
-                                           Text="Ubisoft Connect et l'EA app ne partagent pas la liste de vos jeux : ouvrez-les pour installer un jeu. Une fois installé, « Rechercher des jeux installés » l'ajoute ici." />
-                            </DockPanel>
-                        </Border>
                         <ItemsControl ItemsSource="{Binding UninstalledView}">
                             <ItemsControl.ItemsPanel>
                                 <ItemsPanelTemplate>

@@ -49,8 +49,7 @@ public sealed class GameLauncher(FileLog log)
 
     /// <summary>
     /// Jeu possédé d'un autre magasin, sans droits administrateur : Epic ouvre son installation (même adresse que les raccourcis
-    /// d'Epic, action « install ») ; GOG, Ubisoft et EA, vus par GOG Galaxy, sont ouverts dans Galaxy, qui propose de les installer
-    /// (par Ubisoft Connect ou l'EA app pour leurs jeux). Renvoie le message à afficher.
+    /// d'Epic, action « install ») ; GOG ouvre la page du jeu dans GOG Galaxy, qui propose de l'installer. Renvoie le message à afficher.
     /// </summary>
     public string InstallStoreGame(GameSource store, string key, string name)
     {
@@ -75,24 +74,6 @@ public sealed class GameLauncher(FileLog log)
             default:
                 throw new LaunchException($"Installation non prise en charge pour ce magasin ({store}).");
         }
-    }
-
-    /// <summary>
-    /// Ubisoft Connect et l'EA app chiffrent la liste des jeux possédés (vérifié le 2026-10-04) : OptiGame ne peut pas les montrer.
-    /// À la place, un bouton ouvre le lanceur (son programme enregistré pour son protocole), sans droits administrateur.
-    /// </summary>
-    public static string? LauncherExe(GameSource store) => store switch
-    {
-        GameSource.Ubisoft => StoreLibraries.ProtocolExe("uplay"),
-        GameSource.Ea => StoreLibraries.ProtocolExe("origin2"),
-        _ => null,
-    };
-
-    public void OpenLauncher(GameSource store)
-    {
-        var exe = LauncherExe(store) ?? throw new LaunchException($"{StoreCatalogs.Label(store)} est introuvable sur ce PC.");
-        UnelevatedLauncher.Launch(exe, $"\"{exe}\"");
-        log.Info($"Lanceur ouvert : {exe}");
     }
 
     public LaunchPlan Launch(GameProfile profile)

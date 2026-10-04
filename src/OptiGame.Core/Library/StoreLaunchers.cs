@@ -14,9 +14,7 @@ public sealed record EpicInstall(string Name, string InstallLocation, string Lau
 /// la machine de dev le 2026-10-04) :
 /// <list type="bullet">
 /// <item>Epic (Absolute Drift.url) : <c>com.epicgames.launcher://apps/&lt;namespace&gt;%3A&lt;item&gt;%3A&lt;app&gt;?action=launch&amp;silent=true</c> ;</item>
-/// <item>Ubisoft (Steep.url) : <c>uplay://launch/3279/0</c> ;</item>
 /// <item>GOG (raccourci du menu Démarrer) : <c>GalaxyClient.exe /command=runGame /gameId=1443606025 /path="…"</c> ;</item>
-/// <item>EA (Les Sims 3.lnk) : l'exe du jeu directement.</item>
 /// </list>
 /// Les adresses passent au programme enregistré pour le protocole (HKCR\&lt;protocole&gt;\shell\open\command), comme un double-clic
 /// sur le raccourci. Tout identifiant est vérifié avant d'entrer dans une commande.
@@ -40,9 +38,6 @@ public static partial class StoreLaunchers
     public static string EpicUri(string catalogNamespace, string catalogItemId, string appName, string action) =>
         $"com.epicgames.launcher://apps/{Id(catalogNamespace)}%3A{Id(catalogItemId)}%3A{Id(appName)}?action={action}&silent=true";
 
-    public static string UbisoftLaunchUri(string productId) =>
-        IsDigits(productId) ? $"uplay://launch/{productId}/0" : throw new ArgumentException($"Identifiant Ubisoft invalide : « {productId} ».");
-
     public static string GogRunArguments(string gameId, string installPath) =>
         IsDigits(gameId) && !installPath.Contains('"')
             ? $"/command=runGame /gameId={gameId} /path=\"{installPath.TrimEnd('\\')}\""
@@ -57,7 +52,7 @@ public static partial class StoreLaunchers
             ? $"goggalaxy://openGameView/{releaseKey}"
             : throw new ArgumentException($"Jeu GOG Galaxy invalide : « {releaseKey} ».");
 
-    /// <summary>Argument passé au programme du protocole : <c>"…exe" %1</c> (Epic) ou <c>"…exe" "%1"</c> (Ubisoft).</summary>
+    /// <summary>Argument passé au programme du protocole : <c>"…exe" %1</c> (Epic).</summary>
     public static string Quoted(string uri) => $"\"{uri}\"";
 
     /// <summary>« "C:\…\GalaxyClient.exe" /urlProtocol="%1" » → « C:\…\GalaxyClient.exe » (null si la commande est illisible).</summary>

@@ -18,9 +18,8 @@ public sealed record GalaxyRow(string ReleaseKey, bool IsDlc, bool IsVisible, st
 /// <item>Epic : <c>Data\Catalog\catcache.bin</c> = JSON en base64 de 1866 éléments (dont assets Unreal) ; jeu = catégorie « games »
 /// et <c>mainGameItem.id</c> vide (sinon DLC) → 348 jeux, jaquette <c>DieselGameBoxTall</c> (1200×1600, réduite par le CDN avec
 /// <c>?h=528&amp;w=396&amp;resize=1</c>). Choix de l'utilisateur : seule source pour Epic (la liste Epic de GOG Galaxy est périmée).</item>
-/// <item>GOG Galaxy (galaxy-2.0.db) : bibliothèque de toutes les plateformes liées ; on ne garde que les jeux GOG (gog_, 13). Les
-/// intégrations Ubisoft / EA de Galaxy ne sont plus à jour et compliquent tout : refusées par l'utilisateur (2026-10-04). Visibles et
-/// hors DLC. Jaquette <c>verticalCover</c> en .webp, servie aussi en .jpg (vérifié : 200 image/jpeg, 342×482).</item>
+/// <item>GOG Galaxy (galaxy-2.0.db) : bibliothèque de toutes les plateformes liées ; on ne garde que les jeux GOG (gog_, 13).
+/// Visibles et hors DLC. Jaquette <c>verticalCover</c> en .webp, servie aussi en .jpg (vérifié : 200 image/jpeg, 342×482).</item>
 /// </list>
 /// </summary>
 public static class StoreCatalogs
@@ -94,8 +93,7 @@ public static class StoreCatalogs
         {
             "epicgameslauncher.exe" => GameSource.Epic,
             "galaxyclient.exe" => GameSource.Gog,
-            "ubisoftconnect.exe" or "upc.exe" => GameSource.Ubisoft,
-            _ => profile.ExePath.Contains(@"\EA Games\", StringComparison.OrdinalIgnoreCase) ? GameSource.Ea : null,
+            _ => null,
         };
     }
 
@@ -104,8 +102,6 @@ public static class StoreCatalogs
         GameSource.Steam => "Steam",
         GameSource.Epic => "Epic Games",
         GameSource.Gog => "GOG",
-        GameSource.Ubisoft => "Ubisoft",
-        GameSource.Ea => "EA",
         _ => "Autre",
     };
 

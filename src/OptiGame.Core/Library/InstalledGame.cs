@@ -5,8 +5,6 @@ public enum GameSource
     Steam,
     Epic,
     Gog,
-    Ubisoft,
-    Ea,
     Folder,
 }
 

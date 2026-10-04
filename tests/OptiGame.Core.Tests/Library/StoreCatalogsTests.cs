@@ -37,7 +37,7 @@ public sealed class StoreCatalogsTests
             Row("gog_1207658924", "The Witcher: Enhanced Edition"), // doublon
             Row("gog_1", "Un DLC", dlc: true),
             Row("gog_2", "Jeu masqué", visible: false),
-            // Intégrations de Galaxy : périmées (Epic) ou refusées par l'utilisateur (Ubisoft, EA) → ignorées.
+            // Intégrations de Galaxy (Epic périmée ; Ubisoft, EA et Xbox non prises en charge) → ignorées.
             Row("uplay_0d2ae42d-4c27-4cb7-af6c-2099062302bb", "Tom Clancy's Rainbow Six Siege", "\"Shooter\",\"Tactical\""),
             Row("origin_OFB-EAST:109544082", "The Sims™ 3", "\"Simulator\""),
             Row("epic_abc", "Jeu Epic vu par Galaxy"),
@@ -55,8 +55,6 @@ public sealed class StoreCatalogsTests
     [Theory]
     [InlineData(@"C:\Program Files\Epic Games\Launcher\Portal\Binaries\Win64\EpicGamesLauncher.exe", @"C:\x\absolutedrift.exe", GameSource.Epic)]
     [InlineData(@"C:\Program Files\GOG Galaxy\GalaxyClient.exe", @"C:\x\RoW.exe", GameSource.Gog)]
-    [InlineData(@"C:\Program Files (x86)\Ubisoft\Ubisoft Game Launcher\UbisoftConnect.exe", @"C:\x\steep.exe", GameSource.Ubisoft)]
-    [InlineData(null, @"C:\Program Files\EA Games\The Sims 3\Game\Bin\TS3.exe", GameSource.Ea)]
     [InlineData(null, @"A:\Jeux\StarCitizen\StarCitizen.exe", null)]
     public void Infers_the_store_of_an_installed_game(string? launcher, string exe, GameSource? store)
     {

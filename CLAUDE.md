@@ -236,20 +236,18 @@ vit dans Core ; Platform ne fait que lire/écrire le système.
   `"steam.exe" -- "steam://install/<appid>"` via `UnelevatedLauncher` (fenêtre d'installation de Steam).
 - Autres lanceurs, jeux INSTALLÉS (« Rechercher des jeux installés » ; `Core/Library/StoreLaunchers`,
   `Platform/Library/StoreLibraries`) : Epic = `C:\ProgramData\Epic\EpicGamesLauncher\Data\Manifests\*.item` (JSON) ; GOG =
-  HKLM\SOFTWARE\WOW6432Node\GOG.com\Games\<id> ; Ubisoft = HKLM\SOFTWARE\WOW6432Node\Ubisoft\Launcher\Installs\<id>\InstallDir ;
-  EA = sous-dossiers à `__Installer` du dossier `machine.downloadinplacedir` de `C:\ProgramData\EA Desktop\machine.ini`.
+  HKLM\SOFTWARE\WOW6432Node\GOG.com\Games\<id>. Lanceurs pris en charge : Steam, Epic et GOG SEULEMENT (Ubisoft Connect et
+  EA app abandonnés par l'utilisateur le 2026-10-04 ; leurs jeux restent ajoutables via un dossier de jeux).
   Profil créé en mode « Lanceur » avec la commande EXACTE des raccourcis que les lanceurs créent (relevés le 2026-10-04) :
-  Epic `com.epicgames.launcher://apps/<ns>%3A<item>%3A<app>?action=launch&silent=true`, Ubisoft `uplay://launch/<id>/0`,
-  GOG `GalaxyClient.exe /command=runGame /gameId=<id> /path="…"`, EA = l'exe du jeu ; programme = celui du protocole
-  (HKCR\<protocole>\shell\open\command). Possédés : Ubisoft et EA CHIFFRÉS localement (voir mémoire des lanceurs).
+  Epic `com.epicgames.launcher://apps/<ns>%3A<item>%3A<app>?action=launch&silent=true`,
+  GOG `GalaxyClient.exe /command=runGame /gameId=<id> /path="…"` ; programme = celui du protocole
+  (HKCR\<protocole>\shell\open\command).
 - Autres lanceurs, jeux POSSÉDÉS non installés (section grisée + filtre « Plateforme » ; `Core/Library/StoreCatalogs`,
   `Platform/Library/StoreOwnedLibrary` + `StoreCoverCache`, `DiagDump -- --store-owned`) : Epic = `Data\Catalog\catcache.bin`
   (base64 → JSON ; jeu = catégorie « games » + `mainGameItem.id` vide ; 348 jeux) — SEULE source Epic (choix utilisateur : la
   liste Epic de Galaxy est périmée). GOG Galaxy = `galaxy-2.0.db` (SQLite, Microsoft.Data.Sqlite) lue sur une COPIE (db + -wal
-  + -shm dans %TEMP%, supprimée ensuite) : SEULEMENT les jeux GOG (gog_), visibles et hors DLC. Ubisoft et EA : listes de
-  possession CHIFFRÉES (ownership, IS / CATS2) et cache « configurations » d'Ubisoft incomplet (12 jeux, 5 possédés absents) ;
-  passer par les intégrations de Galaxy REFUSÉ par l'utilisateur (périmées, trop compliqué pour un novice) → bandeau
-  « Ouvrir Ubisoft Connect » / « Ouvrir l'EA app » (programmes des protocoles uplay / origin2). Genres de Galaxy (anglais)
+  + -shm dans %TEMP%, supprimée ensuite) : SEULEMENT les jeux GOG (gog_), visibles et hors DLC (intégrations Epic / Ubisoft /
+  EA de Galaxy ignorées : périmées, refusées par l'utilisateur). Genres de Galaxy (anglais)
   regroupés dans les genres Steam en français.
   Jaquettes : CDN `cdn1.epicgames.com` (`?h=528&w=396&resize=1`, ~11 Ko) et `images.gog.com` (.webp → .jpg), téléchargées
   une fois dans `covers\stores` quand la section est affichée, par lots de 4 pris dans l'ordre de la grille filtrée (le filtre

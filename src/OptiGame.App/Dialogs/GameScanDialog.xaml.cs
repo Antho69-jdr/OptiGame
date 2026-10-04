@@ -46,8 +46,6 @@ public partial class GameScanDialog : Window
                 GameSource.Steam => "  — Steam",
                 GameSource.Epic => "  — Epic Games",
                 GameSource.Gog => "  — GOG",
-                GameSource.Ubisoft => "  — Ubisoft Connect",
-                GameSource.Ea => "  — EA app",
                 _ => $"  — {Game.Folder}",
             } + (HasProfile ? "  (profil existant)" : "");
 
