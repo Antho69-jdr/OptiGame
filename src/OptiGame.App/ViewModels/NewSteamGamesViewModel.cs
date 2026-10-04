@@ -25,14 +25,15 @@ public sealed partial class NewSteamGamesViewModel : ObservableObject
     private readonly HashSet<string> _notified = [];
 
     public NewSteamGamesViewModel(ProfileStore store, AppSettingsStore settings, SteamLibraryWatcher watcher,
-        INotificationService notifications, IDialogService dialogs, FileLog log)
+        INotificationService notifications, IDialogService dialogs, FileLog log, GameTimeGate gate)
     {
         _store = store;
         _settings = settings;
         _notifications = notifications;
         _dialogs = dialogs;
         _log = log;
-        watcher.ManifestsChanged += (_, _) => Application.Current?.Dispatcher.BeginInvoke(() => _ = CheckAsync());
+        // Steam écrit ses manifestes pendant ses téléchargements, parfois en pleine partie : vérifié à la fin de la partie.
+        watcher.ManifestsChanged += (_, _) => Application.Current?.Dispatcher.BeginInvoke(() => gate.RunOrDefer("steam-new-games", () => _ = CheckAsync()));
         watcher.Start();
         _ = CheckAsync();
     }

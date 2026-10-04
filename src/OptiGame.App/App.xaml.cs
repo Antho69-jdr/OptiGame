@@ -27,6 +27,12 @@ public partial class App : Application
     private QuitRequestWatcher? _quitWatcher;
     private RequestFileWatcher? _memoryWatcher;
 
+    /// <summary>Fenêtre principale ; null quand elle n'existe pas (jamais ouverte, ou fermée pendant une partie).</summary>
+    private MainWindow? _mainWindow;
+
+    /// <summary>Place de la fenêtre fermée pendant une partie, rendue à la suivante (sinon elle reviendrait centrée).</summary>
+    private (Rect Bounds, WindowState State)? _mainWindowPlacement;
+
     /// <summary>Fichier à créer dans le dossier de données pour écrire la mesure de la mémoire dans le journal.</summary>
     public const string MemoryRequestFile = "memory.request";
 
@@ -66,7 +72,11 @@ public partial class App : Application
         _trayIcon.ForceCreate(enablesEfficiencyMode: false);
         _services.GetRequiredService<NotificationService>().Attach(_trayIcon);
 
+        // Avant la détection des jeux : aucune partie ne doit commencer sans que l'appli s'allège.
+        var footprint = _services.GetRequiredService<InGameFootprint>();
+        footprint.Start(this);
         StartSessions(_services);
+        footprint.EnterGame(this); // partie reprise après un plantage d'OptiGame (sans quoi : rien à faire)
         _services.GetRequiredService<Dock.DockController>().Start();
         _services.GetRequiredService<Platform.Measurement.AutoCapture>().Start();
 
@@ -88,15 +98,14 @@ public partial class App : Application
 
         if (!e.Args.Contains(MinimizedArgument, StringComparer.OrdinalIgnoreCase))
         {
-            LogFirstRender(services);
+            LogFirstRender(GetMainWindow(), services);
             ShowMainWindow();
         }
     }
 
     /// <summary>Durée du lancement jusqu'au premier affichage de la fenêtre (journal), pour mesurer les gains de démarrage.</summary>
-    private static void LogFirstRender(IServiceProvider services)
+    private static void LogFirstRender(MainWindow window, IServiceProvider services)
     {
-        var window = services.GetRequiredService<MainWindow>();
         void OnRendered(object? sender, EventArgs args)
         {
             window.ContentRendered -= OnRendered;
@@ -139,13 +148,72 @@ public partial class App : Application
 
     public void ShowMainWindow()
     {
-        var window = _services!.GetRequiredService<MainWindow>();
+        var window = GetMainWindow();
         window.Show();
         if (window.WindowState == WindowState.Minimized)
         {
             window.WindowState = WindowState.Normal;
         }
         window.Activate();
+    }
+
+    /// <summary>Fenêtre principale, créée si besoin (première ouverture, ou après une partie) à la place qu'elle avait.</summary>
+    private MainWindow GetMainWindow()
+    {
+        if (_mainWindow is { } existing) return existing;
+        var window = _services!.GetRequiredService<MainWindow>();
+        if (_mainWindowPlacement is { } placement)
+        {
+            window.WindowStartupLocation = WindowStartupLocation.Manual;
+            window.Left = placement.Bounds.Left;
+            window.Top = placement.Bounds.Top;
+            window.Width = placement.Bounds.Width;
+            window.Height = placement.Bounds.Height;
+            window.WindowState = placement.State; // réduite au début de la partie : revient réduite
+        }
+        window.Closed += (_, _) =>
+        {
+            if (ReferenceEquals(_mainWindow, window)) _mainWindow = null;
+            // Application.MainWindow (propriétaire des dialogues) ne doit pas garder en vie une fenêtre fermée.
+            if (ReferenceEquals(MainWindow, window)) MainWindow = null;
+        };
+        MainWindow = window;
+        return _mainWindow = window;
+    }
+
+    /// <summary>
+    /// Début de partie : la fenêtre principale est FERMÉE (et non masquée), pour que tout son contenu soit libéré. Elle est
+    /// recréée à la demande, même page (MainViewModel) et même place. Pas si une boîte de dialogue est ouverte : on ne
+    /// l'interrompt pas. Renvoie vrai si la fenêtre était affichée (elle reviendra à la fin de la partie).
+    /// </summary>
+    public bool CloseMainWindowForGame()
+    {
+        if (_mainWindow is not { } window) return false;
+        if (System.Windows.Interop.ComponentDispatcher.IsThreadModal || window.OwnedWindows.Count > 0)
+        {
+            _services?.GetRequiredService<FileLog>().Info("Partie en cours : fenêtre d'OptiGame gardée (une boîte de dialogue est ouverte).");
+            return false;
+        }
+        var wasVisible = window.IsVisible;
+        var bounds = window.RestoreBounds;
+        var screen = new Rect(SystemParameters.VirtualScreenLeft, SystemParameters.VirtualScreenTop,
+            SystemParameters.VirtualScreenWidth, SystemParameters.VirtualScreenHeight);
+        // Jamais affichée, ou hors des écrans actuels (écran débranché) : elle reviendra centrée.
+        _mainWindowPlacement = !bounds.IsEmpty && bounds.IntersectsWith(screen) ? (bounds, window.WindowState) : null;
+        window.CloseForGame();
+        return wasVisible;
+    }
+
+    /// <summary>
+    /// Fin de partie : la fenêtre fermée pour la partie revient comme elle était (réduite, elle reste dans la barre des tâches).
+    /// Rouverte (puis peut-être refermée) par l'utilisateur pendant la partie : son dernier geste compte, on n'y touche pas.
+    /// </summary>
+    public void ReopenMainWindowAfterGame()
+    {
+        if (_mainWindow is not null) return;
+        var window = GetMainWindow();
+        window.Show();
+        if (window.WindowState != WindowState.Minimized) window.Activate();
     }
 
     /// <summary>Récupération d'une session interrompue, puis détection des jeux.</summary>
@@ -242,7 +310,11 @@ public partial class App : Application
         services.AddSingleton<Dock.DockController>();
         services.AddSingleton<MainViewModel>();
         services.AddSingleton<TrayViewModel>();
-        services.AddSingleton<MainWindow>();
+        services.AddSingleton<GameTimeGate>();
+        services.AddSingleton<MemoryRelief>();
+        services.AddSingleton<InGameFootprint>();
+        // Transitoire : fermée pendant les parties et recréée ensuite (une seule à la fois, gardée par App._mainWindow).
+        services.AddTransient<MainWindow>();
 
         return services;
     }

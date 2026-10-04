@@ -1,12 +1,15 @@
 ﻿using System.ComponentModel;
 using System.Windows;
+using OptiGame.App.Services;
 using OptiGame.App.ViewModels;
 
 namespace OptiGame.App.Views;
 
 public partial class MainWindow : Window
 {
-    public MainWindow(MainViewModel viewModel)
+    private bool _closingForGame;
+
+    public MainWindow(MainViewModel viewModel, MemoryRelief relief)
     {
         InitializeComponent();
         DataContext = viewModel;
@@ -15,35 +18,37 @@ public partial class MainWindow : Window
         SourceInitialized += (_, _) => Converters.ImageLoader.DisplayScale = System.Windows.Media.VisualTreeHelper.GetDpi(this).DpiScaleX;
         DpiChanged += (_, args) => Converters.ImageLoader.DisplayScale = args.NewDpi.DpiScaleX;
 
-        // Fenêtre masquée : les jaquettes chargées (jusqu'à plusieurs centaines de Mo) sont libérées. Un seul nettoyage, une fois
-        // l'affichage mis à jour : sans allocation (appli au repos pendant une partie), rien ne le déclencherait.
+        // Fenêtre masquée ou fermée : les jaquettes chargées (jusqu'à plusieurs centaines de Mo) sont libérées.
         IsVisibleChanged += (_, args) =>
         {
-            if (args.NewValue is true) return;
-            viewModel.Library.ReleaseCovers();
-            Dispatcher.BeginInvoke(() =>
-            {
-                GC.Collect();
-                GC.WaitForPendingFinalizers();
-                GC.Collect();
-            }, System.Windows.Threading.DispatcherPriority.ContextIdle);
+            if (args.NewValue is not true) relief.Release();
         };
 
-        // Première ouverture : lancer l'analyse (lecture seule).
+        // Première ouverture : lancer l'analyse (lecture seule). Fenêtre recréée après une partie : déjà faite, ou en cours.
         Loaded += (_, _) =>
         {
-            if (!viewModel.Diagnostic.HasResults)
+            if (!viewModel.Diagnostic.HasResults && viewModel.Diagnostic.RunCommand.CanExecute(null))
             {
                 viewModel.Diagnostic.RunCommand.Execute(null);
             }
         };
     }
 
-    /// <summary>Fermer la fenêtre la masque : l'appli reste dans la zone de notification.</summary>
+    /// <summary>Fermeture réelle au début d'une partie (App.CloseMainWindowForGame) : tout le contenu est libéré.</summary>
+    public void CloseForGame()
+    {
+        _closingForGame = true;
+        Close();
+    }
+
+    /// <summary>Fermer la fenêtre la masque : l'appli reste dans la zone de notification (sauf fermeture pour une partie).</summary>
     protected override void OnClosing(CancelEventArgs e)
     {
-        e.Cancel = true;
-        Hide();
+        if (!_closingForGame)
+        {
+            e.Cancel = true;
+            Hide();
+        }
         base.OnClosing(e);
     }
 }

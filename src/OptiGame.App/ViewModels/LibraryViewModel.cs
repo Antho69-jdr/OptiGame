@@ -46,6 +46,7 @@ public sealed partial class LibraryViewModel : ObservableObject
     private readonly Platform.Library.StoreOwnedLibrary _storeLibrary;
     private readonly Platform.Library.StoreCoverCache _storeCovers;
     private readonly GameRatingService _ratings;
+    private readonly GameTimeGate _gate;
     private int _ratingVersion;
 
     /// <summary>Temps de jeu Steam par profil (jeux Steam), relu à chaque changement de la bibliothèque ou de Steam.</summary>
@@ -62,15 +63,18 @@ public sealed partial class LibraryViewModel : ObservableObject
         CaptureStore captures, MeasuresViewModel measures, NavigationService navigation, SettingsViewModel settingsPage,
         TimeProvider time, FileLog log, GameLauncher launcher, PlaytimeStore playtime, SteamPlaytimeReader steamReader,
         GameGraphicsService graphics, NewSteamGamesViewModel newGames, GameRatingService ratings, Platform.Measurement.AutoCapture autoCapture,
-        FrameCapService frameCap, Platform.Library.StoreOwnedLibrary storeLibrary, Platform.Library.StoreCoverCache storeCovers)
+        FrameCapService frameCap, Platform.Library.StoreOwnedLibrary storeLibrary, Platform.Library.StoreCoverCache storeCovers,
+        GameTimeGate gate)
     {
+        _gate = gate;
         _steamReader = steamReader;
         _graphics = graphics;
         _frameCap = frameCap;
         _storeLibrary = storeLibrary;
         _storeCovers = storeCovers;
         _ratings = ratings;
-        autoCapture.CaptureAdded += (_, _) => OnUi(() => _ = LoadRatingsAsync()); // nouvelle mesure : la note change
+        // Nouvelle mesure (pendant la partie) : la note change, recalculée à la fin de la partie.
+        autoCapture.CaptureAdded += (_, _) => OnUi(() => _gate.RunOrDefer("ratings", () => _ = LoadRatingsAsync()));
         NewGames = newGames;
         newGames.GameAdded += (_, _) =>
         {
@@ -99,11 +103,13 @@ public sealed partial class LibraryViewModel : ObservableObject
         _selectedGenre = GenreOptions[0];
         _selectedKind = KindOptions[0];
         _selectedStore = StoreOptions[0];
-        newGames.Proposals.CollectionChanged += (_, _) => QueueLibraryLoad(); // un jeu vient d'être installé
+        // Un jeu vient d'être installé (Steam télécharge parfois pendant une partie) : relu à la fin de la partie.
+        newGames.Proposals.CollectionChanged += (_, _) => _gate.RunOrDefer("libraries", QueueLibraryLoad);
 
         store.ArtworkChanged += (_, id) => OnUi(() => _ = RefreshCoverAsync(id));
         playtime.Changed += (_, _) => OnUi(RefreshPlaytime);
-        steamReader.Changed += (_, _) => OnUi(() => _ = LoadSteamPlaytimeAsync()); // Steam a écrit le temps d'une partie
+        // Steam a écrit le temps d'une partie (localconfig.vdf, parfois plusieurs Mo) : relu hors partie.
+        steamReader.Changed += (_, _) => OnUi(() => _gate.RunOrDefer("steam-playtime", () => _ = LoadSteamPlaytimeAsync()));
         store.DockChanged += (_, _) => OnUi(() =>
         {
             if (OpenGame is not null) OpenGame.IsPinned = _store.Find(OpenGame.Id)?.DockOrder is not null;
@@ -534,6 +540,11 @@ public sealed partial class LibraryViewModel : ObservableObject
         {
             while (true)
             {
+                if (_gate.InGame)
+                {
+                    _gate.RunOrDefer("store-covers", () => { if (ShowUninstalled) _ = FetchStoreCoversAsync(); }); // la suite à la fin de la partie
+                    break;
+                }
                 var batch = VisibleUninstalled
                     .Concat(_uninstalledFiltered)
                     .Concat(UninstalledGames)
@@ -933,6 +944,11 @@ public sealed partial class LibraryViewModel : ObservableObject
         {
             foreach (var profile in _store.GetAll().Where(p => p.CoverImageId is null && !_artworkSearched.Contains(p.Id)))
             {
+                if (_gate.InGame)
+                {
+                    _gate.RunOrDefer("igdb", () => _ = FetchMissingArtworkAsync()); // la suite à la fin de la partie
+                    break;
+                }
                 _artworkSearched.Add(profile.Id);
                 ArtworkStatus = $"Recherche de la jaquette de {profile.Name}…";
                 var results = await _igdb.SearchAsync(profile.Name);

@@ -8,8 +8,9 @@ using OptiGame.Platform.Display;
 namespace OptiGame.App.Dock;
 
 /// <summary>
-/// Crée ou ferme la fenêtre du dock selon les réglages, et la masque pendant une session de jeu ou quand une
-/// application est en plein écran. Rien ne tourne quand le dock est désactivé (pas même la surveillance du plein écran).
+/// Crée ou ferme la fenêtre du dock selon les réglages, et la masque quand une application est en plein écran. Pendant une
+/// partie, elle est FERMÉE (réglage « LightDuringGames », sinon masquée) puis recréée à la fin : ses jaquettes sont libérées.
+/// Rien ne tourne quand le dock est désactivé ou fermé (pas même la surveillance du plein écran).
 /// </summary>
 public sealed class DockController(
     AppSettingsStore settings,
@@ -27,7 +28,7 @@ public sealed class DockController(
         _started = true;
         settings.Changed += (_, _) => OnUi(Apply);
         sessions.SessionStarted += (_, _) => OnUi(UpdateSuppression);
-        sessions.SessionEnded += (_, _) => OnUi(UpdateSuppression);
+        sessions.SessionEnded += (_, _) => OnUi(Apply); // fermé pour la partie : recréé selon les réglages
         fullscreen.FullscreenChanged += (_, _) => UpdateSuppression();
         fullscreen.DesktopShownChanged += (_, shown) =>
         {
@@ -51,9 +52,7 @@ public sealed class DockController(
         {
             if (_window is not null)
             {
-                _window.Close();
-                _window = null;
-                fullscreen.Dispose();
+                CloseWindow();
                 log.Info("Dock désactivé.");
             }
             return;
@@ -61,6 +60,7 @@ public sealed class DockController(
 
         if (_window is null)
         {
+            if (ClosedForGame) return; // recréé à la fin de la partie
             fullscreen.Start();
             _window = new DockWindow(dock, fullscreen);
             _window.Show();
@@ -71,9 +71,34 @@ public sealed class DockController(
         UpdateSuppression();
     }
 
-    /// <summary>Masqué pendant une partie ou une application plein écran : il ne doit ni gêner, ni coûter des FPS.</summary>
-    private void UpdateSuppression() =>
-        _window?.SetSuppressed(sessions.Current is not null || fullscreen.IsFullscreen);
+    private bool ClosedForGame => sessions.Current is not null && settings.Get().LightDuringGames;
+
+    /// <summary>
+    /// Pendant une partie : fermé (ou masqué si l'allègement est désactivé). Masqué devant une application plein écran : il ne
+    /// doit ni gêner, ni coûter des FPS. Ne crée JAMAIS la fenêtre : fullscreen.Start() (dans Apply) peut déclencher
+    /// FullscreenChanged avant que _window soit posé, et Apply en cours créerait alors un deuxième dock.
+    /// </summary>
+    private void UpdateSuppression()
+    {
+        if (_window is null) return;
+        if (ClosedForGame)
+        {
+            CloseWindow();
+            log.Info("Dock fermé pendant la partie.");
+            return;
+        }
+        _window.SetSuppressed(sessions.Current is not null || fullscreen.IsFullscreen);
+    }
+
+    private void CloseWindow()
+    {
+        if (_window is null) return;
+        // Application.MainWindow (propriétaire des dialogues) ne doit pas garder en vie la fenêtre fermée.
+        if (ReferenceEquals(Application.Current?.MainWindow, _window)) Application.Current!.MainWindow = null;
+        _window.Close();
+        _window = null;
+        fullscreen.Dispose();
+    }
 
     private static void OnUi(Action action) => Application.Current?.Dispatcher.BeginInvoke(action);
 }

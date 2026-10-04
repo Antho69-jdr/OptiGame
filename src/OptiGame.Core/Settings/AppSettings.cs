@@ -71,6 +71,12 @@ public sealed class AppSettings
     /// <summary>Mesure automatique des FPS pendant les parties (1 min après 4 min de jeu), pour la note des jeux.</summary>
     public bool AutoMeasureFps { get; set; } = true;
 
+    /// <summary>
+    /// Pendant une partie, la fenêtre et le dock d'OptiGame sont fermés (et non masqués) pour libérer leur mémoire ; la fenêtre
+    /// revient à la fin de la partie si elle était ouverte. Absent d'un ancien settings.json = activé.
+    /// </summary>
+    public bool LightDuringGames { get; set; } = true;
+
     /// <summary>Diagnostic en vue « Avancé » (chaque correction à la main) plutôt que « Simple » (un bouton).</summary>
     public bool DiagnosticAdvanced { get; set; }
 
@@ -95,6 +101,7 @@ public sealed class AppSettings
         DockShowNames = DockShowNames,
         SteamKnownAppIds = SteamKnownAppIds is null ? null : [.. SteamKnownAppIds],
         AutoMeasureFps = AutoMeasureFps,
+        LightDuringGames = LightDuringGames,
         DiagnosticAdvanced = DiagnosticAdvanced,
         LibraryShowUninstalled = LibraryShowUninstalled,
     };

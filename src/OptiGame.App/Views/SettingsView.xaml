@@ -78,6 +78,17 @@
                 </StackPanel>
             </Border>
 
+            <!-- Pendant les parties -->
+            <Border Margin="0,16,0,0" Style="{StaticResource Card}">
+                <StackPanel>
+                    <TextBlock Style="{StaticResource Text.SectionTitle}" Text="Pendant les parties" />
+                    <CheckBox Margin="0,14,0,0" IsChecked="{Binding LightDuringGames}"
+                              Content="Fermer la fenêtre et le dock d'OptiGame pendant les parties" />
+                    <TextBlock Margin="28,6,0,0" Style="{StaticResource Text.Caption}" TextWrapping="Wrap"
+                               Text="Leur mémoire est libérée tant que vous jouez ; la fenêtre revient à la fin de la partie si elle était ouverte. OptiGame continue depuis la zone de notification : profil appliqué puis restauré, mesure automatique. Toujours, même décoché : jaquettes libérées, et le travail de fond (lecture des bibliothèques, téléchargement des jaquettes, notes) attend la fin de la partie." />
+                </StackPanel>
+            </Border>
+
             <!-- Note des jeux -->
             <Border Margin="0,16,0,0" Style="{StaticResource Card}">
                 <StackPanel>

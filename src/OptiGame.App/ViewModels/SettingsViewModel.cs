@@ -95,6 +95,12 @@ public sealed partial class SettingsViewModel : ObservableObject
         set { _settings.Update(s => s.AutoMeasureFps = value); OnPropertyChanged(); }
     }
 
+    public bool LightDuringGames
+    {
+        get => _settings.Get().LightDuringGames;
+        set { _settings.Update(s => s.LightDuringGames = value); OnPropertyChanged(); }
+    }
+
     public bool DockShowNames
     {
         get => _settings.Get().DockShowNames;

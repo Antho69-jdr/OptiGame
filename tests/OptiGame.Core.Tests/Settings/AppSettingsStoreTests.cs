@@ -37,4 +37,21 @@ public sealed class AppSettingsStoreTests : IDisposable
         loaded.GameFolders.Clear();
         Assert.Single(Open().Get().GameFolders);
     }
+
+    [Fact]
+    public void Lightening_during_games_is_on_for_an_older_settings_file()
+    {
+        // settings.json écrit avant ce réglage : il n'y figure pas.
+        File.WriteAllText(_dir.File("settings.json"), """{ "version": 1, "gameFolders": [], "autoMeasureFps": true }""");
+
+        Assert.True(Open().Get().LightDuringGames);
+    }
+
+    [Fact]
+    public void Lightening_during_games_can_be_turned_off()
+    {
+        Open().Update(s => s.LightDuringGames = false);
+
+        Assert.False(Open().Get().LightDuringGames);
+    }
 }

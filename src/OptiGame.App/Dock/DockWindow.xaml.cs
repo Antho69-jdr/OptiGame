@@ -242,6 +242,15 @@ public partial class DockWindow : Window
     }
 
     /// <summary>Masque complètement le dock (partie en cours, application plein écran).</summary>
+    /// <summary>Fenêtre fermée (dock désactivé, ou partie en cours) : rien ne doit plus la garder en vie.</summary>
+    protected override void OnClosed(EventArgs e)
+    {
+        CompositionTarget.Rendering -= OnMagnifyFrame; // événement statique : garderait toute la fenêtre
+        _magnifying = false;
+        _hideTimer.Stop();
+        base.OnClosed(e);
+    }
+
     public void SetSuppressed(bool suppressed)
     {
         _suppressed = suppressed;

@@ -81,6 +81,17 @@ src/OptiGame.App/        WPF : composition DI, tray, vues/viewmodels, dialogue d
                          RequestFileWatcher) → journal « Mémoire (demandée) », détail des cartes et jaquettes, puis « après
                          nettoyage complet » (GC forcé). `DiagDump -- --memory` : coût de chaque lecture lourde seule et des
                          jaquettes (ImageLoader de l'appli lié à l'outil, d'où UseWPF dans DiagDump).
+  Pendant une partie     Services/InGameFootprint (réglage `LightDuringGames`, activé par défaut) : fenêtre principale FERMÉE
+                         (App.CloseMainWindowForGame ; MainWindow TRANSITOIRE, recréée à la demande, même page et même place,
+                         rouverte à la fin si elle était affichée, réduite si elle l'était ; gardée si une boîte de dialogue
+                         est ouverte) et dock FERMÉ (DockController, surveillance du plein écran arrêtée ; recréé par Apply à la
+                         fin — UpdateSuppression ne crée jamais la fenêtre : fullscreen.Start() peut déclencher FullscreenChanged
+                         avant que _window soit posé). Toujours : Services/MemoryRelief (1re page des non installés, cache
+                         d'images vidé, UN GC regroupé, mémoire écrite au journal « Partie en cours : … ») et Services/
+                         GameTimeGate (relecture des bibliothèques, jaquettes Epic/GOG et IGDB, notes, nouveaux jeux Steam, temps
+                         Steam reportés à la fin de la partie, une fois par sorte). Vues : abonnement aux événements des
+                         ViewModels sur Loaded / Unloaded (jamais DataContextChanged : la vue jetée resterait abonnée et
+                         garderait toute la fenêtre) ; DockWindow.OnClosed se désabonne de CompositionTarget.Rendering (statique).
   Dock/                  DockWindow (transparente, Topmost, WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW, zones alpha 0 =
                          clics traversants) + DockController (crée/ferme selon settings, masque pendant une session
                          ou une appli plein écran via Platform/Display/FullscreenWatcher = EVENT_SYSTEM_FOREGROUND +

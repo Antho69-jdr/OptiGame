@@ -10,11 +10,19 @@ public partial class MeasuresView : UserControl
         InitializeComponent();
         // Sélection posée par le ViewModel (ex. la capture qui vient d'être enregistrée).
         CaptureList.Loaded += (_, _) => SyncSelectionFromViewModel();
-        DataContextChanged += (_, e) =>
-        {
-            if (e.OldValue is MeasuresViewModel old) old.SelectionReset -= OnSelectionReset;
-            if (e.NewValue is MeasuresViewModel vm) vm.SelectionReset += OnSelectionReset;
-        };
+        // Abonné seulement tant que la vue est affichée : le ViewModel (unique) ne doit pas garder en vie une vue retirée, ni
+        // la fenêtre fermée pendant une partie (une vue garde son parent, donc toute la fenêtre).
+        Loaded += (_, _) => Attach(DataContext as MeasuresViewModel);
+        Unloaded += (_, _) => Attach(null);
+    }
+
+    private MeasuresViewModel? _attached;
+
+    private void Attach(MeasuresViewModel? vm)
+    {
+        if (_attached is not null) _attached.SelectionReset -= OnSelectionReset;
+        _attached = vm;
+        if (_attached is not null) _attached.SelectionReset += OnSelectionReset;
     }
 
     private void OnSelectionReset(object? sender, EventArgs e) => SyncSelectionFromViewModel();
