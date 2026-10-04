@@ -96,9 +96,6 @@ public sealed partial class LibraryViewModel : ObservableObject
 
         GamesView = CollectionViewSource.GetDefaultView(Games);
         GamesView.Filter = o => o is GameCardViewModel card && Matches(card.Name, card.Store, card.Genres, card.Kinds);
-        UninstalledView = CollectionViewSource.GetDefaultView(UninstalledGames);
-        UninstalledView.Filter = o => o is OwnedGameCardViewModel game && Matches(game.Name, game.Store, game.Genres, game.Kinds);
-        UninstalledView.SortDescriptions.Add(new SortDescription(nameof(OwnedGameCardViewModel.Name), ListSortDirection.Ascending));
         _selectedGenre = GenreOptions[0];
         _selectedKind = KindOptions[0];
         _selectedStore = StoreOptions[0];
@@ -274,7 +271,6 @@ public sealed partial class LibraryViewModel : ObservableObject
     {
         _searchVersion++; // une recherche en attente est appliquée maintenant
         GamesView.Refresh();
-        UninstalledView.Refresh();
         ShowFirstUninstalledPage();
         OnPropertyChanged(nameof(IsFiltered));
     }
@@ -293,7 +289,6 @@ public sealed partial class LibraryViewModel : ObservableObject
 
     public ObservableCollection<OwnedGameCardViewModel> UninstalledGames { get; } = [];
 
-    public ICollectionView UninstalledView { get; }
 
     /// <summary>Afficher les jeux possédés mais non installés (mémorisé) ; leurs jaquettes Epic et GOG sont alors téléchargées.</summary>
     public bool ShowUninstalled
@@ -334,7 +329,11 @@ public sealed partial class LibraryViewModel : ObservableObject
 
     private void ShowFirstUninstalledPage()
     {
-        _uninstalledFiltered = UninstalledView.Cast<OwnedGameCardViewModel>().ToList();
+        // Simple liste filtrée et triée (pas de vue WPF : elle n'est affichée que par pages, via VisibleUninstalled).
+        _uninstalledFiltered = UninstalledGames
+            .Where(game => Matches(game.Name, game.Store, game.Genres, game.Kinds))
+            .OrderBy(game => game.Name, StringComparer.CurrentCultureIgnoreCase)
+            .ToList();
         VisibleUninstalled.Clear();
         ShowMoreUninstalled();
         OnPropertyChanged(nameof(UninstalledHeader));
@@ -358,7 +357,23 @@ public sealed partial class LibraryViewModel : ObservableObject
         _libraryLoadQueued = true;
         await Task.Delay(300);
         _libraryLoadQueued = false;
-        _libraryLoad = LoadLibrariesAsync();
+        _libraryLoad = Logged(LoadLibrariesAsync(), "Lecture des bibliothèques des magasins");
+    }
+
+    /// <summary>
+    /// Tâche lancée sans être attendue : une erreur inattendue serait perdue sans bruit (ex. section « non installés » vide).
+    /// Elle est journalisée ; la tâche rendue ne lève jamais, pour qu'« Actualiser » puisse l'attendre.
+    /// </summary>
+    private async Task Logged(Task task, string what)
+    {
+        try
+        {
+            await task;
+        }
+        catch (Exception ex)
+        {
+            _log.Error($"{what} : échec inattendu", ex);
+        }
     }
 
     /// <summary>
@@ -423,11 +438,8 @@ public sealed partial class LibraryViewModel : ObservableObject
                 card.Kinds = Core.Library.SteamTaxonomy.Kinds(game.Categories);
             }
         }
-        using (UninstalledView.DeferRefresh()) // une seule passe de tri pour ~600 jeux, au lieu d'une par ajout
-        {
-            UninstalledGames.Clear();
-            foreach (var card in uninstalled) UninstalledGames.Add(card);
-        }
+        UninstalledGames.Clear();
+        foreach (var card in uninstalled) UninstalledGames.Add(card);
 
         var selected = SelectedGenre?.Name;
         var genres = Games.SelectMany(c => c.Genres).Concat(UninstalledGames.SelectMany(c => c.Genres))
@@ -995,8 +1007,8 @@ public sealed partial class LibraryViewModel : ObservableObject
         OnPropertyChanged(nameof(Subtitle));
         _ = LoadSteamPlaytimeAsync(); // profils ajoutés, retirés ou modifiés : leur jeu Steam a pu changer
         _ = LoadRatingsAsync();
-        _libraryLoad = LoadLibrariesAsync(); // genres et types des cartes recréées, jeux non installés
-        _installCheck = CheckInstallationsAsync(); // jeux désinstallés depuis
+        _libraryLoad = Logged(LoadLibrariesAsync(), "Lecture des bibliothèques des magasins"); // genres et types des cartes recréées, jeux non installés
+        _installCheck = Logged(CheckInstallationsAsync(), "Vérification des jeux installés"); // jeux désinstallés depuis
     }
 
     private async Task RefreshCoverAsync(Guid id)
