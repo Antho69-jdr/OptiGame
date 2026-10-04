@@ -37,6 +37,8 @@ src/OptiGame.Core/       net10.0, aucune dépendance Windows, 100 % testable
                          RequiresAdmin / RequiresReboot. Pas de code de restauration par changement : le journal
                          restaure via l'accesseur du Kind, ce qui fonctionne aussi après un crash.
   Diagnostics/           IDiagnosticCheck → DiagnosticResult (OK / ÀCorriger / Info), un fichier par contrôle
+                         ; OneClickOptimization = vue « Simple » (bouton unique : corrections des contrôles « À corriger »,
+                         jamais avancées ni facultatives ; « Désactiver » n'annule que les ids « fix. », jamais « game. »)
   Abstractions/          IRegistry, IWmi, IPowerPlans, IDisplayInfo, IPowerStatus, IGpuSchedulingInfo…
   Profiles/              GameProfile, ProfileStore (profiles.json), ProfileValidator (processus protégés)
   Sessions/              SessionPlan (profil → changements + texte), GameSessionManager (application, restauration,
