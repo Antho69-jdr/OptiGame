@@ -154,7 +154,8 @@ vit dans Core ; Platform ne fait que lire/écrire le système.
   absente = défaut NON documenté par Microsoft → Info + activation explicite proposée. L'Auto HDR force ce réglage.
 - Plafond de FPS par jeu (carte « Pilote NVIDIA » ; `Core/Gpu/FrameRateCap`, `Platform/Gpu/NvidiaProfiles` +
   `NvidiaProfileSettingAccessor`, `App/Services/FrameCapService`) : NVAPI DRS (profils du pilote), en-têtes officiels
-  github.com/NVIDIA/nvapi lus le 2026-10-03 : réglage `FRL_FPS_ID = 0x10835002` (0 = désactivé, ≤ 1023), identifiants
+  github.com/NVIDIA/nvapi lus le 2026-10-03 : réglage `FRL_FPS_ID = 0x10835002` (0 = désactivé, ≤ 1023) = « Fréquence
+  d'images maximale » du Panneau de configuration NVIDIA (confirmé par l'utilisateur le 2026-10-04), identifiants
   QueryInterface de nvapi_interface.h, codes de nvapi_lite_common.h. Structures écrites OCTET PAR OCTET (NVDRS_SETTING en
   pack(4) = 12320 octets ; NVDRS_APPLICATION_V4 = 20492 ; NVDRS_PROFILE_V1 = 4116). Chaînes NvAPI_UnicodeString passées en
   `ushort[]` de 2048 : un `char[]` est converti en ANSI par défaut et AUCUN profil n'était trouvé. FindApplicationByName avec
