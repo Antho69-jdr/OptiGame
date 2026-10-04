@@ -15,6 +15,9 @@ public interface IDialogService
     /// <summary>Affiche ce que le changement modifie et pourquoi. Renvoie vrai uniquement si l'utilisateur confirme.</summary>
     bool ConfirmChange(ReversibleChange change, bool isAdvanced);
 
+    /// <summary>Confirmation de plusieurs modifications en une fois (chacune listée).</summary>
+    bool ConfirmChanges(IReadOnlyList<ReversibleChange> changes);
+
     bool ConfirmUndo(ChangeRecord change);
 
     /// <summary>Confirmation d'une installation de pilote (non annulable par OptiGame) ; null si annulée.</summary>
@@ -50,6 +53,9 @@ public interface IDialogService
 public sealed class DialogService : IDialogService
 {
     private const string Caption = "OptiGame";
+
+    public bool ConfirmChanges(IReadOnlyList<ReversibleChange> changes) =>
+        ShowOwned(new Dialogs.ConfirmChangesDialog(changes)) == true;
 
     public bool ConfirmChange(ReversibleChange change, bool isAdvanced) =>
         ShowOwned(new ConfirmChangeDialog(change, isAdvanced)) == true;

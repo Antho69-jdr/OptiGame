@@ -9,14 +9,164 @@ using OptiGame.Platform;
 
 namespace OptiGame.App.ViewModels;
 
+/// <summary>
+/// Diagnostic, en deux vues. « Simple » : un bouton qui applique les corrections recommandées (une confirmation qui les liste
+/// toutes) et un bouton qui annule celles du Diagnostic (<see cref="OneClickOptimization"/>). « Avancé » : chaque contrôle et
+/// chaque correction à la main ; les points à corriger en grandes cartes, le reste en lignes repliables.
+/// </summary>
 public sealed partial class DiagnosticViewModel(
     DiagnosticRunner runner,
     [FromKeyedServices(JournalKeys.Fixes)] ChangeJournal fixes,
     IDialogService dialogs,
     TimeProvider time,
     NavigationService navigation,
-    DriversViewModel drivers) : ObservableObject
+    DriversViewModel drivers,
+    Core.Settings.AppSettingsStore settings) : ObservableObject
 {
+    // ---- Vue Simple / Avancé (mémorisée) ----
+
+    public bool IsAdvanced
+    {
+        get => settings.Get().DiagnosticAdvanced;
+        set
+        {
+            if (value == IsAdvanced) return;
+            settings.Update(s => s.DiagnosticAdvanced = value);
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(IsSimple));
+        }
+    }
+
+    public bool IsSimple
+    {
+        get => !IsAdvanced;
+        set => IsAdvanced = !value;
+    }
+
+    [RelayCommand]
+    private void ShowAdvanced() => IsAdvanced = true;
+
+    // ---- Vue Simple ----
+
+    private OptimizationOverview? _overview;
+
+    [ObservableProperty] private string _headline = "Analyse en cours…";
+    [ObservableProperty] private string _countsText = "";
+    [ObservableProperty] private bool _isOptimized;
+    [ObservableProperty] private IReadOnlyList<string> _recommendedTitles = [];
+    [ObservableProperty] private IReadOnlyList<string> _appliedTitles = [];
+    [ObservableProperty] private string _activateLabel = "Activer les optimisations";
+    [ObservableProperty] private string _deactivateLabel = "Désactiver les optimisations";
+    [ObservableProperty] private string _optionalText = "";
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(ActivateAllCommand))]
+    private bool _hasRecommended;
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(DeactivateAllCommand))]
+    private bool _hasDiagnosticFixesApplied;
+
+    [ObservableProperty] private bool _hasOptional;
+
+    /// <summary>Points à corriger soi-même (BIOS, pilote, option avancée) : rappelés dans la vue Simple.</summary>
+    public ObservableCollection<DiagnosticItemViewModel> ManualItems { get; } = [];
+
+    [ObservableProperty] private bool _hasManualItems;
+
+    private bool CanActivateAll() => !IsBusy && HasRecommended;
+
+    /// <summary>Applique les corrections recommandées, une par une dans le journal (annulables séparément), après UNE confirmation.</summary>
+    [RelayCommand(CanExecute = nameof(CanActivateAll))]
+    private async Task ActivateAllAsync()
+    {
+        if (_overview is not { } overview || !dialogs.ConfirmChanges(overview.Recommended)) return;
+
+        IsBusy = true;
+        var failed = new List<string>();
+        try
+        {
+            foreach (var change in overview.Recommended)
+            {
+                try
+                {
+                    await Task.Run(() => fixes.Apply(change));
+                }
+                catch (Exception ex)
+                {
+                    failed.Add($"• {change.Title} : {ex.Message}");
+                }
+            }
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+
+        if (failed.Count > 0)
+        {
+            dialogs.ShowError("Certaines optimisations n'ont pas pu être appliquées (rien n'a été modifié pour elles) :\n" + string.Join("\n", failed));
+        }
+        else if (overview.Recommended.Any(c => c.RequiresReboot))
+        {
+            dialogs.ShowInfo("Optimisations appliquées. Redémarrez Windows pour que toutes soient prises en compte.");
+        }
+        await RunAsync();
+    }
+
+    private bool CanDeactivateAll() => !IsBusy && HasDiagnosticFixesApplied;
+
+    /// <summary>Annule toutes les corrections du Diagnostic (jamais les réglages par jeu, qui sont dans le même journal).</summary>
+    [RelayCommand(CanExecute = nameof(CanDeactivateAll))]
+    private async Task DeactivateAllAsync()
+    {
+        if (_overview is not { } overview || overview.Applied.Count == 0) return;
+        if (!dialogs.Confirm("Désactiver les optimisations appliquées par le Diagnostic ?\n\n" +
+                             string.Join("\n", overview.Applied.Select(c => $"• {c.Title}")) +
+                             "\n\nLes réglages d'origine, sauvegardés avant chaque correction, seront restaurés. Les réglages propres à " +
+                             "chaque jeu (plafond de FPS, carte graphique) ne sont pas concernés." +
+                             (overview.Applied.Any(c => c.RequiresReboot) ? "\n\nUn redémarrage sera nécessaire pour certains." : "")))
+        {
+            return;
+        }
+
+        IsBusy = true;
+        var failed = new List<string>();
+        try
+        {
+            foreach (var change in overview.Applied)
+            {
+                var report = await Task.Run(() => fixes.Undo(change.Id));
+                failed.AddRange(report.Failed.Select(f => $"• {change.Title} ({f.Target}) : {f.Error}"));
+            }
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+
+        if (failed.Count > 0)
+        {
+            dialogs.ShowError("La restauration a échoué pour :\n" + string.Join("\n", failed) + "\n\nCes corrections restent actives ; vous pourrez réessayer.");
+        }
+        await RunAsync();
+    }
+
+    // ---- Vue Avancé : contrôles regroupés par statut ----
+
+    public ObservableCollection<DiagnosticItemViewModel> AttentionItems { get; } = [];
+
+    public ObservableCollection<DiagnosticItemViewModel> InfoItems { get; } = [];
+
+    public ObservableCollection<DiagnosticItemViewModel> OkItems { get; } = [];
+
+    /// <summary>Une analyse a-t-elle déjà été faite (la fenêtre la lance à sa première ouverture) ?</summary>
+    public bool HasResults => AttentionItems.Count + InfoItems.Count + OkItems.Count > 0;
+
+    [ObservableProperty] private string _attentionHeader = "";
+    [ObservableProperty] private string _infoHeader = "";
+    [ObservableProperty] private string _okHeader = "";
+
     /// <summary>Lien d'un contrôle vers une autre page (ex. « Rechercher les mises à jour de pilotes »).</summary>
     [RelayCommand]
     private void OpenLink(DiagnosticLinkTarget target)
@@ -29,13 +179,11 @@ public sealed partial class DiagnosticViewModel(
         }
     }
 
-    public ObservableCollection<DiagnosticItemViewModel> Items { get; } = [];
-
     /// <summary>Corrections appliquées par OptiGame et encore actives (annulables).</summary>
     public ObservableCollection<AppliedFixViewModel> AppliedFixes { get; } = [];
 
     [ObservableProperty]
-    [NotifyCanExecuteChangedFor(nameof(RunCommand))]
+    [NotifyCanExecuteChangedFor(nameof(RunCommand), nameof(ActivateAllCommand), nameof(DeactivateAllCommand))]
     private bool _isBusy;
 
     [ObservableProperty]
@@ -56,17 +204,29 @@ public sealed partial class DiagnosticViewModel(
         {
             // WMI et P/Invoke hors du thread UI.
             var results = await Task.Run(runner.RunAll);
-            Items.Clear();
+            AttentionItems.Clear();
+            InfoItems.Clear();
+            OkItems.Clear();
             foreach (var result in results)
             {
                 var fixVms = result.Fixes
                     .Where(f => !fixes.IsActive(f.Change.Id))
                     .Select(f => new FixViewModel(f, ApplyFixAsync))
                     .ToList();
-                Items.Add(new DiagnosticItemViewModel(result, fixVms));
+                var item = new DiagnosticItemViewModel(result, fixVms);
+                (result.Status switch
+                {
+                    DiagnosticStatus.NeedsAttention => AttentionItems,
+                    DiagnosticStatus.Ok => OkItems,
+                    _ => InfoItems,
+                }).Add(item);
             }
+            AttentionHeader = $"À CORRIGER ({AttentionItems.Count})";
+            InfoHeader = $"À SAVOIR ({InfoItems.Count})";
+            OkHeader = $"OK ({OkItems.Count})";
 
             RefreshAppliedFixes();
+            RefreshOverview(results);
             var attention = results.Count(r => r.Status == DiagnosticStatus.NeedsAttention);
             StatusText = $"Dernière analyse : {time.GetLocalNow():HH:mm:ss} — " +
                 (attention == 0 ? "rien à corriger." : $"{attention} point(s) à corriger.");
@@ -140,6 +300,34 @@ public sealed partial class DiagnosticViewModel(
         }
 
         await RunAsync();
+    }
+
+    private void RefreshOverview(IReadOnlyList<DiagnosticResult> results)
+    {
+        var overview = _overview = OneClickOptimization.Overview(results, fixes.ActiveChanges);
+        IsOptimized = overview.IsOptimized;
+        Headline = overview.Recommended.Count > 0
+            ? overview.Recommended.Count == 1 ? "1 optimisation recommandée" : $"{overview.Recommended.Count} optimisations recommandées"
+            : overview.ManualActions.Count > 0 ? "Optimisé par OptiGame, il reste à faire de votre côté"
+            : "Votre PC est prêt pour le jeu";
+        CountsText = $"{results.Count} contrôles : {overview.OkCount} OK · {overview.AttentionCount} à corriger · {overview.InfoCount} à savoir";
+        RecommendedTitles = overview.Recommended.Select(c => c.Title).ToList();
+        AppliedTitles = overview.Applied.Select(c => c.Title).ToList();
+        HasRecommended = overview.Recommended.Count > 0;
+        HasDiagnosticFixesApplied = overview.Applied.Count > 0;
+        ActivateLabel = overview.Recommended.Count > 0 ? $"Activer les optimisations ({overview.Recommended.Count})" : "Optimisations activées";
+        DeactivateLabel = $"Désactiver les optimisations ({overview.Applied.Count})";
+        HasOptional = overview.Optional.Count > 0;
+        OptionalText = overview.Optional.Count == 1
+            ? $"1 réglage facultatif dans la vue Avancé : {overview.Optional[0].Title}."
+            : $"{overview.Optional.Count} réglages facultatifs dans la vue Avancé : {string.Join(", ", overview.Optional.Select(r => r.Title))}.";
+
+        ManualItems.Clear();
+        foreach (var manual in overview.ManualActions)
+        {
+            ManualItems.Add(new DiagnosticItemViewModel(manual, []));
+        }
+        HasManualItems = ManualItems.Count > 0;
     }
 
     private void RefreshAppliedFixes()

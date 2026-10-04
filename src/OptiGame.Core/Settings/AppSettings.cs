@@ -71,6 +71,9 @@ public sealed class AppSettings
     /// <summary>Mesure automatique des FPS pendant les parties (1 min après 4 min de jeu), pour la note des jeux.</summary>
     public bool AutoMeasureFps { get; set; } = true;
 
+    /// <summary>Diagnostic en vue « Avancé » (chaque correction à la main) plutôt que « Simple » (un bouton).</summary>
+    public bool DiagnosticAdvanced { get; set; }
+
     public AppSettings Clone() => new()
     {
         Version = Version,
@@ -89,6 +92,7 @@ public sealed class AppSettings
         DockShowNames = DockShowNames,
         SteamKnownAppIds = SteamKnownAppIds is null ? null : [.. SteamKnownAppIds],
         AutoMeasureFps = AutoMeasureFps,
+        DiagnosticAdvanced = DiagnosticAdvanced,
     };
 }
 

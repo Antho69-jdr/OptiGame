@@ -1,4 +1,4 @@
-using System.ComponentModel;
+﻿using System.ComponentModel;
 using System.Windows;
 using OptiGame.App.ViewModels;
 
@@ -14,7 +14,7 @@ public partial class MainWindow : Window
         // Première ouverture : lancer l'analyse (lecture seule).
         Loaded += (_, _) =>
         {
-            if (viewModel.Diagnostic.Items.Count == 0)
+            if (!viewModel.Diagnostic.HasResults)
             {
                 viewModel.Diagnostic.RunCommand.Execute(null);
             }
