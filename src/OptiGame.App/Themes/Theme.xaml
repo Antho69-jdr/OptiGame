@@ -51,6 +51,10 @@
     <SolidColorBrush x:Key="Brush.DangerSoft" Color="{StaticResource Color.Danger}" Opacity="0.16" />
     <SolidColorBrush x:Key="Brush.InfoSoft" Color="{StaticResource Color.Info}" Opacity="0.14" />
     <SolidColorBrush x:Key="Brush.AccentSoft" Color="{StaticResource Color.Accent}" Opacity="0.12" />
+    <!-- Petits boutons ronds posés sur les jaquettes (épingle du dock, retrait) : fond sombre translucide, liseré discret -->
+    <SolidColorBrush x:Key="Brush.CoverButton" Color="#CC0E1014" />
+    <SolidColorBrush x:Key="Brush.CoverButtonHover" Color="#F0181C23" />
+    <SolidColorBrush x:Key="Brush.CoverButtonBorder" Color="#33FFFFFF" />
 
     <FontFamily x:Key="Font.Display">Segoe UI Variable Display, Segoe UI</FontFamily>
     <FontFamily x:Key="Font.Icons">Segoe Fluent Icons, Segoe MDL2 Assets</FontFamily>

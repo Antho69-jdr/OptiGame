@@ -4,6 +4,7 @@ using System.Windows;
 using System.Windows.Data;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Microsoft.Extensions.DependencyInjection;
 using OptiGame.App.Services;
 using OptiGame.Core.Abstractions;
 using OptiGame.Core.Artwork;
@@ -47,6 +48,7 @@ public sealed partial class LibraryViewModel : ObservableObject
     private readonly Platform.Library.StoreCoverCache _storeCovers;
     private readonly GameRatingService _ratings;
     private readonly GameTimeGate _gate;
+    private readonly Core.State.ChangeJournal _fixes;
     private int _ratingVersion;
 
     /// <summary>Temps de jeu Steam par profil (jeux Steam), relu à chaque changement de la bibliothèque ou de Steam.</summary>
@@ -64,9 +66,10 @@ public sealed partial class LibraryViewModel : ObservableObject
         TimeProvider time, FileLog log, GameLauncher launcher, PlaytimeStore playtime, SteamPlaytimeReader steamReader,
         GameGraphicsService graphics, NewSteamGamesViewModel newGames, GameRatingService ratings, Platform.Measurement.AutoCapture autoCapture,
         FrameCapService frameCap, Platform.Library.StoreOwnedLibrary storeLibrary, Platform.Library.StoreCoverCache storeCovers,
-        GameTimeGate gate)
+        GameTimeGate gate, [FromKeyedServices(Platform.JournalKeys.Fixes)] Core.State.ChangeJournal fixes)
     {
         _gate = gate;
+        _fixes = fixes;
         _steamReader = steamReader;
         _graphics = graphics;
         _frameCap = frameCap;
@@ -644,6 +647,9 @@ public sealed partial class LibraryViewModel : ObservableObject
     [RelayCommand]
     private void TogglePinCard(GameCardViewModel card) => _store.SetPinned(card.Id, !card.IsPinned);
 
+    [RelayCommand]
+    private void RemoveCard(GameCardViewModel card) => RemoveGame(card.Id);
+
     /// <summary>Message temporaire (lancement en cours, erreur…), affiché en haut de la grille et de la page du jeu.</summary>
     [ObservableProperty]
     private string _launchStatus = "";
@@ -799,7 +805,7 @@ public sealed partial class LibraryViewModel : ObservableObject
     {
         if (_store.Find(id) is not { } profile) return;
 
-        var editor = new ProfileEditorViewModel(profile, Schemes, _programs, _dialogs, SaveProfileAsync, DeleteProfile, () => OpenPage(id), DescribeLaunch);
+        var editor = new ProfileEditorViewModel(profile, Schemes, _programs, _dialogs, SaveProfileAsync, p => RemoveGame(p.Id), () => OpenPage(id), DescribeLaunch);
         var exeName = Path.GetFileName(profile.ExePath);
         var captures = _captures.GetAll()
             .Where(c => c.ProcessName.Equals(exeName, StringComparison.OrdinalIgnoreCase))
@@ -904,12 +910,42 @@ public sealed partial class LibraryViewModel : ObservableObject
         return Task.CompletedTask;
     }
 
-    private void DeleteProfile(GameProfile profile)
+    /// <summary>
+    /// Retire un jeu de « Mes jeux » (corbeille de la jaquette, menu contextuel, page du jeu), après confirmation. Seul le profil
+    /// est supprimé : rien n'est désinstallé ni modifié dans Windows. Jamais le jeu en cours (sa session est restaurée à la fin).
+    /// </summary>
+    private void RemoveGame(Guid id)
     {
-        if (!_dialogs.Confirm($"Retirer « {profile.Name} » de vos jeux ?\n\nSon profil est supprimé ; aucun réglage de Windows n'est modifié.")) return;
-        _store.Remove(profile.Id);
-        OpenGame = null;
+        if (_store.Find(id) is not { } profile) return;
+        if (_sessions.Current?.Profile.Id == id)
+        {
+            _dialogs.ShowInfo($"{profile.Name} est en cours : vous pourrez le retirer de vos jeux une fois la partie terminée.");
+            return;
+        }
+        if (!_dialogs.Confirm($"Retirer « {profile.Name} » de vos jeux ?\n\nSeul son profil OptiGame est supprimé : le jeu reste installé et " +
+                              "aucun réglage de Windows n'est modifié. Vous pourrez le rajouter plus tard." + KeptChangesText([id])))
+        {
+            return;
+        }
+        _store.Remove(id);
+        _log.Info($"Jeu retiré de « Mes jeux » : {profile.Name} ({profile.ExePath}).");
+        if (OpenGame?.Id == id) OpenGame = null;
         ReloadCards();
+    }
+
+    /// <summary>
+    /// Réglages faits pour ces jeux depuis leur page (carte graphique, plafond de FPS…) : les retirer de « Mes jeux » ne les annule
+    /// pas, la confirmation les cite avec le moyen de les annuler. Vide s'il n'y en a pas.
+    /// </summary>
+    private string KeptChangesText(IReadOnlyCollection<Guid> ids)
+    {
+        var active = _fixes.ActiveChanges;
+        var kept = ids.SelectMany(id => GameChanges.Of(active, id)).ToList();
+        if (kept.Count == 0) return "";
+        return $"\n\nCes réglages faits pour {(ids.Count == 1 ? "ce jeu" : "ces jeux")} restent en place :\n" +
+               string.Join("\n", kept.Select(c => "• " + c.Title)) +
+               "\nPour les annuler, faites-le depuis la page du jeu avant de le retirer, ou plus tard dans Diagnostic > Vue Avancé > " +
+               "« Corrections appliquées par OptiGame ».";
     }
 
     private async Task ChangeCoverAsync(Guid id)
@@ -1047,8 +1083,9 @@ public sealed partial class LibraryViewModel : ObservableObject
         var games = UninstalledProfiles.Where(c => c.Id != playing).ToList();
         if (games.Count == 0) return;
         var names = string.Join("\n", games.Select(c => "• " + c.Name));
-        if (!_dialogs.Confirm($"Retirer ces jeux de « Mes jeux » ?\n\n{names}\n\nLeur profil est supprimé (réglages, plafond de FPS du profil…) ; " +
-                              "aucun réglage de Windows n'est modifié. Ceux de vos bibliothèques Steam, Epic Games ou GOG resteront parmi les jeux non installés."))
+        if (!_dialogs.Confirm($"Retirer ces jeux de « Mes jeux » ?\n\n{names}\n\nLeur profil OptiGame est supprimé ; aucun réglage de Windows " +
+                              "n'est modifié. Ceux de vos bibliothèques Steam, Epic Games ou GOG resteront parmi les jeux non installés." +
+                              KeptChangesText(games.Select(c => c.Id).ToList())))
         {
             return;
         }

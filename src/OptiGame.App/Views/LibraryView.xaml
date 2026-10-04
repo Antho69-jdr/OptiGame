@@ -61,6 +61,29 @@
                                         </ControlTemplate>
                                     </Button.Template>
                                 </Button>
+                                <!-- Coin bas gauche, au survol : retirer le jeu de « Mes jeux » (confirmation ; jamais pendant la partie) -->
+                                <Button x:Name="RemoveButton" Width="32" Height="32" Margin="8,0,0,18" HorizontalAlignment="Left" VerticalAlignment="Bottom"
+                                        Visibility="Collapsed" Cursor="Hand" ToolTip="Retirer de Mes jeux"
+                                        AutomationProperties.Name="{Binding Name, StringFormat='Retirer {0} de Mes jeux'}"
+                                        Command="{Binding DataContext.RemoveCardCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                        CommandParameter="{Binding}">
+                                    <Button.Template>
+                                        <ControlTemplate TargetType="Button">
+                                            <Border x:Name="Round" CornerRadius="16" Background="{StaticResource Brush.CoverButton}" BorderThickness="1"
+                                                    BorderBrush="{StaticResource Brush.CoverButtonBorder}">
+                                                <TextBlock x:Name="Glyph" HorizontalAlignment="Center" VerticalAlignment="Center" Style="{StaticResource Text.Icon}"
+                                                           FontSize="14" Foreground="{StaticResource Brush.Text}" Text="&#xE74D;" />
+                                            </Border>
+                                            <ControlTemplate.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter TargetName="Round" Property="Background" Value="{StaticResource Brush.CoverButtonHover}" />
+                                                    <Setter TargetName="Round" Property="BorderBrush" Value="{StaticResource Brush.Danger}" />
+                                                    <Setter TargetName="Glyph" Property="Foreground" Value="{StaticResource Brush.Danger}" />
+                                                </Trigger>
+                                            </ControlTemplate.Triggers>
+                                        </ControlTemplate>
+                                    </Button.Template>
+                                </Button>
                                 <!-- Coin haut droit : note du jeu sur ce PC (« ≈ » = estimation) -->
                                 <Border Margin="8" HorizontalAlignment="Right" VerticalAlignment="Top" Style="{StaticResource Badge}" Background="#CC0E1014"
                                         Visibility="{Binding HasRating, Converter={StaticResource BoolToVisibility}}" ToolTip="{Binding RatingTooltip}"
@@ -76,7 +99,8 @@
                                             CommandParameter="{Binding}">
                                         <Button.Template>
                                             <ControlTemplate TargetType="Button">
-                                                <Border x:Name="Round" CornerRadius="16" Background="#CC0E1014" BorderThickness="1" BorderBrush="#33FFFFFF">
+                                                <Border x:Name="Round" CornerRadius="16" Background="{StaticResource Brush.CoverButton}" BorderThickness="1"
+                                                        BorderBrush="{StaticResource Brush.CoverButtonBorder}">
                                                     <TextBlock x:Name="Glyph" HorizontalAlignment="Center" VerticalAlignment="Center" Style="{StaticResource Text.Icon}"
                                                                FontSize="14" Foreground="{StaticResource Brush.Text}" Text="&#xE718;" />
                                                 </Border>
@@ -86,7 +110,7 @@
                                                         <Setter TargetName="Glyph" Property="Foreground" Value="{StaticResource Brush.Accent}" />
                                                     </DataTrigger>
                                                     <Trigger Property="IsMouseOver" Value="True">
-                                                        <Setter TargetName="Round" Property="Background" Value="#F0181C23" />
+                                                        <Setter TargetName="Round" Property="Background" Value="{StaticResource Brush.CoverButtonHover}" />
                                                         <Setter TargetName="Round" Property="BorderBrush" Value="{StaticResource Brush.Accent}" />
                                                     </Trigger>
                                                 </ControlTemplate.Triggers>
@@ -152,6 +176,7 @@
                                 <Setter TargetName="Outline" Property="BorderBrush" Value="{StaticResource Brush.Accent}" />
                                 <Setter TargetName="PlayButton" Property="Visibility" Value="Visible" />
                                 <Setter TargetName="PinButton" Property="Visibility" Value="Visible" />
+                                <Setter TargetName="RemoveButton" Property="Visibility" Value="Visible" />
                                 <Trigger.EnterActions>
                                     <BeginStoryboard>
                                         <Storyboard>
@@ -172,6 +197,10 @@
                             <Trigger Property="IsKeyboardFocused" Value="True">
                                 <Setter TargetName="Outline" Property="BorderBrush" Value="{StaticResource Brush.Accent}" />
                             </Trigger>
+                            <!-- Après le survol, qu'il remplace : pas de corbeille sur le jeu en cours -->
+                            <DataTrigger Binding="{Binding IsPlaying}" Value="True">
+                                <Setter TargetName="RemoveButton" Property="Visibility" Value="Collapsed" />
+                            </DataTrigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Setter.Value>
@@ -368,6 +397,9 @@
                                                     </Style>
                                                 </MenuItem.Style>
                                             </MenuItem>
+                                            <Separator />
+                                            <MenuItem Header="Retirer de Mes jeux…" Command="{Binding RemoveCardCommand}"
+                                                      CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
                                         </ContextMenu>
                                     </Button.ContextMenu>
                                 </Button>

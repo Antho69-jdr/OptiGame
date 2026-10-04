@@ -40,7 +40,8 @@ src/OptiGame.Core/       net10.0, aucune dépendance Windows, 100 % testable
                          ; OneClickOptimization = vue « Simple » (bouton unique : corrections des contrôles « À corriger »,
                          jamais avancées ni facultatives ; « Désactiver » n'annule que les ids « fix. », jamais « game. »)
   Abstractions/          IRegistry, IWmi, IPowerPlans, IDisplayInfo, IPowerStatus, IGpuSchedulingInfo…
-  Profiles/              GameProfile, ProfileStore (profiles.json), ProfileValidator (processus protégés)
+  Profiles/              GameProfile, ProfileStore (profiles.json), ProfileValidator (processus protégés), GameChanges
+                         (réglages « game.* » faits pour un jeu dans fixes.json : gardés quand on le retire, cités à la confirmation)
   Sessions/              SessionPlan (profil → changements + texte), GameSessionManager (application, restauration,
                          reprise après crash ; une session à la fois ; IProcessControl pour fermer/prioriser)
   Library/               Vdf (format KeyValues de Steam), ExeRanking (choix de l'exe principal, validé sur cas réels)
@@ -296,6 +297,8 @@ vit dans Core ; Platform ne fait que lire/écrire le système.
   externe, lecteur réseau) = « Disque absent », JAMAIS désinstallé. Vérifié à chaque rechargement de la grille. Aucun profil
   n'est retiré automatiquement : « Retirer de Mes jeux… » après confirmation (le jeu en cours est exclu). « Jouer » refuse un
   jeu désinstallé avec un message. Machine de dev (2026-10-04) : Absolute Drift, Steep, The Sims 3, Rites of War désinstallés.
+  Retirer UN jeu (mauvais exe ajouté…) : corbeille au survol de la jaquette, menu contextuel ou page du jeu (section « Profil »)
+  → `LibraryViewModel.RemoveGame` : confirmation, jamais le jeu en cours, profil seul supprimé (le jeu reste installé).
 - Temps de jeu Steam : `<SteamPath>\userdata\<accountid>\config\localconfig.vdf`, UserLocalConfigStore > Software > Valve >
   Steam > apps > <appid> > `Playtime` (MINUTES) + `LastPlayed` (secondes Unix), réécrit par Steam à la fin d'une partie.
   Compte : `HKCU\Software\Valve\Steam\ActiveProcess\ActiveUser` (0 si Steam est fermé), sinon `config\loginusers.vdf` :
