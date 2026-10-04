@@ -529,7 +529,16 @@ public sealed partial class LibraryViewModel : ObservableObject
         {
             try
             {
-                _store.Save(new GameProfile { Name = CleanName(game.Name), ExePath = exe.Path, SteamAppId = game.SteamAppId });
+                _store.Save(new GameProfile
+                {
+                    Name = CleanName(game.Name),
+                    ExePath = exe.Path,
+                    SteamAppId = game.SteamAppId,
+                    // Jeux Epic, GOG, Ubisoft : lancés par leur lanceur, comme leurs raccourcis (sinon l'exe ou Steam).
+                    LaunchMode = game.LauncherPath is null ? LaunchMode.Automatic : LaunchMode.Launcher,
+                    LauncherPath = game.LauncherPath,
+                    LaunchArguments = game.LaunchArguments,
+                });
             }
             catch (ProfileValidationException ex)
             {

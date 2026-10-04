@@ -3,13 +3,20 @@ namespace OptiGame.Core.Library;
 public enum GameSource
 {
     Steam,
+    Epic,
+    Gog,
+    Ubisoft,
+    Ea,
     Folder,
 }
 
 public sealed record ExeFile(string Path, long SizeBytes);
 
 /// <summary>Jeu trouvé sur le disque, avec ses exécutables candidats classés du plus au moins probable.</summary>
-public sealed record InstalledGame(string Name, GameSource Source, string Folder, IReadOnlyList<ExeFile> Candidates, string? SteamAppId = null);
+/// <param name="LauncherPath">Programme qui lance le jeu à la place de l'exe (lanceur du magasin), avec <paramref name="LaunchArguments"/> ;
+/// null = lancer l'exe (ou Steam pour un jeu Steam). Même commande que les raccourcis créés par le lanceur.</param>
+public sealed record InstalledGame(string Name, GameSource Source, string Folder, IReadOnlyList<ExeFile> Candidates, string? SteamAppId = null,
+    string? LauncherPath = null, string? LaunchArguments = null);
 
 public interface IGameLibraryScanner
 {
@@ -36,8 +43,10 @@ public static class ExeRanking
     {
         var names = new[] { Normalize(gameName), Normalize(folderName) };
 
-        // Un exe qui porte exactement le nom du jeu n'est jamais exclu (ex. un jeu nommé « … Builder »).
+        // Un exe qui porte exactement le nom du jeu n'est jamais exclu (ex. un jeu nommé « … Builder »). Le dossier « __Installer »
+        // de l'EA app (Touchup.exe, Cleanup.exe, redistribuables : The Sims 3) ne contient jamais le jeu.
         var candidates = exes
+            .Where(e => !e.Path.Contains(@"\__Installer\", StringComparison.OrdinalIgnoreCase))
             .Where(e => IsExactName(e, names) || !IsExcluded(Path.GetFileNameWithoutExtension(e.Path)))
             .ToList();
         if (candidates.Count == 0)

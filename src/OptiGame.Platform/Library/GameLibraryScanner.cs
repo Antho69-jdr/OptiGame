@@ -31,6 +31,7 @@ public sealed class GameLibraryScanner : IGameLibraryScanner
     {
         var games = new List<InstalledGame>();
         games.AddRange(ScanSteam());
+        games.AddRange(StoreLibraries.ScanInstalled());
         foreach (var folder in gameFolders.Where(Directory.Exists))
         {
             games.AddRange(ScanFolder(folder));
@@ -152,7 +153,7 @@ public sealed class GameLibraryScanner : IGameLibraryScanner
         }
     }
 
-    private static List<ExeFile> FindExes(string folder)
+    internal static List<ExeFile> FindExes(string folder)
     {
         try
         {

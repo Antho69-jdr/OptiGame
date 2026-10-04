@@ -234,6 +234,14 @@ vit dans Core ; Platform ne fait que lire/écrire le système.
   `librarycache\<appid>\library_600x900.jpg` ou `…\<hash>\library_capsule.jpg` (300×450), rien n'est téléchargé.
   Noms français des genres / catégories relevés sur appdetails (l=french) : `SteamTaxonomy`. Installer =
   `"steam.exe" -- "steam://install/<appid>"` via `UnelevatedLauncher` (fenêtre d'installation de Steam).
+- Autres lanceurs, jeux INSTALLÉS (« Rechercher des jeux installés » ; `Core/Library/StoreLaunchers`,
+  `Platform/Library/StoreLibraries`) : Epic = `C:\ProgramData\Epic\EpicGamesLauncher\Data\Manifests\*.item` (JSON) ; GOG =
+  HKLM\SOFTWARE\WOW6432Node\GOG.com\Games\<id> ; Ubisoft = HKLM\SOFTWARE\WOW6432Node\Ubisoft\Launcher\Installs\<id>\InstallDir ;
+  EA = sous-dossiers à `__Installer` du dossier `machine.downloadinplacedir` de `C:\ProgramData\EA Desktop\machine.ini`.
+  Profil créé en mode « Lanceur » avec la commande EXACTE des raccourcis que les lanceurs créent (relevés le 2026-10-04) :
+  Epic `com.epicgames.launcher://apps/<ns>%3A<item>%3A<app>?action=launch&silent=true`, Ubisoft `uplay://launch/<id>/0`,
+  GOG `GalaxyClient.exe /command=runGame /gameId=<id> /path="…"`, EA = l'exe du jeu ; programme = celui du protocole
+  (HKCR\<protocole>\shell\open\command). Possédés : Ubisoft et EA CHIFFRÉS localement (voir mémoire des lanceurs).
 - Temps de jeu Steam : `<SteamPath>\userdata\<accountid>\config\localconfig.vdf`, UserLocalConfigStore > Software > Valve >
   Steam > apps > <appid> > `Playtime` (MINUTES) + `LastPlayed` (secondes Unix), réécrit par Steam à la fin d'une partie.
   Compte : `HKCU\Software\Valve\Steam\ActiveProcess\ActiveUser` (0 si Steam est fermé), sinon `config\loginusers.vdf` :
