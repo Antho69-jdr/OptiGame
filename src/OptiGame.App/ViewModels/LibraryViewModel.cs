@@ -102,7 +102,7 @@ public sealed partial class LibraryViewModel : ObservableObject
         _selectedGenre = GenreOptions[0];
         _selectedKind = KindOptions[0];
         _selectedStore = StoreOptions[0];
-        newGames.Proposals.CollectionChanged += (_, _) => _ = LoadLibrariesAsync(); // un jeu vient d'être installé
+        newGames.Proposals.CollectionChanged += (_, _) => QueueLibraryLoad(); // un jeu vient d'être installé
 
         store.ArtworkChanged += (_, id) => OnUi(() => _ = RefreshCoverAsync(id));
         playtime.Changed += (_, _) => OnUi(RefreshPlaytime);
@@ -219,7 +219,16 @@ public sealed partial class LibraryViewModel : ObservableObject
         RefreshPlaytime();
     }
 
-    partial void OnSearchTextChanged(string value) => RefreshFilters();
+    private int _searchVersion;
+
+    partial void OnSearchTextChanged(string value) => _ = RefreshFiltersAfterTypingAsync();
+
+    private async Task RefreshFiltersAfterTypingAsync()
+    {
+        var version = ++_searchVersion;
+        await Task.Delay(200);
+        if (version == _searchVersion) RefreshFilters();
+    }
 
     // ---- Filtres (nom, magasin, genre, type) et jeux possédés non installés ----
 
@@ -263,9 +272,10 @@ public sealed partial class LibraryViewModel : ObservableObject
 
     private void RefreshFilters()
     {
+        _searchVersion++; // une recherche en attente est appliquée maintenant
         GamesView.Refresh();
         UninstalledView.Refresh();
-        OnPropertyChanged(nameof(UninstalledHeader));
+        ShowFirstUninstalledPage();
         OnPropertyChanged(nameof(IsFiltered));
     }
 
@@ -305,9 +315,51 @@ public sealed partial class LibraryViewModel : ObservableObject
 
     public string UninstalledToggleText => $"Jeux non installés ({UninstalledGames.Count})";
 
-    public string UninstalledHeader => $"DANS VOS BIBLIOTHÈQUES, NON INSTALLÉS ({UninstalledView.Cast<object>().Count()})";
+    public string UninstalledHeader => $"DANS VOS BIBLIOTHÈQUES, NON INSTALLÉS ({_uninstalledFiltered.Count})";
+
+    private const int UninstalledPageSize = 48;
+
+    /// <summary>Jeux non installés retenus par les filtres, dans l'ordre affiché.</summary>
+    private List<OwnedGameCardViewModel> _uninstalledFiltered = [];
+
+    /// <summary>
+    /// Jeux non installés réellement affichés : une page de plus à chaque fois qu'on approche du bas (LibraryView) ou qu'on clique
+    /// « Afficher plus ». WPF n'a pas de WrapPanel virtualisé : sans pages, les ~600 jaquettes seraient créées d'un coup.
+    /// </summary>
+    public ObservableCollection<OwnedGameCardViewModel> VisibleUninstalled { get; } = [];
+
+    public bool HasMoreUninstalled => VisibleUninstalled.Count < _uninstalledFiltered.Count;
+
+    public string ShowMoreUninstalledText => $"Afficher plus ({_uninstalledFiltered.Count - VisibleUninstalled.Count} restants)";
+
+    private void ShowFirstUninstalledPage()
+    {
+        _uninstalledFiltered = UninstalledView.Cast<OwnedGameCardViewModel>().ToList();
+        VisibleUninstalled.Clear();
+        ShowMoreUninstalled();
+        OnPropertyChanged(nameof(UninstalledHeader));
+    }
+
+    [RelayCommand]
+    private void ShowMoreUninstalled()
+    {
+        foreach (var card in _uninstalledFiltered.Skip(VisibleUninstalled.Count).Take(UninstalledPageSize)) VisibleUninstalled.Add(card);
+        OnPropertyChanged(nameof(HasMoreUninstalled));
+        OnPropertyChanged(nameof(ShowMoreUninstalledText));
+    }
 
     private int _libraryVersion;
+    private bool _libraryLoadQueued;
+
+    /// <summary>Regroupe les demandes rapprochées (une proposition retirée puis d'autres ajoutées…) en une seule relecture.</summary>
+    private async void QueueLibraryLoad()
+    {
+        if (_libraryLoadQueued) return;
+        _libraryLoadQueued = true;
+        await Task.Delay(300);
+        _libraryLoadQueued = false;
+        _libraryLoad = LoadLibrariesAsync();
+    }
 
     /// <summary>
     /// Bibliothèques des magasins, hors du thread UI : Steam (caches du client : genres et types des jeux installés, jeux possédés
@@ -317,6 +369,7 @@ public sealed partial class LibraryViewModel : ObservableObject
     private async Task LoadLibrariesAsync()
     {
         var version = ++_libraryVersion;
+        var watch = System.Diagnostics.Stopwatch.StartNew();
         var profiles = _store.GetAll();
         Platform.Library.SteamOwnedSnapshot? snapshot = null;
         Dictionary<Guid, uint> profileApps = [];
@@ -358,6 +411,7 @@ public sealed partial class LibraryViewModel : ObservableObject
             return;
         }
         if (version != _libraryVersion) return;
+        _log.Info($"Bibliothèques des magasins lues en {watch.ElapsedMilliseconds} ms ({uninstalled.Count} jeux non installés).");
 
         foreach (var card in Games)
         {
@@ -369,8 +423,11 @@ public sealed partial class LibraryViewModel : ObservableObject
                 card.Kinds = Core.Library.SteamTaxonomy.Kinds(game.Categories);
             }
         }
-        UninstalledGames.Clear();
-        foreach (var card in uninstalled) UninstalledGames.Add(card);
+        using (UninstalledView.DeferRefresh()) // une seule passe de tri pour ~600 jeux, au lieu d'une par ajout
+        {
+            UninstalledGames.Clear();
+            foreach (var card in uninstalled) UninstalledGames.Add(card);
+        }
 
         var selected = SelectedGenre?.Name;
         var genres = Games.SelectMany(c => c.Genres).Concat(UninstalledGames.SelectMany(c => c.Genres))
@@ -405,7 +462,8 @@ public sealed partial class LibraryViewModel : ObservableObject
         {
             while (true)
             {
-                var batch = UninstalledView.Cast<OwnedGameCardViewModel>()
+                var batch = VisibleUninstalled
+                    .Concat(_uninstalledFiltered)
                     .Concat(UninstalledGames)
                     .Where(c => c.CoverPath is null && c.CoverUrl is not null && !tried.Contains(c))
                     .Distinct()
@@ -989,10 +1047,13 @@ public sealed partial class GameCardViewModel(GameProfile profile, bool isPlayin
         .Select(w => char.ToUpperInvariant(w[0])));
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HasCover))]
+    [NotifyPropertyChangedFor(nameof(HasCover), nameof(CoverImage))]
     private string? _coverPath;
 
     public bool HasCover => CoverPath is not null;
+
+    /// <summary>Jaquette décodée ; lue par une liaison IsAsync (hors du thread UI), gardée par <see cref="Converters.ImageLoader"/>.</summary>
+    public System.Windows.Media.ImageSource? CoverImage => Converters.ImageLoader.Load(CoverPath, 396);
 
     [ObservableProperty]
     private bool _isPlaying = isPlaying;
@@ -1089,10 +1150,13 @@ public sealed partial class OwnedGameCardViewModel : ObservableObject
     public string? CoverUrl { get; }
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HasCover))]
+    [NotifyPropertyChangedFor(nameof(HasCover), nameof(CoverImage))]
     private string? _coverPath;
 
     public bool HasCover => CoverPath is not null;
+
+    /// <summary>Jaquette grisée ; lue par une liaison IsAsync (hors du thread UI), gardée par <see cref="Converters.ImageLoader"/>.</summary>
+    public System.Windows.Media.ImageSource? CoverImage => Converters.ImageLoader.Load(CoverPath, 396, gray: true);
 
     public string Initials { get; }
 

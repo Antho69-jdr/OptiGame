@@ -26,7 +26,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         _settings = settings;
         _igdb = igdb;
         DataFolder = paths.Root;
-        RefreshAutoStart();
+        _ = RefreshAutoStartAsync(); // schtasks.exe : hors du thread UI, pour ne pas retarder le démarrage
         RefreshGameFolders();
         var current = settings.Get();
         IgdbClientId = current.IgdbClientId ?? "";
@@ -267,12 +267,16 @@ public sealed partial class SettingsViewModel : ObservableObject
         foreach (var folder in _settings.Get().GameFolders) GameFolders.Add(folder);
     }
 
-    private void RefreshAutoStart()
+    private void RefreshAutoStart() => SetAutoStartSilently(_autoStart.IsEnabled());
+
+    private async Task RefreshAutoStartAsync() => SetAutoStartSilently(await Task.Run(_autoStart.IsEnabled));
+
+    private void SetAutoStartSilently(bool enabled)
     {
         _updating = true;
         try
         {
-            AutoStartEnabled = _autoStart.IsEnabled();
+            AutoStartEnabled = enabled;
         }
         finally
         {

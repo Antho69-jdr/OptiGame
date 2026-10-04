@@ -24,23 +24,7 @@ public sealed class StoreOwnedLibrary(FileLog log)
     /// <summary>Jeux possédés et non installés (Epic, GOG). Fichiers et SQLite : hors du thread UI.</summary>
     public IReadOnlyList<StoreOwnedGame> ReadNotInstalled()
     {
-        var owned = new List<StoreOwnedGame>();
-        try
-        {
-            if (File.Exists(EpicCatalogPath)) owned.AddRange(StoreCatalogs.ParseEpicCatalog(ReadShared(EpicCatalogPath)));
-        }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or FormatException or System.Text.Json.JsonException)
-        {
-            log.Warn($"Catalogue Epic illisible : {ex.Message}");
-        }
-        try
-        {
-            if (File.Exists(GalaxyDatabasePath)) owned.AddRange(StoreCatalogs.FromGalaxy(ReadGalaxyRows()));
-        }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SqliteException or System.Text.Json.JsonException)
-        {
-            log.Warn($"Bibliothèque de GOG Galaxy illisible : {ex.Message}");
-        }
+        var owned = ReadOwned();
 
         // Installés : Epic par identifiant de catalogue, GOG par identifiant (et tous par titre, par prudence).
         var installed = StoreLibraries.ScanInstalled().ToList();
@@ -51,6 +35,52 @@ public sealed class StoreOwnedLibrary(FileLog log)
             .Where(g => g.Store != GameSource.Epic || !installedKeys.Any(a => a.Contains(g.Key.Replace(":", "%3A"), StringComparison.Ordinal)))
             .Where(g => g.Store != GameSource.Gog || !installedKeys.Any(a => a.Contains($"/gameId={g.Key[4..]} ", StringComparison.Ordinal)))
             .ToList();
+    }
+
+    private readonly Lock _gate = new();
+    private (string Stamp, IReadOnlyList<StoreOwnedGame> Games)? _lastOwned;
+
+    /// <summary>
+    /// Jeux possédés (installés ou non). Le catalogue d'Epic et la copie de la base de Galaxy ne sont relus que si l'un de ces
+    /// fichiers a changé (date, taille) depuis la lecture précédente. Une lecture en échec n'est pas retenue.
+    /// </summary>
+    private IReadOnlyList<StoreOwnedGame> ReadOwned()
+    {
+        var stamp = FileStamps.Of(EpicCatalogPath, GalaxyDatabasePath, GalaxyDatabasePath + "-wal");
+        lock (_gate)
+        {
+            if (_lastOwned is { } last && last.Stamp == stamp) return last.Games;
+        }
+
+        var complete = true;
+        var owned = new List<StoreOwnedGame>();
+        try
+        {
+            if (File.Exists(EpicCatalogPath)) owned.AddRange(StoreCatalogs.ParseEpicCatalog(ReadShared(EpicCatalogPath)));
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or FormatException or System.Text.Json.JsonException)
+        {
+            log.Warn($"Catalogue Epic illisible : {ex.Message}");
+            complete = false;
+        }
+        try
+        {
+            if (File.Exists(GalaxyDatabasePath)) owned.AddRange(StoreCatalogs.FromGalaxy(ReadGalaxyRows()));
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SqliteException or System.Text.Json.JsonException)
+        {
+            log.Warn($"Bibliothèque de GOG Galaxy illisible : {ex.Message}");
+            complete = false;
+        }
+
+        if (complete)
+        {
+            lock (_gate)
+            {
+                _lastOwned = (stamp, owned);
+            }
+        }
+        return owned;
     }
 
     private static IEnumerable<GalaxyRow> ReadGalaxyRows()

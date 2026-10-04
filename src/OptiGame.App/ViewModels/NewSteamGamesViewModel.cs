@@ -75,6 +75,9 @@ public sealed partial class NewSteamGamesViewModel : ObservableObject
             return;
         }
 
+        // Rien de nouveau : on ne touche pas au bandeau (chaque changement fait relire les bibliothèques à « Mes jeux »).
+        if (Proposals.Select(p => p.Game.SteamAppId).SequenceEqual(games.Select(g => g.SteamAppId))) return;
+
         Proposals.Clear();
         foreach (var game in games)
         {

@@ -38,7 +38,7 @@
                                 </Border>
                                 <Border CornerRadius="10" Visibility="{Binding HasCover, Converter={StaticResource BoolToVisibility}}">
                                     <Border.Background>
-                                        <ImageBrush Stretch="UniformToFill" ImageSource="{Binding CoverPath, Converter={StaticResource PathToImage}, ConverterParameter=396}" />
+                                        <ImageBrush Stretch="UniformToFill" ImageSource="{Binding CoverImage, IsAsync=True}" />
                                     </Border.Background>
                                 </Border>
                                 <Border x:Name="Outline" CornerRadius="10" BorderThickness="2" BorderBrush="Transparent" />
@@ -333,7 +333,7 @@
                 <!-- Le ScrollViewer rogne ce qui dépasse de ses bords : la marge négative + la marge intérieure
                      laissent 12 px au zoom de survol (1,03) sur la première rangée et la première colonne,
                      sans déplacer les jaquettes. -->
-                <ScrollViewer VerticalScrollBarVisibility="Auto" Margin="-12,-8,0,0">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" Margin="-12,-8,0,0" ScrollChanged="OnGridScrollChanged">
                     <StackPanel>
                     <ItemsControl ItemsSource="{Binding GamesView}" Margin="12,12,0,0">
                         <ItemsControl.ItemsPanel>
@@ -378,7 +378,7 @@
                     <!-- Jeux Steam possédés, non installés : jaquettes grisées (cache du client Steam), installer ou voir la page -->
                     <StackPanel Margin="12,8,0,0" Visibility="{Binding IsUninstalledSectionVisible, Converter={StaticResource BoolToVisibility}}">
                         <TextBlock Margin="2,0,0,14" Style="{StaticResource Text.Caption}" FontWeight="SemiBold" Text="{Binding UninstalledHeader}" />
-                        <ItemsControl ItemsSource="{Binding UninstalledView}">
+                        <ItemsControl ItemsSource="{Binding VisibleUninstalled}">
                             <ItemsControl.ItemsPanel>
                                 <ItemsPanelTemplate>
                                     <WrapPanel />
@@ -402,7 +402,7 @@
                                                 </Border>
                                                 <Border x:Name="Cover" CornerRadius="10" Opacity="0.45" Visibility="{Binding HasCover, Converter={StaticResource BoolToVisibility}}">
                                                     <Border.Background>
-                                                        <ImageBrush Stretch="UniformToFill" ImageSource="{Binding CoverPath, Converter={StaticResource PathToImage}, ConverterParameter='396,gray'}" />
+                                                        <ImageBrush Stretch="UniformToFill" ImageSource="{Binding CoverImage, IsAsync=True}" />
                                                     </Border.Background>
                                                 </Border>
                                                 <Border x:Name="Outline" CornerRadius="10" BorderThickness="1" BorderBrush="{StaticResource Brush.Border}" />
@@ -440,6 +440,10 @@
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
+                        <!-- Les pages suivantes s'ajoutent seules en approchant du bas ; le bouton reste pour le clavier -->
+                        <Button Margin="0,0,0,24" HorizontalAlignment="Left" Style="{StaticResource Button.Secondary}"
+                                Content="{Binding ShowMoreUninstalledText}" Command="{Binding ShowMoreUninstalledCommand}"
+                                Visibility="{Binding HasMoreUninstalled, Converter={StaticResource BoolToVisibility}}" />
                     </StackPanel>
                     </StackPanel>
                 </ScrollViewer>

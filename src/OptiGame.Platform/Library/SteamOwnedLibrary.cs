@@ -12,7 +12,14 @@ public sealed record SteamOwnedSnapshot(IReadOnlyDictionary<uint, OwnedSteamGame
 /// </summary>
 public static class SteamOwnedLibrary
 {
-    /// <summary>Null si Steam n'est pas installé ou n'a pas encore de cache.</summary>
+    private static readonly Lock Gate = new();
+    private static (string Stamp, SteamOwnedSnapshot Snapshot)? _last;
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<uint, string> Covers = new();
+
+    /// <summary>
+    /// Null si Steam n'est pas installé ou n'a pas encore de cache. Relu seulement si appinfo.vdf, packageinfo.vdf ou le
+    /// dossier librarycache ont changé depuis la dernière lecture (date et taille) : sinon la lecture précédente est rendue.
+    /// </summary>
     public static SteamOwnedSnapshot? Read()
     {
         if (CacheDir() is not { } cache) return null;
@@ -20,6 +27,22 @@ public static class SteamOwnedLibrary
         var packageInfo = Path.Combine(cache, "packageinfo.vdf");
         var library = Path.Combine(cache, "librarycache");
         if (!File.Exists(appInfo) || !File.Exists(packageInfo) || !Directory.Exists(library)) return null;
+
+        var stamp = FileStamps.Of(appInfo, packageInfo, library);
+        lock (Gate)
+        {
+            if (_last is { } last && last.Stamp == stamp) return last.Snapshot;
+        }
+        var snapshot = ReadNow(library, appInfo, packageInfo);
+        lock (Gate)
+        {
+            _last = (stamp, snapshot);
+        }
+        return snapshot;
+    }
+
+    private static SteamOwnedSnapshot ReadNow(string library, string appInfo, string packageInfo)
+    {
 
         var inLibrary = Directory.EnumerateDirectories(library)
             .Select(d => uint.TryParse(Path.GetFileName(d), out var id) ? id : 0)
@@ -32,8 +55,14 @@ public static class SteamOwnedLibrary
 
     /// <summary>Jaquette portrait mise en cache par Steam (300×450) : <c>library_600x900.jpg</c>, ou <c>library_capsule.jpg</c>
     /// dans un sous-dossier (forme récente du cache, ex. Battlefield 6). Null si Steam ne l'a pas.</summary>
-    public static string? CoverPath(uint appId) =>
-        Find(appId, "library_600x900.jpg") ?? Find(appId, "library_capsule.jpg");
+    public static string? CoverPath(uint appId)
+    {
+        // Seules les jaquettes trouvées sont retenues : une jaquette que Steam télécharge plus tard sera vue à la lecture suivante.
+        if (Covers.TryGetValue(appId, out var known) && File.Exists(known)) return known;
+        var path = Find(appId, "library_600x900.jpg") ?? Find(appId, "library_capsule.jpg");
+        if (path is not null) Covers[appId] = path;
+        return path;
+    }
 
     private static string? Find(uint appId, string fileName)
     {

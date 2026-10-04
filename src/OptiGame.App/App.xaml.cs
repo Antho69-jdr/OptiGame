@@ -81,8 +81,23 @@ public partial class App : Application
 
         if (!e.Args.Contains(MinimizedArgument, StringComparer.OrdinalIgnoreCase))
         {
+            LogFirstRender(services);
             ShowMainWindow();
         }
+    }
+
+    /// <summary>Durée du lancement jusqu'au premier affichage de la fenêtre (journal), pour mesurer les gains de démarrage.</summary>
+    private static void LogFirstRender(IServiceProvider services)
+    {
+        var window = services.GetRequiredService<MainWindow>();
+        void OnRendered(object? sender, EventArgs args)
+        {
+            window.ContentRendered -= OnRendered;
+            using var process = System.Diagnostics.Process.GetCurrentProcess();
+            var elapsed = DateTime.Now - process.StartTime;
+            services.GetRequiredService<FileLog>().Info($"Fenêtre affichée {elapsed.TotalMilliseconds:0} ms après le lancement.");
+        }
+        window.ContentRendered += OnRendered;
     }
 
     protected override void OnExit(ExitEventArgs e)
