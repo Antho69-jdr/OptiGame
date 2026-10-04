@@ -85,6 +85,23 @@ jobs:
           if (Test-Path (Join-Path $app 'OptiGame.exe')) { throw 'OptiGame.exe encore présent après la désinstallation.' }
           'Désinstallé.'
 
+      # Relevé (temporaire) du format réel des versions GitHub, pour les mises à jour automatiques : réponse de l'API
+      # (brouillons compris, d'où le jeton) et serveur vers lequel le téléchargement d'un fichier redirige.
+      - name: Relevé du format des versions GitHub
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $json = (gh api "repos/$env:GITHUB_REPOSITORY/releases?per_page=1") -join "`n"
+          $json
+          $asset = ($json | ConvertFrom-Json)[0].assets | Select-Object -First 1
+          if ($asset) {
+            $headers = curl.exe -s -o NUL -D - -H "Authorization: Bearer $env:GH_TOKEN" -H "Accept: application/octet-stream" $asset.url
+            $location = $headers | Where-Object { $_ -match '^location:' } | Select-Object -First 1
+            if ($location) { 'Redirection : ' + ([Uri]($location -replace '^location:\s*', '').Trim()).GetLeftPart([UriPartial]::Path) }
+            else { $headers }
+          }
+
       - uses: actions/upload-artifact@v4
         with:
           name: OptiGame-Setup
