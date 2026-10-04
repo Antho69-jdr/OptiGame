@@ -25,6 +25,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Un tag posé sur un commit d'une autre version publierait un installeur qui ne correspond pas à son nom.
+      - name: Version du tag
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          [xml]$props = Get-Content Directory.Build.props
+          $version = @($props.Project.PropertyGroup | ForEach-Object { $_.Version } | Where-Object { $_ })[0]
+          if ($env:GITHUB_REF_NAME -ne "v$version") {
+            throw "Le tag $env:GITHUB_REF_NAME ne correspond pas à la version $version de Directory.Build.props : il a été posé sur le mauvais commit. Supprimez-le (git push origin :refs/tags/$env:GITHUB_REF_NAME), puis reposez-le sur le bon commit."
+          }
+          "Tag $env:GITHUB_REF_NAME = version $version de Directory.Build.props."
+
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
