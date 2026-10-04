@@ -28,24 +28,28 @@ public sealed class StoreCatalogsTests
             genres is null ? null : $$"""{"genres":[{{genres}}]}""");
 
     [Fact]
-    public void Keeps_gog_ubisoft_and_ea_games_from_galaxy()
+    public void Keeps_only_gog_games_from_galaxy()
     {
         var games = StoreCatalogs.FromGalaxy(
         [
             Row("gog_1207658924", "The Witcher: Enhanced Edition", "\"Role-playing (RPG)\""),
-            Row("uplay_0d2ae42d-4c27-4cb7-af6c-2099062302bb", "Tom Clancy's Rainbow Six Siege", "\"Shooter\",\"Tactical\""),
-            Row("origin_OFB-EAST:109544082", "The Sims™ 3", "\"Role-playing (RPG)\",\"Strategy\",\"Simulator\""),
-            Row("origin_Origin.OFR.50.0004172", "The Sims™ 3", "\"Role-playing (RPG)\""), // seconde édition : un seul titre gardé
-            Row("uplay_c93fc805-f9ad-434c-b13d-a4e2e227bcb1", "Ubisoft Game 13", visible: false), // masqué dans Galaxy
+            Row("gog_1355225376", "Intravenous", "\"Indie\",\"Shooter\",\"Tactical\""),
+            Row("gog_1207658924", "The Witcher: Enhanced Edition"), // doublon
             Row("gog_1", "Un DLC", dlc: true),
-            Row("epic_abc", "Jeu Epic vu par Galaxy"), // liste Epic de Galaxy périmée : ignorée
+            Row("gog_2", "Jeu masqué", visible: false),
+            // Intégrations de Galaxy : périmées (Epic) ou refusées par l'utilisateur (Ubisoft, EA) → ignorées.
+            Row("uplay_0d2ae42d-4c27-4cb7-af6c-2099062302bb", "Tom Clancy's Rainbow Six Siege", "\"Shooter\",\"Tactical\""),
+            Row("origin_OFB-EAST:109544082", "The Sims™ 3", "\"Simulator\""),
+            Row("epic_abc", "Jeu Epic vu par Galaxy"),
             Row("xboxone_157772240", "Jeu Xbox"),
         ]);
 
-        Assert.Equal(["The Witcher: Enhanced Edition", "Tom Clancy's Rainbow Six Siege", "The Sims™ 3"], games.Select(g => g.Name));
-        Assert.Equal([GameSource.Gog, GameSource.Ubisoft, GameSource.Ea], games.Select(g => g.Store));
-        Assert.Equal(["Action", "Stratégie"], games[1].Genres); // Shooter → Action, Tactical → Stratégie
+        Assert.Equal(["The Witcher: Enhanced Edition", "Intravenous"], games.Select(g => g.Name));
+        Assert.All(games, g => Assert.Equal(GameSource.Gog, g.Store));
+        Assert.Equal(["Indépendant", "Action", "Stratégie"], games[1].Genres); // Indie, Shooter → Action, Tactical → Stratégie
         Assert.EndsWith("_glx_vertical_cover.jpg?namespace=gamesdb", games[0].CoverUrl); // .webp → .jpg (servi par GOG)
+        Assert.Equal("goggalaxy://openGameView/gog_1207658924", StoreLaunchers.GalaxyGameViewUri(games[0].Key));
+        Assert.Throws<ArgumentException>(() => StoreLaunchers.GalaxyGameViewUri("uplay_0d2ae42d"));
     }
 
     [Theory]

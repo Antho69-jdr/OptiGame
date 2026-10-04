@@ -8,7 +8,7 @@ using OptiGame.Core.Logging;
 namespace OptiGame.Platform.Library;
 
 /// <summary>
-/// Jeux possédés des autres magasins (lecture seule) : catalogue d'Epic (catcache.bin) et bibliothèque de GOG Galaxy
+/// Jeux possédés d'Epic et de GOG (lecture seule) : catalogue d'Epic (catcache.bin) et jeux GOG de la bibliothèque de GOG Galaxy
 /// (galaxy-2.0.db, SQLite en mode WAL). La base de Galaxy n'est JAMAIS ouverte en place : elle est copiée (avec ses fichiers
 /// -wal et -shm) dans un dossier temporaire, lue, puis la copie est supprimée — Galaxy peut tourner pendant ce temps.
 /// Une source illisible est ignorée (journalisée) sans empêcher les autres.
@@ -21,7 +21,7 @@ public sealed class StoreOwnedLibrary(FileLog log)
 
     public static string GalaxyDatabasePath => Path.Combine(ProgramData, "GOG.com", "Galaxy", "storage", "galaxy-2.0.db");
 
-    /// <summary>Jeux possédés et non installés (Epic, GOG, Ubisoft et EA via Galaxy). Fichiers et SQLite : hors du thread UI.</summary>
+    /// <summary>Jeux possédés et non installés (Epic, GOG). Fichiers et SQLite : hors du thread UI.</summary>
     public IReadOnlyList<StoreOwnedGame> ReadNotInstalled()
     {
         var owned = new List<StoreOwnedGame>();
@@ -42,7 +42,7 @@ public sealed class StoreOwnedLibrary(FileLog log)
             log.Warn($"Bibliothèque de GOG Galaxy illisible : {ex.Message}");
         }
 
-        // Installés : Epic par identifiant de catalogue, GOG par identifiant, Ubisoft et EA par titre (Galaxy ne donne pas leur numéro).
+        // Installés : Epic par identifiant de catalogue, GOG par identifiant (et tous par titre, par prudence).
         var installed = StoreLibraries.ScanInstalled().ToList();
         var installedNames = installed.Select(g => StoreCatalogs.NameKey(g.Name)).ToHashSet();
         var installedKeys = installed.Select(g => g.LaunchArguments ?? "").ToList();
@@ -78,7 +78,7 @@ public sealed class StoreOwnedLibrary(FileLog log)
                            (select value from GamePieces where releaseKey = lr.releaseKey and gamePieceTypeId = (select id from GamePieceTypes where type = 'originalImages')),
                            (select value from GamePieces where releaseKey = lr.releaseKey and gamePieceTypeId = (select id from GamePieceTypes where type = 'originalMeta'))
                     from LibraryReleases lr left join ReleaseProperties rp on rp.releaseKey = lr.releaseKey
-                    where lr.releaseKey like 'gog!_%' escape '!' or lr.releaseKey like 'uplay!_%' escape '!' or lr.releaseKey like 'origin!_%' escape '!'
+                    where lr.releaseKey like 'gog!_%' escape '!'
                     """;
                 using var reader = command.ExecuteReader();
                 while (reader.Read())

@@ -65,7 +65,7 @@ public sealed class GameLauncher(FileLog log)
                 log.Info($"Installation demandée à Epic Games Launcher : {install}");
                 return $"Epic Games Launcher ouvre l'installation de « {name} ».";
 
-            case GameSource.Gog or GameSource.Ubisoft or GameSource.Ea:
+            case GameSource.Gog:
                 var galaxy = StoreLibraries.ProtocolExe("goggalaxy") ?? throw new LaunchException("GOG Galaxy est introuvable sur ce PC.");
                 var view = StoreLaunchers.GalaxyGameViewUri(key);
                 UnelevatedLauncher.Launch(galaxy, $"\"{galaxy}\" /urlProtocol=\"{view}\"");
@@ -75,6 +75,24 @@ public sealed class GameLauncher(FileLog log)
             default:
                 throw new LaunchException($"Installation non prise en charge pour ce magasin ({store}).");
         }
+    }
+
+    /// <summary>
+    /// Ubisoft Connect et l'EA app chiffrent la liste des jeux possédés (vérifié le 2026-10-04) : OptiGame ne peut pas les montrer.
+    /// À la place, un bouton ouvre le lanceur (son programme enregistré pour son protocole), sans droits administrateur.
+    /// </summary>
+    public static string? LauncherExe(GameSource store) => store switch
+    {
+        GameSource.Ubisoft => StoreLibraries.ProtocolExe("uplay"),
+        GameSource.Ea => StoreLibraries.ProtocolExe("origin2"),
+        _ => null,
+    };
+
+    public void OpenLauncher(GameSource store)
+    {
+        var exe = LauncherExe(store) ?? throw new LaunchException($"{StoreCatalogs.Label(store)} est introuvable sur ce PC.");
+        UnelevatedLauncher.Launch(exe, $"\"{exe}\"");
+        log.Info($"Lanceur ouvert : {exe}");
     }
 
     public LaunchPlan Launch(GameProfile profile)

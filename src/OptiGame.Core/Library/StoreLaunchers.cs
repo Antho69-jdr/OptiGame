@@ -49,11 +49,11 @@ public static partial class StoreLaunchers
             : throw new ArgumentException($"Jeu GOG invalide : « {gameId} ».");
 
     /// <summary>
-    /// Page d'un jeu dans GOG Galaxy (releaseKey de sa base : « gog_… », « uplay_… », « origin_… »). Commande « openGameView » du
+    /// Page d'un jeu GOG dans GOG Galaxy (releaseKey de sa base : « gog_… »), d'où l'installer. Commande « openGameView » du
     /// protocole goggalaxy:// (celle qu'utilisent les intégrations connues de Galaxy) : NON vérifiée en vrai sur la machine de dev.
     /// </summary>
     public static string GalaxyGameViewUri(string releaseKey) =>
-        releaseKey is { Length: > 0 and <= 120 } && releaseKey.All(c => char.IsAsciiLetterOrDigit(c) || c is '_' or '-' or '.' or ':')
+        releaseKey is { Length: > 4 and <= 40 } && releaseKey.StartsWith("gog_", StringComparison.Ordinal) && releaseKey[4..].All(char.IsAsciiDigit)
             ? $"goggalaxy://openGameView/{releaseKey}"
             : throw new ArgumentException($"Jeu GOG Galaxy invalide : « {releaseKey} ».");
 

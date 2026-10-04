@@ -5,7 +5,7 @@ using OptiGame.Core.Profiles;
 namespace OptiGame.Core.Library;
 
 /// <summary>Jeu possédé dans un magasin autre que Steam (section « non installés » de « Mes jeux »).</summary>
-/// <param name="Key">Identifiant dans le magasin : « namespace:item:app » (Epic) ou releaseKey de GOG Galaxy (« gog_… », « uplay_… »).</param>
+/// <param name="Key">Identifiant dans le magasin : « namespace:item:app » (Epic) ou releaseKey de GOG Galaxy (« gog_… »).</param>
 /// <param name="Genres">Genres ramenés aux noms français de <see cref="SteamTaxonomy"/>, pour un filtre unique.</param>
 public sealed record StoreOwnedGame(GameSource Store, string Key, string Name, IReadOnlyList<string> Genres, string? CoverUrl);
 
@@ -18,9 +18,9 @@ public sealed record GalaxyRow(string ReleaseKey, bool IsDlc, bool IsVisible, st
 /// <item>Epic : <c>Data\Catalog\catcache.bin</c> = JSON en base64 de 1866 éléments (dont assets Unreal) ; jeu = catégorie « games »
 /// et <c>mainGameItem.id</c> vide (sinon DLC) → 348 jeux, jaquette <c>DieselGameBoxTall</c> (1200×1600, réduite par le CDN avec
 /// <c>?h=528&amp;w=396&amp;resize=1</c>). Choix de l'utilisateur : seule source pour Epic (la liste Epic de GOG Galaxy est périmée).</item>
-/// <item>GOG Galaxy (galaxy-2.0.db) : bibliothèque de toutes les plateformes liées ; on garde gog_ (13), uplay_ (17) et origin_ (4)
-/// — les listes d'Ubisoft et d'EA sont chiffrées chez eux — visibles et hors DLC, un titre par plateforme (The Sims 3 apparaît en
-/// deux éditions). Jaquette <c>verticalCover</c> en .webp, servie aussi en .jpg (vérifié : 200 image/jpeg, 342×482).</item>
+/// <item>GOG Galaxy (galaxy-2.0.db) : bibliothèque de toutes les plateformes liées ; on ne garde que les jeux GOG (gog_, 13). Les
+/// intégrations Ubisoft / EA de Galaxy ne sont plus à jour et compliquent tout : refusées par l'utilisateur (2026-10-04). Visibles et
+/// hors DLC. Jaquette <c>verticalCover</c> en .webp, servie aussi en .jpg (vérifié : 200 image/jpeg, 342×482).</item>
 /// </list>
 /// </summary>
 public static class StoreCatalogs
@@ -56,16 +56,9 @@ public static class StoreCatalogs
         var games = new List<StoreOwnedGame>();
         foreach (var row in rows.Where(r => r.IsVisible && !r.IsDlc))
         {
-            var store = row.ReleaseKey.Split('_')[0] switch
-            {
-                "gog" => GameSource.Gog,
-                "uplay" => GameSource.Ubisoft,
-                "origin" => GameSource.Ea,
-                _ => (GameSource?)null,
-            };
-            if (store is null || JsonText(row.TitleJson, "title") is not { Length: > 0 } title) continue;
+            if (!row.ReleaseKey.StartsWith("gog_", StringComparison.Ordinal) || JsonText(row.TitleJson, "title") is not { Length: > 0 } title) continue;
             var cover = JsonText(row.ImagesJson, "verticalCover")?.Replace(".webp", ".jpg", StringComparison.OrdinalIgnoreCase);
-            games.Add(new StoreOwnedGame(store.Value, row.ReleaseKey, title, GalaxyGenres(row.MetaJson), cover));
+            games.Add(new StoreOwnedGame(GameSource.Gog, row.ReleaseKey, title, GalaxyGenres(row.MetaJson), cover));
         }
         return games.DistinctBy(g => (g.Store, NameKey(g.Name))).ToList();
     }

@@ -246,12 +246,16 @@ vit dans Core ; Platform ne fait que lire/écrire le système.
   `Platform/Library/StoreOwnedLibrary` + `StoreCoverCache`, `DiagDump -- --store-owned`) : Epic = `Data\Catalog\catcache.bin`
   (base64 → JSON ; jeu = catégorie « games » + `mainGameItem.id` vide ; 348 jeux) — SEULE source Epic (choix utilisateur : la
   liste Epic de Galaxy est périmée). GOG Galaxy = `galaxy-2.0.db` (SQLite, Microsoft.Data.Sqlite) lue sur une COPIE (db + -wal
-  + -shm dans %TEMP%, supprimée ensuite) : releaseKey gog_ / uplay_ / origin_ (Ubisoft et EA chiffrent leurs listes),
-  visibles et hors DLC, un titre par plateforme. Genres de Galaxy (anglais) regroupés dans les genres Steam en français.
+  + -shm dans %TEMP%, supprimée ensuite) : SEULEMENT les jeux GOG (gog_), visibles et hors DLC. Ubisoft et EA : listes de
+  possession CHIFFRÉES (ownership, IS / CATS2) et cache « configurations » d'Ubisoft incomplet (12 jeux, 5 possédés absents) ;
+  passer par les intégrations de Galaxy REFUSÉ par l'utilisateur (périmées, trop compliqué pour un novice) → bandeau
+  « Ouvrir Ubisoft Connect » / « Ouvrir l'EA app » (programmes des protocoles uplay / origin2). Genres de Galaxy (anglais)
+  regroupés dans les genres Steam en français.
   Jaquettes : CDN `cdn1.epicgames.com` (`?h=528&w=396&resize=1`, ~11 Ko) et `images.gog.com` (.webp → .jpg), téléchargées
-  une fois dans `covers\stores` quand la section est affichée. Installer : Epic = adresse des raccourcis avec
-  `action=install` ; GOG / Ubisoft / EA = `GalaxyClient.exe /urlProtocol="goggalaxy://openGameView/<releaseKey>"` — ces
-  deux actions ne sont PAS vérifiées en vrai par l'agent (test utilisateur). Machine de dev : 346 Epic, 15 Ubisoft, 12 GOG, 2 EA.
+  une fois dans `covers\stores` quand la section est affichée, par lots de 4 pris dans l'ordre de la grille filtrée (le filtre
+  choisi passe en premier). Installer : Epic = adresse des raccourcis avec `action=install` ; GOG =
+  `GalaxyClient.exe /urlProtocol="goggalaxy://openGameView/gog_<id>"` — ces deux actions ne sont PAS vérifiées en vrai par
+  l'agent (test utilisateur). Machine de dev : 347 Epic, 13 GOG.
 - Temps de jeu Steam : `<SteamPath>\userdata\<accountid>\config\localconfig.vdf`, UserLocalConfigStore > Software > Valve >
   Steam > apps > <appid> > `Playtime` (MINUTES) + `LastPlayed` (secondes Unix), réécrit par Steam à la fin d'une partie.
   Compte : `HKCU\Software\Valve\Steam\ActiveProcess\ActiveUser` (0 si Steam est fermé), sinon `config\loginusers.vdf` :

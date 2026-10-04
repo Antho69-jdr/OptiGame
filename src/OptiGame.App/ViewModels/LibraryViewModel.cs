@@ -382,6 +382,11 @@ public sealed partial class LibraryViewModel : ObservableObject
         foreach (var genre in genres) GenreOptions.Add(new GenreOption(genre, genre));
         SelectedGenre = GenreOptions.FirstOrDefault(o => o.Name == selected) ?? GenreOptions[0];
 
+        LauncherShortcuts = new[] { GameSource.Ubisoft, GameSource.Ea }
+            .Where(s => GameLauncher.LauncherExe(s) is not null)
+            .Select(s => new LauncherShortcut(s, s == GameSource.Ea ? "Ouvrir l'EA app" : "Ouvrir Ubisoft Connect"))
+            .ToList();
+
         OnPropertyChanged(nameof(HasUninstalled));
         OnPropertyChanged(nameof(IsUninstalledSectionVisible));
         OnPropertyChanged(nameof(UninstalledToggleText));
@@ -392,22 +397,58 @@ public sealed partial class LibraryViewModel : ObservableObject
 
     private bool _fetchingStoreCovers;
 
-    /// <summary>Jaquettes Epic et GOG manquantes, téléchargées une fois (4 à la fois) quand la section est affichée.</summary>
+    /// <summary>
+    /// Jaquettes Epic et GOG manquantes, téléchargées une fois quand la section est affichée, par lots de 4. Chaque lot est choisi
+    /// dans l'ordre de la grille ACTUELLE (filtre et tri) : changer de filtre fait passer ses jaquettes en premier.
+    /// </summary>
     private async Task FetchStoreCoversAsync()
     {
         if (_fetchingStoreCovers) return;
         _fetchingStoreCovers = true;
+        var tried = new HashSet<OwnedGameCardViewModel>();
         try
         {
-            var missing = UninstalledGames.Where(c => c.CoverPath is null && c.CoverUrl is not null).ToList();
-            await Task.WhenAll(missing.Select(async card =>
+            while (true)
             {
-                if (await _storeCovers.GetAsync(card.CoverUrl) is { } path) OnUi(() => card.CoverPath = path);
-            }));
+                var batch = UninstalledView.Cast<OwnedGameCardViewModel>()
+                    .Concat(UninstalledGames)
+                    .Where(c => c.CoverPath is null && c.CoverUrl is not null && !tried.Contains(c))
+                    .Distinct()
+                    .Take(4)
+                    .ToList();
+                if (batch.Count == 0) break;
+                tried.UnionWith(batch);
+                var paths = await Task.WhenAll(batch.Select(card => _storeCovers.GetAsync(card.CoverUrl)));
+                for (var i = 0; i < batch.Count; i++)
+                {
+                    if (paths[i] is { } path) batch[i].CoverPath = path;
+                }
+            }
         }
         finally
         {
             _fetchingStoreCovers = false;
+        }
+    }
+
+    /// <summary>Ubisoft Connect et l'EA app (s'ils sont installés) : leur liste de jeux est chiffrée, on propose de les ouvrir.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasLauncherShortcuts))]
+    private IReadOnlyList<LauncherShortcut> _launcherShortcuts = [];
+
+    public bool HasLauncherShortcuts => LauncherShortcuts.Count > 0;
+
+    [RelayCommand]
+    private void OpenLauncher(LauncherShortcut shortcut)
+    {
+        try
+        {
+            _launcher.OpenLauncher(shortcut.Store);
+        }
+        catch (Exception ex) when (ex is LaunchException or System.ComponentModel.Win32Exception or InvalidOperationException)
+        {
+            _log.Error($"{shortcut.Label} impossible", ex);
+            _dialogs.ShowError($"{shortcut.Label} : impossible.\n\n{ex.Message}");
         }
     }
 
@@ -976,8 +1017,8 @@ public sealed partial class OwnedGameCardViewModel : ObservableObject
 
     public string StoreLabel => Core.Library.StoreCatalogs.Label(Store);
 
-    /// <summary>Steam et Epic installent ; pour GOG, Ubisoft et EA (vus par GOG Galaxy), on ouvre le jeu dans GOG Galaxy.</summary>
-    public string InstallLabel => Store is GameSource.Steam or GameSource.Epic ? "Installer" : "Ouvrir dans GOG Galaxy";
+    /// <summary>Steam et Epic ouvrent leur installation ; GOG ouvre la page du jeu dans GOG Galaxy, d'où l'installer.</summary>
+    public string InstallLabel => "Installer";
 
     public bool HasStorePage => Store == GameSource.Steam;
 }
@@ -987,3 +1028,5 @@ public sealed record GenreOption(string? Name, string Label);
 
 public sealed record StoreOption(GameSource? Store, string Label);
 public sealed record KindOption(Core.Library.GameKind? Kind, string Label);
+
+public sealed record LauncherShortcut(GameSource Store, string Label);
