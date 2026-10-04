@@ -242,6 +242,16 @@ vit dans Core ; Platform ne fait que lire/écrire le système.
   Epic `com.epicgames.launcher://apps/<ns>%3A<item>%3A<app>?action=launch&silent=true`, Ubisoft `uplay://launch/<id>/0`,
   GOG `GalaxyClient.exe /command=runGame /gameId=<id> /path="…"`, EA = l'exe du jeu ; programme = celui du protocole
   (HKCR\<protocole>\shell\open\command). Possédés : Ubisoft et EA CHIFFRÉS localement (voir mémoire des lanceurs).
+- Autres lanceurs, jeux POSSÉDÉS non installés (section grisée + filtre « Plateforme » ; `Core/Library/StoreCatalogs`,
+  `Platform/Library/StoreOwnedLibrary` + `StoreCoverCache`, `DiagDump -- --store-owned`) : Epic = `Data\Catalog\catcache.bin`
+  (base64 → JSON ; jeu = catégorie « games » + `mainGameItem.id` vide ; 348 jeux) — SEULE source Epic (choix utilisateur : la
+  liste Epic de Galaxy est périmée). GOG Galaxy = `galaxy-2.0.db` (SQLite, Microsoft.Data.Sqlite) lue sur une COPIE (db + -wal
+  + -shm dans %TEMP%, supprimée ensuite) : releaseKey gog_ / uplay_ / origin_ (Ubisoft et EA chiffrent leurs listes),
+  visibles et hors DLC, un titre par plateforme. Genres de Galaxy (anglais) regroupés dans les genres Steam en français.
+  Jaquettes : CDN `cdn1.epicgames.com` (`?h=528&w=396&resize=1`, ~11 Ko) et `images.gog.com` (.webp → .jpg), téléchargées
+  une fois dans `covers\stores` quand la section est affichée. Installer : Epic = adresse des raccourcis avec
+  `action=install` ; GOG / Ubisoft / EA = `GalaxyClient.exe /urlProtocol="goggalaxy://openGameView/<releaseKey>"` — ces
+  deux actions ne sont PAS vérifiées en vrai par l'agent (test utilisateur). Machine de dev : 346 Epic, 15 Ubisoft, 12 GOG, 2 EA.
 - Temps de jeu Steam : `<SteamPath>\userdata\<accountid>\config\localconfig.vdf`, UserLocalConfigStore > Software > Valve >
   Steam > apps > <appid> > `Playtime` (MINUTES) + `LastPlayed` (secondes Unix), réécrit par Steam à la fin d'une partie.
   Compte : `HKCU\Software\Valve\Steam\ActiveProcess\ActiveUser` (0 si Steam est fermé), sinon `config\loginusers.vdf` :

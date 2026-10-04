@@ -220,8 +220,10 @@
             <DockPanel DockPanel.Dock="Top" Margin="0,-8,0,16">
                 <CheckBox DockPanel.Dock="Right" VerticalAlignment="Center" IsChecked="{Binding ShowUninstalled}" Content="{Binding UninstalledToggleText}"
                           Visibility="{Binding HasUninstalled, Converter={StaticResource BoolToVisibility}}"
-                          ToolTip="Afficher, grisés, les jeux de votre bibliothèque Steam qui ne sont pas installés (lus dans les fichiers du client Steam)." />
+                          ToolTip="Afficher, grisés, les jeux de vos bibliothèques qui ne sont pas installés (Steam, Epic Games, GOG ; Ubisoft et EA vus par GOG Galaxy). Lus dans les fichiers des lanceurs ; jaquettes Epic et GOG téléchargées une fois." />
                 <StackPanel Orientation="Horizontal">
+                    <ComboBox Width="190" Margin="0,0,10,0" ItemsSource="{Binding StoreOptions}" SelectedItem="{Binding SelectedStore}" DisplayMemberPath="Label"
+                              AutomationProperties.Name="Filtrer par plateforme" ToolTip="Magasin du jeu (Steam, Epic Games, GOG, Ubisoft, EA)" />
                     <ComboBox Width="190" Margin="0,0,10,0" ItemsSource="{Binding GenreOptions}" SelectedItem="{Binding SelectedGenre}" DisplayMemberPath="Label"
                               AutomationProperties.Name="Filtrer par genre" ToolTip="Genre (d'après le magasin Steam ; les jeux hors Steam n'en ont pas)" />
                     <ComboBox Width="190" Margin="0,0,10,0" ItemsSource="{Binding KindOptions}" SelectedItem="{Binding SelectedKind}" DisplayMemberPath="Label"
@@ -357,7 +359,7 @@
                                                 </Border>
                                                 <Border x:Name="Outline" CornerRadius="10" BorderThickness="1" BorderBrush="{StaticResource Brush.Border}" />
                                                 <Border Margin="8" HorizontalAlignment="Left" VerticalAlignment="Top" Style="{StaticResource Badge}" Background="#CC0E1014">
-                                                    <TextBlock Text="Non installé" FontSize="11" Foreground="{StaticResource Brush.TextSecondary}" />
+                                                    <TextBlock Text="{Binding StoreLabel, StringFormat='Non installé · {0}'}" FontSize="11" Foreground="{StaticResource Brush.TextSecondary}" />
                                                 </Border>
                                                 <!-- Au survol : installer (fenêtre de Steam) ou ouvrir la page Steam -->
                                                 <StackPanel x:Name="Actions" Margin="12" VerticalAlignment="Bottom" Visibility="Collapsed">
@@ -366,10 +368,11 @@
                                                             CommandParameter="{Binding}" AutomationProperties.Name="{Binding Name, StringFormat='Installer {0}'}">
                                                         <StackPanel Orientation="Horizontal">
                                                             <TextBlock Style="{StaticResource Text.Icon}" FontSize="13" Text="&#xE896;" />
-                                                            <TextBlock Margin="8,0,0,0" Text="Installer" />
+                                                            <TextBlock Margin="8,0,0,0" Text="{Binding InstallLabel}" />
                                                         </StackPanel>
                                                     </Button>
                                                     <Button Margin="0,6,0,0" Style="{StaticResource Button.Secondary}" HorizontalAlignment="Stretch" Content="Page Steam"
+                                                            Visibility="{Binding HasStorePage, Converter={StaticResource BoolToVisibility}}"
                                                             Command="{Binding DataContext.OpenOwnedStorePageCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                             CommandParameter="{Binding}" AutomationProperties.Name="{Binding Name, StringFormat='Page Steam de {0}'}" />
                                                 </StackPanel>

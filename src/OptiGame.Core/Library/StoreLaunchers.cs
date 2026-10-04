@@ -48,6 +48,15 @@ public static partial class StoreLaunchers
             ? $"/command=runGame /gameId={gameId} /path=\"{installPath.TrimEnd('\\')}\""
             : throw new ArgumentException($"Jeu GOG invalide : « {gameId} ».");
 
+    /// <summary>
+    /// Page d'un jeu dans GOG Galaxy (releaseKey de sa base : « gog_… », « uplay_… », « origin_… »). Commande « openGameView » du
+    /// protocole goggalaxy:// (celle qu'utilisent les intégrations connues de Galaxy) : NON vérifiée en vrai sur la machine de dev.
+    /// </summary>
+    public static string GalaxyGameViewUri(string releaseKey) =>
+        releaseKey is { Length: > 0 and <= 120 } && releaseKey.All(c => char.IsAsciiLetterOrDigit(c) || c is '_' or '-' or '.' or ':')
+            ? $"goggalaxy://openGameView/{releaseKey}"
+            : throw new ArgumentException($"Jeu GOG Galaxy invalide : « {releaseKey} ».");
+
     /// <summary>Argument passé au programme du protocole : <c>"…exe" %1</c> (Epic) ou <c>"…exe" "%1"</c> (Ubisoft).</summary>
     public static string Quoted(string uri) => $"\"{uri}\"";
 

@@ -179,6 +179,18 @@ if (args.Length >= 3 && args[0] == "--steam-cache-sample")
     return;
 }
 
+// --store-owned : jeux possédés non installés des autres magasins (catalogue Epic + copie de la base de GOG Galaxy), lecture seule.
+if (args.Length == 1 && args[0] == "--store-owned")
+{
+    var owned = new OptiGame.Platform.Library.StoreOwnedLibrary(services.GetRequiredService<OptiGame.Core.Logging.FileLog>()).ReadNotInstalled();
+    foreach (var group in owned.GroupBy(g => g.Store)) Console.WriteLine($"{group.Key} : {group.Count()} jeux non installés");
+    foreach (var g in owned.Where(g => g.Store != OptiGame.Core.Library.GameSource.Epic).Concat(owned.Where(g => g.Store == OptiGame.Core.Library.GameSource.Epic).Take(5)))
+    {
+        Console.WriteLine($"  [{g.Store}] {g.Name} | {string.Join(", ", g.Genres)} | {g.Key} | {(g.CoverUrl is null ? "pas de jaquette" : "jaquette")}");
+    }
+    return;
+}
+
 // --nvidia-profiles : profil NVIDIA appliqué à chaque jeu et son plafond de FPS (lecture seule).
 if (args.Length == 1 && args[0] == "--nvidia-profiles")
 {

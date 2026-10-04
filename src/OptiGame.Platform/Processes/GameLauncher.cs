@@ -1,4 +1,5 @@
 using OptiGame.Core.Launching;
+using OptiGame.Core.Library;
 using OptiGame.Core.Logging;
 using OptiGame.Core.Profiles;
 using OptiGame.Platform.Library;
@@ -44,6 +45,36 @@ public sealed class GameLauncher(FileLog log)
         var steam = GameLibraryScanner.SteamExe() ?? throw new LaunchException("Steam est introuvable sur ce PC.");
         UnelevatedLauncher.Launch(steam, SteamStorePage.InstallCommandLine(steam, appId));
         log.Info($"Installation demandée au client Steam : {SteamStorePage.InstallUrl(appId)}");
+    }
+
+    /// <summary>
+    /// Jeu possédé d'un autre magasin, sans droits administrateur : Epic ouvre son installation (même adresse que les raccourcis
+    /// d'Epic, action « install ») ; GOG, Ubisoft et EA, vus par GOG Galaxy, sont ouverts dans Galaxy, qui propose de les installer
+    /// (par Ubisoft Connect ou l'EA app pour leurs jeux). Renvoie le message à afficher.
+    /// </summary>
+    public string InstallStoreGame(GameSource store, string key, string name)
+    {
+        switch (store)
+        {
+            case GameSource.Epic:
+                var epic = StoreLibraries.ProtocolExe("com.epicgames.launcher") ?? throw new LaunchException("Epic Games Launcher est introuvable sur ce PC.");
+                var parts = key.Split(':');
+                if (parts.Length != 3) throw new LaunchException($"Jeu Epic invalide : « {key} ».");
+                var install = StoreLaunchers.EpicUri(parts[0], parts[1], parts[2], "install");
+                UnelevatedLauncher.Launch(epic, $"\"{epic}\" {StoreLaunchers.Quoted(install)}");
+                log.Info($"Installation demandée à Epic Games Launcher : {install}");
+                return $"Epic Games Launcher ouvre l'installation de « {name} ».";
+
+            case GameSource.Gog or GameSource.Ubisoft or GameSource.Ea:
+                var galaxy = StoreLibraries.ProtocolExe("goggalaxy") ?? throw new LaunchException("GOG Galaxy est introuvable sur ce PC.");
+                var view = StoreLaunchers.GalaxyGameViewUri(key);
+                UnelevatedLauncher.Launch(galaxy, $"\"{galaxy}\" /urlProtocol=\"{view}\"");
+                log.Info($"Jeu ouvert dans GOG Galaxy : {view}");
+                return $"GOG Galaxy ouvre « {name} » : lancez l'installation depuis sa page.";
+
+            default:
+                throw new LaunchException($"Installation non prise en charge pour ce magasin ({store}).");
+        }
     }
 
     public LaunchPlan Launch(GameProfile profile)
