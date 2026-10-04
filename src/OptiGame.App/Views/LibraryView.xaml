@@ -114,6 +114,14 @@
                                                 Visibility="{Binding Enabled, Converter={StaticResource InverseBoolToVisibility}}">
                                             <TextBlock Text="Profil désactivé" FontSize="11" Foreground="{StaticResource Brush.TextSecondary}" />
                                         </Border>
+                                        <Border Style="{StaticResource Badge}" Background="#E60E1014" ToolTip="Le fichier .exe du jeu a disparu : il a été désinstallé (ou déplacé)."
+                                                Visibility="{Binding IsUninstalled, Converter={StaticResource BoolToVisibility}}">
+                                            <TextBlock Text="Désinstallé" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource Brush.Warning}" />
+                                        </Border>
+                                        <Border Style="{StaticResource Badge}" Background="#E60E1014" ToolTip="Le disque du jeu n'est pas branché (disque externe, lecteur réseau)."
+                                                Visibility="{Binding IsDriveUnavailable, Converter={StaticResource BoolToVisibility}}">
+                                            <TextBlock Text="Disque absent" FontSize="11" Foreground="{StaticResource Brush.TextSecondary}" />
+                                        </Border>
                                     </StackPanel>
                                 </StackPanel>
                             </Grid>
@@ -127,6 +135,12 @@
                         <ControlTemplate.Triggers>
                             <DataTrigger Binding="{Binding IsPinned}" Value="True">
                                 <Setter TargetName="PinButton" Property="Visibility" Value="Visible" />
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding IsUninstalled}" Value="True">
+                                <Setter TargetName="Cover" Property="Opacity" Value="0.5" />
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding IsDriveUnavailable}" Value="True">
+                                <Setter TargetName="Cover" Property="Opacity" Value="0.5" />
                             </DataTrigger>
                             <DataTrigger Binding="{Binding RatingLevel}" Value="Fair">
                                 <Setter TargetName="RatingText" Property="Foreground" Value="{StaticResource Brush.Warning}" />
@@ -186,6 +200,24 @@
                             </TextBlock.Visibility>
                         </TextBlock>
                     </Grid>
+                    <Button Margin="0,0,8,0" Style="{StaticResource Button.Secondary}" Command="{Binding RefreshLibraryCommand}"
+                            ToolTip="Revérifie vos jeux sur le disque (jeux désinstallés) et relit vos bibliothèques Steam, Epic Games et GOG.">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Style="{StaticResource Text.Icon}" FontSize="14" Text="&#xE72C;" />
+                            <TextBlock Margin="8,0,0,0">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Text" Value="Actualiser" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsRefreshing}" Value="True">
+                                                <Setter Property="Text" Value="Actualisation…" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                        </StackPanel>
+                    </Button>
                     <Button Margin="0,0,8,0" Style="{StaticResource Button.Secondary}" Command="{Binding ScanGamesCommand}">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Style="{StaticResource Text.Icon}" FontSize="14" Text="&#xE721;" />
@@ -242,6 +274,22 @@
                     </Style>
                 </TextBlock.Style>
             </TextBlock>
+
+            <!-- Jeux désinstallés : signalés, retirés seulement après confirmation -->
+            <Border DockPanel.Dock="Top" Margin="0,0,0,12" Style="{StaticResource Banner}" Background="{StaticResource Brush.WarningSoft}"
+                    BorderBrush="{StaticResource Brush.Warning}" Visibility="{Binding HasUninstalledProfiles, Converter={StaticResource BoolToVisibility}}">
+                <DockPanel>
+                    <Button DockPanel.Dock="Right" Margin="12,0,0,0" VerticalAlignment="Center" Style="{StaticResource Button.Secondary}"
+                            Content="Retirer de Mes jeux…" Command="{Binding RemoveUninstalledProfilesCommand}" />
+                    <TextBlock DockPanel.Dock="Left" Margin="0,0,12,0" VerticalAlignment="Center" Style="{StaticResource Text.Icon}"
+                               FontSize="18" Foreground="{StaticResource Brush.Warning}" Text="&#xE7BA;" />
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock Style="{StaticResource Text.Body}" FontWeight="SemiBold" TextWrapping="Wrap" Text="{Binding UninstalledProfilesText}" />
+                        <TextBlock Margin="0,2,0,0" Style="{StaticResource Text.Caption}" TextWrapping="Wrap"
+                                   Text="Rien n'est retiré automatiquement : un jeu réinstallé au même endroit retrouve son profil." />
+                    </StackPanel>
+                </DockPanel>
+            </Border>
 
             <!-- Nouveaux jeux Steam installés : rien n'est ajouté sans clic -->
             <ItemsControl DockPanel.Dock="Top" ItemsSource="{Binding NewGames.Proposals}"

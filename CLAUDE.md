@@ -254,6 +254,11 @@ vit dans Core ; Platform ne fait que lire/écrire le système.
   choisi passe en premier). Installer : Epic = adresse des raccourcis avec `action=install` ; GOG =
   `GalaxyClient.exe /urlProtocol="goggalaxy://openGameView/gog_<id>"` — ces deux actions ne sont PAS vérifiées en vrai par
   l'agent (test utilisateur). Machine de dev : 347 Epic, 13 GOG.
+- Jeux désinstallés (« Mes jeux » : bouton « Actualiser », pastilles « Désinstallé » / « Disque absent », bandeau ;
+  `Core/Library/GameInstallation`) : exe du profil absent + racine du disque présente = désinstallé ; racine absente (disque
+  externe, lecteur réseau) = « Disque absent », JAMAIS désinstallé. Vérifié à chaque rechargement de la grille. Aucun profil
+  n'est retiré automatiquement : « Retirer de Mes jeux… » après confirmation (le jeu en cours est exclu). « Jouer » refuse un
+  jeu désinstallé avec un message. Machine de dev (2026-10-04) : Absolute Drift, Steep, The Sims 3, Rites of War désinstallés.
 - Temps de jeu Steam : `<SteamPath>\userdata\<accountid>\config\localconfig.vdf`, UserLocalConfigStore > Software > Valve >
   Steam > apps > <appid> > `Playtime` (MINUTES) + `LastPlayed` (secondes Unix), réécrit par Steam à la fin d'une partie.
   Compte : `HKCU\Software\Valve\Steam\ActiveProcess\ActiveUser` (0 si Steam est fermé), sinon `config\loginusers.vdf` :

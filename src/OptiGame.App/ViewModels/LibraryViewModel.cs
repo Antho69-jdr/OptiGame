@@ -522,6 +522,17 @@ public sealed partial class LibraryViewModel : ObservableObject
             return;
         }
 
+        switch (GameInstallation.Of(profile.ExePath, File.Exists, Directory.Exists))
+        {
+            case InstallState.Uninstalled:
+                _dialogs.ShowInfo($"{profile.Name} n'est plus installé : son fichier .exe est introuvable.\n\n{profile.ExePath}\n\n" +
+                                  "Réinstallez-le depuis son lanceur, ou retirez-le de « Mes jeux ».");
+                return;
+            case InstallState.DriveUnavailable:
+                _dialogs.ShowInfo($"Le disque de {profile.Name} ({GameInstallation.RootOf(profile.ExePath)}) n'est pas disponible. Branchez-le, puis réessayez.");
+                return;
+        }
+
         try
         {
             var plan = await Task.Run(() => _launcher.Launch(profile));
@@ -817,8 +828,95 @@ public sealed partial class LibraryViewModel : ObservableObject
         }
     }
 
+    // ---- Jeux désinstallés ----
+
+    private int _installVersion;
+    private Task _installCheck = Task.CompletedTask;
+    private Task _libraryLoad = Task.CompletedTask;
+
+    /// <summary>Jeux de « Mes jeux » dont l'exe a disparu de son disque (le disque, lui, est là).</summary>
+    public IReadOnlyList<GameCardViewModel> UninstalledProfiles => Games.Where(c => c.IsUninstalled).ToList();
+
+    public bool HasUninstalledProfiles => Games.Any(c => c.IsUninstalled);
+
+    public string UninstalledProfilesText => UninstalledProfiles switch
+    {
+        [var one] => $"« {one.Name} » n'est plus installé : son fichier .exe a disparu.",
+        var many => $"{many.Count} jeux ne sont plus installés : {string.Join(", ", many.Select(c => c.Name))}.",
+    };
+
+    /// <summary>Vérifie, hors du thread UI, que l'exe de chaque profil est toujours là (quelques File.Exists).</summary>
+    private async Task CheckInstallationsAsync()
+    {
+        var version = ++_installVersion;
+        var profiles = _store.GetAll().Select(p => (p.Id, p.ExePath)).ToList();
+        var states = await Task.Run(() => profiles.ToDictionary(p => p.Id, p => GameInstallation.Of(p.ExePath, File.Exists, Directory.Exists)));
+        if (version != _installVersion) return;
+        foreach (var card in Games)
+        {
+            if (states.TryGetValue(card.Id, out var state)) card.InstallState = state;
+        }
+        OnPropertyChanged(nameof(UninstalledProfiles));
+        OnPropertyChanged(nameof(HasUninstalledProfiles));
+        OnPropertyChanged(nameof(UninstalledProfilesText));
+    }
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(RefreshLibraryCommand))]
+    private bool _isRefreshing;
+
+    private bool CanRefresh() => !IsRefreshing;
+
+    /// <summary>
+    /// « Actualiser » : relit tout ce qui vient du disque (exe des profils, bibliothèques Steam / Epic / GOG, nouveaux jeux Steam).
+    /// Lecture seule : un jeu désinstallé est seulement signalé.
+    /// </summary>
+    [RelayCommand(CanExecute = nameof(CanRefresh))]
+    private async Task RefreshLibraryAsync()
+    {
+        IsRefreshing = true;
+        try
+        {
+            ReloadCards();
+            await Task.WhenAll(_installCheck, _libraryLoad, NewGames.CheckAsync());
+            var missing = UninstalledProfiles.Count;
+            ShowLaunchStatus(missing switch
+            {
+                0 => "Bibliothèque actualisée : tous vos jeux sont installés.",
+                1 => "Bibliothèque actualisée : 1 jeu n'est plus installé.",
+                _ => $"Bibliothèque actualisée : {missing} jeux ne sont plus installés.",
+            });
+        }
+        finally
+        {
+            IsRefreshing = false;
+        }
+    }
+
+    /// <summary>Retire de « Mes jeux » les jeux désinstallés, après confirmation (jamais ceux dont le disque est absent).</summary>
+    [RelayCommand]
+    private void RemoveUninstalledProfiles()
+    {
+        var playing = _sessions.Current?.Profile.Id;
+        var games = UninstalledProfiles.Where(c => c.Id != playing).ToList();
+        if (games.Count == 0) return;
+        var names = string.Join("\n", games.Select(c => "• " + c.Name));
+        if (!_dialogs.Confirm($"Retirer ces jeux de « Mes jeux » ?\n\n{names}\n\nLeur profil est supprimé (réglages, plafond de FPS du profil…) ; " +
+                              "aucun réglage de Windows n'est modifié. Ceux de vos bibliothèques Steam, Epic Games ou GOG resteront parmi les jeux non installés."))
+        {
+            return;
+        }
+        foreach (var card in games)
+        {
+            _store.Remove(card.Id);
+            _log.Info($"Jeu désinstallé retiré de « Mes jeux » : {card.Name}.");
+        }
+        ReloadCards();
+    }
+
     private void ReloadCards()
     {
+        var installStates = Games.ToDictionary(c => c.Id, c => c.InstallState); // état gardé jusqu'à la nouvelle vérification
         Games.Clear();
         var playing = _sessions.Current?.Profile.Id;
         foreach (var profile in _store.GetAll().OrderBy(p => p.Name, StringComparer.CurrentCultureIgnoreCase))
@@ -827,6 +925,7 @@ public sealed partial class LibraryViewModel : ObservableObject
             {
                 CoverPath = _artwork.TryGetCached(profile.CoverImageId, Igdb.CoverSize),
                 Playtime = PlaytimeOf(profile.Id, _time.GetLocalNow()),
+                InstallState = installStates.GetValueOrDefault(profile.Id, InstallState.Installed),
             };
             Games.Add(card);
             if (card.CoverPath is null && profile.CoverImageId is not null)
@@ -838,7 +937,8 @@ public sealed partial class LibraryViewModel : ObservableObject
         OnPropertyChanged(nameof(Subtitle));
         _ = LoadSteamPlaytimeAsync(); // profils ajoutés, retirés ou modifiés : leur jeu Steam a pu changer
         _ = LoadRatingsAsync();
-        _ = LoadLibrariesAsync(); // genres et types des cartes recréées, jeux non installés
+        _libraryLoad = LoadLibrariesAsync(); // genres et types des cartes recréées, jeux non installés
+        _installCheck = CheckInstallationsAsync(); // jeux désinstallés depuis
     }
 
     private async Task RefreshCoverAsync(Guid id)
@@ -896,6 +996,15 @@ public sealed partial class GameCardViewModel(GameProfile profile, bool isPlayin
 
     [ObservableProperty]
     private bool _isPlaying = isPlaying;
+
+    /// <summary>Exe du profil toujours sur le disque ? Vérifié à chaque rechargement de la grille et par « Actualiser ».</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsUninstalled), nameof(IsDriveUnavailable))]
+    private InstallState _installState = InstallState.Installed;
+
+    public bool IsUninstalled => InstallState == InstallState.Uninstalled;
+
+    public bool IsDriveUnavailable => InstallState == InstallState.DriveUnavailable;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(PlaytimeText), nameof(LastPlayedTicks), nameof(TotalTicks))]
