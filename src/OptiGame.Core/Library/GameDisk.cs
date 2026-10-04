@@ -22,7 +22,10 @@ public enum GameDiskLevel
 public sealed record DiskFacts(string Drive, string? Model, int? MediaType, int? BusType, bool? SeekPenalty, bool? Trim,
     long FreeBytes, long TotalBytes, bool IsNetwork = false);
 
-public sealed record GameDiskReport(GameDiskLevel Level, DiskKind Kind, string Summary, string Detail, IReadOnlyList<string> Advice);
+/// <param name="Type">« SSD NVMe », « Disque dur »… (tuile de la fiche du jeu).</param>
+/// <param name="FreeText">Espace libre, ex. « 192 Go ».</param>
+public sealed record GameDiskReport(GameDiskLevel Level, DiskKind Kind, string Summary, string Detail, IReadOnlyList<string> Advice,
+    string Type = "", string FreeText = "");
 
 /// <summary>
 /// Disque d'installation d'un jeu : type (SSD ou disque dur) et espace libre.
@@ -100,7 +103,7 @@ public static class GameDisk
 
         var summary = problems.Count > 0 ? char.ToUpperInvariant(problems[0][0]) + string.Join(" et ", problems)[1..] + "."
             : level == GameDiskLevel.Info ? "À surveiller." : "Bon emplacement.";
-        return new GameDiskReport(level, kind, summary, detail, advice);
+        return new GameDiskReport(level, kind, summary, detail, advice, type, free);
     }
 
     /// <summary>« 192 Go », « 1,4 To ».</summary>

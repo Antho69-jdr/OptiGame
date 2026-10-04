@@ -123,6 +123,60 @@
         <Setter Property="CornerRadius" Value="{StaticResource Radius.Card}" />
         <Setter Property="Padding" Value="20" />
     </Style>
+    <!-- Tuile : petit chiffre clé (fiche du jeu) -->
+    <Style x:Key="Tile" TargetType="Border" BasedOn="{StaticResource Card}">
+        <Setter Property="Padding" Value="16,12" />
+    </Style>
+
+    <!-- Ligne repliable : en-tête cliquable (icône, titre, résumé d'une ligne, chevron), contenu détaillé dessous -->
+    <Style x:Key="Expander.Row" TargetType="Expander">
+        <Setter Property="Margin" Value="0,0,0,8" />
+        <Setter Property="Foreground" Value="{StaticResource Brush.Text}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Expander">
+                    <Border Background="{StaticResource Brush.Card}" BorderBrush="{StaticResource Brush.Border}" BorderThickness="1"
+                            CornerRadius="{StaticResource Radius.Card}">
+                        <DockPanel>
+                            <ToggleButton DockPanel.Dock="Top" Cursor="Hand" Content="{TemplateBinding Header}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
+                                          IsChecked="{Binding IsExpanded, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}"
+                                          AutomationProperties.Name="{TemplateBinding AutomationProperties.Name}">
+                                <ToggleButton.Template>
+                                    <ControlTemplate TargetType="ToggleButton">
+                                        <Border x:Name="Bg" Padding="18,13" Background="Transparent" CornerRadius="{StaticResource Radius.Card}">
+                                            <DockPanel>
+                                                <TextBlock x:Name="Chevron" DockPanel.Dock="Right" Margin="14,0,0,0" Style="{StaticResource Text.Icon}"
+                                                           FontSize="12" Foreground="{StaticResource Brush.TextMuted}" Text="&#xE70D;" />
+                                                <ContentPresenter VerticalAlignment="Center" />
+                                            </DockPanel>
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter TargetName="Bg" Property="Background" Value="{StaticResource Brush.CardHover}" />
+                                            </Trigger>
+                                            <Trigger Property="IsChecked" Value="True">
+                                                <Setter TargetName="Chevron" Property="Text" Value="&#xE70E;" />
+                                                <Setter TargetName="Bg" Property="CornerRadius" Value="12,12,0,0" />
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </ToggleButton.Template>
+                            </ToggleButton>
+                            <Border x:Name="Body" Padding="18,4,18,18" Visibility="Collapsed">
+                                <ContentPresenter />
+                            </Border>
+                        </DockPanel>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsExpanded" Value="True">
+                            <Setter TargetName="Body" Property="Visibility" Value="Visible" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <Style x:Key="Banner" TargetType="Border">
         <Setter Property="CornerRadius" Value="{StaticResource Radius.Card}" />
         <Setter Property="Padding" Value="16,12" />

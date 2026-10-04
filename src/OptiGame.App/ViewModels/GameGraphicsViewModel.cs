@@ -40,6 +40,9 @@ public sealed partial class GameGraphicsViewModel(GameProfile profile, GameGraph
     [ObservableProperty] private string _gpuNote = "";
     [ObservableProperty] private string _appliedText = "";
 
+    /// <summary>Résumé d'une ligne pour la liste de la fiche du jeu.</summary>
+    [ObservableProperty] private string _summary = "Lecture des réglages de Windows…";
+
     public async Task LoadAsync()
     {
         IsBusy = true;
@@ -51,6 +54,7 @@ public sealed partial class GameGraphicsViewModel(GameProfile profile, GameGraph
         {
             log.Error($"Réglages graphiques de « {profile.Name} » illisibles", ex);
             AutoHdrText = $"Réglages de Windows illisibles : {ex.Message}";
+            Summary = "Réglages de Windows illisibles";
             return;
         }
         finally
@@ -70,6 +74,8 @@ public sealed partial class GameGraphicsViewModel(GameProfile profile, GameGraph
                 : "Aucun écran HDR détecté : l'Auto HDR n'a pas d'effet sur ce PC.";
 
         ShowGpu = _snapshot.PhysicalGpus.Count > 1;
+        Summary = (_snapshot.State.AutoHdrRaw is not null ? "Auto HDR réglé pour ce jeu dans Windows" : "Auto HDR : réglage global de Windows") +
+                  (ShowGpu ? $" · {GpuOptions.First(o => o.Value == _snapshot.State.Gpu).Label.ToLowerInvariant()}" : "");
         SelectedGpu = GpuOptions.First(o => o.Value == _snapshot.State.Gpu);
         GpuNote = _snapshot.PhysicalGpus.Count == 1
             ? $"Une seule carte graphique ({_snapshot.PhysicalGpus[0]}) : le choix de la carte est sans objet sur ce PC."

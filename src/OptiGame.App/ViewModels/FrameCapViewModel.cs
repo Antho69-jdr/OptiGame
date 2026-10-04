@@ -29,6 +29,9 @@ public sealed partial class FrameCapViewModel(GameProfile profile, FrameCapServi
     private string _fpsText = "";
 
     [ObservableProperty] private string _profileText = "Lecture du pilote NVIDIA…";
+
+    /// <summary>Résumé d'une ligne pour la liste de la fiche du jeu.</summary>
+    [ObservableProperty] private string _summary = "Lecture du pilote…";
     [ObservableProperty] private string _currentText = "";
     [ObservableProperty] private string _suggestionText = "";
     [ObservableProperty] private string _appliedText = "";
@@ -53,6 +56,7 @@ public sealed partial class FrameCapViewModel(GameProfile profile, FrameCapServi
         {
             log.Error($"Profil NVIDIA de « {profile.Name} » illisible", ex);
             ProfileText = $"Profil du pilote NVIDIA illisible : {ex.Message}";
+            Summary = "Profil du pilote illisible";
             return;
         }
         finally
@@ -69,6 +73,8 @@ public sealed partial class FrameCapViewModel(GameProfile profile, FrameCapServi
             : setting.EffectiveValue is { } inherited and > 0
                 ? $"Plafond actuel : {FrameRateCap.Describe(inherited)} (hérité du profil global)."
                 : "Plafond actuel : aucun.";
+        Summary = setting.Value is { } capped and > 0 ? $"Plafond de FPS : {capped} FPS"
+            : setting.EffectiveValue is { } global and > 0 ? $"Plafond de FPS : {global} FPS (profil global)" : "Aucun plafond de FPS";
         var suggested = FrameRateCap.Suggested(_snapshot.RefreshHz);
         SuggestionText = $"Conseillé : {suggested} FPS (écran à {_snapshot.RefreshHz} Hz − 3), surtout avec G-Sync / FreeSync. " +
                          "Si le jeu a son propre limiteur ou NVIDIA Reflex, préférez-les. 0 = aucun plafond.";

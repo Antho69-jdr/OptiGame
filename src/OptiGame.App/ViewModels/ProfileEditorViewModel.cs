@@ -77,7 +77,12 @@ public sealed partial class ProfileEditorViewModel : ObservableObject
     [ObservableProperty] private string _launchArguments;
 
     /// <summary>Ce que « Jouer » lancera, avec les réglages en cours d'édition.</summary>
-    [ObservableProperty] private string _launchPreview = "";
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(LaunchSummary))]
+    private string _launchPreview = "";
+
+    /// <summary>Première ligne de l'aperçu (ex. « Steam (appid 2357570) — automatique »), pour la liste de la fiche.</summary>
+    public string LaunchSummary => LaunchPreview.Split('\n')[0].Trim();
 
     partial void OnSelectedLaunchModeChanged(LaunchModeOption value) => TouchLaunch();
     partial void OnSteamAppIdChanged(string value) => TouchLaunch();

@@ -25,10 +25,16 @@ public sealed partial class GamePageViewModel(
     /// <summary>Note du jeu par rapport au PC (mesurée ou estimée) ; null = pas encore de note.</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasRating), nameof(ScoreText), nameof(PresetText), nameof(RatingHeadline), nameof(RatingAdvice),
-        nameof(RatingSource), nameof(RatingDetails), nameof(RatingLevel), nameof(HasRequirementsLink))]
+        nameof(RatingSource), nameof(RatingDetails), nameof(RatingLevel), nameof(HasRequirementsLink), nameof(ScoreTile), nameof(RatingTileDetail))]
     private Core.Rating.GameRating? _rating;
 
     public bool HasRating => Rating is not null;
+
+    /// <summary>Tuile de la note : « 84 » (ou « ≈ 77 » pour une estimation), « — » sans note.</summary>
+    public string ScoreTile => Rating is null ? "—" : Rating.Source == Core.Rating.RatingSource.Measured ? $"{Rating.Score}" : $"≈ {Rating.Score}";
+
+    public string RatingTileDetail => Rating is null ? "Pas encore de note"
+        : Rating.Preset is { } preset ? $"{Rating.Headline} · {Core.Rating.GameRatings.Label(preset)} conseillé" : Rating.Headline;
 
     public string ScoreText => Rating is null ? "" : $"{Rating.Score}";
 
@@ -139,14 +145,40 @@ public sealed partial class GamePageViewModel(
 
     // ---- Temps de jeu ----
 
-    [ObservableProperty] private string _playtimeTotal = "Jamais joué";
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(PlaytimeSummary))]
+    private string _playtimeTotal = "Jamais joué";
+
     [ObservableProperty] private string _playtimeDetail = "";
     [ObservableProperty] private IReadOnlyList<SessionRow> _recentSessions = [];
 
+    /// <summary>« Dernière partie hier » (tuile du temps de jeu) ; vide si jamais joué.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(PlaytimeSummary))]
+    private string _playtimeLast = "";
+
+    public string PlaytimeSummary => PlaytimeLast.Length > 0 ? $"{PlaytimeTotal} · {PlaytimeLast.ToLowerInvariant()}" : PlaytimeTotal;
+
+    // ---- Mesures (tuile et ligne de la liste) ----
+
+    public string LatestFps => Captures.FirstOrDefault() is { } latest ? $"{latest.AverageFps} FPS" : "—";
+
+    public string LatestFpsDetail => Captures.FirstOrDefault() is { } latest ? $"1 % low {latest.OnePercentLow} · {latest.Date}" : "Aucune mesure";
+
+    public string MeasuresSummary => Captures.FirstOrDefault() is { } latest
+        ? $"{Captures.Count} mesure{(Captures.Count > 1 ? "s" : "")} · dernière {latest.AverageFps} FPS"
+        : "Aucune mesure : « Mesurer les FPS » ou jouez plus de 5 minutes";
+
     /// <summary>Disque d'installation (lu en arrière-plan à l'ouverture de la page) ; null tant qu'il n'est pas lu.</summary>
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HasDisk), nameof(DiskLevel))]
+    [NotifyPropertyChangedFor(nameof(HasDisk), nameof(DiskLevel), nameof(DiskTile), nameof(DiskTileDetail), nameof(DiskSummary))]
     private Core.Library.GameDiskReport? _disk;
+
+    public string DiskTile => Disk?.Type ?? "Disque";
+
+    public string DiskTileDetail => Disk is null ? "Lecture…" : $"{Disk.FreeText} libres · {Disk.Summary.TrimEnd('.')}";
+
+    public string DiskSummary => Disk?.Detail ?? "Lecture du disque…";
 
     public bool HasDisk => Disk is not null;
 
@@ -175,6 +207,7 @@ public sealed partial class GamePageViewModel(
             PlaytimeSource.OptiGame => string.Join(" — ", new[] { tracked, last }.OfType<string>()),
             _ => "Le temps est compté automatiquement pendant les sessions détectées par OptiGame (et repris de Steam pour les jeux Steam).",
         };
+        PlaytimeLast = summary.LastPlayed is { } lastPlayed ? $"Dernière partie {PlaytimeText.LastPlayed(lastPlayed, now)}" : "";
         RecentSessions = recent.Select(s => new SessionRow(
             s.StartedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm"),
             s.Incomplete ? "durée inconnue" : s.Duration is { } d ? PlaytimeText.Duration(d) : "en cours")).ToList();
