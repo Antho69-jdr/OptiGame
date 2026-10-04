@@ -85,7 +85,7 @@ public partial class App : Application
         _quitWatcher = new QuitRequestWatcher(services.GetRequiredService<AppPaths>().Root,
             () => Dispatcher.BeginInvoke(async () =>
             {
-                services.GetRequiredService<FileLog>().Info("Arrêt demandé par scripts\\dev-run.ps1 (quit.request).");
+                services.GetRequiredService<FileLog>().Info("Arrêt demandé (quit.request : installeur d'OptiGame ou scripts\\dev-run.ps1).");
                 // Comme « Quitter » pendant une partie : on restaure plutôt que de laisser la session en suspens.
                 var sessions = services.GetRequiredService<GameSessionManager>();
                 if (sessions.Current is not null)

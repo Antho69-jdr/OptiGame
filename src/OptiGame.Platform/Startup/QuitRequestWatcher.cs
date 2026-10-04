@@ -1,9 +1,9 @@
 ﻿namespace OptiGame.Platform.Startup;
 
 /// <summary>
-/// Demande d'arrÃªt propre depuis un terminal NON Ã©levÃ© (scripts\dev-run.ps1) : il ne peut pas arrÃªter OptiGame, qui
-/// tourne en administrateur, mais il peut crÃ©er un fichier dans le dossier de donnÃ©es de l'utilisateur.
-/// Surveillance par Ã©vÃ©nement (FileSystemWatcher), sans polling.
+/// Demande d'arrêt propre par un fichier du dossier de données : scripts\dev-run.ps1 (terminal NON élevé, qui ne peut pas
+/// arrêter OptiGame, en administrateur, mais peut créer ce fichier) et l'installeur (mise à jour, désinstallation).
+/// Surveillance par événement (FileSystemWatcher), sans polling.
 /// </summary>
 public sealed class QuitRequestWatcher : IDisposable
 {
@@ -17,7 +17,7 @@ public sealed class QuitRequestWatcher : IDisposable
     {
         Directory.CreateDirectory(dataDirectory);
         _path = Path.Combine(dataDirectory, FileName);
-        File.Delete(_path); // Demande pÃ©rimÃ©e d'une exÃ©cution prÃ©cÃ©dente.
+        File.Delete(_path); // Demande périmée d'une exécution précédente.
 
         _watcher = new FileSystemWatcher(dataDirectory, FileName) { NotifyFilter = NotifyFilters.FileName | NotifyFilters.LastWrite };
         FileSystemEventHandler handler = (_, _) =>
@@ -29,7 +29,7 @@ public sealed class QuitRequestWatcher : IDisposable
             }
             catch (IOException)
             {
-                // Le script l'Ã©crit peut-Ãªtre encore : sans importance, il sera supprimÃ© au prochain dÃ©marrage.
+                // Le script l'écrit peut-être encore : sans importance, il sera supprimé au prochain démarrage.
             }
             onQuitRequested();
         };
