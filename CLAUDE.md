@@ -67,7 +67,11 @@ src/OptiGame.App/        WPF : composition DI, tray, vues/viewmodels, dialogue d
                          grises = pixels COPIÉS dans une image autonome (un FormatConvertedBitmap garde l'image couleur :
                          733 Ko par jaquette mesurés au lieu de 214) ; fenêtre masquée (fermer = masquer, appli en zone de
                          notification) ou section décochée → jeux non installés ramenés à la 1re page, cache vidé, un GC
-                         (mesuré avant : ≈ 1,2 Mo par carte affichée, 937 Mo avec les 631 jeux) ; grilles liées à CoverImage avec IsAsync=True (décodage hors du thread UI) ; jeux non
+                         (mesuré : ≈ 1,2 Mo par carte affichée avant, ≈ 160 Ko après ; 631 jeux affichés = 937 Mo avant,
+                         325 Mo après ; démarrage 332 → 202 Mo). Page suivante chargée SEULEMENT si l'on descend ou si le
+                         contenu / la fenêtre grandit, jamais fenêtre masquée (WPF met en page une fenêtre masquée : une liste
+                         raccourcie, défilement resté en bas, rechargeait les 631) ; filtre changé → 1re page, défilement en
+                         haut ; relecture des bibliothèques → même longueur (genres reconstruits sans rafraîchir) ; grilles liées à CoverImage avec IsAsync=True (décodage hors du thread UI) ; jeux non
                          installés affichés par pages de 48 (VisibleUninstalled, page suivante près du bas : pas de WrapPanel
                          virtualisé en WPF) ; recherche appliquée après 200 ms sans frappe ; caches des lanceurs (appinfo.vdf,
                          catalogue Epic, base Galaxy) relus seulement si leur date/taille change (Platform/Library/FileStamps).

@@ -267,11 +267,24 @@ public sealed partial class LibraryViewModel : ObservableObject
         (SelectedGenre?.Name is not { } genre || genres.Contains(genre)) &&
         (SelectedKind?.Kind is not { } kind || kinds.Contains(kind));
 
+    /// <summary>Vrai pendant la reconstruction de la liste des genres (relecture des bibliothèques) : un seul rafraîchissement, à la fin.</summary>
+    private bool _rebuildingFilterOptions;
+
     private void RefreshFilters()
+    {
+        if (_rebuildingFilterOptions) return;
+        ApplyFilters(keepShownCount: false);
+    }
+
+    /// <summary>
+    /// Filtres appliqués aux deux grilles. Jeux non installés : filtre changé → première page, défilement en haut ; relecture des
+    /// bibliothèques (<paramref name="keepShownCount"/>) → autant de jeux qu'avant, pour que le défilement ne saute pas.
+    /// </summary>
+    private void ApplyFilters(bool keepShownCount)
     {
         _searchVersion++; // une recherche en attente est appliquée maintenant
         GamesView.Refresh();
-        ShowFirstUninstalledPage();
+        ShowUninstalledList(keepShownCount);
         OnPropertyChanged(nameof(IsFiltered));
     }
 
@@ -301,7 +314,7 @@ public sealed partial class LibraryViewModel : ObservableObject
             OnPropertyChanged();
             OnPropertyChanged(nameof(IsUninstalledSectionVisible));
             if (value) _ = FetchStoreCoversAsync();
-            else ShowFirstUninstalledPage(); // section masquée : ses jaquettes déjà chargées sont libérées
+            else TrimUninstalledToFirstPage(); // section masquée : ses jaquettes déjà chargées sont libérées
         }
     }
 
@@ -333,15 +346,35 @@ public sealed partial class LibraryViewModel : ObservableObject
 
     public string ShowMoreUninstalledText => $"Afficher plus ({_uninstalledFiltered.Count - VisibleUninstalled.Count} restants)";
 
-    private void ShowFirstUninstalledPage()
+    /// <summary>La liste des jeux non installés est revenue à sa première page : LibraryView remonte le défilement en haut.</summary>
+    public event EventHandler? UninstalledListReset;
+
+    private void ShowUninstalledList(bool keepShownCount)
     {
+        var shown = keepShownCount ? Math.Max(VisibleUninstalled.Count, UninstalledPageSize) : UninstalledPageSize;
         // Simple liste filtrée et triée (pas de vue WPF : elle n'est affichée que par pages, via VisibleUninstalled).
         _uninstalledFiltered = UninstalledGames
             .Where(game => Matches(game.Name, game.Store, game.Genres, game.Kinds))
             .OrderBy(game => game.Name, StringComparer.CurrentCultureIgnoreCase)
             .ToList();
         VisibleUninstalled.Clear();
-        ShowMoreUninstalled();
+        foreach (var card in _uninstalledFiltered.Take(shown)) VisibleUninstalled.Add(card);
+        NotifyUninstalledPaging();
+        if (!keepShownCount) UninstalledListReset?.Invoke(this, EventArgs.Empty);
+    }
+
+    /// <summary>Retour à la première page SANS recréer ses cartes (ni redécoder leurs jaquettes), défilement en haut.</summary>
+    private void TrimUninstalledToFirstPage()
+    {
+        while (VisibleUninstalled.Count > UninstalledPageSize) VisibleUninstalled.RemoveAt(VisibleUninstalled.Count - 1);
+        NotifyUninstalledPaging();
+        UninstalledListReset?.Invoke(this, EventArgs.Empty);
+    }
+
+    private void NotifyUninstalledPaging()
+    {
+        OnPropertyChanged(nameof(HasMoreUninstalled));
+        OnPropertyChanged(nameof(ShowMoreUninstalledText));
         OnPropertyChanged(nameof(UninstalledHeader));
     }
 
@@ -352,7 +385,7 @@ public sealed partial class LibraryViewModel : ObservableObject
     /// </summary>
     public void ReleaseCovers()
     {
-        if (VisibleUninstalled.Count > UninstalledPageSize) ShowFirstUninstalledPage();
+        if (VisibleUninstalled.Count > UninstalledPageSize) TrimUninstalledToFirstPage();
         Converters.ImageLoader.Clear();
     }
 
@@ -360,8 +393,7 @@ public sealed partial class LibraryViewModel : ObservableObject
     private void ShowMoreUninstalled()
     {
         foreach (var card in _uninstalledFiltered.Skip(VisibleUninstalled.Count).Take(UninstalledPageSize)) VisibleUninstalled.Add(card);
-        OnPropertyChanged(nameof(HasMoreUninstalled));
-        OnPropertyChanged(nameof(ShowMoreUninstalledText));
+        NotifyUninstalledPaging();
     }
 
     private int _libraryVersion;
@@ -464,16 +496,26 @@ public sealed partial class LibraryViewModel : ObservableObject
             .Distinct()
             .OrderBy(g => g, StringComparer.CurrentCultureIgnoreCase)
             .ToList();
-        GenreOptions.Clear();
-        GenreOptions.Add(new GenreOption(null, "Tous les genres"));
-        foreach (var genre in genres) GenreOptions.Add(new GenreOption(genre, genre));
-        SelectedGenre = GenreOptions.FirstOrDefault(o => o.Name == selected) ?? GenreOptions[0];
+        // Vider la liste fait remettre le genre choisi à null par la liste déroulante, puis il est rétabli : sans ce drapeau, deux
+        // rafraîchissements complets (et un retour à la première page) avant celui de la fin.
+        _rebuildingFilterOptions = true;
+        try
+        {
+            GenreOptions.Clear();
+            GenreOptions.Add(new GenreOption(null, "Tous les genres"));
+            foreach (var genre in genres) GenreOptions.Add(new GenreOption(genre, genre));
+            SelectedGenre = GenreOptions.FirstOrDefault(o => o.Name == selected) ?? GenreOptions[0];
+        }
+        finally
+        {
+            _rebuildingFilterOptions = false;
+        }
 
         OnPropertyChanged(nameof(HasUninstalled));
         OnPropertyChanged(nameof(IsUninstalledSectionVisible));
         OnPropertyChanged(nameof(UninstalledToggleText));
         OnPropertyChanged(nameof(Subtitle));
-        RefreshFilters();
+        ApplyFilters(keepShownCount: true);
         if (ShowUninstalled) _ = FetchStoreCoversAsync();
     }
 

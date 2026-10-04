@@ -333,7 +333,7 @@
                 <!-- Le ScrollViewer rogne ce qui dépasse de ses bords : la marge négative + la marge intérieure
                      laissent 12 px au zoom de survol (1,03) sur la première rangée et la première colonne,
                      sans déplacer les jaquettes. -->
-                <ScrollViewer VerticalScrollBarVisibility="Auto" Margin="-12,-8,0,0" ScrollChanged="OnGridScrollChanged">
+                <ScrollViewer x:Name="GridScroll" VerticalScrollBarVisibility="Auto" Margin="-12,-8,0,0" ScrollChanged="OnGridScrollChanged">
                     <StackPanel>
                     <ItemsControl ItemsSource="{Binding GamesView}" Margin="12,12,0,0">
                         <ItemsControl.ItemsPanel>
