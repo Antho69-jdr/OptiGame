@@ -67,7 +67,12 @@ src/OptiGame.App/        WPF : composition DI, tray, vues/viewmodels, dialogue d
                          installés affichés par pages de 48 (VisibleUninstalled, page suivante près du bas : pas de WrapPanel
                          virtualisé en WPF) ; recherche appliquée après 200 ms sans frappe ; caches des lanceurs (appinfo.vdf,
                          catalogue Epic, base Galaxy) relus seulement si leur date/taille change (Platform/Library/FileStamps).
-                         Journal : « Fenêtre affichée … ms », « Bibliothèques des magasins lues en … ms ».
+                         Journal : « Fenêtre affichée … ms », « Bibliothèques des magasins lues en … ms », chacune avec la
+                         mémoire (Core/Logging/MemoryUsage : RAM, privée, tas .NET alloué / réservé, gros objets, hors .NET).
+                         Mesure à la demande : créer `memory.request` dans le dossier de données (Platform/Startup/
+                         RequestFileWatcher) → journal « Mémoire (demandée) », détail des cartes et jaquettes, puis « après
+                         nettoyage complet » (GC forcé). `DiagDump -- --memory` : coût de chaque lecture lourde seule et des
+                         jaquettes (ImageLoader de l'appli lié à l'outil, d'où UseWPF dans DiagDump).
   Dock/                  DockWindow (transparente, Topmost, WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW, zones alpha 0 =
                          clics traversants) + DockController (crée/ferme selon settings, masque pendant une session
                          ou une appli plein écran via Platform/Display/FullscreenWatcher = EVENT_SYSTEM_FOREGROUND +

@@ -306,6 +306,11 @@ public sealed partial class LibraryViewModel : ObservableObject
 
     public bool HasUninstalled => UninstalledGames.Count > 0;
 
+    /// <summary>Pour la mesure de la mémoire (journal) : jaquettes réellement affichées, et images décodées.</summary>
+    public string DescribeForMemoryReport() =>
+        $"cartes : {Games.Count} jeux de « Mes jeux », {VisibleUninstalled.Count} non installés affichés sur {UninstalledGames.Count} " +
+        $"(section {(IsUninstalledSectionVisible ? "affichée" : "masquée")}) · {Converters.ImageLoader.Describe()}";
+
     public bool IsUninstalledSectionVisible => ShowUninstalled && HasUninstalled;
 
     public string UninstalledToggleText => $"Jeux non installés ({UninstalledGames.Count})";
@@ -426,7 +431,8 @@ public sealed partial class LibraryViewModel : ObservableObject
             return;
         }
         if (version != _libraryVersion) return;
-        _log.Info($"Bibliothèques des magasins lues en {watch.ElapsedMilliseconds} ms ({uninstalled.Count} jeux non installés).");
+        _log.Info($"Bibliothèques des magasins lues en {watch.ElapsedMilliseconds} ms ({uninstalled.Count} jeux non installés) — " +
+                  $"mémoire : {MemoryUsage.Now().Describe()}");
 
         foreach (var card in Games)
         {

@@ -191,6 +191,106 @@ if (args.Length == 1 && args[0] == "--store-owned")
     return;
 }
 
+// --memory : coût en mémoire de chaque lecture lourde de « Mes jeux », mesurée seule (lecture seule), puis des jaquettes
+// décodées comme dans la section « non installés » (même code : ImageLoader de l'appli, lié à cet outil).
+if (args.Length == 1 && args[0] == "--memory")
+{
+    Console.WriteLine($"Au départ : {OptiGame.Core.Logging.MemoryUsage.Now().Describe()}");
+    var appCache = OptiGame.Platform.Library.GameLibraryScanner.SteamPath() is { } steamDir ? Path.Combine(steamDir, "appcache") : null;
+    var sources = new[]
+    {
+        appCache is null ? null : Path.Combine(appCache, "appinfo.vdf"),
+        appCache is null ? null : Path.Combine(appCache, "packageinfo.vdf"),
+        OptiGame.Platform.Library.StoreOwnedLibrary.EpicCatalogPath,
+        OptiGame.Platform.Library.StoreOwnedLibrary.GalaxyDatabasePath,
+        OptiGame.Platform.Library.StoreOwnedLibrary.GalaxyDatabasePath + "-wal",
+    };
+    foreach (var file in sources.OfType<string>())
+    {
+        Console.WriteLine($"  {file} : {(File.Exists(file) ? OptiGame.Core.Logging.MemoryUsage.Mb(new FileInfo(file).Length) + " Mo" : "absent")}");
+    }
+
+    var owned = (OptiGame.Platform.Library.SteamOwnedSnapshot?)MeasureRead(
+        "Steam, jeux possédés (appinfo.vdf + packageinfo.vdf)", OptiGame.Platform.Library.SteamOwnedLibrary.Read);
+    var steamApps = (IReadOnlyList<OptiGame.Platform.Library.GameLibraryScanner.SteamApp>)MeasureRead(
+        "Steam, jeux installés (manifestes)", OptiGame.Platform.Library.GameLibraryScanner.SteamApps)!;
+    MeasureRead("Epic + GOG, jeux possédés non installés",
+        () => new OptiGame.Platform.Library.StoreOwnedLibrary(services.GetRequiredService<OptiGame.Core.Logging.FileLog>()).ReadNotInstalled());
+
+    // Jaquettes de la section « non installés » : Steam (cache du client) + Epic / GOG déjà téléchargées par OptiGame.
+    var installedIds = steamApps.Select(a => a.AppId).ToHashSet();
+    var storeCovers = Path.Combine(AppPaths.Default.Root, "covers", "stores");
+    var covers = (owned?.Games.Values ?? [])
+        .Where(g => !installedIds.Contains(g.AppId.ToString(System.Globalization.CultureInfo.InvariantCulture)))
+        .Select(g => OptiGame.Platform.Library.SteamOwnedLibrary.CoverPath(g.AppId))
+        .OfType<string>()
+        .Concat(Directory.Exists(storeCovers) ? Directory.EnumerateFiles(storeCovers) : [])
+        .ToList();
+    MeasureImages(covers);
+    Console.WriteLine($"À la fin : {OptiGame.Core.Logging.MemoryUsage.Now().Describe()}");
+    return;
+
+    // Temps, mémoire allouée pendant la lecture (déchets compris) et mémoire encore occupée après un nettoyage complet.
+    static object? MeasureRead(string what, Func<object?> read)
+    {
+        var before = GC.GetTotalMemory(forceFullCollection: true);
+        var allocatedBefore = GC.GetTotalAllocatedBytes(precise: true);
+        var watch = System.Diagnostics.Stopwatch.StartNew();
+        var result = read();
+        watch.Stop();
+        var allocated = GC.GetTotalAllocatedBytes(precise: true) - allocatedBefore;
+        var retained = GC.GetTotalMemory(forceFullCollection: true) - before;
+        GC.KeepAlive(result);
+        Console.WriteLine($"{what} : {watch.ElapsedMilliseconds} ms, {OptiGame.Core.Logging.MemoryUsage.Mb(allocated)} Mo alloués pendant la lecture, " +
+                          $"{OptiGame.Core.Logging.MemoryUsage.Mb(Math.Max(0, retained))} Mo encore occupés ensuite");
+        return result;
+    }
+
+    // Mémoire privée ajoutée par le décodage (WPF garde les pixels hors du tas .NET), en gris puis en couleur, images gardées
+    // comme le font les jaquettes affichées.
+    static void MeasureImages(IReadOnlyList<string> files)
+    {
+        if (files.Count == 0)
+        {
+            Console.WriteLine("Jaquettes : aucune trouvée.");
+            return;
+        }
+        var thread = new Thread(() =>
+        {
+            var gray = Decode(files, "grisées (section « non installés »)", gray: true);
+            var color = Decode(files, "en couleur (grille « Mes jeux »)", gray: false);
+            if (gray.Count > 0)
+            {
+                var pixels = gray.Sum(i => (long)i.PixelWidth * i.PixelHeight) / gray.Count;
+                Console.WriteLine($"  repères par jaquette : pixels gris seuls ≈ {pixels / 1024} Ko, en couleur ≈ {pixels * 4 / 1024} Ko");
+            }
+            GC.KeepAlive(gray);
+            GC.KeepAlive(color);
+        });
+        thread.SetApartmentState(ApartmentState.STA);
+        thread.Start();
+        thread.Join();
+    }
+
+    static List<System.Windows.Media.Imaging.BitmapSource> Decode(IReadOnlyList<string> files, string what, bool gray)
+    {
+        var before = PrivateBytes();
+        var watch = System.Diagnostics.Stopwatch.StartNew();
+        var images = files.Select(f => OptiGame.App.Converters.ImageLoader.Load(f, 396, gray)).OfType<System.Windows.Media.Imaging.BitmapSource>().ToList();
+        watch.Stop();
+        var added = PrivateBytes() - before;
+        Console.WriteLine($"Jaquettes {what} : {images.Count} décodées en {watch.ElapsedMilliseconds} ms, +{OptiGame.Core.Logging.MemoryUsage.Mb(added)} Mo " +
+                          $"de mémoire privée, soit ≈ {(images.Count == 0 ? 0 : added / images.Count / 1024)} Ko par jaquette");
+        return images;
+    }
+
+    static long PrivateBytes()
+    {
+        using var process = System.Diagnostics.Process.GetCurrentProcess();
+        return process.PrivateMemorySize64;
+    }
+}
+
 // --nvidia-profiles : profil NVIDIA appliqué à chaque jeu et son plafond de FPS (lecture seule).
 if (args.Length == 1 && args[0] == "--nvidia-profiles")
 {

@@ -5,7 +5,15 @@
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>net10.0-windows</TargetFramework>
+    <!-- L'option « memory » décode les jaquettes avec le code même de l'appli (ImageLoader, lié ci-dessous) : WPF nécessaire. -->
+    <UseWPF>true</UseWPF>
   </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Avec UseWPF, System.IO n'est plus importé d'office (comme dans OptiGame.App). -->
+    <Using Include="System.IO" />
+    <Compile Include="..\..\src\OptiGame.App\Converters\ImageLoader.cs" Link="Linked\ImageLoader.cs" />
+  </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\OptiGame.Platform\OptiGame.Platform.csproj" />

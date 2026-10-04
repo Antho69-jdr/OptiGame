@@ -25,6 +25,10 @@ public partial class App : Application
     private ServiceProvider? _services;
     private TaskbarIcon? _trayIcon;
     private QuitRequestWatcher? _quitWatcher;
+    private RequestFileWatcher? _memoryWatcher;
+
+    /// <summary>Fichier à créer dans le dossier de données pour écrire la mesure de la mémoire dans le journal.</summary>
+    public const string MemoryRequestFile = "memory.request";
 
     protected override void OnStartup(StartupEventArgs e)
     {
@@ -79,6 +83,9 @@ public partial class App : Application
                 Shutdown();
             }));
 
+        _memoryWatcher = new RequestFileWatcher(services.GetRequiredService<AppPaths>().Root, MemoryRequestFile,
+            () => Dispatcher.BeginInvoke(() => WriteMemoryReport(services)));
+
         if (!e.Args.Contains(MinimizedArgument, StringComparer.OrdinalIgnoreCase))
         {
             LogFirstRender(services);
@@ -95,7 +102,8 @@ public partial class App : Application
             window.ContentRendered -= OnRendered;
             using var process = System.Diagnostics.Process.GetCurrentProcess();
             var elapsed = DateTime.Now - process.StartTime;
-            services.GetRequiredService<FileLog>().Info($"Fenêtre affichée {elapsed.TotalMilliseconds:0} ms après le lancement.");
+            services.GetRequiredService<FileLog>().Info(
+                $"Fenêtre affichée {elapsed.TotalMilliseconds:0} ms après le lancement — mémoire : {MemoryUsage.Now().Describe()}");
         }
         window.ContentRendered += OnRendered;
     }
@@ -105,10 +113,28 @@ public partial class App : Application
         // Pas de restauration ici : si Windows s'arrête pendant une partie, le journal de session
         // est rejoué au prochain démarrage d'OptiGame.
         _quitWatcher?.Dispose();
+        _memoryWatcher?.Dispose();
         _trayIcon?.Dispose();
         _services?.Dispose();
         _singleInstance?.Dispose();
         base.OnExit(e);
+    }
+
+    /// <summary>
+    /// Mesure de la mémoire à la demande (fichier memory.request), écrite dans le journal : répartition actuelle, ce qui est
+    /// affiché, puis la même mesure après un passage complet du ramasse-miettes .NET. L'écart entre les deux = déchets pas encore
+    /// récupérés (lectures temporaires) ; ce qui reste hors .NET = WPF, images décodées, pilotes.
+    /// </summary>
+    private static void WriteMemoryReport(IServiceProvider services)
+    {
+        var log = services.GetRequiredService<FileLog>();
+        log.Info($"Mémoire (demandée) : {MemoryUsage.Now().Describe()}");
+        log.Info($"Mémoire, détail : {services.GetRequiredService<LibraryViewModel>().DescribeForMemoryReport()}");
+        System.Runtime.GCSettings.LargeObjectHeapCompactionMode = System.Runtime.GCLargeObjectHeapCompactionMode.CompactOnce;
+        GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced, blocking: true, compacting: true);
+        GC.WaitForPendingFinalizers();
+        GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced, blocking: true, compacting: true);
+        log.Info($"Mémoire après nettoyage complet : {MemoryUsage.Now().Describe()}");
     }
 
     public void ShowMainWindow()

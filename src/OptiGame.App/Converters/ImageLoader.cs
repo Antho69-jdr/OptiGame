@@ -16,6 +16,16 @@ public static class ImageLoader
     private static readonly Dictionary<string, LinkedListNode<Entry>> Index = new(StringComparer.OrdinalIgnoreCase);
     private static readonly LinkedList<Entry> Recent = new();
     private static long _bytes;
+    private static int _decoded;
+
+    /// <summary>Pour la mesure de la mémoire (journal) : images décodées depuis le lancement, puis contenu du cache.</summary>
+    public static string Describe()
+    {
+        lock (Gate)
+        {
+            return $"jaquettes décodées depuis le lancement : {Volatile.Read(ref _decoded)}, en cache : {Index.Count} (≈ {_bytes / (1024 * 1024)} Mo de pixels)";
+        }
+    }
 
     private sealed record Entry(string Key, BitmapSource Image, DateTime WriteTimeUtc, long Bytes);
 
@@ -47,6 +57,7 @@ public static class ImageLoader
 
         var image = Decode(path, decodeWidth, gray);
         if (image is null) return null;
+        Interlocked.Increment(ref _decoded);
 
         lock (Gate)
         {
