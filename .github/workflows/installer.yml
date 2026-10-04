@@ -100,7 +100,10 @@ jobs:
             throw "OptiGame ne s'est pas reconnu comme copie installée : il ne se mettrait pas à jour."
           }
           $setup = Get-ChildItem artifacts/installer/OptiGame-Setup-*.exe | Select-Object -First 1
-          $p = Start-Process $setup.FullName -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/RELAUNCH=minimized','/LOG=update.log' -Wait -PassThru
+          # Pas de -Wait : il attendrait aussi les descendants de l'installeur, dont OptiGame qu'il relance (il ne s'arrête pas).
+          $p = Start-Process $setup.FullName -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/RELAUNCH=minimized','/LOG=update.log' -PassThru
+          $null = $p.Handle # sans lui, PowerShell ne garde pas le code de sortie
+          if (-not $p.WaitForExit(120000)) { Get-Content update.log -Tail 40; throw "L'installeur de la mise à jour ne s'est pas terminé en 2 min." }
           if ($p.ExitCode -ne 0) { Get-Content update.log -Tail 40; throw "Mise à jour : code $($p.ExitCode)" }
           if (-not $old.HasExited) { throw "L'ancienne instance d'OptiGame tourne encore après la mise à jour." }
           $deadline = (Get-Date).AddSeconds(30)
