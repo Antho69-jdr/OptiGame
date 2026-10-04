@@ -22,7 +22,9 @@ VersionInfoDescription=Installation d'OptiGame
 DefaultDirName={autopf}\OptiGame
 DisableProgramGroupPage=yes
 ; OptiGame tourne en administrateur : il est installé là où seul un administrateur peut écrire (Program Files), jamais
-; dans le profil de l'utilisateur, où un autre programme pourrait remplacer l'exe lancé avec ces droits.
+; dans le profil de l'utilisateur, où un autre programme pourrait remplacer l'exe lancé avec ces droits. Pas de choix du
+; dossier : sur un autre disque, tout utilisateur peut écrire par défaut (et OptiGame ne s'y mettrait pas à jour lui-même).
+DisableDirPage=yes
 PrivilegesRequired=admin
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
@@ -66,6 +68,10 @@ Name: "{autodesktop}\OptiGame"; Filename: "{app}\OptiGame.exe"; Tasks: desktopic
 ; Lancé au nom de l'utilisateur qui installe (et non du compte administrateur qui a validé l'installation) : ses données
 ; vont dans SON profil. OptiGame demande lui-même ses droits (invite UAC).
 Filename: "{app}\OptiGame.exe"; Description: "{cm:LaunchProgram,OptiGame}"; Flags: nowait postinstall skipifsilent runasoriginaluser shellexec
+
+[UninstallDelete]
+; Installeurs téléchargés par la mise à jour automatique d'OptiGame (dossier créé par l'appli, pas par l'installeur).
+Type: filesandordirs; Name: "{app}\updates"
 
 [UninstallRun]
 ; Tâche planifiée du démarrage automatique (Paramètres d'OptiGame) : sans l'exe, elle n'a plus de raison d'être.
@@ -115,6 +121,30 @@ begin
   Result := '';
   if not AskOptiGameToQuit() then
     Result := 'OptiGame ne s''est pas fermé. Quittez-le (clic droit sur son icône près de l''horloge, puis « Quitter »), puis relancez l''installation.';
+end;
+
+{ Mise à jour lancée par OptiGame lui-même (/RELAUNCH=minimized ou /RELAUNCH=window, sans aucune fenêtre d'installation) :
+  il s'est fermé pour être remplacé, il est relancé à la fin, que l'installation ait réussi ou non (sinon il resterait arrêté
+  jusqu'à la prochaine ouverture de session). Lancé par l'installeur, donc avec ses droits administrateur : pas d'invite UAC. }
+procedure DeinitializeSetup();
+var
+  Mode, Exe: String;
+  ResultCode: Integer;
+begin
+  Mode := ExpandConstant('{param:RELAUNCH|}');
+  if (Mode = '') or OptiGameIsRunning() then
+    Exit;
+  try
+    Exe := ExpandConstant('{app}\OptiGame.exe');
+  except
+    Exit; { installation arrêtée avant que le dossier soit connu }
+  end;
+  if not FileExists(Exe) then
+    Exit;
+  if Mode = 'minimized' then
+    Exec(Exe, '--minimized', '', SW_SHOWNORMAL, ewNoWait, ResultCode)
+  else
+    Exec(Exe, '', '', SW_SHOWNORMAL, ewNoWait, ResultCode);
 end;
 
 function InitializeUninstall(): Boolean;

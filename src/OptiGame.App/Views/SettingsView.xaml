@@ -27,6 +27,34 @@
                 </StackPanel>
             </Border>
 
+            <!-- Mises à jour : versions publiées sur GitHub -->
+            <Border Margin="0,16,0,0" Style="{StaticResource Card}">
+                <StackPanel>
+                    <TextBlock Style="{StaticResource Text.SectionTitle}" Text="Mises à jour" />
+                    <TextBlock Margin="0,6,0,0" Style="{StaticResource Text.Secondary}">
+                        <Run Text="Version installée : " /><Run Text="{Binding Updates.CurrentText, Mode=OneWay}" FontWeight="SemiBold" />
+                    </TextBlock>
+                    <ComboBox Margin="0,12,0,0" Width="300" HorizontalAlignment="Left" ItemsSource="{Binding UpdateModeOptions}"
+                              SelectedItem="{Binding SelectedUpdateMode}" DisplayMemberPath="Label" AutomationProperties.Name="Mises à jour d'OptiGame" />
+                    <TextBlock Margin="0,6,0,0" Style="{StaticResource Text.Caption}" TextWrapping="Wrap"
+                               Text="Recherche une fois par jour sur la page GitHub d'OptiGame. Installation automatique seulement quand aucun jeu ne tourne, que cette fenêtre est fermée et qu'aucune application n'est en plein écran : OptiGame redémarre en quelques secondes dans la zone de notification. L'installeur est vérifié (empreinte publiée par GitHub) avant d'être lancé ; une mise à jour ne change que les fichiers d'OptiGame, jamais un réglage de Windows." />
+                    <TextBlock Margin="0,12,0,0" Style="{StaticResource Text.Body}" TextWrapping="Wrap" Text="{Binding Updates.StatusText}" />
+                    <ProgressBar Margin="0,8,0,0" Height="4" Maximum="100" Value="{Binding Updates.DownloadPercent, Mode=OneWay}"
+                                 Visibility="{Binding Updates.IsDownloading, Converter={StaticResource BoolToVisibility}}" />
+                    <TextBlock Margin="0,6,0,0" Style="{StaticResource Text.Caption}" TextWrapping="Wrap"
+                               Visibility="{Binding Updates.CanSelfUpdate, Converter={StaticResource InverseBoolToVisibility}}">
+                        <Run Text="Cette copie d'OptiGame ne s'installe pas de mise à jour elle-même : " /><Run Text="{Binding Updates.SelfUpdateBlocker, Mode=OneWay}" /><Run Text="." />
+                    </TextBlock>
+                    <StackPanel Margin="0,12,0,0" Orientation="Horizontal">
+                        <Button Style="{StaticResource Button.Secondary}" Content="Rechercher maintenant" Command="{Binding Updates.CheckNowCommand}" />
+                        <Button Margin="8,0,0,0" Style="{StaticResource Button.Primary}" Content="Installer maintenant" Command="{Binding Updates.InstallNowCommand}"
+                                Visibility="{Binding Updates.HasPackage, Converter={StaticResource BoolToVisibility}}" />
+                        <Button Margin="8,0,0,0" Style="{StaticResource Button.Ghost}" Content="Voir les nouveautés" Command="{Binding Updates.OpenReleaseNotesCommand}"
+                                Visibility="{Binding Updates.HasPackage, Converter={StaticResource BoolToVisibility}}" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
             <!-- Dock -->
             <Border Margin="0,16,0,0" Style="{StaticResource Card}">
                 <StackPanel>
@@ -173,7 +201,6 @@
                                 Content="Ouvrir le dossier" Command="{Binding OpenDataFolderCommand}" />
                         <TextBox Text="{Binding DataFolder, Mode=OneWay}" IsReadOnly="True" FontFamily="{StaticResource Font.Mono}" VerticalContentAlignment="Center" />
                     </DockPanel>
-                    <TextBlock Margin="0,12,0,0" Style="{StaticResource Text.Caption}" Text="{Binding VersionText}" />
                 </StackPanel>
             </Border>
         </StackPanel>

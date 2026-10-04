@@ -325,22 +325,51 @@ vit dans Core ; Platform ne fait que lire/écrire le système.
 
 ## Distribution (installeur)
 
-- Version : `<Version>` de `Directory.Build.props` (affichée dans Paramètres > Données, écrite au journal au démarrage).
+- Version : `<Version>` de `Directory.Build.props` (affichée dans Paramètres > Mises à jour, écrite au journal au démarrage).
 - `scripts\build-installer.ps1` → `artifacts\installer\OptiGame-Setup-<version>.exe` : publication AUTONOME win-x64
   (.NET inclus, ReadyToRun, sans .pdb, ressources traduites `fr` seulement : ≈ 141 Mo publiés), PresentMon ajouté, puis
   Inno Setup 6 (`installer/OptiGame.iss`, en français). Le script se lit en UTF-8 AVEC BOM (Windows PowerShell 5.1).
-- Installeur : `AppId` {BEC983EC-07E6-4D4C-A824-72F7135018FA} DÉFINITIF (mises à jour). Program Files, admin (exe lancé
-  élevé : jamais dans le profil, où un autre programme pourrait le remplacer). Avant mise à jour ou désinstallation :
-  fermeture propre par `quit.request` (partie en cours restaurée), sinon arrêt avec message. Désinstallation : tâche
-  planifiée « OptiGame » supprimée, `%LocalAppData%\OptiGame` GARDÉ, rappel que les corrections restent (à annuler avant).
+- Installeur : `AppId` {BEC983EC-07E6-4D4C-A824-72F7135018FA} DÉFINITIF (mises à jour). Program Files IMPOSÉ
+  (`DisableDirPage`), admin (exe lancé élevé : jamais dans le profil ni sur un autre disque, où d'autres programmes peuvent
+  écrire). Avant mise à jour ou désinstallation : fermeture propre par `quit.request` (partie en cours restaurée), sinon arrêt
+  avec message. Désinstallation : tâche planifiée « OptiGame » et `{app}\updates` supprimés, `%LocalAppData%\OptiGame` GARDÉ,
+  rappel que les corrections restent (à annuler avant).
   Lancement après installation au nom de l'utilisateur d'origine (`runasoriginaluser`), pas du compte admin qui a validé.
 - PresentMon 2.6.0 fourni dans `tools\` à côté de l'exe (`PresentMonRunner` cherche d'abord `%LocalAppData%\OptiGame\tools`,
   puis celui de l'appli) : SHA-256 B2A706BC…88F1AF épinglé + signature « O=Intel Corporation » vérifiée
   (Get-AuthenticodeSignature) ; licence MIT dans `installer/THIRD-PARTY-NOTICES.txt` (installé avec l'appli).
-- CI `.github/workflows/installer.yml` (windows-latest) : tests Core, installeur, installation / démarrage / désinstallation
-  silencieux, installeur en artefact « OptiGame-Setup » ; tag `v*` → brouillon de version GitHub. Lancée à la demande et
-  à chaque changement de l'installeur.
+- CI `.github/workflows/installer.yml` (windows-latest) : tests Core, `DiagDump --update-check`, installeur, installation /
+  démarrage / mise à jour par-dessus l'appli lancée (/RELAUNCH) / désinstallation silencieux, installeur en artefact
+  « OptiGame-Setup » ; tag `v*` → brouillon de version GitHub, REFUSÉ si le tag ≠ `v<Version>` (le 2026-10-04, un tag v1.1.0
+  posé sur le commit de la 1.0.0 avait publié en brouillon un installeur 1.0.0). Lancée à la demande et à chaque changement
+  de l'installeur.
+- Publier une version : monter `<Version>`, mettre sur main, puis l'UTILISATEUR pousse le tag (`git tag vX.Y.Z origin/main`,
+  `git push origin vX.Y.Z` : la session cloud ne peut pas pousser de tags, erreur 403) et publie le brouillon créé par la CI.
 - Non signé : Windows SmartScreen avertit au premier lancement de l'installeur (« Informations complémentaires »).
+
+## Mises à jour automatiques
+
+- Source : API GitHub `releases/latest` (ni brouillon ni préversion) ; lecture et décision dans `Core/Updates/AppReleases`
+  (format relevé le 2026-10-04 sur une vraie réponse, échantillon dans `tests/…/Updates/Samples`) : tag `vX.Y.Z`, fichier
+  `OptiGame-Setup-X.Y.Z.exe` de CE tag (`browser_download_url` exacte), `state` = uploaded, `size`, `digest` = « sha256:… »
+  calculé par GitHub. Téléchargement redirigé vers `release-assets.githubusercontent.com` (relevé), rien d'autre accepté.
+- Seule la copie INSTALLÉE dans Program Files se met à jour (`Platform/Updates/InstalledCopy` : clé de désinstallation
+  `{AppId}_is1`, valeur InstallLocation = dossier de l'exe ; `UpdatePolicy.WhyNoSelfUpdate`) ; une copie de développement
+  peut chercher, jamais installer. Installeur téléchargé dans `{app}\updates` (réservé aux administrateurs), taille et SHA-256
+  vérifiés, refusé = `.non-verifie`. Lancé par `IPrivilegedOperations.StartAppUpdate` : fichier ouvert en lecture seule
+  (partage lecture) de la nouvelle vérification jusqu'au lancement, `/VERYSILENT /SUPPRESSMSGBOXES /NORESTART
+  /RELAUNCH=minimized|window /LOG=<logs>\update.log` ; OptiGame se ferme, l'installeur le remplace puis le relance
+  (`DeinitializeSetup`, même si l'installation échoue), avec ses droits : pas d'UAC.
+- `App/Services/UpdateService`, réglage `UpdateMode` (Automatique par défaut / Me prévenir / Désactivé) : recherche 2 min
+  après le démarrage puis toutes les 24 h, reportée pendant les parties (GameTimeGate « update-check ») ; installation
+  automatique seulement si `UpdatePolicy.WhyNotNow` est nul (aucune partie, fenêtre fermée, pas de plein écran), sinon nouvel
+  essai toutes les 10 min, et 30 s après la fermeture de la fenêtre (pas tout de suite : quitter OptiGame la ferme aussi).
+  Après une mise à jour (`LastRunVersion` plus ancienne) : notification + bandeau « mis à jour », anciens installeurs
+  supprimés. Paramètres > Mises à jour (Rechercher / Installer maintenant / Nouveautés) ; bandeau dans la fenêtre.
+- `DiagDump -- --update-check [--download]` : dernière version publiée, fichier, empreinte, clé de désinstallation ;
+  `--download` vérifie aussi le téléchargement complet (dossier temporaire).
+- Sans signature de code, une mise à jour n'est authentique que si le compte GitHub l'est (double authentification) ;
+  « immutable releases » (réglage du dépôt) empêche de modifier une version publiée.
 
 ## Commandes
 

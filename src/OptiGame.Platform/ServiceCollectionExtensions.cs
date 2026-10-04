@@ -105,6 +105,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<Drivers.WindowsUpdateDriverSearch>();
         services.AddSingleton<Drivers.DriverDownloader>();
         services.AddSingleton<Drivers.AmdChipsetClient>();
+        services.AddSingleton<Updates.AppUpdateClient>();
         services.AddSingleton<Display.FullscreenWatcher>();
         services.AddSingleton<Startup.AutoStartService>();
 

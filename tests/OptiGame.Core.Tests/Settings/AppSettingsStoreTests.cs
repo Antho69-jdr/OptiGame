@@ -54,4 +54,29 @@ public sealed class AppSettingsStoreTests : IDisposable
 
         Assert.False(Open().Get().LightDuringGames);
     }
+
+    [Fact]
+    public void Updates_are_automatic_for_an_older_settings_file()
+    {
+        File.WriteAllText(_dir.File("settings.json"), """{ "version": 1, "gameFolders": [] }""");
+
+        var settings = Open().Get();
+        Assert.Equal(UpdateMode.Automatic, settings.UpdateMode);
+        Assert.Null(settings.LastRunVersion);
+    }
+
+    [Fact]
+    public void Update_mode_and_last_run_version_are_persisted()
+    {
+        Open().Update(s =>
+        {
+            s.UpdateMode = UpdateMode.Notify;
+            s.LastRunVersion = "1.2.0";
+        });
+
+        var loaded = Open().Get();
+        Assert.Equal(UpdateMode.Notify, loaded.UpdateMode);
+        Assert.Equal("1.2.0", loaded.LastRunVersion);
+        Assert.Contains("\"Notify\"", File.ReadAllText(_dir.File("settings.json"))); // lisible, comme les autres choix
+    }
 }

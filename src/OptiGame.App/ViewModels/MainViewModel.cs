@@ -14,8 +14,10 @@ public sealed partial class MainViewModel : ObservableObject
         MeasuresViewModel measures,
         SessionViewModel session,
         SettingsViewModel settings,
+        UpdateService updates,
         NavigationService navigation)
     {
+        Updates = updates;
         Diagnostic = diagnostic;
         Library = library;
         Measures = measures;
@@ -46,6 +48,9 @@ public sealed partial class MainViewModel : ObservableObject
     public SessionViewModel Session { get; }
 
     public SettingsViewModel Settings { get; }
+
+    /// <summary>Bandeaux « mise à jour disponible » et « OptiGame a été mis à jour ».</summary>
+    public UpdateService Updates { get; }
 
     public ObservableCollection<NavItem> NavItems { get; }
 

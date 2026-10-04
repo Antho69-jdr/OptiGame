@@ -1,10 +1,13 @@
 using System.Diagnostics;
+using System.Security.Cryptography;
 using Microsoft.Win32;
 using OptiGame.Core;
 using OptiGame.Core.Drivers;
 using OptiGame.Core.State;
+using OptiGame.Core.Updates;
 using OptiGame.Platform.Drivers;
 using OptiGame.Platform.Registry;
+using OptiGame.Platform.Updates;
 
 namespace OptiGame.Platform.Privileged;
 
@@ -23,6 +26,13 @@ public interface IPrivilegedOperations
     /// téléchargements d'OptiGame, et si la signature n'est plus valide au moment de l'ouvrir.
     /// </summary>
     Process StartVerifiedInstaller(string path, InstallerVendor vendor);
+
+    /// <summary>
+    /// Lance, sans aucune fenêtre, l'installeur d'une mise à jour d'OptiGame (il hérite des droits administrateur) : il ferme
+    /// OptiGame, le remplace puis le relance. Refusé hors du dossier des mises à jour de la copie installée (Program Files), et
+    /// si l'empreinte du fichier n'est plus celle publiée par GitHub.
+    /// </summary>
+    Process StartAppUpdate(string installerPath, string expectedSha256, bool showWindowAfter);
 
     /// <summary>Télécharge et installe, par Windows Update, les pilotes choisis par l'utilisateur. Long : hors du thread UI.</summary>
     WindowsUpdateInstallReport InstallWindowsUpdateDrivers(IReadOnlyList<string> updateIds, Action<string> progress);
@@ -49,6 +59,33 @@ public sealed class InProcessPrivilegedOperations(AppPaths paths) : IPrivilegedO
 
         return Process.Start(new ProcessStartInfo(full) { UseShellExecute = false, WorkingDirectory = Path.GetDirectoryName(full)! })
                ?? throw new InvalidOperationException("L'installeur ne s'est pas lancé.");
+    }
+
+    public Process StartAppUpdate(string installerPath, string expectedSha256, bool showWindowAfter)
+    {
+        if (InstalledCopy.WhyNoSelfUpdate() is { } reason) throw new InvalidOperationException($"Mise à jour refusée : {reason}.");
+        var full = Path.GetFullPath(installerPath);
+        var folder = Path.GetFullPath(InstalledCopy.UpdatesFolder).TrimEnd('\\');
+        if (!string.Equals(Path.GetDirectoryName(full), folder, StringComparison.OrdinalIgnoreCase) || !AppReleases.IsInstallerName(Path.GetFileName(full)))
+        {
+            throw new InvalidOperationException($"Mise à jour refusée : l'installeur doit venir du dossier des mises à jour d'OptiGame ({full}).");
+        }
+
+        // Ouvert sans partage en écriture ni en suppression, de la vérification au lancement : rien ne peut le modifier, le
+        // remplacer ou le renommer entre-temps. L'installeur, lui, s'ouvre en lecture, ce que ce partage autorise.
+        using var locked = new FileStream(full, FileMode.Open, FileAccess.Read, FileShare.Read);
+        var actual = Convert.ToHexStringLower(SHA256.HashData(locked));
+        if (!actual.Equals(expectedSha256, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InstallerRejectedException("L'installeur de la mise à jour a changé depuis sa vérification (empreinte SHA-256 différente) : refusé.");
+        }
+
+        var start = new ProcessStartInfo(full) { UseShellExecute = false, WorkingDirectory = Path.GetDirectoryName(full)! };
+        foreach (var argument in AppReleases.SilentInstallArguments(showWindowAfter, Path.Combine(paths.LogsDir, "update.log")))
+        {
+            start.ArgumentList.Add(argument);
+        }
+        return Process.Start(start) ?? throw new InvalidOperationException("L'installeur de la mise à jour ne s'est pas lancé.");
     }
 
     public WindowsUpdateInstallReport InstallWindowsUpdateDrivers(IReadOnlyList<string> updateIds, Action<string> progress) =>

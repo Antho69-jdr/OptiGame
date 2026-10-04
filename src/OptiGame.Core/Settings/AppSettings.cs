@@ -19,6 +19,19 @@ public enum DockIconShape
     Cover,
 }
 
+/// <summary>Mises à jour d'OptiGame (versions publiées sur GitHub).</summary>
+public enum UpdateMode
+{
+    /// <summary>Téléchargée puis installée d'elle-même, quand aucun jeu ne tourne et que la fenêtre d'OptiGame est fermée.</summary>
+    Automatic,
+
+    /// <summary>Signalée (bandeau, notification) ; installée quand l'utilisateur clique.</summary>
+    Notify,
+
+    /// <summary>Aucune recherche automatique (« Rechercher maintenant » reste possible).</summary>
+    Off,
+}
+
 /// <summary>Préférences de l'appli (settings.json).</summary>
 public sealed class AppSettings
 {
@@ -83,6 +96,12 @@ public sealed class AppSettings
     /// <summary>« Mes jeux » affiche aussi les jeux Steam possédés mais non installés (jaquettes grisées).</summary>
     public bool LibraryShowUninstalled { get; set; }
 
+    /// <summary>Absent d'un ancien settings.json = automatique.</summary>
+    public UpdateMode UpdateMode { get; set; } = UpdateMode.Automatic;
+
+    /// <summary>Version d'OptiGame au dernier démarrage : une version plus récente au démarrage suivant = mise à jour installée.</summary>
+    public string? LastRunVersion { get; set; }
+
     public AppSettings Clone() => new()
     {
         Version = Version,
@@ -104,6 +123,8 @@ public sealed class AppSettings
         LightDuringGames = LightDuringGames,
         DiagnosticAdvanced = DiagnosticAdvanced,
         LibraryShowUninstalled = LibraryShowUninstalled,
+        UpdateMode = UpdateMode,
+        LastRunVersion = LastRunVersion,
     };
 }
 

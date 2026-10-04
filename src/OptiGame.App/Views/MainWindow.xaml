@@ -80,6 +80,40 @@
                 </StackPanel>
             </Border>
 
+            <!-- Mise à jour disponible ou prête : bandeau, les notifications Windows pouvant être masquées -->
+            <Border DockPanel.Dock="Top" Margin="24,16,24,0" Style="{StaticResource Banner}"
+                    Background="{StaticResource Brush.AccentSoft}" BorderBrush="{StaticResource Brush.Accent}"
+                    DataContext="{Binding Updates}"
+                    Visibility="{Binding IsAvailableBannerVisible, Converter={StaticResource BoolToVisibility}}">
+                <DockPanel>
+                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                        <Button Margin="12,0,0,0" Style="{StaticResource Button.Primary}" Content="Installer maintenant" Command="{Binding InstallNowCommand}"
+                                Visibility="{Binding CanSelfUpdate, Converter={StaticResource BoolToVisibility}}" />
+                        <Button Margin="8,0,0,0" Style="{StaticResource Button.Ghost}" Content="Nouveautés" Command="{Binding OpenReleaseNotesCommand}" />
+                    </StackPanel>
+                    <TextBlock DockPanel.Dock="Left" Margin="0,0,12,0" VerticalAlignment="Center" Style="{StaticResource Text.Icon}"
+                               FontSize="18" Foreground="{StaticResource Brush.Accent}" Text="&#xE896;" />
+                    <TextBlock VerticalAlignment="Center" Style="{StaticResource Text.Body}" TextWrapping="Wrap" Text="{Binding AvailableBannerText}" />
+                </DockPanel>
+            </Border>
+
+            <!-- OptiGame vient d'être mis à jour (installation automatique pendant que la fenêtre était fermée) -->
+            <Border DockPanel.Dock="Top" Margin="24,16,24,0" Style="{StaticResource Banner}"
+                    Background="{StaticResource Brush.OkSoft}" BorderBrush="{StaticResource Brush.Ok}"
+                    DataContext="{Binding Updates}"
+                    Visibility="{Binding IsUpdatedBannerVisible, Converter={StaticResource BoolToVisibility}}">
+                <DockPanel>
+                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                        <Button Margin="12,0,0,0" Style="{StaticResource Button.Ghost}" Content="Nouveautés" Command="{Binding OpenReleaseNotesCommand}" />
+                        <Button Margin="8,0,0,0" Style="{StaticResource Button.Secondary}" Content="OK" Command="{Binding DismissUpdatedBannerCommand}" />
+                    </StackPanel>
+                    <TextBlock DockPanel.Dock="Left" Margin="0,0,12,0" VerticalAlignment="Center" Style="{StaticResource Text.Icon}"
+                               FontSize="18" Foreground="{StaticResource Brush.Ok}" Text="&#xE73E;" />
+                    <TextBlock VerticalAlignment="Center" Style="{StaticResource Text.Body}" TextWrapping="Wrap"
+                               Text="{Binding JustUpdatedTo, StringFormat='OptiGame a été mis à jour : version {0}.'}" />
+                </DockPanel>
+            </Border>
+
             <ContentControl Content="{Binding CurrentPage}" Focusable="False" />
         </DockPanel>
     </Grid>

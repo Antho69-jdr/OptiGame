@@ -93,6 +93,9 @@ public sealed class FullscreenWatcher : IDisposable
         _recheck = null;
     }
 
+    /// <summary>Application en plein écran (ou présentation) au premier plan en ce moment : relevé ponctuel, sans surveillance.</summary>
+    public static bool IsFullscreenNow() => DetectFullscreen();
+
     /// <summary>Relevé Win32 ; la décision est dans Core (<see cref="FullscreenRules"/>, testée).</summary>
     private static bool DetectFullscreen()
     {

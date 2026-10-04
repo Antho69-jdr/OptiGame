@@ -19,8 +19,10 @@ public sealed partial class SettingsViewModel : ObservableObject
 
     private readonly IgdbClient _igdb;
 
-    public SettingsViewModel(AutoStartService autoStart, IDialogService dialogs, AppPaths paths, AppSettingsStore settings, IgdbClient igdb)
+    public SettingsViewModel(AutoStartService autoStart, IDialogService dialogs, AppPaths paths, AppSettingsStore settings, IgdbClient igdb,
+        UpdateService updates)
     {
+        Updates = updates;
         _autoStart = autoStart;
         _dialogs = dialogs;
         _settings = settings;
@@ -31,6 +33,29 @@ public sealed partial class SettingsViewModel : ObservableObject
         var current = settings.Get();
         IgdbClientId = current.IgdbClientId ?? "";
         HasIgdbSecret = current.IgdbClientSecretProtected is not null;
+    }
+
+    // ---- Mises à jour ----
+
+    public UpdateService Updates { get; }
+
+    public IReadOnlyList<UpdateModeOption> UpdateModeOptions { get; } =
+    [
+        new(UpdateMode.Automatic, "Installer automatiquement (recommandé)"),
+        new(UpdateMode.Notify, "Me prévenir seulement"),
+        new(UpdateMode.Off, "Ne pas rechercher"),
+    ];
+
+    public UpdateModeOption SelectedUpdateMode
+    {
+        get => UpdateModeOptions.FirstOrDefault(o => o.Value == _settings.Get().UpdateMode) ?? UpdateModeOptions[0];
+        set
+        {
+            if (value is null || value.Value == _settings.Get().UpdateMode) return;
+            _settings.Update(s => s.UpdateMode = value.Value);
+            OnPropertyChanged();
+            Updates.ModeChanged();
+        }
     }
 
     // ---- Dock ----
@@ -219,8 +244,6 @@ public sealed partial class SettingsViewModel : ObservableObject
 
     public string DataFolder { get; }
 
-    public string VersionText => $"OptiGame {AppInfo.Version}";
-
     public string ExePath { get; } = Environment.ProcessPath ?? "";
 
     /// <summary>Dossiers dont chaque sous-dossier est un jeu, pour la recherche des jeux installés.</summary>
@@ -292,6 +315,8 @@ public sealed partial class SettingsViewModel : ObservableObject
         }
     }
 }
+
+public sealed record UpdateModeOption(UpdateMode Value, string Label);
 
 public sealed record DockEdgeOption(DockEdge Value, string Label);
 

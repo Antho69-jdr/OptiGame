@@ -1,7 +1,8 @@
 name: Installeur
 
-# Fabrique l'installeur sur une machine Windows neuve, puis l'installe, lance l'appli et la désinstalle, en silence, pour
-# le vérifier. L'installeur est à télécharger dans le résumé de l'exécution (« OptiGame-Setup »).
+# Fabrique l'installeur sur une machine Windows neuve, puis l'installe, lance l'appli, la met à jour par-dessus (comme le fait
+# la mise à jour automatique) et la désinstalle, en silence, pour le vérifier. L'installeur est à télécharger dans le résumé
+# de l'exécution (« OptiGame-Setup »).
 # - À la demande : onglet Actions > Installeur > Run workflow ; ou à chaque changement de l'installeur.
 # - Tag « v* » (ex. v1.0.0) : en plus, brouillon de version GitHub avec l'installeur, à publier à la main.
 on:
@@ -43,6 +44,12 @@ jobs:
       - name: Tests
         run: dotnet test tests/OptiGame.Core.Tests -c Release
 
+      # La mise à jour automatique interroge l'API de GitHub (sans compte : limitée à 60 requêtes par heure et par adresse IP,
+      # d'où continue-on-error) : réponse réellement lue et comprise par l'appli.
+      - name: Mise à jour automatique (ce que voit l'appli)
+        continue-on-error: true
+        run: dotnet run --project tools/OptiGame.DiagDump -c Release -- --update-check
+
       - name: Inno Setup
         run: |
           if (-not (Test-Path "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe")) { choco install innosetup -y --no-progress }
@@ -60,6 +67,9 @@ jobs:
             if (-not (Test-Path (Join-Path $app $f))) { throw "Absent après l'installation : $f" }
           }
           (Get-Item (Join-Path $app 'OptiGame.exe')).VersionInfo | Format-List ProductName, ProductVersion, FileVersion
+          # Lue par OptiGame pour savoir s'il est la copie installée (seule à se mettre à jour elle-même).
+          Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\{BEC983EC-07E6-4D4C-A824-72F7135018FA}_is1' |
+            Format-List DisplayName, DisplayVersion, InstallLocation
           "{0:N0} Mo installés" -f ((Get-ChildItem $app -Recurse -File | Measure-Object Length -Sum).Sum / 1MB)
 
       - name: Démarrage de l'appli installée
@@ -76,6 +86,32 @@ jobs:
           if (-not $p.WaitForExit(20000)) { Stop-Process $p -Force; throw "OptiGame ne s'est pas fermé sur demande (quit.request)." }
           'OptiGame a démarré puis s''est fermé proprement.'
 
+      # Ce que fait la mise à jour automatique : installeur sans fenêtre et /RELAUNCH, pendant qu'OptiGame tourne. L'installeur
+      # doit le fermer proprement (quit.request), le remplacer, puis le relancer.
+      - name: Mise à jour silencieuse (appli lancée)
+        run: |
+          $app = Join-Path $env:ProgramFiles 'OptiGame'
+          $data = Join-Path $env:LOCALAPPDATA 'OptiGame'
+          $log = Join-Path $data 'logs\optigame.log'
+          $old = Start-Process (Join-Path $app 'OptiGame.exe') -ArgumentList '--minimized' -PassThru
+          Start-Sleep -Seconds 10
+          if (-not (Select-String -Path $log -SimpleMatch 'Mises à jour : copie installée' -Quiet)) {
+            Get-Content $log -Tail 20
+            throw "OptiGame ne s'est pas reconnu comme copie installée : il ne se mettrait pas à jour."
+          }
+          $setup = Get-ChildItem artifacts/installer/OptiGame-Setup-*.exe | Select-Object -First 1
+          $p = Start-Process $setup.FullName -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/RELAUNCH=minimized','/LOG=update.log' -Wait -PassThru
+          if ($p.ExitCode -ne 0) { Get-Content update.log -Tail 40; throw "Mise à jour : code $($p.ExitCode)" }
+          if (-not $old.HasExited) { throw "L'ancienne instance d'OptiGame tourne encore après la mise à jour." }
+          $deadline = (Get-Date).AddSeconds(30)
+          do { Start-Sleep -Seconds 1; $new = Get-Process OptiGame -ErrorAction SilentlyContinue | Select-Object -First 1 } until ($new -or (Get-Date) -gt $deadline)
+          if (-not $new) { Get-Content update.log -Tail 40; throw "OptiGame n'a pas été relancé après la mise à jour." }
+          Start-Sleep -Seconds 10
+          Get-Content $log -Tail 8
+          Set-Content (Join-Path $data 'quit.request') (Get-Date -Format o)
+          if (-not $new.WaitForExit(20000)) { Stop-Process $new -Force; throw "OptiGame relancé ne s'est pas fermé sur demande (quit.request)." }
+          "Mise à jour silencieuse : ancienne instance fermée (pid $($old.Id)), nouvelle relancée (pid $($new.Id))."
+
       - name: Désinstallation silencieuse
         run: |
           $app = Join-Path $env:ProgramFiles 'OptiGame'
@@ -84,23 +120,6 @@ jobs:
           while ((Test-Path (Join-Path $app 'OptiGame.exe')) -and (Get-Date) -lt $deadline) { Start-Sleep -Seconds 1 }
           if (Test-Path (Join-Path $app 'OptiGame.exe')) { throw 'OptiGame.exe encore présent après la désinstallation.' }
           'Désinstallé.'
-
-      # Relevé (temporaire) du format réel des versions GitHub, pour les mises à jour automatiques : réponse de l'API
-      # (brouillons compris, d'où le jeton) et serveur vers lequel le téléchargement d'un fichier redirige.
-      - name: Relevé du format des versions GitHub
-        continue-on-error: true
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          $json = (gh api "repos/$env:GITHUB_REPOSITORY/releases?per_page=1") -join "`n"
-          $json
-          $asset = ($json | ConvertFrom-Json)[0].assets | Select-Object -First 1
-          if ($asset) {
-            $headers = curl.exe -s -o NUL -D - -H "Authorization: Bearer $env:GH_TOKEN" -H "Accept: application/octet-stream" $asset.url
-            $location = $headers | Where-Object { $_ -match '^location:' } | Select-Object -First 1
-            if ($location) { 'Redirection : ' + ([Uri]($location -replace '^location:\s*', '').Trim()).GetLeftPart([UriPartial]::Path) }
-            else { $headers }
-          }
 
       - uses: actions/upload-artifact@v4
         with:
@@ -114,4 +133,4 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           $setup = (Get-ChildItem artifacts/installer/OptiGame-Setup-*.exe | Select-Object -First 1).FullName
-          gh release create $env:GITHUB_REF_NAME $setup --draft --title "OptiGame $env:GITHUB_REF_NAME" --notes "Installeur Windows 10 et 11 (x64). Non signé : Windows SmartScreen peut afficher un avertissement (« Informations complémentaires » puis « Exécuter quand même »)."
+          gh release create $env:GITHUB_REF_NAME $setup --draft --title "OptiGame $env:GITHUB_REF_NAME" --notes "Installeur Windows 10 et 11 (x64). Non signé : Windows SmartScreen peut afficher un avertissement (« Informations complémentaires » puis « Exécuter quand même »). Déjà installé (1.2.0 ou plus récent) ? OptiGame se met à jour tout seul."

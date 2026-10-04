@@ -80,6 +80,7 @@ public partial class App : Application
         footprint.EnterGame(this); // partie reprise après un plantage d'OptiGame (sans quoi : rien à faire)
         _services.GetRequiredService<Dock.DockController>().Start();
         _services.GetRequiredService<Platform.Measurement.AutoCapture>().Start();
+        _services.GetRequiredService<UpdateService>().Start(this);
 
         _quitWatcher = new QuitRequestWatcher(services.GetRequiredService<AppPaths>().Root,
             () => Dispatcher.BeginInvoke(async () =>
@@ -169,6 +170,9 @@ public partial class App : Application
         log.Info($"Mémoire après nettoyage complet : {MemoryUsage.Now().Describe()}");
     }
 
+    /// <summary>Fenêtre principale affichée, même réduite : l'utilisateur s'en sert (une mise à jour automatique attend).</summary>
+    public bool IsMainWindowShown => _mainWindow is { IsVisible: true };
+
     public void ShowMainWindow()
     {
         var window = GetMainWindow();
@@ -194,6 +198,10 @@ public partial class App : Application
             window.Height = placement.Bounds.Height;
             window.WindowState = placement.State; // réduite au début de la partie : revient réduite
         }
+        window.IsVisibleChanged += (_, args) =>
+        {
+            if (args.NewValue is false) _services?.GetRequiredService<UpdateService>().MainWindowHidden();
+        };
         window.Closed += (_, _) =>
         {
             if (ReferenceEquals(_mainWindow, window)) _mainWindow = null;
@@ -336,6 +344,7 @@ public partial class App : Application
         services.AddSingleton<GameTimeGate>();
         services.AddSingleton<MemoryRelief>();
         services.AddSingleton<InGameFootprint>();
+        services.AddSingleton<UpdateService>();
         // Transitoire : fermée pendant les parties et recréée ensuite (une seule à la fois, gardée par App._mainWindow).
         services.AddTransient<MainWindow>();
 

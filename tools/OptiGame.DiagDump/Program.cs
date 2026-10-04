@@ -105,6 +105,30 @@ if (args.Length == 1 && args[0] == "--drivers")
     return;
 }
 
+// --update-check [--download] : ce que voit la mise à jour automatique (dernière version publiée sur GitHub, installeur,
+// empreinte SHA-256 de GitHub) et la clé de désinstallation de la copie installée. --download : télécharge et vérifie
+// l'installeur dans un dossier temporaire (supprimé ensuite), sans rien installer.
+if (args.Length is 1 or 2 && args[0] == "--update-check" && (args.Length == 1 || args[1] == "--download"))
+{
+    Console.WriteLine($"Copie installée (clé de désinstallation) : {OptiGame.Platform.Updates.InstalledCopy.InstallLocation() ?? "aucune"}");
+    var client = services.GetRequiredService<OptiGame.Platform.Updates.AppUpdateClient>();
+    var result = await client.CheckAsync(new Version(0, 0, 0)); // comparé à 0.0.0 : toute version publiée est détaillée
+    Console.WriteLine($"Dernière version publiée : {result.Status} — {result.Message}");
+    if (result.Package is { } package)
+    {
+        Console.WriteLine($"  {package.Tag}, publiée le {package.PublishedAt:dd/MM/yyyy HH:mm} — {package.PageUrl}");
+        Console.WriteLine($"  {package.InstallerName} : {package.InstallerSize:N0} octets, SHA-256 {package.Sha256}\n  {package.InstallerUrl}");
+        if (args.Length == 2)
+        {
+            var folder = Path.Combine(Path.GetTempPath(), "OptiGame.DiagDump", "updates");
+            var file = await client.DownloadAsync(package, folder, null, CancellationToken.None);
+            Console.WriteLine($"  Téléchargé et vérifié (taille, SHA-256, serveurs de GitHub) : {file}");
+            File.Delete(file);
+        }
+    }
+    return;
+}
+
 // --steam-playtime : temps de jeu Steam de chaque profil (lecture seule de localconfig.vdf et des vrais profils).
 if (args.Length == 1 && args[0] == "--steam-playtime")
 {
