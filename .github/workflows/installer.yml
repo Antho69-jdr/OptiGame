@@ -1,0 +1,89 @@
+name: Installeur
+
+# Fabrique l'installeur sur une machine Windows neuve, puis l'installe, lance l'appli et la désinstalle, en silence, pour
+# le vérifier. L'installeur est à télécharger dans le résumé de l'exécution (« OptiGame-Setup »).
+# - À la demande : onglet Actions > Installeur > Run workflow ; ou à chaque changement de l'installeur.
+# - Tag « v* » (ex. v1.0.0) : en plus, brouillon de version GitHub avec l'installeur, à publier à la main.
+on:
+  workflow_dispatch:
+  push:
+    tags: ['v*']
+    branches: ['**']
+    paths:
+      - 'installer/**'
+      - 'scripts/build-installer.ps1'
+      - '.github/workflows/installer.yml'
+      - 'Directory.Build.props'
+
+permissions:
+  contents: write
+
+jobs:
+  installer:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Tests
+        run: dotnet test tests/OptiGame.Core.Tests -c Release
+
+      - name: Inno Setup
+        run: |
+          if (-not (Test-Path "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe")) { choco install innosetup -y --no-progress }
+
+      - name: Fabrication de l'installeur
+        run: ./scripts/build-installer.ps1
+
+      - name: Installation silencieuse
+        run: |
+          $setup = Get-ChildItem artifacts/installer/OptiGame-Setup-*.exe | Select-Object -First 1
+          $p = Start-Process $setup.FullName -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/LOG=install.log' -Wait -PassThru
+          if ($p.ExitCode -ne 0) { Get-Content install.log; throw "Installation : code $($p.ExitCode)" }
+          $app = Join-Path $env:ProgramFiles 'OptiGame'
+          foreach ($f in 'OptiGame.exe', 'tools\PresentMon-2.6.0-x64.exe', 'THIRD-PARTY-NOTICES.txt', 'unins000.exe') {
+            if (-not (Test-Path (Join-Path $app $f))) { throw "Absent après l'installation : $f" }
+          }
+          (Get-Item (Join-Path $app 'OptiGame.exe')).VersionInfo | Format-List ProductName, ProductVersion, FileVersion
+          "{0:N0} Mo installés" -f ((Get-ChildItem $app -Recurse -File | Measure-Object Length -Sum).Sum / 1MB)
+
+      - name: Démarrage de l'appli installée
+        continue-on-error: true
+        run: |
+          $exe = Join-Path $env:ProgramFiles 'OptiGame\OptiGame.exe'
+          $p = Start-Process $exe -ArgumentList '--minimized' -PassThru
+          Start-Sleep -Seconds 20
+          $data = Join-Path $env:LOCALAPPDATA 'OptiGame'
+          $log = Join-Path $data 'logs\optigame.log'
+          if (Test-Path $log) { Get-Content $log -Encoding UTF8 }
+          if ($p.HasExited) { throw "OptiGame s'est arrêté au démarrage (code $($p.ExitCode))." }
+          Set-Content (Join-Path $data 'quit.request') (Get-Date -Format o)
+          if (-not $p.WaitForExit(20000)) { Stop-Process $p -Force; throw "OptiGame ne s'est pas fermé sur demande (quit.request)." }
+          'OptiGame a démarré puis s''est fermé proprement.'
+
+      - name: Désinstallation silencieuse
+        run: |
+          $app = Join-Path $env:ProgramFiles 'OptiGame'
+          Start-Process (Join-Path $app 'unins000.exe') -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART' -Wait
+          $deadline = (Get-Date).AddSeconds(60)
+          while ((Test-Path (Join-Path $app 'OptiGame.exe')) -and (Get-Date) -lt $deadline) { Start-Sleep -Seconds 1 }
+          if (Test-Path (Join-Path $app 'OptiGame.exe')) { throw 'OptiGame.exe encore présent après la désinstallation.' }
+          'Désinstallé.'
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: OptiGame-Setup
+          path: artifacts/installer/*.exe
+          if-no-files-found: error
+
+      - name: Brouillon de version (tag v*)
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $setup = (Get-ChildItem artifacts/installer/OptiGame-Setup-*.exe | Select-Object -First 1).FullName
+          gh release create $env:GITHUB_REF_NAME $setup --draft --title "OptiGame $env:GITHUB_REF_NAME" --notes "Installeur Windows 10 et 11 (x64). Non signé : Windows SmartScreen peut afficher un avertissement (« Informations complémentaires » puis « Exécuter quand même »)."

@@ -14,10 +14,18 @@ public sealed class PresentMonRunner(AppPaths paths, FileLog log)
     /// <summary>Dossier où OptiGame range les outils téléchargés (%LocalAppData%\OptiGame\tools).</summary>
     public string ToolsDirectory => Path.Combine(paths.Root, "tools");
 
-    /// <summary>PresentMon le plus récent présent dans le dossier des outils, ou null.</summary>
-    public string? FindInToolsDirectory() =>
-        Directory.Exists(ToolsDirectory)
-            ? Directory.EnumerateFiles(ToolsDirectory, "PresentMon*.exe").OrderByDescending(f => f, StringComparer.OrdinalIgnoreCase).FirstOrDefault()
+    /// <summary>Outils fournis avec l'appli par l'installeur (PresentMon dans Program Files\OptiGame\tools).</summary>
+    public static string BundledToolsDirectory => Path.Combine(AppContext.BaseDirectory, "tools");
+
+    /// <summary>
+    /// PresentMon le plus récent du dossier des outils de l'utilisateur, sinon celui fourni par l'installeur, ou null : une
+    /// version déposée par l'utilisateur passe avant celle de l'installeur.
+    /// </summary>
+    public string? FindInToolsDirectory() => Newest(ToolsDirectory) ?? Newest(BundledToolsDirectory);
+
+    private static string? Newest(string directory) =>
+        Directory.Exists(directory)
+            ? Directory.EnumerateFiles(directory, "PresentMon*.exe").OrderByDescending(f => f, StringComparer.OrdinalIgnoreCase).FirstOrDefault()
             : null;
 
     public async Task<string> RunAsync(CaptureRequest request, CancellationToken cancellation)

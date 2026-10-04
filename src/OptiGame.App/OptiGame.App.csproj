@@ -7,6 +7,8 @@
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <!-- Icône de l'exe, reprise d'office par toutes les fenêtres (WPF prend celle de l'exe quand Window.Icon n'est pas posé). -->
     <ApplicationIcon>Assets\OptiGame.ico</ApplicationIcon>
+    <!-- Ressources traduites des bibliothèques (WPF…) : le français seulement, l'appli est en français (publication plus légère). -->
+    <SatelliteResourceLanguages>fr</SatelliteResourceLanguages>
     <AssemblyName>OptiGame</AssemblyName>
     <RootNamespace>OptiGame.App</RootNamespace>
   </PropertyGroup>

@@ -243,7 +243,7 @@ public partial class App : Application
     private static void StartSessions(IServiceProvider services)
     {
         var log = services.GetRequiredService<FileLog>();
-        log.Info($"OptiGame démarre ({Environment.ProcessPath}).");
+        log.Info($"OptiGame {AppInfo.Version} démarre ({Environment.ProcessPath}).");
         var notifications = services.GetRequiredService<INotificationService>();
         var sessionVm = services.GetRequiredService<SessionViewModel>(); // s'abonne aux événements de session
         var sessions = services.GetRequiredService<GameSessionManager>();

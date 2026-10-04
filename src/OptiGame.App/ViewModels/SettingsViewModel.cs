@@ -219,6 +219,8 @@ public sealed partial class SettingsViewModel : ObservableObject
 
     public string DataFolder { get; }
 
+    public string VersionText => $"OptiGame {AppInfo.Version}";
+
     public string ExePath { get; } = Environment.ProcessPath ?? "";
 
     /// <summary>Dossiers dont chaque sous-dossier est un jeu, pour la recherche des jeux installés.</summary>

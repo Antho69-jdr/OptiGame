@@ -320,6 +320,25 @@ vit dans Core ; Platform ne fait que lire/écrire le système.
 - Un commit par étape fonctionnelle ; ne passer à la phase suivante qu'après test par l'utilisateur.
 - Vérifier tout chemin de registre / classe WMI sur la machine avant de s'en servir ; signaler s'il est absent.
 
+## Distribution (installeur)
+
+- Version : `<Version>` de `Directory.Build.props` (affichée dans Paramètres > Données, écrite au journal au démarrage).
+- `scripts\build-installer.ps1` → `artifacts\installer\OptiGame-Setup-<version>.exe` : publication AUTONOME win-x64
+  (.NET inclus, ReadyToRun, sans .pdb, ressources traduites `fr` seulement : ≈ 141 Mo publiés), PresentMon ajouté, puis
+  Inno Setup 6 (`installer/OptiGame.iss`, en français). Le script se lit en UTF-8 AVEC BOM (Windows PowerShell 5.1).
+- Installeur : `AppId` {BEC983EC-07E6-4D4C-A824-72F7135018FA} DÉFINITIF (mises à jour). Program Files, admin (exe lancé
+  élevé : jamais dans le profil, où un autre programme pourrait le remplacer). Avant mise à jour ou désinstallation :
+  fermeture propre par `quit.request` (partie en cours restaurée), sinon arrêt avec message. Désinstallation : tâche
+  planifiée « OptiGame » supprimée, `%LocalAppData%\OptiGame` GARDÉ, rappel que les corrections restent (à annuler avant).
+  Lancement après installation au nom de l'utilisateur d'origine (`runasoriginaluser`), pas du compte admin qui a validé.
+- PresentMon 2.6.0 fourni dans `tools\` à côté de l'exe (`PresentMonRunner` cherche d'abord `%LocalAppData%\OptiGame\tools`,
+  puis celui de l'appli) : SHA-256 B2A706BC…88F1AF épinglé + signature « O=Intel Corporation » vérifiée
+  (Get-AuthenticodeSignature) ; licence MIT dans `installer/THIRD-PARTY-NOTICES.txt` (installé avec l'appli).
+- CI `.github/workflows/installer.yml` (windows-latest) : tests Core, installeur, installation / démarrage / désinstallation
+  silencieux, installeur en artefact « OptiGame-Setup » ; tag `v*` → brouillon de version GitHub. Lancée à la demande et
+  à chaque changement de l'installeur.
+- Non signé : Windows SmartScreen avertit au premier lancement de l'installeur (« Informations complémentaires »).
+
 ## Commandes
 
 ```powershell
@@ -328,5 +347,6 @@ dotnet test OptiGame.slnx
 # Compiler et relancer l'appli (ferme proprement l'instance en cours via quit.request, qui verrouillerait les DLL ;
 # restaure une éventuelle session de jeu). `dotnet run` échoue (erreur 740) car il ne peut pas déclencher l'UAC.
 .\scripts\dev-run.ps1
+.\scripts\build-installer.ps1                # installeur (Inno Setup 6 : winget install --id JRSoftware.InnoSetup -e)
 dotnet run --project tools/OptiGame.DiagDump   # diagnostic lecture seule en console, sans élévation
 ```
