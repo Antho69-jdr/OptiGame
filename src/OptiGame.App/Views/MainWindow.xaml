@@ -31,10 +31,7 @@
         <Border Grid.Column="0" Background="{StaticResource Brush.Sidebar}" BorderBrush="{StaticResource Brush.Border}" BorderThickness="0,0,1,0">
             <DockPanel Margin="14,18">
                 <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="6,0,0,26">
-                    <Border Width="36" Height="36" CornerRadius="10" Background="{StaticResource Brush.Accent}">
-                        <TextBlock Text="OG" FontWeight="Bold" FontSize="15" Foreground="{StaticResource Brush.OnAccent}"
-                                   HorizontalAlignment="Center" VerticalAlignment="Center" />
-                    </Border>
+                    <Image Width="36" Height="36" Source="{StaticResource Logo.Image}" />
                     <TextBlock Margin="12,0,0,0" VerticalAlignment="Center" Text="OptiGame"
                                FontFamily="{StaticResource Font.Display}" FontSize="20" FontWeight="SemiBold" />
                 </StackPanel>

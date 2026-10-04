@@ -68,6 +68,7 @@ public partial class App : Application
         }
 
         _trayIcon = (TaskbarIcon)FindResource("TrayIcon");
+        _trayIcon.Icon = LoadTrayIcon(_services.GetRequiredService<FileLog>());
         _trayIcon.DataContext = _services.GetRequiredService<TrayViewModel>();
         _trayIcon.ForceCreate(enablesEfficiencyMode: false);
         _services.GetRequiredService<NotificationService>().Attach(_trayIcon);
@@ -100,6 +101,28 @@ public partial class App : Application
         {
             LogFirstRender(GetMainWindow(), services);
             ShowMainWindow();
+        }
+    }
+
+    /// <summary>
+    /// Logo à la taille des icônes de la zone de notification pour l'échelle d'affichage (16 px à 100 %, 20 à 125 %, 24 à
+    /// 150 %) : OptiGame.ico contient une image dessinée à chacune de ces tailles, rien n'est étiré.
+    /// </summary>
+    private static System.Drawing.Icon? LoadTrayIcon(FileLog log)
+    {
+        try
+        {
+            var size = Platform.Display.IconMetrics.SmallIconPixels();
+            var resource = GetResourceStream(new Uri("pack://application:,,,/Assets/OptiGame.ico"))
+                ?? throw new IOException("Logo absent des ressources (Assets/OptiGame.ico).");
+            using var stream = resource.Stream;
+            return new System.Drawing.Icon(stream, size, size);
+        }
+        catch (Exception ex) when (ex is IOException or ArgumentException or InvalidOperationException or System.ComponentModel.Win32Exception)
+        {
+            // Jamais d'arrêt au démarrage pour une icône : celle de l'exe, moins nette, fait l'affaire.
+            log.Error("Logo de la zone de notification illisible", ex);
+            return Environment.ProcessPath is { } exe ? System.Drawing.Icon.ExtractAssociatedIcon(exe) : null;
         }
     }
 

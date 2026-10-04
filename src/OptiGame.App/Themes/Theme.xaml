@@ -54,6 +54,51 @@
 
     <FontFamily x:Key="Font.Display">Segoe UI Variable Display, Segoe UI</FontFamily>
     <FontFamily x:Key="Font.Icons">Segoe Fluent Icons, Segoe MDL2 Assets</FontFamily>
+
+    <!--
+        Logo (Assets/OptiGame.svg, case de 64×64) : cadran de vitesse ouvert en « O » + triangle « lecture ». Vectoriel, net à
+        toute taille. Logo.Image = la tuile verte entière (barre latérale) ; Logo.Mark = le symbole seul sur une case transparente,
+        à poser sur un fond Brush.Accent (raccourci du dock, dont la forme suit celle des jaquettes).
+    -->
+    <DrawingImage x:Key="Logo.Image">
+        <DrawingImage.Drawing>
+            <DrawingGroup>
+                <GeometryDrawing Brush="{StaticResource Brush.Accent}">
+                    <GeometryDrawing.Geometry>
+                        <RectangleGeometry Rect="0,0,64,64" RadiusX="14" RadiusY="14" />
+                    </GeometryDrawing.Geometry>
+                </GeometryDrawing>
+                <GeometryDrawing Geometry="M22.5,48.5 A19,19 0 1 1 41.5,48.5">
+                    <GeometryDrawing.Pen>
+                        <Pen Brush="{StaticResource Brush.OnAccent}" Thickness="6" StartLineCap="Round" EndLineCap="Round" />
+                    </GeometryDrawing.Pen>
+                </GeometryDrawing>
+                <GeometryDrawing Brush="{StaticResource Brush.OnAccent}" Geometry="M27,23 L27,41 L42,32 Z">
+                    <GeometryDrawing.Pen>
+                        <Pen Brush="{StaticResource Brush.OnAccent}" Thickness="3" LineJoin="Round" />
+                    </GeometryDrawing.Pen>
+                </GeometryDrawing>
+            </DrawingGroup>
+        </DrawingImage.Drawing>
+    </DrawingImage>
+
+    <DrawingImage x:Key="Logo.Mark">
+        <DrawingImage.Drawing>
+            <DrawingGroup>
+                <GeometryDrawing Brush="Transparent" Geometry="M0,0 H64 V64 H0 Z" />
+                <GeometryDrawing Geometry="M22.5,48.5 A19,19 0 1 1 41.5,48.5">
+                    <GeometryDrawing.Pen>
+                        <Pen Brush="{StaticResource Brush.OnAccent}" Thickness="6" StartLineCap="Round" EndLineCap="Round" />
+                    </GeometryDrawing.Pen>
+                </GeometryDrawing>
+                <GeometryDrawing Brush="{StaticResource Brush.OnAccent}" Geometry="M27,23 L27,41 L42,32 Z">
+                    <GeometryDrawing.Pen>
+                        <Pen Brush="{StaticResource Brush.OnAccent}" Thickness="3" LineJoin="Round" />
+                    </GeometryDrawing.Pen>
+                </GeometryDrawing>
+            </DrawingGroup>
+        </DrawingImage.Drawing>
+    </DrawingImage>
     <FontFamily x:Key="Font.Mono">Cascadia Mono, Consolas</FontFamily>
 
     <CornerRadius x:Key="Radius.Control">8</CornerRadius>

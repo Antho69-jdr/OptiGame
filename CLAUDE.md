@@ -57,6 +57,13 @@ src/OptiGame.Platform/   net10.0-windows : implémentations réelles (registre, 
 src/OptiGame.App/        WPF : composition DI, tray, vues/viewmodels, dialogue de confirmation
   Themes/Theme.xaml      thème sombre « gaming » : palette (Brush.*), styles Button.Primary/Secondary/Ghost/Danger,
                          Card, Banner, Badge, NavButton, Text.* — jamais de couleur codée en dur dans les vues
+  Assets/                Logo (choisi le 2026-10-04 : cadran de vitesse ouvert en « O » + triangle « lecture ») : OptiGame.svg
+                         (case 64) et OptiGame-small.svg (variante épaisse pour ≤ 24 px) → OptiGame.ico = 16, 20, 24 depuis
+                         -small, 32 → 256 depuis le logo (rsvg-convert, puis `convert i16.png … i256.png OptiGame.ico` d'ImageMagick,
+                         SANS -define icon:auto-resize : il recalcule toutes les tailles depuis une seule image). Exe :
+                         ApplicationIcon (toutes les fenêtres le reprennent) ; zone de notification : App.LoadTrayIcon, taille exacte
+                         de Platform/Display/IconMetrics (20 px à 125 %) ; barre latérale et dock : DrawingImage Logo.Image /
+                         Logo.Mark de Theme.xaml (vectoriels, brosses du thème). Le nom reste « OptiGame ».
   App.xaml               ThemeMode="Dark" (Fluent .NET 10) + accent vert : redéfinir les clés
                          SystemColors.AccentColor…Key (les clés nommées Accent*Brush seules ne suffisent pas)
   Navigation             barre latérale (MainViewModel.NavItems) ; page = ViewModel, vue choisie par DataTemplate

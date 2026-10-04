@@ -5,12 +5,19 @@
     <TargetFramework>net10.0-windows</TargetFramework>
     <UseWPF>true</UseWPF>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <!-- Icône de l'exe, reprise d'office par toutes les fenêtres (WPF prend celle de l'exe quand Window.Icon n'est pas posé). -->
+    <ApplicationIcon>Assets\OptiGame.ico</ApplicationIcon>
     <AssemblyName>OptiGame</AssemblyName>
     <RootNamespace>OptiGame.App</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>
     <Using Include="System.IO" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Logo de la zone de notification (App.LoadTrayIcon). Sources : Assets/OptiGame.svg et OptiGame-small.svg. -->
+    <Resource Include="Assets\OptiGame.ico" />
   </ItemGroup>
 
   <ItemGroup>

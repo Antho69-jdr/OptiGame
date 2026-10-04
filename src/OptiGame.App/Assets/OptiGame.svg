@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- Logo d'OptiGame : cadran de vitesse ouvert en « O » + triangle « lecture » (Opti + Game). Couleurs de Themes/Theme.xaml
+       (Color.Accent, Color.OnAccent). Source de Assets/OptiGame.ico et des DrawingImage Logo.* de Theme.xaml. -->
+  <rect width="64" height="64" rx="14" fill="#2FD27A"/>
+  <path d="M22.5 48.5 A19 19 0 1 1 41.5 48.5" fill="none" stroke="#06140C" stroke-width="6" stroke-linecap="round"/>
+  <path d="M27 23 L27 41 L42 32 Z" fill="#06140C" stroke="#06140C" stroke-width="3" stroke-linejoin="round"/>
+</svg>

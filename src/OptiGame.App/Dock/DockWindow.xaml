@@ -96,8 +96,7 @@
                     <Border Width="{Binding IconWidth, RelativeSource={RelativeSource AncestorType=Window}}"
                             Height="{Binding IconHeight, RelativeSource={RelativeSource AncestorType=Window}}"
                             CornerRadius="14" Background="{StaticResource Brush.Accent}">
-                        <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="Bold" FontSize="18"
-                                   Foreground="{StaticResource Brush.OnAccent}" Text="OG" />
+                        <Image Source="{StaticResource Logo.Mark}" Stretch="Uniform" />
                     </Border>
                 </Grid>
             </StackPanel>

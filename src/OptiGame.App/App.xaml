@@ -55,9 +55,6 @@
                             ToolTipText="{Binding Session.TrayToolTip}"
                             NoLeftClickDelay="True"
                             LeftClickCommand="{Binding ShowMainWindowCommand}">
-                <tb:TaskbarIcon.IconSource>
-                    <tb:GeneratedIconSource Text="OG" Foreground="#06140C" Background="#2FD27A" FontWeight="Bold" />
-                </tb:TaskbarIcon.IconSource>
                 <tb:TaskbarIcon.ContextMenu>
                     <ContextMenu>
                         <MenuItem Header="Ouvrir OptiGame" Command="{Binding ShowMainWindowCommand}" FontWeight="Bold" />
