@@ -93,7 +93,10 @@ public sealed class StoreOwnedLibrary(FileLog log)
             {
                 if (File.Exists(GalaxyDatabasePath + suffix))
                 {
-                    File.WriteAllBytes(Path.Combine(copy, "galaxy-2.0.db" + suffix), ReadShared(GalaxyDatabasePath + suffix));
+                    // Copie par flux : la base (30 Mo sur la machine de dev) ne passe pas par des tableaux en mémoire.
+                    using var source = new FileStream(GalaxyDatabasePath + suffix, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+                    using var target = File.Create(Path.Combine(copy, "galaxy-2.0.db" + suffix));
+                    source.CopyTo(target);
                 }
             }
             var rows = new List<GalaxyRow>();
@@ -135,9 +138,9 @@ public sealed class StoreOwnedLibrary(FileLog log)
     private static byte[] ReadShared(string path)
     {
         using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
-        using var memory = new MemoryStream();
+        using var memory = new MemoryStream((int)Math.Min(stream.Length, Array.MaxLength)); // taille connue : pas d'agrandissements successifs
         stream.CopyTo(memory);
-        return memory.ToArray();
+        return memory.Length == memory.Capacity ? memory.GetBuffer() : memory.ToArray();
     }
 }
 

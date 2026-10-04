@@ -17,13 +17,42 @@ public static class ImageLoader
     private static readonly LinkedList<Entry> Recent = new();
     private static long _bytes;
     private static int _decoded;
+    private static double _displayScale = 1;
+
+    /// <summary>Largeur d'une jaquette des grilles de « Mes jeux », en unités WPF (Width de la carte dans LibraryView).</summary>
+    public const double GridCoverWidth = 198;
+
+    /// <summary>
+    /// Échelle d'affichage de l'écran de la fenêtre principale (1 = 100 %, 1,5 = 150 %), donnée par MainWindow. Les jaquettes
+    /// sont décodées à la taille qu'elles occupent réellement à l'écran : sur un écran à 100 %, 4 fois moins de pixels qu'à 200 %.
+    /// </summary>
+    public static double DisplayScale
+    {
+        get => Volatile.Read(ref _displayScale);
+        set => Volatile.Write(ref _displayScale, Math.Clamp(value, 1, 4));
+    }
+
+    /// <summary>Pixels à décoder pour une image affichée sur <paramref name="width"/> unités WPF.</summary>
+    public static int PixelsFor(double width) => (int)Math.Ceiling(width * DisplayScale);
+
+    /// <summary>Oublie les images gardées (fenêtre masquée) : seules restent celles encore affichées.</summary>
+    public static void Clear()
+    {
+        lock (Gate)
+        {
+            Index.Clear();
+            Recent.Clear();
+            _bytes = 0;
+        }
+    }
 
     /// <summary>Pour la mesure de la mémoire (journal) : images décodées depuis le lancement, puis contenu du cache.</summary>
     public static string Describe()
     {
         lock (Gate)
         {
-            return $"jaquettes décodées depuis le lancement : {Volatile.Read(ref _decoded)}, en cache : {Index.Count} (≈ {_bytes / (1024 * 1024)} Mo de pixels)";
+            return $"jaquettes décodées depuis le lancement : {Volatile.Read(ref _decoded)}, en cache : {Index.Count} (≈ {_bytes / (1024 * 1024)} Mo de pixels), " +
+                   $"décodées sur {PixelsFor(GridCoverWidth)} px de large (échelle d'affichage {DisplayScale * 100:0} %)";
         }
     }
 
@@ -94,7 +123,14 @@ public static class ImageLoader
             image.Freeze();
             if (!gray) return image;
 
-            var grayImage = new FormatConvertedBitmap(image, PixelFormats.Gray8, null, 0);
+            // Pixels gris COPIÉS dans une image autonome : un FormatConvertedBitmap garderait l'image couleur d'origine
+            // attachée (mesuré : 733 Ko par jaquette au lieu de 214).
+            var converted = new FormatConvertedBitmap(image, PixelFormats.Gray8, null, 0);
+            var stride = (converted.PixelWidth + 3) & ~3;
+            var pixels = new byte[stride * converted.PixelHeight];
+            converted.CopyPixels(pixels, stride, 0);
+            // 96 ppp : la jaquette remplit sa carte (UniformToFill), la résolution déclarée par le fichier ne compte pas.
+            var grayImage = BitmapSource.Create(converted.PixelWidth, converted.PixelHeight, 96, 96, PixelFormats.Gray8, null, pixels, stride);
             grayImage.Freeze();
             return grayImage;
         }

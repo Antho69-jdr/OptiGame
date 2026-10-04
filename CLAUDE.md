@@ -63,7 +63,11 @@ src/OptiGame.App/        WPF : composition DI, tray, vues/viewmodels, dialogue d
                          implicite (jamais ContentTemplate explicite : il s'applique même quand le contenu est null)
   Mes jeux               LibraryViewModel (grille de jaquettes) → GamePageViewModel (bannière + éditeur du profil).
                          Rapidité : jaquettes décodées UNE fois par Converters/ImageLoader (cache borné à 96 Mo, images
-                         figées), grilles liées à CoverImage avec IsAsync=True (décodage hors du thread UI) ; jeux non
+                         figées) à la taille réelle à l'écran (198 unités × échelle d'affichage de MainWindow, PerMonitorV2),
+                         grises = pixels COPIÉS dans une image autonome (un FormatConvertedBitmap garde l'image couleur :
+                         733 Ko par jaquette mesurés au lieu de 214) ; fenêtre masquée (fermer = masquer, appli en zone de
+                         notification) ou section décochée → jeux non installés ramenés à la 1re page, cache vidé, un GC
+                         (mesuré avant : ≈ 1,2 Mo par carte affichée, 937 Mo avec les 631 jeux) ; grilles liées à CoverImage avec IsAsync=True (décodage hors du thread UI) ; jeux non
                          installés affichés par pages de 48 (VisibleUninstalled, page suivante près du bas : pas de WrapPanel
                          virtualisé en WPF) ; recherche appliquée après 200 ms sans frappe ; caches des lanceurs (appinfo.vdf,
                          catalogue Epic, base Galaxy) relus seulement si leur date/taille change (Platform/Library/FileStamps).

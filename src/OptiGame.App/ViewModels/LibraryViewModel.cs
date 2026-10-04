@@ -301,6 +301,7 @@ public sealed partial class LibraryViewModel : ObservableObject
             OnPropertyChanged();
             OnPropertyChanged(nameof(IsUninstalledSectionVisible));
             if (value) _ = FetchStoreCoversAsync();
+            else ShowFirstUninstalledPage(); // section masquée : ses jaquettes déjà chargées sont libérées
         }
     }
 
@@ -342,6 +343,17 @@ public sealed partial class LibraryViewModel : ObservableObject
         VisibleUninstalled.Clear();
         ShowMoreUninstalled();
         OnPropertyChanged(nameof(UninstalledHeader));
+    }
+
+    /// <summary>
+    /// Fenêtre masquée (l'appli reste dans la zone de notification, souvent pendant une partie) : les jeux non installés
+    /// reviennent à leur première page et le cache d'images est vidé, pour que les centaines de jaquettes affichées
+    /// (≈ 1 Mo chacune mesuré) ne restent pas en mémoire.
+    /// </summary>
+    public void ReleaseCovers()
+    {
+        if (VisibleUninstalled.Count > UninstalledPageSize) ShowFirstUninstalledPage();
+        Converters.ImageLoader.Clear();
     }
 
     [RelayCommand]
@@ -1071,7 +1083,8 @@ public sealed partial class GameCardViewModel(GameProfile profile, bool isPlayin
     public bool HasCover => CoverPath is not null;
 
     /// <summary>Jaquette décodée ; lue par une liaison IsAsync (hors du thread UI), gardée par <see cref="Converters.ImageLoader"/>.</summary>
-    public System.Windows.Media.ImageSource? CoverImage => Converters.ImageLoader.Load(CoverPath, 396);
+    public System.Windows.Media.ImageSource? CoverImage =>
+        Converters.ImageLoader.Load(CoverPath, Converters.ImageLoader.PixelsFor(Converters.ImageLoader.GridCoverWidth));
 
     [ObservableProperty]
     private bool _isPlaying = isPlaying;
@@ -1174,7 +1187,8 @@ public sealed partial class OwnedGameCardViewModel : ObservableObject
     public bool HasCover => CoverPath is not null;
 
     /// <summary>Jaquette grisée ; lue par une liaison IsAsync (hors du thread UI), gardée par <see cref="Converters.ImageLoader"/>.</summary>
-    public System.Windows.Media.ImageSource? CoverImage => Converters.ImageLoader.Load(CoverPath, 396, gray: true);
+    public System.Windows.Media.ImageSource? CoverImage =>
+        Converters.ImageLoader.Load(CoverPath, Converters.ImageLoader.PixelsFor(Converters.ImageLoader.GridCoverWidth), gray: true);
 
     public string Initials { get; }
 

@@ -276,10 +276,11 @@ if (args.Length == 1 && args[0] == "--memory")
     {
         var before = PrivateBytes();
         var watch = System.Diagnostics.Stopwatch.StartNew();
-        var images = files.Select(f => OptiGame.App.Converters.ImageLoader.Load(f, 396, gray)).OfType<System.Windows.Media.Imaging.BitmapSource>().ToList();
+        var width = OptiGame.App.Converters.ImageLoader.PixelsFor(OptiGame.App.Converters.ImageLoader.GridCoverWidth); // écran à 100 %
+        var images = files.Select(f => OptiGame.App.Converters.ImageLoader.Load(f, width, gray)).OfType<System.Windows.Media.Imaging.BitmapSource>().ToList();
         watch.Stop();
         var added = PrivateBytes() - before;
-        Console.WriteLine($"Jaquettes {what} : {images.Count} décodées en {watch.ElapsedMilliseconds} ms, +{OptiGame.Core.Logging.MemoryUsage.Mb(added)} Mo " +
+        Console.WriteLine($"Jaquettes {what}, {width} px de large : {images.Count} décodées en {watch.ElapsedMilliseconds} ms, +{OptiGame.Core.Logging.MemoryUsage.Mb(added)} Mo " +
                           $"de mémoire privée, soit ≈ {(images.Count == 0 ? 0 : added / images.Count / 1024)} Ko par jaquette");
         return images;
     }

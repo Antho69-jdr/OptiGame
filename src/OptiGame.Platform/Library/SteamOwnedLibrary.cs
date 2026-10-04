@@ -77,8 +77,8 @@ public static class SteamOwnedLibrary
     private static byte[] ReadShared(string path)
     {
         using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
-        using var memory = new MemoryStream();
+        using var memory = new MemoryStream((int)Math.Min(stream.Length, Array.MaxLength)); // taille connue : pas d'agrandissements successifs
         stream.CopyTo(memory);
-        return memory.ToArray();
+        return memory.Length == memory.Capacity ? memory.GetBuffer() : memory.ToArray();
     }
 }
