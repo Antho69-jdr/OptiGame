@@ -66,6 +66,10 @@ public sealed partial class DriversViewModel(
     [ObservableProperty]
     private string _hiddenUpdatesNote = "";
 
+    /// <summary>Pilotes plus récents disponibles (carte graphique, chipset) après la dernière recherche : badge de la navigation.</summary>
+    [ObservableProperty]
+    private int _availableCount;
+
     /// <summary>Première ouverture de la page : la recherche démarre toute seule.</summary>
     public void EnsureSearched()
     {
@@ -142,6 +146,7 @@ public sealed partial class DriversViewModel(
         finally
         {
             IsSearching = false;
+            AvailableCount = Gpus.Count(g => g.IsUpdateAvailable) + (Chipset is { IsUpdateAvailable: true } ? 1 : 0);
             InstallUpdatesCommand.NotifyCanExecuteChanged();
         }
     }

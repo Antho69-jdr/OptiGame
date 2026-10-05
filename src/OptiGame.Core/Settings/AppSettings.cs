@@ -102,6 +102,12 @@ public sealed class AppSettings
     /// <summary>Version d'OptiGame au dernier démarrage : une version plus récente au démarrage suivant = mise à jour installée.</summary>
     public string? LastRunVersion { get; set; }
 
+    /// <summary>Place de la fenêtre principale à sa dernière fermeture ; null = jamais fermée (taille par défaut, centrée).</summary>
+    public WindowPlacement? MainWindowPlacement { get; set; }
+
+    /// <summary>L'utilisateur a déjà été prévenu qu'en fermant la fenêtre, OptiGame continue dans la zone de notification.</summary>
+    public bool CloseToTrayExplained { get; set; }
+
     public AppSettings Clone() => new()
     {
         Version = Version,
@@ -125,6 +131,10 @@ public sealed class AppSettings
         LibraryShowUninstalled = LibraryShowUninstalled,
         UpdateMode = UpdateMode,
         LastRunVersion = LastRunVersion,
+        MainWindowPlacement = MainWindowPlacement is { } p
+            ? new WindowPlacement { Left = p.Left, Top = p.Top, Width = p.Width, Height = p.Height, Maximized = p.Maximized }
+            : null,
+        CloseToTrayExplained = CloseToTrayExplained,
     };
 }
 

@@ -9,6 +9,7 @@ using OptiGame.Core;
 using OptiGame.Core.Logging;
 using OptiGame.Core.Profiles;
 using OptiGame.Core.Sessions;
+using OptiGame.Core.Settings;
 using OptiGame.Core.State;
 using OptiGame.Platform;
 using OptiGame.Platform.Processes;
@@ -64,6 +65,8 @@ public partial class App : Application
             services.GetRequiredService<FileLog>().Error($"Erreur d'interface inattendue :{Environment.NewLine}{args.Exception}");
             services.GetRequiredService<INotificationService>().Show("OptiGame : erreur inattendue",
                 $"{args.Exception.Message} (détails dans le journal).", isWarning: true);
+            services.GetRequiredService<ShellAlerts>().Show(new ShellAlert("ui-error", Controls.Severity.Error, "Erreur inattendue de l'interface",
+                "OptiGame continue de fonctionner. Si l'erreur se répète, le détail est dans le journal.") { ShowsLog = true });
             args.Handled = true;
         };
 
@@ -222,18 +225,39 @@ public partial class App : Application
     {
         if (_mainWindow is { } existing) return existing;
         var window = _services!.GetRequiredService<MainWindow>();
+        window.WindowStartupLocation = WindowStartupLocation.Manual;
         if (_mainWindowPlacement is { } placement)
         {
-            window.WindowStartupLocation = WindowStartupLocation.Manual;
             window.Left = placement.Bounds.Left;
             window.Top = placement.Bounds.Top;
             window.Width = placement.Bounds.Width;
             window.Height = placement.Bounds.Height;
             window.WindowState = placement.State; // réduite au début de la partie : revient réduite
         }
+        else
+        {
+            // Place de la dernière fermeture (settings.json), si elle est encore visible ; sinon 90 % de la zone de travail au plus.
+            var saved = _services!.GetRequiredService<AppSettingsStore>().Get().MainWindowPlacement;
+            var area = SystemParameters.WorkArea;
+            var bounds = WindowLayout.InitialBounds(saved,
+                new ScreenRect(area.Left, area.Top, area.Width, area.Height),
+                new ScreenRect(SystemParameters.VirtualScreenLeft, SystemParameters.VirtualScreenTop,
+                    SystemParameters.VirtualScreenWidth, SystemParameters.VirtualScreenHeight),
+                window.MinWidth, window.MinHeight);
+            (window.Left, window.Top, window.Width, window.Height) = (bounds.Left, bounds.Top, bounds.Width, bounds.Height);
+            if (saved is { Maximized: true } && bounds.Left == saved.Left && bounds.Top == saved.Top)
+            {
+                window.WindowState = WindowState.Maximized;
+            }
+        }
+        window.PlacementSaving += (_, _) => SavePlacement(window);
         window.IsVisibleChanged += (_, args) =>
         {
-            if (args.NewValue is false) _services?.GetRequiredService<UpdateService>().MainWindowHidden();
+            if (args.NewValue is not false) return;
+            _services?.GetRequiredService<UpdateService>().MainWindowHidden();
+            // Première fermeture : dire qu'OptiGame continue en arrière-plan. Différé : pendant l'arrêt de l'appli (Quitter),
+            // le répartiteur s'arrête avant de l'exécuter, et une fermeture pour une partie ne compte pas.
+            if (!window.IsClosingForGame) Dispatcher.BeginInvoke(ExplainCloseToTray, System.Windows.Threading.DispatcherPriority.ApplicationIdle);
         };
         window.Closed += (_, _) =>
         {
@@ -243,6 +267,41 @@ public partial class App : Application
         };
         MainWindow = window;
         return _mainWindow = window;
+    }
+
+    /// <summary>Place de la fenêtre (hors état agrandi) gardée dans settings.json, si elle a changé.</summary>
+    private void SavePlacement(MainWindow window)
+    {
+        var bounds = window.RestoreBounds;
+        if (bounds.IsEmpty || _services is null) return;
+        var settings = _services.GetRequiredService<AppSettingsStore>();
+        var maximized = window.WindowState == WindowState.Maximized;
+        if (settings.Get().MainWindowPlacement is { } old && old.Left == bounds.Left && old.Top == bounds.Top &&
+            old.Width == bounds.Width && old.Height == bounds.Height && old.Maximized == maximized)
+        {
+            return;
+        }
+        settings.Update(s => s.MainWindowPlacement = new WindowPlacement
+        {
+            Left = bounds.Left, Top = bounds.Top, Width = bounds.Width, Height = bounds.Height, Maximized = maximized,
+        });
+    }
+
+    /// <summary>
+    /// Première fermeture de la fenêtre : OptiGame reste dans la zone de notification (il applique les réglages de partie au
+    /// lancement des jeux). Dit une seule fois, avec le moyen de le quitter vraiment.
+    /// </summary>
+    private void ExplainCloseToTray()
+    {
+        if (_services is null || _mainWindow is { IsVisible: true }) return;
+        var settings = _services.GetRequiredService<AppSettingsStore>();
+        if (settings.Get().CloseToTrayExplained) return;
+        settings.Update(s => s.CloseToTrayExplained = true);
+        var quit = _services.GetRequiredService<IDialogService>().Confirm("OptiGame reste actif",
+            "Il continue dans la zone de notification pour optimiser vos jeux dès leur lancement. Pour le rouvrir, cliquez sur son " +
+            "icône ; pour le quitter, clic droit sur l'icône puis « Quitter ».",
+            "Quitter OptiGame", cancelLabel: "Continuer en arrière-plan");
+        if (quit) _services.GetRequiredService<TrayViewModel>().ExitCommand.Execute(null);
     }
 
     /// <summary>
@@ -289,7 +348,11 @@ public partial class App : Application
         var sessionVm = services.GetRequiredService<SessionViewModel>(); // s'abonne aux événements de session
         var sessions = services.GetRequiredService<GameSessionManager>();
         var monitor = services.GetRequiredService<GameMonitor>();
-        monitor.Error += (_, message) => notifications.Show("OptiGame : erreur de détection", message, isWarning: true);
+        monitor.Error += (_, message) =>
+        {
+            notifications.Show("OptiGame : erreur de détection", message, isWarning: true);
+            Current.Dispatcher.BeginInvoke(() => sessionVm.DetectionError = message);
+        };
         // Avant Recover : le temps de jeu doit entendre la fin d'une session interrompue par un crash.
         var playtime = services.GetRequiredService<Core.Playtime.PlaytimeTracker>();
 
@@ -304,8 +367,8 @@ public partial class App : Application
         }
         catch (Exception ex)
         {
-            notifications.Show("OptiGame : restauration impossible",
-                $"La session précédente n'a pas pu être restaurée : {ex.Message}", isWarning: true);
+            log.Error("Restauration de la partie précédente impossible", ex);
+            sessionVm.NotifyRecoveryFailed(ex.Message);
         }
         playtime.ReconcileAtStartup();
 
@@ -316,9 +379,9 @@ public partial class App : Application
         catch (Exception ex)
         {
             // Les notifications peuvent être masquées par Windows : l'erreur est aussi affichée dans la fenêtre.
-            sessionVm.DetectionError = $"Détection des jeux indisponible : les profils ne seront pas appliqués automatiquement ({ex.Message}).";
+            sessionVm.DetectionError = ex.Message;
             notifications.Show("OptiGame : détection des jeux indisponible",
-                $"Les profils ne seront pas appliqués automatiquement : {ex.Message}", isWarning: true);
+                $"Les réglages de partie ne seront pas appliqués automatiquement : {ex.Message}", isWarning: true);
         }
     }
 
@@ -359,6 +422,8 @@ public partial class App : Application
         services.AddSingleton<NotificationService>();
         services.AddSingleton<INotificationService>(sp => sp.GetRequiredService<NotificationService>());
         services.AddSingleton<NavigationService>();
+        services.AddSingleton<ShellAlerts>();
+        services.AddSingleton<UnsavedChangesGuard>();
 
         services.AddSingleton<SessionViewModel>();
         services.AddSingleton<DiagnosticViewModel>();

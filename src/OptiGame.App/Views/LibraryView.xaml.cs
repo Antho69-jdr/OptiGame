@@ -17,10 +17,25 @@ public partial class LibraryView : UserControl
 
     private void Attach(LibraryViewModel? library)
     {
-        if (_library is not null) _library.UninstalledListReset -= OnUninstalledListReset;
+        if (_library is not null)
+        {
+            _library.UninstalledListReset -= OnUninstalledListReset;
+            _library.SearchFocusRequested -= OnSearchFocusRequested;
+        }
         _library = library;
-        if (_library is not null) _library.UninstalledListReset += OnUninstalledListReset;
+        if (_library is not null)
+        {
+            _library.UninstalledListReset += OnUninstalledListReset;
+            _library.SearchFocusRequested += OnSearchFocusRequested;
+        }
     }
+
+    /// <summary>Ctrl+F : curseur dans la recherche, texte sélectionné (une frappe le remplace).</summary>
+    private void OnSearchFocusRequested(object? sender, EventArgs e) => Dispatcher.BeginInvoke(() =>
+    {
+        SearchBox.Focus();
+        SearchBox.SelectAll();
+    }, System.Windows.Threading.DispatcherPriority.Input);
 
     private void OnUninstalledListReset(object? sender, EventArgs e) => GridScroll.ScrollToTop();
 

@@ -67,8 +67,9 @@ public sealed partial class LibraryViewModel : ObservableObject
         TimeProvider time, FileLog log, GameLauncher launcher, PlaytimeStore playtime, SteamPlaytimeReader steamReader,
         GameGraphicsService graphics, NewSteamGamesViewModel newGames, GameRatingService ratings, Platform.Measurement.AutoCapture autoCapture,
         FrameCapService frameCap, Platform.Library.StoreOwnedLibrary storeLibrary, Platform.Library.StoreCoverCache storeCovers,
-        GameTimeGate gate, [FromKeyedServices(Platform.JournalKeys.Fixes)] Core.State.ChangeJournal fixes)
+        GameTimeGate gate, [FromKeyedServices(Platform.JournalKeys.Fixes)] Core.State.ChangeJournal fixes, UnsavedChangesGuard unsaved)
     {
+        unsaved.Register(ConfirmDiscard);
         _gate = gate;
         _fixes = fixes;
         _steamReader = steamReader;
@@ -821,8 +822,33 @@ public sealed partial class LibraryViewModel : ObservableObject
     public void ShowGame(Guid id)
     {
         _navigation.Navigate(this);
-        if (OpenGame?.Id != id) OpenPage(id);
+        if (OpenGame?.Id == id) return;
+        // Une autre fiche a des modifications en attente : même garde que le retour à la grille.
+        if (OpenGame is { Editor.IsDirty: true } && !ConfirmDiscard()) return;
+        OpenPage(id);
     }
+
+    /// <summary>Retour à la grille (Échap, Alt+←, clic sur « Mes jeux » déjà sélectionné) : même garde que le bouton de la fiche.</summary>
+    public void ReturnToGrid()
+    {
+        if (OpenGame is not null) CloseGamePage();
+    }
+
+    /// <summary>Ctrl+F : la vue place le curseur dans la recherche (fiche fermée d'abord, avec sa garde).</summary>
+    public event EventHandler? SearchFocusRequested;
+
+    public void RequestSearchFocus()
+    {
+        _navigation.Navigate(this);
+        ReturnToGrid();
+        if (OpenGame is null) SearchFocusRequested?.Invoke(this, EventArgs.Empty);
+    }
+
+    /// <summary>Modifications de la fiche ouverte non enregistrées : vrai si l'utilisateur accepte de les perdre (ou s'il n'y en a pas).</summary>
+    public bool ConfirmDiscard() =>
+        OpenGame is not { Editor.IsDirty: true } ||
+        _dialogs.Confirm("Abandonner les modifications ?",
+            $"Vos modifications de {OpenGame.Name} ne sont pas enregistrées : elles seront perdues.", "Abandonner les modifications", isDestructive: true);
 
     private void OpenPage(Guid id)
     {
@@ -909,12 +935,7 @@ public sealed partial class LibraryViewModel : ObservableObject
 
     private void CloseGamePage()
     {
-        if (OpenGame is { Editor.IsDirty: true } &&
-            !_dialogs.Confirm("Abandonner les modifications ?",
-                "Vos modifications de ce jeu ne sont pas enregistrées : elles seront perdues.", "Abandonner les modifications", isDestructive: true))
-        {
-            return;
-        }
+        if (!ConfirmDiscard()) return;
         OpenGame = null;
     }
 

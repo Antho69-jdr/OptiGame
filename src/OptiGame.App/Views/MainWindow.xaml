@@ -5,11 +5,31 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:vm="clr-namespace:OptiGame.App.ViewModels"
         xmlns:views="clr-namespace:OptiGame.App.Views"
+        xmlns:services="clr-namespace:OptiGame.App.Services"
+        xmlns:controls="clr-namespace:OptiGame.App.Controls"
         mc:Ignorable="d"
         d:DataContext="{d:DesignInstance vm:MainViewModel}"
-        Title="{Binding Title}" Height="860" Width="1240" MinHeight="560" MinWidth="880"
-        WindowStartupLocation="CenterScreen"
+        x:Name="Root"
+        Title="{Binding Title}" MinHeight="560" MinWidth="880"
         Background="{StaticResource Brush.Window}" Foreground="{StaticResource Brush.Text}">
+    <!-- Taille et place : App.GetMainWindow (dernière place gardée, sinon 90 % de la zone de travail au plus). -->
+    <Window.InputBindings>
+        <KeyBinding Modifiers="Control" Key="D1" Command="{Binding NavigateToCommand}" CommandParameter="1" />
+        <KeyBinding Modifiers="Control" Key="D2" Command="{Binding NavigateToCommand}" CommandParameter="2" />
+        <KeyBinding Modifiers="Control" Key="D3" Command="{Binding NavigateToCommand}" CommandParameter="3" />
+        <KeyBinding Modifiers="Control" Key="D4" Command="{Binding NavigateToCommand}" CommandParameter="4" />
+        <KeyBinding Modifiers="Control" Key="D5" Command="{Binding NavigateToCommand}" CommandParameter="5" />
+        <KeyBinding Modifiers="Control" Key="NumPad1" Command="{Binding NavigateToCommand}" CommandParameter="1" />
+        <KeyBinding Modifiers="Control" Key="NumPad2" Command="{Binding NavigateToCommand}" CommandParameter="2" />
+        <KeyBinding Modifiers="Control" Key="NumPad3" Command="{Binding NavigateToCommand}" CommandParameter="3" />
+        <KeyBinding Modifiers="Control" Key="NumPad4" Command="{Binding NavigateToCommand}" CommandParameter="4" />
+        <KeyBinding Modifiers="Control" Key="NumPad5" Command="{Binding NavigateToCommand}" CommandParameter="5" />
+        <KeyBinding Key="F5" Command="{Binding RefreshCommand}" />
+        <KeyBinding Modifiers="Control" Key="F" Command="{Binding FocusSearchCommand}" />
+        <KeyBinding Key="Escape" Command="{Binding BackCommand}" />
+        <KeyBinding Modifiers="Alt" Key="Left" Command="{Binding BackCommand}" />
+        <KeyBinding Key="BrowserBack" Command="{Binding BackCommand}" />
+    </Window.InputBindings>
     <Window.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
 
@@ -19,100 +39,192 @@
         <DataTemplate DataType="{x:Type vm:DriversViewModel}"><views:DriversView /></DataTemplate>
         <DataTemplate DataType="{x:Type vm:MeasuresViewModel}"><views:MeasuresView /></DataTemplate>
         <DataTemplate DataType="{x:Type vm:SettingsViewModel}"><views:SettingsView /></DataTemplate>
+
+        <!-- Entrée de navigation : icône, titre, pastille ; en barre compacte, icône seule (info-bulle + point pour la pastille) -->
+        <DataTemplate x:Key="NavItemTemplate" DataType="{x:Type vm:NavItem}">
+            <RadioButton x:Name="Button" Style="{StaticResource NavButton}" GroupName="Navigation" IsChecked="{Binding IsSelected}"
+                         Command="{Binding DataContext.InvokeCommand, ElementName=Root}" CommandParameter="{Binding}"
+                         AutomationProperties.Name="{Binding AccessibleName}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="20" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <!-- Icône ; en barre compacte, la pastille devient un point dans son coin (dans la case : rien n'est rogné) -->
+                    <Grid Width="20" Height="20">
+                        <TextBlock HorizontalAlignment="Center" Style="{StaticResource Text.Icon}" Text="{Binding Glyph}" />
+                        <Ellipse x:Name="Dot" Width="8" Height="8" HorizontalAlignment="Right" VerticalAlignment="Top"
+                                 Fill="{StaticResource Brush.Info}" Stroke="{StaticResource Brush.Sidebar}" StrokeThickness="1.5" Visibility="Collapsed" />
+                    </Grid>
+                    <TextBlock x:Name="Label" Grid.Column="1" Margin="12,0,8,0" VerticalAlignment="Center" Text="{Binding Title}"
+                               TextTrimming="CharacterEllipsis" />
+                    <Border x:Name="Pill" Grid.Column="2" MinWidth="20" Padding="6,1,6,2" CornerRadius="{StaticResource Radius.Pill}"
+                            Background="{StaticResource Brush.Info}" VerticalAlignment="Center"
+                            Visibility="{Binding HasBadge, Converter={StaticResource BoolToVisibility}}">
+                        <TextBlock HorizontalAlignment="Center" FontSize="{StaticResource FontSize.Caption}" FontWeight="SemiBold"
+                                   Foreground="{StaticResource Brush.OnAccent}" Text="{Binding Badge}" />
+                    </Border>
+                </Grid>
+            </RadioButton>
+            <DataTemplate.Triggers>
+                <DataTrigger Binding="{Binding IsNavigationCompact, ElementName=Root}" Value="True">
+                    <Setter TargetName="Label" Property="Visibility" Value="Collapsed" />
+                    <Setter TargetName="Pill" Property="Visibility" Value="Collapsed" />
+                    <Setter TargetName="Button" Property="ToolTip" Value="{Binding ToolTip}" />
+                </DataTrigger>
+                <MultiDataTrigger>
+                    <MultiDataTrigger.Conditions>
+                        <Condition Binding="{Binding IsNavigationCompact, ElementName=Root}" Value="True" />
+                        <Condition Binding="{Binding HasBadge}" Value="True" />
+                    </MultiDataTrigger.Conditions>
+                    <Setter TargetName="Dot" Property="Visibility" Value="Visible" />
+                </MultiDataTrigger>
+            </DataTemplate.Triggers>
+        </DataTemplate>
     </Window.Resources>
 
     <Grid>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="232" />
+            <ColumnDefinition Width="Auto" />
             <ColumnDefinition Width="*" />
         </Grid.ColumnDefinitions>
 
-        <!-- Barre latérale -->
+        <!-- Barre latérale : 232 de large, 64 en dessous de 1008 de large (MainWindow.CompactNavigationWidth) -->
         <Border Grid.Column="0" Background="{StaticResource Brush.Sidebar}" BorderBrush="{StaticResource Brush.Border}" BorderThickness="0,0,1,0">
-            <DockPanel Margin="14,18">
-                <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="6,0,0,26">
-                    <Image Width="36" Height="36" Source="{StaticResource Logo.Image}" />
-                    <TextBlock Margin="12,0,0,0" VerticalAlignment="Center" Text="OptiGame"
-                               FontFamily="{StaticResource Font.Display}" FontSize="20" FontWeight="SemiBold" />
+            <Border.Style>
+                <Style TargetType="Border">
+                    <Setter Property="Width" Value="232" />
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding IsNavigationCompact, ElementName=Root}" Value="True">
+                            <Setter Property="Width" Value="64" />
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </Border.Style>
+            <DockPanel Margin="10,18,10,12">
+                <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="6,0,0,24">
+                    <Image Width="32" Height="32" Source="{StaticResource Logo.Image}" AutomationProperties.Name="OptiGame" />
+                    <TextBlock x:Name="AppName" Margin="12,0,0,0" VerticalAlignment="Center" Text="OptiGame"
+                               FontFamily="{StaticResource Font.Display}" FontSize="{StaticResource FontSize.Title}" FontWeight="SemiBold"
+                               AutomationProperties.HeadingLevel="Level1">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsNavigationCompact, ElementName=Root}" Value="True">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
                 </StackPanel>
 
-                <!-- Session en cours (rappel permanent) -->
-                <Border DockPanel.Dock="Bottom" Padding="12" CornerRadius="{StaticResource Radius.Card}"
-                        Background="{StaticResource Brush.AccentSoft}" DataContext="{Binding Session}"
-                        Visibility="{Binding IsActive, Converter={StaticResource BoolToVisibility}}">
-                    <StackPanel>
-                        <StackPanel Orientation="Horizontal">
-                            <Ellipse Width="8" Height="8" Fill="{StaticResource Brush.Accent}" VerticalAlignment="Center" />
-                            <TextBlock Margin="8,0,0,0" Text="Session en cours" FontWeight="SemiBold" Foreground="{StaticResource Brush.Accent}" />
-                        </StackPanel>
-                        <TextBlock Margin="0,4,0,8" Style="{StaticResource Text.Caption}" Text="{Binding StatusText}" />
-                        <Button Style="{StaticResource Button.SecondarySmall}" HorizontalAlignment="Stretch"
-                                Content="Terminer et restaurer" Command="{Binding EndNowCommand}" />
-                    </StackPanel>
-                </Border>
-
-                <ItemsControl ItemsSource="{Binding NavItems}">
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate DataType="{x:Type vm:NavItem}">
-                            <RadioButton Style="{StaticResource NavButton}" GroupName="Navigation" IsChecked="{Binding IsSelected}"
-                                         AutomationProperties.Name="{Binding Title}">
-                                <StackPanel Orientation="Horizontal">
-                                    <TextBlock Style="{StaticResource Text.Icon}" Text="{Binding Glyph}" Width="22" />
-                                    <TextBlock Margin="10,0,0,0" VerticalAlignment="Center" Text="{Binding Title}" />
+                <!-- Pied : partie en cours, puis Paramètres -->
+                <StackPanel DockPanel.Dock="Bottom">
+                    <Border DataContext="{Binding Session}" Margin="0,0,0,8"
+                            Visibility="{Binding IsActive, Converter={StaticResource BoolToVisibility}}">
+                        <Grid>
+                            <!-- Barre complète : carte -->
+                            <Border x:Name="SessionCard" Padding="12" AutomationProperties.Name="Partie en cours">
+                                <Border.Style>
+                                    <Style TargetType="Border" BasedOn="{StaticResource Card}">
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsNavigationCompact, ElementName=Root}" Value="True">
+                                                <Setter Property="Visibility" Value="Collapsed" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Border.Style>
+                                <StackPanel>
+                                    <StackPanel Orientation="Horizontal">
+                                        <Ellipse Width="8" Height="8" VerticalAlignment="Center" Fill="{StaticResource Brush.Ok}" />
+                                        <TextBlock Margin="8,0,0,0" Style="{StaticResource Text.Caption}" Foreground="{StaticResource Brush.TextSecondary}"
+                                                   Text="Partie en cours" />
+                                    </StackPanel>
+                                    <TextBlock Margin="0,4,0,0" Style="{StaticResource Text.BodyStrong}" Text="{Binding GameName}"
+                                               TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" ToolTip="{Binding GameName}" />
+                                    <TextBlock Style="{StaticResource Text.Caption}" Text="{Binding SinceText}" />
+                                    <Button Margin="0,10,0,0" HorizontalAlignment="Stretch" Style="{StaticResource Button.SecondarySmall}"
+                                            Content="Arrêter l'optimisation…" Command="{Binding EndNowCommand}"
+                                            ToolTip="Restaure tout de suite les réglages d'origine ; le jeu continue de tourner." />
                                 </StackPanel>
-                            </RadioButton>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
+                            </Border>
+                            <!-- Barre compacte : bouton seul -->
+                            <controls:IconButton x:Name="SessionCompact" HorizontalAlignment="Center" Glyph="&#xE7FC;" IsLabelVisible="False"
+                                                 Label="{Binding GameName, StringFormat='Partie en cours : {0}. Arrêter l''optimisation…'}"
+                                                 Command="{Binding EndNowCommand}">
+                                <controls:IconButton.Style>
+                                    <Style TargetType="controls:IconButton" BasedOn="{StaticResource Button.Icon}">
+                                        <Setter Property="Foreground" Value="{StaticResource Brush.Ok}" />
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsNavigationCompact, ElementName=Root}" Value="True">
+                                                <Setter Property="Visibility" Value="Visible" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </controls:IconButton.Style>
+                            </controls:IconButton>
+                        </Grid>
+                    </Border>
+                    <ContentPresenter Content="{Binding SettingsItem}" ContentTemplate="{StaticResource NavItemTemplate}" />
+                </StackPanel>
+
+                <ItemsControl ItemsSource="{Binding NavItems}" ItemTemplate="{StaticResource NavItemTemplate}" Focusable="False"
+                              AutomationProperties.Name="Navigation" />
             </DockPanel>
         </Border>
 
-        <!-- Contenu -->
+        <!-- Contenu : alertes persistantes, bandeaux de mise à jour, page -->
         <DockPanel Grid.Column="1">
-            <!-- Détection des jeux en panne : visible même si les notifications Windows sont masquées -->
-            <Border DockPanel.Dock="Top" Margin="24,16,24,0" Style="{StaticResource Banner}"
-                    Background="{StaticResource Brush.DangerSoft}" BorderBrush="{StaticResource Brush.Danger}"
-                    DataContext="{Binding Session}"
-                    Visibility="{Binding HasDetectionError, Converter={StaticResource BoolToVisibility}}">
-                <StackPanel Orientation="Horizontal">
-                    <TextBlock Style="{StaticResource Text.Icon}" Text="&#xE7BA;" Foreground="{StaticResource Brush.Danger}" />
-                    <TextBlock Margin="10,0,0,0" Style="{StaticResource Text.Body}" Text="{Binding DetectionError}" />
-                </StackPanel>
-            </Border>
+            <!-- Annonce du changement de page aux lecteurs d'écran (invisible, mais lue) -->
+            <TextBlock DockPanel.Dock="Top" Height="0" Text="{Binding Announcement}" AutomationProperties.LiveSetting="Polite"
+                       AutomationProperties.Name="{Binding Announcement}" />
 
-            <!-- Mise à jour disponible ou prête : bandeau, les notifications Windows pouvant être masquées -->
-            <Border DockPanel.Dock="Top" Margin="24,16,24,0" Style="{StaticResource Banner}"
-                    Background="{StaticResource Brush.AccentSoft}" BorderBrush="{StaticResource Brush.Accent}"
-                    DataContext="{Binding Updates}"
-                    Visibility="{Binding IsAvailableBannerVisible, Converter={StaticResource BoolToVisibility}}">
-                <DockPanel>
-                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
-                        <Button Margin="12,0,0,0" Style="{StaticResource Button.Primary}" Content="Installer maintenant" Command="{Binding InstallNowCommand}"
+            <!-- Chaque bandeau porte sa marge du haut : aucun espace quand il n'y en a pas -->
+            <StackPanel DockPanel.Dock="Top" Margin="32,0,32,0">
+                <ItemsControl ItemsSource="{Binding Alerts.Items}" Focusable="False">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate DataType="{x:Type services:ShellAlert}">
+                            <controls:InfoBar Margin="0,16,0,0" Severity="{Binding Severity}" Title="{Binding Title}"
+                                              Message="{Binding Message}" IsClosable="{Binding IsClosable}" CloseLabel="Masquer cette alerte"
+                                              CloseCommand="{Binding DataContext.Alerts.CloseCommand, ElementName=Root}">
+                                <StackPanel Orientation="Horizontal">
+                                    <Button Margin="0,0,8,0" Style="{StaticResource Button.Secondary}" Content="{Binding ActionLabel}"
+                                            Command="{Binding ActionCommand}" Visibility="{Binding HasAction, Converter={StaticResource BoolToVisibility}}" />
+                                    <Button Style="{StaticResource Button.Ghost}" Content="Ouvrir le journal"
+                                            Command="{Binding DataContext.Alerts.OpenLogCommand, ElementName=Root}"
+                                            Visibility="{Binding ShowsLog, Converter={StaticResource BoolToVisibility}}" />
+                                </StackPanel>
+                            </controls:InfoBar>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <!-- Mise à jour trouvée, téléchargée, en cours d'installation ou en échec -->
+                <controls:InfoBar Margin="0,16,0,0" DataContext="{Binding Updates}"
+                                  Severity="{Binding AvailableBannerSeverity}" Title="{Binding AvailableBannerTitle}" Message="{Binding AvailableBannerText}"
+                                  IsClosable="{Binding CanDismissAvailableBanner}" CloseLabel="Plus tard" CloseCommand="{Binding DismissAvailableBannerCommand}"
+                                  Visibility="{Binding IsAvailableBannerVisible, Converter={StaticResource BoolToVisibility}}">
+                    <StackPanel Orientation="Horizontal">
+                        <ProgressBar Width="140" Margin="0,0,12,0" VerticalAlignment="Center" Maximum="100" Value="{Binding DownloadPercent}"
+                                     AutomationProperties.Name="Téléchargement de la mise à jour"
+                                     Visibility="{Binding IsDownloading, Converter={StaticResource BoolToVisibility}}" />
+                        <Button Margin="0,0,8,0" Style="{StaticResource Button.Secondary}" Content="Installer maintenant" Command="{Binding InstallNowCommand}"
                                 Visibility="{Binding CanSelfUpdate, Converter={StaticResource BoolToVisibility}}" />
-                        <Button Margin="8,0,0,0" Style="{StaticResource Button.Ghost}" Content="Nouveautés" Command="{Binding OpenReleaseNotesCommand}" />
+                        <Button Style="{StaticResource Button.Ghost}" Content="Voir les nouveautés" Command="{Binding OpenReleaseNotesCommand}" />
                     </StackPanel>
-                    <TextBlock DockPanel.Dock="Left" Margin="0,0,12,0" VerticalAlignment="Center" Style="{StaticResource Text.Icon}"
-                               FontSize="18" Foreground="{StaticResource Brush.Accent}" Text="&#xE896;" />
-                    <TextBlock VerticalAlignment="Center" Style="{StaticResource Text.Body}" TextWrapping="Wrap" Text="{Binding AvailableBannerText}" />
-                </DockPanel>
-            </Border>
+                </controls:InfoBar>
 
-            <!-- OptiGame vient d'être mis à jour (installation automatique pendant que la fenêtre était fermée) -->
-            <Border DockPanel.Dock="Top" Margin="24,16,24,0" Style="{StaticResource Banner}"
-                    Background="{StaticResource Brush.OkSoft}" BorderBrush="{StaticResource Brush.Ok}"
-                    DataContext="{Binding Updates}"
-                    Visibility="{Binding IsUpdatedBannerVisible, Converter={StaticResource BoolToVisibility}}">
-                <DockPanel>
-                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
-                        <Button Margin="12,0,0,0" Style="{StaticResource Button.Ghost}" Content="Nouveautés" Command="{Binding OpenReleaseNotesCommand}" />
-                        <Button Margin="8,0,0,0" Style="{StaticResource Button.Secondary}" Content="OK" Command="{Binding DismissUpdatedBannerCommand}" />
-                    </StackPanel>
-                    <TextBlock DockPanel.Dock="Left" Margin="0,0,12,0" VerticalAlignment="Center" Style="{StaticResource Text.Icon}"
-                               FontSize="18" Foreground="{StaticResource Brush.Ok}" Text="&#xE73E;" />
-                    <TextBlock VerticalAlignment="Center" Style="{StaticResource Text.Body}" TextWrapping="Wrap"
-                               Text="{Binding JustUpdatedTo, StringFormat='OptiGame a été mis à jour : version {0}.'}" />
-                </DockPanel>
-            </Border>
+                <!-- OptiGame vient d'être mis à jour (installation automatique pendant que la fenêtre était fermée) -->
+                <controls:InfoBar Margin="0,16,0,0" DataContext="{Binding Updates}" Severity="Success"
+                                  Title="{Binding JustUpdatedTo, StringFormat='OptiGame a été mis à jour en version {0}'}"
+                                  IsClosable="True" CloseLabel="Masquer" CloseCommand="{Binding DismissUpdatedBannerCommand}"
+                                  Visibility="{Binding IsUpdatedBannerVisible, Converter={StaticResource BoolToVisibility}}">
+                    <Button Style="{StaticResource Button.Ghost}" Content="Voir les nouveautés" Command="{Binding OpenReleaseNotesCommand}" />
+                </controls:InfoBar>
+            </StackPanel>
 
             <ContentControl Content="{Binding CurrentPage}" Focusable="False" />
         </DockPanel>

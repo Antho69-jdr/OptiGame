@@ -74,8 +74,12 @@ src/OptiGame.App/        WPF : composition DI, tray, vues/viewmodels, dialogue d
                          Logo.Mark de Theme.xaml (vectoriels, brosses du thème). Le nom reste « OptiGame ».
   App.xaml               ThemeMode="Dark" (Fluent .NET 10) + accent vert : redéfinir les clés
                          SystemColors.AccentColor…Key (les clés nommées Accent*Brush seules ne suffisent pas)
-  Navigation             barre latérale (MainViewModel.NavItems) ; page = ViewModel, vue choisie par DataTemplate
-                         implicite (jamais ContentTemplate explicite : il s'applique même quand le contenu est null)
+  Navigation             barre latérale (MainViewModel.NavItems + SettingsItem en pied, pastilles, compacte < 1008) ; page =
+                         ViewModel, vue choisie par DataTemplate implicite (jamais ContentTemplate explicite : il s'applique même
+                         quand le contenu est null). Coque (docs/design-system.md) : Services/ShellAlerts = alertes persistantes
+                         en InfoBar (erreurs de détection / restauration : JAMAIS seulement en notification), raccourcis Ctrl+1…5,
+                         Ctrl+F, F5, Échap/Alt+←, place de la fenêtre dans settings.json (Core/Settings/WindowLayout),
+                         UnsavedChangesGuard pour Quitter
   Mes jeux               LibraryViewModel (grille de jaquettes) → GamePageViewModel (bannière + éditeur du profil).
                          Rapidité : jaquettes décodées UNE fois par Converters/ImageLoader (cache borné à 96 Mo, images
                          figées) à la taille réelle à l'écran (198 unités × échelle d'affichage de MainWindow, PerMonitorV2),

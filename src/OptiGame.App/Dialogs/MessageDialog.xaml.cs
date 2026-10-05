@@ -28,10 +28,11 @@ public partial class MessageDialog : DialogWindow
     }
 
     /// <summary>Question : vrai seulement si l'utilisateur clique sur le bouton d'action.</summary>
-    public static MessageDialog Question(string heading, string message, string confirmLabel, bool isDestructive)
+    public static MessageDialog Question(string heading, string message, string confirmLabel, bool isDestructive, string cancelLabel = "Annuler")
     {
         var dialog = new MessageDialog(isDestructive ? DialogIcon.Warning : DialogIcon.None, heading, message, null);
         dialog.ConfirmButton.Content = confirmLabel;
+        dialog.CancelButton.Content = cancelLabel;
         dialog.ConfirmButton.SetResourceReference(StyleProperty, isDestructive ? "Button.DangerFilled" : "Button.Primary");
         return dialog;
     }

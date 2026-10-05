@@ -29,7 +29,7 @@ public interface IDialogService
     /// Question : <paramref name="heading"/> = ce que l'on décide, <paramref name="confirmLabel"/> = verbe de l'action (jamais
     /// « Oui »). « Annuler » est le choix par défaut (Entrée, Échap). Destructrice = bouton rouge et icône d'avertissement.
     /// </summary>
-    bool Confirm(string heading, string message, string confirmLabel, bool isDestructive = false);
+    bool Confirm(string heading, string message, string confirmLabel, bool isDestructive = false, string cancelLabel = "Annuler");
 
     void ShowInfo(string heading, string message = "");
 
@@ -79,8 +79,8 @@ public sealed class DialogService(FileLog log) : IDialogService
             (change.RequiresReboot ? "\n\nRedémarrez ensuite Windows pour qu'il soit pris en compte." : ""),
             "Restaurer l'original");
 
-    public bool Confirm(string heading, string message, string confirmLabel, bool isDestructive = false) =>
-        ShowOwned(MessageDialog.Question(heading, message, confirmLabel, isDestructive)) == true;
+    public bool Confirm(string heading, string message, string confirmLabel, bool isDestructive = false, string cancelLabel = "Annuler") =>
+        ShowOwned(MessageDialog.Question(heading, message, confirmLabel, isDestructive, cancelLabel)) == true;
 
     public void ShowInfo(string heading, string message = "") =>
         ShowOwned(MessageDialog.Notice(Controls.DialogIcon.Info, heading, message, null));

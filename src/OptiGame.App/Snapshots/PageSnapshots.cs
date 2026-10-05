@@ -4,6 +4,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using Microsoft.Extensions.DependencyInjection;
+using OptiGame.App.Services;
 using OptiGame.App.ViewModels;
 using OptiGame.App.Views;
 using OptiGame.Core.Profiles;
@@ -72,6 +73,19 @@ internal static class PageSnapshots
                 ("4-mesures", async () => { main.Navigate(main.Measures); await Settle(1500); }),
                 ("5-parametres", async () => { main.Navigate(main.Settings); await Settle(1500); }),
             };
+            // Coque avec alertes et badges d'exemple (rien n'est écrit : alertes en mémoire, compteurs remis ensuite par l'analyse).
+            pages.Add(("8-coque-alertes", async () =>
+            {
+                var alerts = services.GetRequiredService<ShellAlerts>();
+                alerts.Show(new ShellAlert("demo-detection", Controls.Severity.Error, "Détection des jeux indisponible",
+                    "Les réglages de partie ne seront pas appliqués automatiquement : accès refusé à WMI.") { IsClosable = false, ShowsLog = true });
+                alerts.Show(new ShellAlert("demo-session", Controls.Severity.Warning, "Partie de Portal 2 : optimisation partielle",
+                    "Discord.exe n'a pas pu être fermé."));
+                main.Diagnostic.ProblemCount = 3;
+                ((DriversViewModel)main.NavItems[2].Page).AvailableCount = 1;
+                main.Navigate(main.Diagnostic);
+                await Settle(800);
+            }));
             if (PickGame(services.GetRequiredService<ProfileStore>(), ValueAfter(args, GameArgument)) is { } game)
             {
                 pages.Add(("6-fiche-du-jeu", async () => { main.Navigate(library); library.ShowGame(game.Id); await Settle(4000); }));

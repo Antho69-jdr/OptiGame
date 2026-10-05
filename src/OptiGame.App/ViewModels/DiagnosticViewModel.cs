@@ -207,6 +207,10 @@ public sealed partial class DiagnosticViewModel(
     [ObservableProperty]
     private bool _hasAppliedFixes;
 
+    /// <summary>Contrôles « À corriger » ou qui n'ont pas pu s'exécuter : badge de la page dans la navigation.</summary>
+    [ObservableProperty]
+    private int _problemCount;
+
     private bool CanRun() => !IsBusy;
 
     /// <summary>Lecture seule : aucun réglage n'est modifié.</summary>
@@ -243,6 +247,7 @@ public sealed partial class DiagnosticViewModel(
             RefreshAppliedFixes();
             RefreshOverview(results);
             var attention = results.Count(r => r.Status == DiagnosticStatus.NeedsAttention);
+            ProblemCount = attention + results.Count(r => r.Status == DiagnosticStatus.Error);
             StatusText = $"Dernière analyse : {time.GetLocalNow():HH:mm:ss} — " +
                 (attention == 0 ? "rien à corriger." : $"{attention} point(s) à corriger.");
         }

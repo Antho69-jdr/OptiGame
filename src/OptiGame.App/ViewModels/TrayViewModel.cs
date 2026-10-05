@@ -5,7 +5,7 @@ using OptiGame.Core.Sessions;
 
 namespace OptiGame.App.ViewModels;
 
-public sealed partial class TrayViewModel(SessionViewModel session, GameSessionManager sessions, IDialogService dialogs)
+public sealed partial class TrayViewModel(SessionViewModel session, GameSessionManager sessions, IDialogService dialogs, UnsavedChangesGuard unsaved)
 {
     public SessionViewModel Session { get; } = session;
 
@@ -15,6 +15,7 @@ public sealed partial class TrayViewModel(SessionViewModel session, GameSessionM
     [RelayCommand]
     private async Task ExitAsync()
     {
+        if (!unsaved.ConfirmDiscard()) return;
         if (sessions.Current is { } current)
         {
             if (!dialogs.Confirm("Quitter OptiGame pendant la partie ?",

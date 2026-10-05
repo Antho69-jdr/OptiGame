@@ -63,10 +63,10 @@
                         <Separator />
                         <MenuItem Header="{Binding Session.StatusText}" IsEnabled="False"
                                   Visibility="{Binding Session.IsActive, Converter={StaticResource TrayBoolToVisibility}}" />
-                        <MenuItem Header="Terminer la session et restaurer les réglages" Command="{Binding Session.EndNowCommand}"
+                        <MenuItem Header="Arrêter l'optimisation et restaurer…" Command="{Binding Session.EndNowCommand}"
                                   Visibility="{Binding Session.IsActive, Converter={StaticResource TrayBoolToVisibility}}" />
                         <Separator Visibility="{Binding Session.IsActive, Converter={StaticResource TrayBoolToVisibility}}" />
-                        <MenuItem Header="Quitter" Command="{Binding ExitCommand}" />
+                        <MenuItem Header="Quitter OptiGame" Command="{Binding ExitCommand}" />
                     </ContextMenu>
                 </tb:TaskbarIcon.ContextMenu>
             </tb:TaskbarIcon>

@@ -100,6 +100,28 @@ un bord). Tous les styles maison le posent en `FocusVisualStyle` ; WPF ne l'affi
 À venir dans la refonte (voir `docs/ui-ux-audit-2026-10-05.md`) : ligne de réglage façon Paramètres de Windows 11, bouton
 fractionné, menu « … », CoverTile unique.
 
+## Coque (fenêtre principale)
+
+- **Navigation** façon NavigationView : pages de travail en haut (Mes jeux, Diagnostic, Pilotes, Mesures), Paramètres en
+  pied. Sous 1008 unités de large (`MainWindow.CompactNavigationWidth`), barre de 64 : icônes seules, info-bulle = titre et
+  état, pastille réduite à un point. Pastilles (`NavItem.SetBadge`) : contrôles à corriger ou non vérifiés, pilotes plus
+  récents, mise à jour d'OptiGame ; le nom accessible les dit (« Diagnostic, 3 points à corriger »). Cliquer « Mes jeux »
+  déjà affiché revient à la grille. Chaque changement de page est annoncé (« Page Diagnostic »).
+- **Partie en cours** : carte en pied (nom du jeu, « Optimisé depuis 20:15 », « Arrêter l'optimisation… » avec
+  confirmation) ; bouton icône en barre compacte.
+- **Alertes** (`Services/ShellAlerts`) : InfoBar en haut de chaque page, la plus grave d'abord, gardées pendant que la
+  fenêtre est fermée. Détection des jeux en panne (non fermable tant qu'elle dure), restauration ratée au démarrage ou en fin
+  de partie, reprise après plantage, partie optimisée partiellement, erreur d'interface ; « Ouvrir le journal » pour les
+  erreurs. Mise à jour : même InfoBar (rouge si échec, barre de téléchargement, « Plus tard »).
+- **Raccourcis** : Ctrl+1 … Ctrl+5 (pages, Paramètres en dernier), Ctrl+F (recherche de Mes jeux), F5 (actualiser la page :
+  bibliothèques, analyse, pilotes ; rien ne s'écrit), Échap / Alt+← / bouton « précédent » de la souris (fiche → grille).
+  Toute sortie d'une fiche modifiée passe par la garde « Abandonner les modifications ? » (retour, autre jeu depuis le dock,
+  Quitter : `UnsavedChangesGuard`).
+- **Fenêtre** : place et état agrandi gardés dans settings.json (`MainWindowPlacement`) ; à défaut, 1240 × 860 au plus et
+  jamais plus de 90 % de la zone de travail (`Core/Settings/WindowLayout`, testé) ; place ignorée si sa barre de titre
+  n'est plus visible. Première fermeture : un dialogue dit qu'OptiGame continue dans la zone de notification
+  (« Continuer en arrière-plan » par défaut, ou « Quitter OptiGame »), une seule fois.
+
 ## Dialogues
 
 Un seul langage : **aucune MessageBox Win32**, sauf le message bloquant d'`App.LoadStateFiles` (fichier d'état illisible),

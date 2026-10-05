@@ -87,7 +87,8 @@ public sealed partial class UpdateService : ObservableObject
     private UpdateMode Mode => _settings.Get().UpdateMode;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(IsBusy), nameof(IsDownloading), nameof(IsAvailableBannerVisible), nameof(AvailableBannerText))]
+    [NotifyPropertyChangedFor(nameof(IsBusy), nameof(IsDownloading), nameof(IsAvailableBannerVisible), nameof(AvailableBannerText),
+        nameof(AvailableBannerTitle), nameof(AvailableBannerSeverity), nameof(CanDismissAvailableBanner))]
     [NotifyCanExecuteChangedFor(nameof(CheckNowCommand), nameof(InstallNowCommand))]
     private UpdatePhase _phase;
 
@@ -97,7 +98,7 @@ public sealed partial class UpdateService : ObservableObject
 
     /// <summary>Dernière version trouvée, plus récente que celle qui tourne ; null sinon.</summary>
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HasPackage), nameof(IsAvailableBannerVisible), nameof(AvailableBannerText))]
+    [NotifyPropertyChangedFor(nameof(HasPackage), nameof(IsAvailableBannerVisible), nameof(AvailableBannerText), nameof(AvailableBannerTitle))]
     [NotifyCanExecuteChangedFor(nameof(InstallNowCommand))]
     private UpdatePackage? _package;
 
@@ -116,17 +117,47 @@ public sealed partial class UpdateService : ObservableObject
 
     public bool IsDownloading => Phase == UpdatePhase.Downloading;
 
-    /// <summary>Bandeau de la fenêtre : version trouvée, téléchargement (lancé depuis le bandeau) puis installation.</summary>
-    public bool IsAvailableBannerVisible => Package is not null && Phase is not (UpdatePhase.Idle or UpdatePhase.Checking or UpdatePhase.UpToDate);
+    /// <summary>Version dont l'utilisateur a fermé le bandeau (« Plus tard ») : plus proposée dans la fenêtre avant la suivante.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsAvailableBannerVisible))]
+    private Version? _dismissedVersion;
+
+    /// <summary>
+    /// Bandeau de la fenêtre : version trouvée, téléchargement (lancé depuis le bandeau) puis installation. Fermé par « Plus
+    /// tard » tant que rien n'est en cours ; un échec s'affiche toujours.
+    /// </summary>
+    public bool IsAvailableBannerVisible => Package is { } package
+        && Phase is not (UpdatePhase.Idle or UpdatePhase.Checking or UpdatePhase.UpToDate)
+        && !(Phase is UpdatePhase.Available or UpdatePhase.Ready && package.Version == DismissedVersion);
 
     public bool IsUpdatedBannerVisible => JustUpdatedTo is not null;
 
-    public string AvailableBannerText => Package is not { } package ? ""
+    /// <summary>« Plus tard » possible tant que rien n'est en cours (version trouvée ou prête).</summary>
+    public bool CanDismissAvailableBanner => Phase is UpdatePhase.Available or UpdatePhase.Ready;
+
+    /// <summary>Échec = erreur (rouge) ; sinon information.</summary>
+    public Controls.Severity AvailableBannerSeverity => Phase == UpdatePhase.Failed ? Controls.Severity.Error : Controls.Severity.Info;
+
+    public string AvailableBannerTitle => Package is not { } package ? ""
+        : Phase switch
+        {
+            UpdatePhase.Failed => "Mise à jour impossible pour l'instant",
+            UpdatePhase.Downloading => $"Téléchargement d'OptiGame {package.Version.ToString(3)}",
+            UpdatePhase.Installing => $"Installation d'OptiGame {package.Version.ToString(3)}",
+            UpdatePhase.Ready => $"OptiGame {package.Version.ToString(3)} est prêt",
+            _ => $"OptiGame {package.Version.ToString(3)} est disponible",
+        };
+
+    public string AvailableBannerText => Package is null ? ""
         : Phase is UpdatePhase.Downloading or UpdatePhase.Installing or UpdatePhase.Failed ? StatusText
-        : !CanSelfUpdate ? $"OptiGame {package.Version.ToString(3)} est disponible : installez-le depuis sa page de téléchargement."
+        : !CanSelfUpdate ? "Installez-le depuis sa page de téléchargement."
         : Phase == UpdatePhase.Ready && Mode == UpdateMode.Automatic
-            ? $"OptiGame {package.Version.ToString(3)} est prêt : il s'installera de lui-même peu après la fermeture de cette fenêtre (OptiGame redémarre en quelques secondes)."
-        : $"OptiGame {package.Version.ToString(3)} est disponible.";
+            ? "Il s'installera de lui-même peu après la fermeture de cette fenêtre : OptiGame redémarre en quelques secondes."
+        : "";
+
+    /// <summary>« Plus tard » : le bandeau ne revient qu'avec une version plus récente (Paramètres > Mises à jour reste disponible).</summary>
+    [RelayCommand]
+    private void DismissAvailableBanner() => DismissedVersion = Package?.Version;
 
     /// <summary>Au démarrage de l'appli : mise à jour tout juste installée, nettoyage, puis recherches automatiques.</summary>
     public void Start(App app)
