@@ -40,6 +40,12 @@ public partial class App : Application
     {
         base.OnStartup(e);
 
+        if (Snapshots.PageSnapshots.IsRequested(e.Args))
+        {
+            RunSnapshots(e.Args);
+            return;
+        }
+
         _singleInstance = SingleInstance.TryAcquire(onActivationRequested: () => Dispatcher.Invoke(ShowMainWindow));
         if (_singleInstance is null)
         {
@@ -103,6 +109,33 @@ public partial class App : Application
             LogFirstRender(GetMainWindow(), services);
             ShowMainWindow();
         }
+    }
+
+    /// <summary>
+    /// Captures des pages pour le développement (Snapshots/PageSnapshots) : services et état chargés, rien d'autre ne démarre
+    /// (ni instance unique, ni détection, ni reprise de session, ni dock, ni mise à jour). Seulement avec OPTIGAME_DATA_DIR.
+    /// </summary>
+    private async void RunSnapshots(string[] args)
+    {
+        if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable("OPTIGAME_DATA_DIR")))
+        {
+            Shutdown(2);
+            return;
+        }
+        _services = ConfigureServices().BuildServiceProvider();
+        var services = _services;
+        DispatcherUnhandledException += (_, a) =>
+        {
+            services.GetRequiredService<FileLog>().Error($"Captures : erreur d'interface :{Environment.NewLine}{a.Exception}");
+            a.Handled = true;
+        };
+        if (!LoadStateFiles(services))
+        {
+            Shutdown(1);
+            return;
+        }
+        await Snapshots.PageSnapshots.RunAsync(services, args);
+        Shutdown();
     }
 
     /// <summary>

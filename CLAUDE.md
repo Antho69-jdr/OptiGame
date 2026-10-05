@@ -383,6 +383,9 @@ dotnet test OptiGame.slnx
 # Compiler et relancer l'appli (ferme proprement l'instance en cours via quit.request, qui verrouillerait les DLL ;
 # restaure une éventuelle session de jeu). `dotnet run` échoue (erreur 740) car il ne peut pas déclencher l'UAC.
 .\scripts\dev-run.ps1
+# Captures PNG de chaque page (refonte UI : avant / après) → artifacts\ui-snapshots\<Label>\ ; mode caché « --snapshot »
+# (App/Snapshots/PageSnapshots), données copiées dans %TEMP%\OptiGame-ui\data, sans élévation, hors écran, rien ne démarre.
+.\scripts\ui-snapshots.ps1 -Label avant [-Sizes 880x600,1240x860] [-Game "Portal"] [-Reseed]
 .\scripts\build-installer.ps1                # installeur (Inno Setup 6 : winget install --id JRSoftware.InnoSetup -e)
 dotnet run --project tools/OptiGame.DiagDump   # diagnostic lecture seule en console, sans élévation
 ```
