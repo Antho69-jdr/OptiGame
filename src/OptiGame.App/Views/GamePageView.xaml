@@ -4,25 +4,50 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="clr-namespace:OptiGame.App.ViewModels"
-             xmlns:conv="clr-namespace:OptiGame.App.Converters"
              xmlns:views="clr-namespace:OptiGame.App.Views"
+             xmlns:controls="clr-namespace:OptiGame.App.Controls"
              mc:Ignorable="d"
              d:DataContext="{d:DesignInstance vm:GamePageViewModel}">
+    <!-- Fiche du jeu : bannière, puis trois onglets. Deux modèles de validation, nommés à l'écran :
+         réglages de partie et propriétés → barre « Enregistrer » ; réglages permanents (Windows, pilote) → « Appliquer… » confirmé. -->
+    <UserControl.InputBindings>
+        <KeyBinding Modifiers="Control" Key="S" Command="{Binding Editor.SaveCommand}" />
+    </UserControl.InputBindings>
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
-        <conv:PathToImageConverter x:Key="PathToImage" />
+
+        <!-- Erreur de saisie sous un champ : icône + texte, annoncée -->
+        <Style x:Key="FieldError" TargetType="TextBlock" BasedOn="{StaticResource Text.Caption}">
+            <Setter Property="Foreground" Value="{StaticResource Brush.Danger}" />
+            <Setter Property="AutomationProperties.LiveSetting" Value="Assertive" />
+            <Style.Triggers>
+                <Trigger Property="Text" Value="">
+                    <Setter Property="Visibility" Value="Collapsed" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- Onglet avec point « modifications non enregistrées » -->
+        <Style x:Key="DirtyDot" TargetType="Ellipse">
+            <Setter Property="Width" Value="6" />
+            <Setter Property="Height" Value="6" />
+            <Setter Property="Margin" Value="8,0,0,0" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Fill" Value="{StaticResource Brush.Warning}" />
+        </Style>
     </UserControl.Resources>
 
     <DockPanel>
-        <!-- Barre d'enregistrement : visible seulement s'il y a des modifications -->
-        <Border DockPanel.Dock="Bottom" Padding="32,12" Background="{StaticResource Brush.Sidebar}" BorderBrush="{StaticResource Brush.Border}" BorderThickness="0,1,0,0"
-                Visibility="{Binding Editor.IsDirty, Converter={StaticResource BoolToVisibility}}">
+        <!-- Barre d'enregistrement (réglages de partie et propriétés) : hors du défilement, visible s'il y a des modifications -->
+        <Border DockPanel.Dock="Bottom" Padding="32,12" Background="{StaticResource Brush.Sidebar}" BorderBrush="{StaticResource Brush.Border}"
+                BorderThickness="0,1,0,0" Visibility="{Binding Editor.IsDirty, Converter={StaticResource BoolToVisibility}}">
             <DockPanel>
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
-                    <Button Margin="0,0,8,0" Style="{StaticResource Button.Secondary}" Content="Annuler les modifications" Command="{Binding Editor.RevertCommand}" />
-                    <Button Style="{StaticResource Button.Primary}" Content="Enregistrer" Command="{Binding Editor.SaveCommand}" />
+                    <Button Margin="0,0,8,0" Style="{StaticResource Button.Secondary}" Content="Abandonner les modifications" Command="{Binding Editor.RevertCommand}" />
+                    <Button Style="{StaticResource Button.Primary}" Content="Enregistrer" Command="{Binding Editor.SaveCommand}"
+                            AutomationProperties.HelpText="Ctrl+S" ToolTip="Enregistrer (Ctrl+S)" />
                 </StackPanel>
-                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" AutomationProperties.LiveSetting="Polite">
                     <Ellipse Width="8" Height="8" Fill="{StaticResource Brush.Warning}" />
                     <TextBlock Margin="10,0,0,0" Style="{StaticResource Text.Body}" Text="Modifications non enregistrées" />
                 </StackPanel>
@@ -31,556 +56,474 @@
 
         <ScrollViewer VerticalScrollBarVisibility="Auto">
             <StackPanel>
-                <!-- Bannière -->
-                <Grid Height="320">
+                <!-- Fil d'Ariane (hors de l'image) -->
+                <StackPanel Margin="28,16,32,0" Orientation="Horizontal">
+                    <Button Style="{StaticResource Button.Ghost}" Padding="6,2" MinHeight="28" Content="Mes jeux" Command="{Binding BackCommand}"
+                            AutomationProperties.Name="Revenir à Mes jeux" ToolTip="Revenir à Mes jeux (Échap)" />
+                    <TextBlock Margin="2,0,8,0" Style="{StaticResource Text.Icon}" FontSize="{StaticResource IconSize.Small}"
+                               Foreground="{StaticResource Brush.TextMuted}" Text="&#xE76C;" />
+                    <TextBlock VerticalAlignment="Center" Style="{StaticResource Text.Secondary}" Text="{Binding Name}" TextTrimming="CharacterEllipsis"
+                               TextWrapping="NoWrap" />
+                </StackPanel>
+
+                <!-- Bannière : hauteur donnée par son contenu (rien n'est rogné en fenêtre étroite) -->
+                <Grid Margin="0,8,0,0">
                     <Border Background="{StaticResource Brush.BannerPlaceholder}" />
                     <Border>
                         <Border.Background>
-                            <ImageBrush Stretch="UniformToFill" AlignmentY="Top"
-                                        ImageSource="{Binding HeroPath, Converter={StaticResource PathToImage}, ConverterParameter=1600}" />
+                            <ImageBrush Stretch="UniformToFill" AlignmentY="Top" ImageSource="{Binding HeroImage, IsAsync=True}" />
                         </Border.Background>
                     </Border>
-                    <!-- Fondu vers le fond de la fenêtre, pour la lisibilité du titre -->
                     <Border Background="{StaticResource Brush.BannerFade}" />
 
-                    <Button Margin="24,20,0,0" HorizontalAlignment="Left" VerticalAlignment="Top" Style="{StaticResource Button.Secondary}"
-                            Background="{StaticResource Brush.ScrimLight}" Command="{Binding BackCommand}">
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock Style="{StaticResource Text.Icon}" FontSize="13" Text="&#xE72B;" />
-                            <TextBlock Margin="8,0,0,0" Text="Mes jeux" />
-                        </StackPanel>
-                    </Button>
-
-                    <DockPanel Margin="32,0,32,24" VerticalAlignment="Bottom">
-                        <!-- Jaquette -->
-                        <Grid DockPanel.Dock="Left" Width="135" Height="180" Margin="0,0,24,0">
-                            <Border CornerRadius="{StaticResource Radius.Cover}" Background="{StaticResource Brush.Control}">
-                                <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="34" FontWeight="SemiBold"
+                    <DockPanel Margin="32,56,32,24">
+                        <Grid DockPanel.Dock="Left" Width="135" Height="180" Margin="0,0,24,0" VerticalAlignment="Bottom">
+                            <Border CornerRadius="{StaticResource Radius.Cover}" Background="{StaticResource Brush.CoverPlaceholder}">
+                                <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" Style="{StaticResource Text.PageTitle}"
                                            Foreground="{StaticResource Brush.TextMuted}" Text="{Binding Initials}" />
                             </Border>
                             <Border CornerRadius="{StaticResource Radius.Cover}" BorderBrush="{StaticResource Brush.OverlayBorder}" BorderThickness="1"
                                     Visibility="{Binding HasCover, Converter={StaticResource BoolToVisibility}}">
                                 <Border.Background>
-                                    <ImageBrush Stretch="UniformToFill" ImageSource="{Binding CoverPath, Converter={StaticResource PathToImage}, ConverterParameter=270}" />
+                                    <ImageBrush Stretch="UniformToFill" ImageSource="{Binding CoverImage, IsAsync=True}" />
                                 </Border.Background>
                             </Border>
                         </Grid>
 
                         <StackPanel VerticalAlignment="Bottom">
-                            <Border Style="{StaticResource Badge}" HorizontalAlignment="Left" Margin="0,0,0,8" Background="{StaticResource Brush.Accent}"
+                            <Border Margin="{StaticResource Margin.StackS}" HorizontalAlignment="Left" Style="{StaticResource Badge.Success}"
                                     Visibility="{Binding IsPlaying, Converter={StaticResource BoolToVisibility}}">
-                                <TextBlock Text="Session en cours" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource Brush.OnAccent}" />
+                                <StackPanel Orientation="Horizontal">
+                                    <Ellipse Width="6" Height="6" Margin="0,0,6,0" VerticalAlignment="Center" Fill="{StaticResource Brush.Ok}" />
+                                    <TextBlock Text="Partie en cours" />
+                                </StackPanel>
                             </Border>
-                            <TextBlock Style="{StaticResource Text.PageTitle}" FontSize="36" Text="{Binding Name}" TextWrapping="Wrap" />
-                            <TextBlock Margin="0,4,0,0" Style="{StaticResource Text.Mono}" Text="{Binding Editor.ExePath}" TextTrimming="CharacterEllipsis" />
-                            <TextBlock Margin="0,6,0,0" FontWeight="SemiBold" Foreground="{StaticResource Brush.Accent}"
-                                       Text="{Binding DataContext.LaunchStatus, RelativeSource={RelativeSource AncestorType=views:LibraryView}}" />
-                            <!-- Actions : sous le titre, à la ligne si la fenêtre est étroite (le titre garde toute la largeur) -->
-                            <WrapPanel Margin="0,10,0,0" Orientation="Horizontal">
-                                <Button Margin="0,8,8,0" Style="{StaticResource Button.Primary}" Padding="28,10" FontSize="16" Command="{Binding PlayCommand}">
-                                    <StackPanel Orientation="Horizontal">
-                                        <TextBlock Style="{StaticResource Text.Icon}" FontSize="16" Text="&#xE768;" />
-                                        <TextBlock Margin="10,0,0,0">
-                                            <TextBlock.Style>
-                                                <Style TargetType="TextBlock">
-                                                    <Setter Property="Text" Value="Jouer" />
-                                                    <Style.Triggers>
-                                                        <DataTrigger Binding="{Binding IsPlaying}" Value="True">
-                                                            <Setter Property="Text" Value="En cours" />
-                                                        </DataTrigger>
-                                                    </Style.Triggers>
-                                                </Style>
-                                            </TextBlock.Style>
-                                        </TextBlock>
-                                    </StackPanel>
-                                </Button>
-                                <!-- Jeux Steam uniquement (appid retrouvé à l'ouverture de la page) -->
-                                <Button Margin="0,8,8,0" Style="{StaticResource Button.Secondary}" Command="{Binding OpenStorePageCommand}"
-                                        Visibility="{Binding HasStorePage, Converter={StaticResource BoolToVisibility}}"
-                                        ToolTip="Ouvrir la page du jeu dans le magasin Steam">
-                                    <StackPanel Orientation="Horizontal">
-                                        <TextBlock Style="{StaticResource Text.Icon}" FontSize="14" Text="&#xE719;" />
-                                        <TextBlock Margin="8,0,0,0" Text="Page Steam" />
-                                    </StackPanel>
-                                </Button>
-                                <Button Margin="0,8,8,0" Style="{StaticResource Button.Secondary}" Command="{Binding TogglePinCommand}">
-                                    <StackPanel Orientation="Horizontal">
-                                        <TextBlock Style="{StaticResource Text.Icon}" FontSize="14" Text="&#xE718;" />
-                                        <TextBlock Margin="8,0,0,0">
-                                            <TextBlock.Style>
-                                                <Style TargetType="TextBlock">
-                                                    <Setter Property="Text" Value="Épingler au dock" />
-                                                    <Style.Triggers>
-                                                        <DataTrigger Binding="{Binding IsPinned}" Value="True">
-                                                            <Setter Property="Text" Value="Retirer du dock" />
-                                                        </DataTrigger>
-                                                    </Style.Triggers>
-                                                </Style>
-                                            </TextBlock.Style>
-                                        </TextBlock>
-                                    </StackPanel>
-                                </Button>
-                                <Button Margin="0,8,8,0" Style="{StaticResource Button.Secondary}" Command="{Binding ChangeCoverCommand}">
-                                    <StackPanel Orientation="Horizontal">
-                                        <TextBlock Style="{StaticResource Text.Icon}" FontSize="14" Text="&#xEB9F;" />
-                                        <TextBlock Margin="8,0,0,0" Text="Changer la jaquette" />
-                                    </StackPanel>
-                                </Button>
-                                <Button Margin="0,8,8,0" Style="{StaticResource Button.Secondary}" Command="{Binding MeasureCommand}">
-                                    <StackPanel Orientation="Horizontal">
-                                        <TextBlock Style="{StaticResource Text.Icon}" FontSize="14" Text="&#xE9D2;" />
-                                        <TextBlock Margin="8,0,0,0" Text="Mesurer les FPS" />
-                                    </StackPanel>
-                                </Button>
+                            <TextBlock Style="{StaticResource Text.Hero}" Text="{Binding Name}" TextWrapping="Wrap" />
+                            <TextBlock Margin="0,4,0,0" Style="{StaticResource Text.Secondary}" Text="{Binding PlaytimeSummary}" />
+
+                            <!-- Une action principale ; le reste dans « … » -->
+                            <WrapPanel Margin="0,8,0,0">
+                                <controls:IconButton Margin="0,8,8,0" Style="{StaticResource Button.PrimaryLarge}" Glyph="&#xE768;" Label="Jouer"
+                                                     Command="{Binding PlayCommand}"
+                                                     Visibility="{Binding IsPlaying, Converter={StaticResource InverseBoolToVisibility}}" />
+                                <controls:IconButton Margin="0,8,8,0" Style="{StaticResource Button.Secondary}" Glyph="&#xE71A;" Label="Arrêter l'optimisation…"
+                                                     Command="{Binding EndSessionCommand}"
+                                                     AutomationProperties.HelpText="Restaure tout de suite les réglages d'origine ; le jeu continue de tourner."
+                                                     Visibility="{Binding IsPlaying, Converter={StaticResource BoolToVisibility}}" />
+                                <controls:IconButton Margin="0,8,8,0" Style="{StaticResource Button.Secondary}" Glyph="&#xE9D2;" Label="Mesurer les FPS"
+                                                     Command="{Binding MeasureCommand}" AutomationProperties.HelpText="Ouvre la page Mesures, ce jeu choisi." />
+                                <controls:IconButton x:Name="MoreButton" Margin="0,8,0,0" Style="{StaticResource Button.Secondary}" Glyph="&#xE712;"
+                                                     IsLabelVisible="False" Label="Plus d'actions" Click="OnMoreClick"
+                                                     AutomationProperties.HelpText="Ouvre un menu : voir sur Steam, dock, jaquette, retirer.">
+                                    <controls:IconButton.ContextMenu>
+                                        <ContextMenu>
+                                            <MenuItem Header="Voir sur Steam" Command="{Binding OpenStorePageCommand}"
+                                                      Visibility="{Binding HasStorePage, Converter={StaticResource BoolToVisibility}}" />
+                                            <MenuItem Command="{Binding TogglePinCommand}" Visibility="{Binding IsDockEnabled, Converter={StaticResource BoolToVisibility}}">
+                                                <MenuItem.Style>
+                                                    <Style TargetType="MenuItem" BasedOn="{StaticResource {x:Type MenuItem}}">
+                                                        <Setter Property="Header" Value="Épingler au dock" />
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsPinned}" Value="True">
+                                                                <Setter Property="Header" Value="Retirer du dock" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </MenuItem.Style>
+                                            </MenuItem>
+                                            <MenuItem Header="Changer la jaquette…" Command="{Binding ChangeCoverCommand}" />
+                                            <Separator />
+                                            <MenuItem Header="Retirer de Mes jeux…" Command="{Binding Editor.DeleteCommand}" />
+                                        </ContextMenu>
+                                    </controls:IconButton.ContextMenu>
+                                </controls:IconButton>
                             </WrapPanel>
                         </StackPanel>
                     </DockPanel>
                 </Grid>
 
-                <!-- Sous la bannière : 4 tuiles (coup d'œil), 2 grandes cartes (note, pendant la partie), puis une liste de lignes
-                     repliables avec un résumé d'une ligne. Chaque réglage garde son fonctionnement (Enregistrer / Appliquer / Annuler). -->
-                <StackPanel Margin="32,8,32,32">
-                    <!-- Tuiles -->
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="12" />
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="12" />
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="12" />
-                            <ColumnDefinition Width="*" />
-                        </Grid.ColumnDefinitions>
-                        <Border Grid.Column="0" Style="{StaticResource Tile}" ToolTip="Note du jeu sur ce PC (détails ci-dessous)">
-                            <StackPanel>
-                                <TextBlock Style="{StaticResource Text.Caption}" FontWeight="SemiBold" Text="NOTE SUR CE PC" />
-                                <TextBlock Margin="0,2,0,0" FontFamily="{StaticResource Font.Display}" FontSize="24" FontWeight="SemiBold" Text="{Binding ScoreTile}">
-                                    <TextBlock.Style>
-                                        <Style TargetType="TextBlock">
-                                            <Setter Property="Foreground" Value="{StaticResource Brush.Ok}" />
-                                            <Style.Triggers>
-                                                <DataTrigger Binding="{Binding RatingLevel}" Value="Fair">
-                                                    <Setter Property="Foreground" Value="{StaticResource Brush.Warning}" />
-                                                </DataTrigger>
-                                                <DataTrigger Binding="{Binding RatingLevel}" Value="Poor">
-                                                    <Setter Property="Foreground" Value="{StaticResource Brush.Danger}" />
-                                                </DataTrigger>
-                                                <DataTrigger Binding="{Binding HasRating}" Value="False">
-                                                    <Setter Property="Foreground" Value="{StaticResource Brush.TextMuted}" />
-                                                </DataTrigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </TextBlock.Style>
-                                </TextBlock>
-                                <TextBlock Style="{StaticResource Text.Caption}" Text="{Binding RatingTileDetail}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
-                            </StackPanel>
-                        </Border>
-                        <Border Grid.Column="2" Style="{StaticResource Tile}">
-                            <StackPanel>
-                                <TextBlock Style="{StaticResource Text.Caption}" FontWeight="SemiBold" Text="TEMPS DE JEU" />
-                                <TextBlock Margin="0,2,0,0" FontFamily="{StaticResource Font.Display}" FontSize="24" FontWeight="SemiBold"
-                                           Foreground="{StaticResource Brush.Text}" Text="{Binding PlaytimeTotal}" TextTrimming="CharacterEllipsis" />
-                                <TextBlock Style="{StaticResource Text.Caption}" Text="{Binding PlaytimeLast}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
-                            </StackPanel>
-                        </Border>
-                        <Border Grid.Column="4" Style="{StaticResource Tile}">
-                            <StackPanel>
-                                <TextBlock Style="{StaticResource Text.Caption}" FontWeight="SemiBold" Text="DERNIÈRE MESURE" />
-                                <TextBlock Margin="0,2,0,0" FontFamily="{StaticResource Font.Display}" FontSize="24" FontWeight="SemiBold"
-                                           Foreground="{StaticResource Brush.Accent}" Text="{Binding LatestFps}" />
-                                <TextBlock Style="{StaticResource Text.Caption}" Text="{Binding LatestFpsDetail}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
-                            </StackPanel>
-                        </Border>
-                        <Border Grid.Column="6" Style="{StaticResource Tile}">
-                            <StackPanel>
-                                <TextBlock Style="{StaticResource Text.Caption}" FontWeight="SemiBold" Text="DISQUE DU JEU" />
-                                <TextBlock Margin="0,2,0,0" FontFamily="{StaticResource Font.Display}" FontSize="24" FontWeight="SemiBold"
-                                           Text="{Binding DiskTile}" TextTrimming="CharacterEllipsis">
-                                    <TextBlock.Style>
-                                        <Style TargetType="TextBlock">
-                                            <Setter Property="Foreground" Value="{StaticResource Brush.Text}" />
-                                            <Style.Triggers>
-                                                <DataTrigger Binding="{Binding DiskLevel}" Value="Fair">
-                                                    <Setter Property="Foreground" Value="{StaticResource Brush.Warning}" />
-                                                </DataTrigger>
-                                                <DataTrigger Binding="{Binding DiskLevel}" Value="Poor">
-                                                    <Setter Property="Foreground" Value="{StaticResource Brush.Danger}" />
-                                                </DataTrigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </TextBlock.Style>
-                                </TextBlock>
-                                <TextBlock Style="{StaticResource Text.Caption}" Text="{Binding DiskTileDetail}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
-                            </StackPanel>
-                        </Border>
-                    </Grid>
+                <StackPanel x:Name="Body" Margin="32,16,32,32">
+                    <!-- Message de lancement (partagé avec la grille) -->
+                    <controls:InfoBar Margin="{StaticResource Margin.StackL}"
+                                      Severity="{Binding DataContext.LaunchStatusSeverity, RelativeSource={RelativeSource AncestorType=views:LibraryView}}"
+                                      Message="{Binding DataContext.LaunchStatus, RelativeSource={RelativeSource AncestorType=views:LibraryView}}"
+                                      IsClosable="True" CloseCommand="{Binding DataContext.DismissLaunchStatusCommand, RelativeSource={RelativeSource AncestorType=views:LibraryView}}"
+                                      Visibility="{Binding DataContext.HasLaunchStatus, RelativeSource={RelativeSource AncestorType=views:LibraryView}, Converter={StaticResource BoolToVisibility}}" />
 
-                    <!-- Les 2 grandes cartes -->
-                    <Grid Margin="0,16,0,0">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="16" />
-                            <ColumnDefinition Width="*" />
-                        </Grid.ColumnDefinitions>
+                    <!-- Onglets : flèches pour passer de l'un à l'autre -->
+                    <Border Margin="{StaticResource Margin.StackL}" HorizontalAlignment="Left" Padding="3" CornerRadius="{StaticResource Radius.Control}"
+                            Background="{StaticResource Brush.Control}">
+                        <StackPanel Orientation="Horizontal">
+                            <RadioButton Style="{StaticResource Segment}" GroupName="GameTabs" IsChecked="{Binding IsOverviewTab}"
+                                         Content="Vue d'ensemble" AutomationProperties.Name="Vue d'ensemble" />
+                            <RadioButton Style="{StaticResource Segment}" GroupName="GameTabs" IsChecked="{Binding IsOptimizationTab}">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="Optimisation" />
+                                    <Ellipse Style="{StaticResource DirtyDot}" Visibility="{Binding Editor.IsOptimizationDirty, Converter={StaticResource BoolToVisibility}}" />
+                                </StackPanel>
+                                <AutomationProperties.Name>
+                                    <MultiBinding StringFormat="{}{0}{1}">
+                                        <Binding Source="Optimisation" />
+                                        <Binding Path="Editor.IsOptimizationDirty" Converter="{StaticResource DirtySuffix}" />
+                                    </MultiBinding>
+                                </AutomationProperties.Name>
+                            </RadioButton>
+                            <RadioButton Style="{StaticResource Segment}" GroupName="GameTabs" IsChecked="{Binding IsPropertiesTab}">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="Propriétés" />
+                                    <Ellipse Style="{StaticResource DirtyDot}" Visibility="{Binding Editor.IsPropertiesDirty, Converter={StaticResource BoolToVisibility}}" />
+                                </StackPanel>
+                                <AutomationProperties.Name>
+                                    <MultiBinding StringFormat="{}{0}{1}">
+                                        <Binding Source="Propriétés" />
+                                        <Binding Path="Editor.IsPropertiesDirty" Converter="{StaticResource DirtySuffix}" />
+                                    </MultiBinding>
+                                </AutomationProperties.Name>
+                            </RadioButton>
+                        </StackPanel>
+                    </Border>
 
-                        <!-- Note du jeu sur ce PC : mesurée (PresentMon) ou estimée (configuration requise) -->
-                        <Border Grid.Column="0" Style="{StaticResource Card}">
+                    <!-- ===== Vue d'ensemble ===== -->
+                    <StackPanel x:Name="OverviewTab" Visibility="{Binding IsOverviewTab, Converter={StaticResource BoolToVisibility}}">
+                        <!-- Note sur ce PC : mesurée (PresentMon) ou estimée (configuration requise) -->
+                        <Border Margin="{StaticResource Margin.StackL}" Style="{StaticResource Card}">
                             <StackPanel>
-                                <DockPanel>
-                                    <ComboBox DockPanel.Dock="Right" MinWidth="130" ItemsSource="{Binding PlayedPresetOptions}" SelectedItem="{Binding PlayedPreset}"
-                                              DisplayMemberPath="Label" AutomationProperties.Name="Mon réglage dans le jeu"
-                                              ToolTip="Votre réglage dans le jeu. OptiGame ne peut pas le lire : indiquez-le pour un conseil précis ; il est enregistré avec chaque mesure." />
-                                    <TextBlock DockPanel.Dock="Right" Margin="0,0,10,0" VerticalAlignment="Center" Style="{StaticResource Text.Caption}" Text="Mon réglage" />
-                                    <TextBlock VerticalAlignment="Center" Style="{StaticResource Text.SectionTitle}" Text="Note sur ce PC" />
-                                </DockPanel>
+                                <TextBlock Style="{StaticResource Text.SectionTitle}" Text="Note sur ce PC" />
                                 <StackPanel Visibility="{Binding HasRating, Converter={StaticResource BoolToVisibility}}">
-                                    <StackPanel Margin="0,8,0,0" Orientation="Horizontal">
-                                        <TextBlock FontFamily="{StaticResource Font.Display}" FontSize="34" FontWeight="SemiBold" Text="{Binding ScoreText}">
-                                            <TextBlock.Style>
-                                                <Style TargetType="TextBlock">
-                                                    <Setter Property="Foreground" Value="{StaticResource Brush.Ok}" />
-                                                    <Style.Triggers>
-                                                        <DataTrigger Binding="{Binding RatingLevel}" Value="Fair">
-                                                            <Setter Property="Foreground" Value="{StaticResource Brush.Warning}" />
-                                                        </DataTrigger>
-                                                        <DataTrigger Binding="{Binding RatingLevel}" Value="Poor">
-                                                            <Setter Property="Foreground" Value="{StaticResource Brush.Danger}" />
-                                                        </DataTrigger>
-                                                    </Style.Triggers>
-                                                </Style>
-                                            </TextBlock.Style>
+                                    <WrapPanel Margin="0,8,0,0">
+                                        <TextBlock Style="{StaticResource Text.Stat}" Text="{Binding ScoreText}">
+                                            <TextBlock.Foreground>
+                                                <Binding Path="RatingLevel" Converter="{StaticResource LevelToBrush}" />
+                                            </TextBlock.Foreground>
                                         </TextBlock>
-                                        <TextBlock Margin="4,0,0,7" VerticalAlignment="Bottom" Style="{StaticResource Text.Secondary}" Text="/ 100" />
-                                        <TextBlock Margin="14,0,0,7" VerticalAlignment="Bottom" Style="{StaticResource Text.Body}" FontWeight="SemiBold" Text="{Binding RatingHeadline}" />
-                                    </StackPanel>
-                                    <TextBlock Style="{StaticResource Text.Body}" FontWeight="SemiBold" Foreground="{StaticResource Brush.Accent}" Text="{Binding PresetText}" />
-                                    <TextBlock Margin="0,6,0,0" Style="{StaticResource Text.Secondary}" Text="{Binding RatingAdvice}" TextWrapping="Wrap" />
-                                    <Expander Margin="0,12,0,0" Header="Détails du calcul" Foreground="{StaticResource Brush.TextSecondary}">
+                                        <TextBlock Margin="4,0,0,5" VerticalAlignment="Bottom" Style="{StaticResource Text.Secondary}" Text="/ 100" />
+                                        <TextBlock Margin="14,0,0,5" VerticalAlignment="Bottom" Style="{StaticResource Text.BodyStrong}" Text="{Binding RatingHeadline}" />
+                                        <Border Margin="12,0,0,5" VerticalAlignment="Bottom" Style="{StaticResource Badge.Neutral}">
+                                            <TextBlock Text="{Binding RatingKind}" />
+                                        </Border>
+                                    </WrapPanel>
+                                    <TextBlock Margin="0,8,0,0" Style="{StaticResource Text.BodyStrong}" Text="{Binding PresetText}" />
+                                    <TextBlock Margin="0,4,0,0" Style="{StaticResource Text.Secondary}" Text="{Binding RatingAdvice}" />
+                                    <Expander Margin="0,8,0,0" Style="{StaticResource Expander.Disclosure}" Header="Détails du calcul">
                                         <StackPanel Margin="0,6,0,0">
-                                            <TextBlock Style="{StaticResource Text.Caption}" Text="{Binding RatingSource}" TextWrapping="Wrap" />
+                                            <TextBlock Style="{StaticResource Text.Caption}" Text="{Binding RatingSource}" />
                                             <Button Margin="-8,2,0,0" HorizontalAlignment="Left" Style="{StaticResource Button.Ghost}" Content="Voir sur PCGamingWiki"
-                                                    Command="{Binding OpenRequirementsSourceCommand}" AutomationProperties.Name="Voir sur PCGamingWiki"
+                                                    Command="{Binding OpenRequirementsSourceCommand}"
                                                     Visibility="{Binding HasRequirementsLink, Converter={StaticResource BoolToVisibility}}" />
-                                            <ItemsControl Margin="0,4,0,0" ItemsSource="{Binding RatingDetails}">
+                                            <ItemsControl Margin="0,4,0,0" ItemsSource="{Binding RatingDetails}" Focusable="False">
                                                 <ItemsControl.ItemTemplate>
                                                     <DataTemplate>
-                                                        <TextBlock Margin="0,2,0,0" Style="{StaticResource Text.Caption}" Text="{Binding StringFormat='• {0}'}" TextWrapping="Wrap" />
+                                                        <TextBlock Margin="0,2,0,0" Style="{StaticResource Text.Caption}" Text="{Binding StringFormat='• {0}'}" />
                                                     </DataTemplate>
                                                 </ItemsControl.ItemTemplate>
                                             </ItemsControl>
                                         </StackPanel>
                                     </Expander>
                                 </StackPanel>
-                                <TextBlock Margin="0,10,0,0" Style="{StaticResource Text.Secondary}" TextWrapping="Wrap"
-                                           Visibility="{Binding HasRating, Converter={StaticResource InverseBoolToVisibility}}"
+                                <TextBlock Margin="0,8,0,0" Style="{StaticResource Text.Secondary}" Text="Calcul de la note…"
+                                           Visibility="{Binding IsRatingPending, Converter={StaticResource BoolToVisibility}}" />
+                                <TextBlock Margin="0,8,0,0" Style="{StaticResource Text.Secondary}"
+                                           Visibility="{Binding HasNoRating, Converter={StaticResource BoolToVisibility}}"
                                            Text="Pas encore de note : configuration requise introuvable (ni Steam ni PCGamingWiki, ou cartes graphiques citées inconnues). Elle apparaîtra après une partie, grâce à la mesure automatique des FPS." />
+
+                                <!-- Réglage utilisé dans le jeu : illisible par OptiGame, indiqué par l'utilisateur (enregistré tout de suite) -->
+                                <StackPanel Margin="0,16,0,0" Orientation="Horizontal">
+                                    <Label Margin="0,0,10,0" Padding="0" VerticalAlignment="Center" Content="_Mon réglage dans le jeu"
+                                           Target="{Binding ElementName=PresetBox}" Foreground="{StaticResource Brush.Text}" />
+                                    <ComboBox x:Name="PresetBox" MinWidth="140" ItemsSource="{Binding PlayedPresetOptions}" SelectedItem="{Binding PlayedPreset}"
+                                              DisplayMemberPath="Label" AutomationProperties.Name="Mon réglage dans le jeu" />
+                                </StackPanel>
+                                <TextBlock Margin="0,6,0,0" Style="{StaticResource Text.Caption}"
+                                           Text="OptiGame ne peut pas lire les réglages du jeu : indiquez le vôtre pour un conseil précis. Gardé tout de suite, et noté avec chaque mesure." />
                             </StackPanel>
                         </Border>
 
-                        <!-- Pendant la partie : profil appliqué au lancement du jeu, restauré à sa fermeture (« Enregistrer ») -->
-                        <Border Grid.Column="2" Style="{StaticResource Card}">
-                            <StackPanel>
-                                <DockPanel>
-                                    <CheckBox DockPanel.Dock="Right" VerticalAlignment="Center" IsChecked="{Binding Editor.Enabled}" Content="Appliquer automatiquement" />
-                                    <TextBlock VerticalAlignment="Center" Style="{StaticResource Text.SectionTitle}" Text="Pendant la partie" />
-                                </DockPanel>
-                                <TextBlock Margin="0,4,0,0" Style="{StaticResource Text.Caption}" Text="Appliqué quand le jeu démarre, restauré quand il se ferme." />
-
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="12" />
-                                        <ColumnDefinition Width="*" />
-                                    </Grid.ColumnDefinitions>
-                                    <StackPanel Grid.Column="0">
-                                        <TextBlock Style="{StaticResource Text.Label}" Text="Plan d'alimentation" />
-                                        <ComboBox ItemsSource="{Binding Editor.PowerSchemeOptions}" SelectedItem="{Binding Editor.SelectedPowerScheme}" DisplayMemberPath="Label" />
-                                    </StackPanel>
-                                    <StackPanel Grid.Column="2">
-                                        <TextBlock Style="{StaticResource Text.Label}" Text="Priorité du jeu"
-                                                   ToolTip="Effet généralement faible. « Haute » peut rendre les autres programmes (vocal, streaming) moins réactifs. Certains anti-cheats refusent ce changement : il est alors simplement ignoré." />
-                                        <ComboBox ItemsSource="{Binding Editor.PriorityOptions}" SelectedItem="{Binding Editor.SelectedPriority}" DisplayMemberPath="Label"
-                                                  ToolTip="Effet généralement faible. « Haute » peut rendre les autres programmes (vocal, streaming) moins réactifs. Certains anti-cheats refusent ce changement : il est alors simplement ignoré." />
-                                    </StackPanel>
-                                </Grid>
-
-                                <TextBlock Style="{StaticResource Text.Label}" Text="Programmes à fermer"
-                                           ToolTip="Fermeture normale, puis arrêt forcé après 5 secondes (les données non enregistrées peuvent être perdues). Jamais les composants de Windows ni les services. La relance se fait sans droits administrateur." />
-                                <ItemsControl ItemsSource="{Binding Editor.ProcessesToClose}">
-                                    <ItemsControl.ItemTemplate>
-                                        <DataTemplate DataType="{x:Type vm:ProcessRowViewModel}">
-                                            <Border Margin="0,2" Padding="12,4" CornerRadius="{StaticResource Radius.Control}" Background="{StaticResource Brush.Control}">
-                                                <DockPanel>
-                                                    <Button DockPanel.Dock="Right" Style="{StaticResource Button.Ghost}" ToolTip="Retirer" Command="{Binding RemoveCommand}">
-                                                        <TextBlock Style="{StaticResource Text.Icon}" FontSize="12" Text="&#xE711;" />
-                                                    </Button>
-                                                    <CheckBox DockPanel.Dock="Right" Margin="12,0" VerticalAlignment="Center" IsChecked="{Binding Relaunch}" Content="Relancer après" />
-                                                    <TextBlock VerticalAlignment="Center" Style="{StaticResource Text.Body}" FontFamily="{StaticResource Font.Mono}" Text="{Binding ExeName}" />
+                        <!-- Temps de jeu, mesures, disque : deux colonnes, une seule en fenêtre étroite -->
+                        <UniformGrid Columns="{Binding ActualWidth, ElementName=OverviewTab, Converter={StaticResource WidthToColumns}, ConverterParameter=720}">
+                            <Border Margin="0,0,8,16" Style="{StaticResource Card}">
+                                <StackPanel>
+                                    <TextBlock Style="{StaticResource Text.SectionTitle}" Text="Temps de jeu" />
+                                    <TextBlock Margin="0,8,0,0" Style="{StaticResource Text.Stat}" Text="{Binding PlaytimeTotal}" />
+                                    <TextBlock Margin="0,2,0,0" Style="{StaticResource Text.Secondary}" Text="{Binding PlaytimeDetail}" />
+                                    <ItemsControl Margin="0,10,0,0" ItemsSource="{Binding RecentSessions}" Focusable="False">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate DataType="{x:Type vm:SessionRow}">
+                                                <DockPanel Margin="0,3">
+                                                    <TextBlock DockPanel.Dock="Right" Style="{StaticResource Text.Body}" Text="{Binding Duration}" />
+                                                    <TextBlock Style="{StaticResource Text.Secondary}" Text="{Binding Date}" />
                                                 </DockPanel>
-                                            </Border>
-                                        </DataTemplate>
-                                    </ItemsControl.ItemTemplate>
-                                </ItemsControl>
-                                <DockPanel Margin="0,6,0,0">
-                                    <Button DockPanel.Dock="Right" Margin="8,0,0,0" Style="{StaticResource Button.Secondary}"
-                                            Content="Programmes ouverts…" Command="{Binding Editor.PickRunningProgramsCommand}" />
-                                    <Button DockPanel.Dock="Right" Margin="8,0,0,0" Style="{StaticResource Button.Secondary}"
-                                            Content="Ajouter" Command="{Binding Editor.AddProcessCommand}" />
-                                    <TextBox VerticalContentAlignment="Center" Text="{Binding Editor.NewProcessName, UpdateSourceTrigger=PropertyChanged}"
-                                             ToolTip="Nom de l'exécutable, ex. chrome.exe" />
-                                </DockPanel>
-
-                                <!-- Ce que fera ce profil (replié, comme « Détails du calcul » dans la carte voisine) -->
-                                <Expander Margin="0,12,0,0" Header="Ce que fera ce profil" Foreground="{StaticResource Brush.TextSecondary}">
-                                    <Border Margin="0,6,0,0" Padding="12,10" CornerRadius="{StaticResource Radius.Control}" Background="{StaticResource Brush.InfoSoft}">
-                                        <ItemsControl ItemsSource="{Binding Editor.Summary}">
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </StackPanel>
+                            </Border>
+                            <Border Margin="8,0,0,16" Style="{StaticResource Card}">
+                                <StackPanel>
+                                    <TextBlock Style="{StaticResource Text.SectionTitle}" Text="Mesures" />
+                                    <TextBlock Margin="0,8,0,0" Style="{StaticResource Text.Secondary}" Text="{Binding MeasuresSummary}" />
+                                    <ItemsControl Margin="0,8,0,0" ItemsSource="{Binding Captures}" Focusable="False">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate DataType="{x:Type vm:CaptureItemViewModel}">
+                                                <DockPanel Margin="0,4">
+                                                    <StackPanel DockPanel.Dock="Right">
+                                                        <TextBlock HorizontalAlignment="Right" Style="{StaticResource Text.BodyStrong}"
+                                                                   Text="{Binding AverageFps, StringFormat='{}{0} FPS'}" />
+                                                        <TextBlock HorizontalAlignment="Right" Style="{StaticResource Text.Caption}"
+                                                                   Text="{Binding OnePercentLow, StringFormat='1 % low : {0}'}" />
+                                                    </StackPanel>
+                                                    <StackPanel>
+                                                        <TextBlock Style="{StaticResource Text.Body}" Text="{Binding Label}" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" />
+                                                        <TextBlock Style="{StaticResource Text.Caption}" Text="{Binding Date}" />
+                                                    </StackPanel>
+                                                </DockPanel>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </StackPanel>
+                            </Border>
+                            <Border Margin="0,0,8,16" Style="{StaticResource Card}">
+                                <StackPanel>
+                                    <TextBlock Style="{StaticResource Text.SectionTitle}" Text="Disque du jeu" />
+                                    <TextBlock Margin="0,8,0,0" Style="{StaticResource Text.Secondary}" Text="Lecture du disque…"
+                                               Visibility="{Binding IsDiskPending, Converter={StaticResource BoolToVisibility}}" />
+                                    <TextBlock Margin="0,8,0,0" Style="{StaticResource Text.Secondary}" Text="{Binding DiskSummary}"
+                                               Visibility="{Binding IsDiskUnreadable, Converter={StaticResource BoolToVisibility}}" />
+                                    <StackPanel Visibility="{Binding HasDisk, Converter={StaticResource BoolToVisibility}}">
+                                        <TextBlock Margin="0,8,0,0" Style="{StaticResource Text.Stat}" Text="{Binding DiskTile}" />
+                                        <TextBlock Margin="0,2,0,0" Style="{StaticResource Text.BodyStrong}" Text="{Binding Disk.Summary}">
+                                            <TextBlock.Foreground>
+                                                <Binding Path="DiskLevel" Converter="{StaticResource LevelToBrush}" />
+                                            </TextBlock.Foreground>
+                                        </TextBlock>
+                                        <TextBlock Margin="0,2,0,0" Style="{StaticResource Text.Secondary}" Text="{Binding Disk.Detail}" />
+                                        <ItemsControl Margin="0,4,0,0" ItemsSource="{Binding Disk.Advice}" Focusable="False">
                                             <ItemsControl.ItemTemplate>
                                                 <DataTemplate>
-                                                    <TextBlock Margin="0,1" Style="{StaticResource Text.Secondary}" Text="{Binding}" TextWrapping="Wrap" />
+                                                    <TextBlock Margin="0,4,0,0" Style="{StaticResource Text.Caption}" Text="{Binding StringFormat='• {0}'}" />
                                                 </DataTemplate>
                                             </ItemsControl.ItemTemplate>
                                         </ItemsControl>
-                                    </Border>
-                                </Expander>
-                            </StackPanel>
-                        </Border>
-                    </Grid>
-
-                    <!-- Liste repliable -->
-                    <TextBlock Margin="2,24,0,10" Style="{StaticResource Text.Caption}" FontWeight="SemiBold" Text="RÉGLAGES ET INFORMATIONS" />
-
-                    <!-- Lancement -->
-                    <Expander Style="{StaticResource Expander.Row}" AutomationProperties.Name="Lancement">
-                        <Expander.Header>
-                            <DockPanel>
-                                <TextBlock Width="30" Style="{StaticResource Text.Icon}" Foreground="{StaticResource Brush.Accent}" Text="&#xE768;" />
-                                <TextBlock Width="210" VerticalAlignment="Center" Style="{StaticResource Text.Body}" FontWeight="SemiBold" Text="Lancement" />
-                                <TextBlock VerticalAlignment="Center" Style="{StaticResource Text.Secondary}" Text="{Binding Editor.LaunchSummary}"
-                                           TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
-                            </DockPanel>
-                        </Expander.Header>
-                        <StackPanel>
-                            <TextBlock Style="{StaticResource Text.Caption}"
-                                       Text="Comment « Jouer » démarre ce jeu. Toujours sans droits administrateur ; le profil s'applique ensuite automatiquement." />
-                            <TextBlock Style="{StaticResource Text.Label}" Text="Mode" />
-                            <ComboBox ItemsSource="{Binding Editor.LaunchModeOptions}" SelectedItem="{Binding Editor.SelectedLaunchMode}" DisplayMemberPath="Label" />
-
-                            <StackPanel Visibility="{Binding Editor.IsSteamMode, Converter={StaticResource BoolToVisibility}}">
-                                <TextBlock Style="{StaticResource Text.Label}" Text="Appid Steam" />
-                                <TextBox Width="160" HorizontalAlignment="Left" FontFamily="{StaticResource Font.Mono}"
-                                         Text="{Binding Editor.SteamAppId, UpdateSourceTrigger=PropertyChanged}" />
-                                <TextBlock Margin="0,4,0,0" Style="{StaticResource Text.Caption}"
-                                           Text="Facultatif : retrouvé automatiquement si le jeu est installé dans une bibliothèque Steam." />
-                            </StackPanel>
-
-                            <StackPanel Visibility="{Binding Editor.IsLauncherMode, Converter={StaticResource BoolToVisibility}}">
-                                <TextBlock Style="{StaticResource Text.Label}" Text="Lanceur" />
-                                <DockPanel>
-                                    <Button DockPanel.Dock="Right" Margin="8,0,0,0" Style="{StaticResource Button.Secondary}"
-                                            Content="Parcourir…" Command="{Binding Editor.BrowseLauncherCommand}" />
-                                    <TextBox VerticalContentAlignment="Center" FontFamily="{StaticResource Font.Mono}"
-                                             Text="{Binding Editor.LauncherPath, UpdateSourceTrigger=PropertyChanged}" />
-                                </DockPanel>
-                            </StackPanel>
-
-                            <TextBlock Style="{StaticResource Text.Label}" Text="Arguments (facultatif)" />
-                            <TextBox FontFamily="{StaticResource Font.Mono}" Text="{Binding Editor.LaunchArguments, UpdateSourceTrigger=PropertyChanged}" />
-
-                            <Border Margin="0,14,0,0" Padding="12,8" CornerRadius="{StaticResource Radius.Control}" Background="{StaticResource Brush.Control}">
-                                <StackPanel>
-                                    <TextBlock Style="{StaticResource Text.Caption}" Text="Sera lancé :" />
-                                    <TextBlock Style="{StaticResource Text.Mono}" Foreground="{StaticResource Brush.Text}" Text="{Binding Editor.LaunchPreview}" />
+                                    </StackPanel>
                                 </StackPanel>
                             </Border>
-                        </StackPanel>
-                    </Expander>
+                        </UniformGrid>
+                    </StackPanel>
 
-                    <!-- Pilote NVIDIA : plafond de FPS dans le profil du pilote ; durable, confirmé, annulable -->
-                    <Expander Style="{StaticResource Expander.Row}" DataContext="{Binding FrameCap}" AutomationProperties.Name="Pilote NVIDIA"
-                              Visibility="{Binding IsAvailable, Converter={StaticResource BoolToVisibility}}">
-                        <Expander.Header>
-                            <DockPanel>
-                                <TextBlock Width="30" Style="{StaticResource Text.Icon}" Foreground="{StaticResource Brush.Accent}" Text="&#xEC4A;" />
-                                <TextBlock Width="210" VerticalAlignment="Center" Style="{StaticResource Text.Body}" FontWeight="SemiBold" Text="Pilote NVIDIA" />
-                                <TextBlock VerticalAlignment="Center" Style="{StaticResource Text.Secondary}" Text="{Binding Summary}"
-                                           TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
-                            </DockPanel>
-                        </Expander.Header>
-                        <StackPanel>
-                            <TextBlock Style="{StaticResource Text.Caption}" Text="{Binding ProfileText}" TextWrapping="Wrap" />
-                            <TextBlock Style="{StaticResource Text.Label}" Text="Plafond de FPS" />
-                            <TextBlock Style="{StaticResource Text.Secondary}" Text="{Binding CurrentText}" TextWrapping="Wrap" />
-                            <StackPanel Margin="0,8,0,0" Orientation="Horizontal">
-                                <TextBox Width="90" Text="{Binding FpsText, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Plafond de FPS" />
-                                <TextBlock Margin="8,0,0,0" VerticalAlignment="Center" Style="{StaticResource Text.Secondary}" Text="FPS" />
-                                <Button Margin="16,0,0,0" Style="{StaticResource Button.Secondary}" Content="Appliquer"
-                                        Command="{Binding ApplyCommand}" AutomationProperties.Name="Appliquer le plafond de FPS" />
-                                <Button Margin="8,0,0,0" Style="{StaticResource Button.Ghost}" Content="Annuler"
-                                        Command="{Binding UndoCommand}" AutomationProperties.Name="Annuler le plafond de FPS"
-                                        Visibility="{Binding HasAppliedChange, Converter={StaticResource BoolToVisibility}}" />
-                            </StackPanel>
-                            <TextBlock Margin="0,4,0,0" Style="{StaticResource Text.Caption}" Foreground="{StaticResource Brush.Danger}" Text="{Binding InputError}" />
-                            <TextBlock Margin="0,4,0,0" Style="{StaticResource Text.Caption}" Text="{Binding SuggestionText}" TextWrapping="Wrap" />
-                            <TextBlock Margin="0,4,0,0" Style="{StaticResource Text.Caption}" Text="{Binding AppliedText}" TextWrapping="Wrap" />
-                        </StackPanel>
-                    </Expander>
+                    <!-- ===== Optimisation ===== -->
+                    <StackPanel Visibility="{Binding IsOptimizationTab, Converter={StaticResource BoolToVisibility}}">
+                        <!-- Réglages de partie : barre « Enregistrer » -->
+                        <TextBlock Style="{StaticResource Text.SectionTitle}" Text="Réglages de partie" />
+                        <TextBlock Margin="0,4,0,12" Style="{StaticResource Text.Secondary}"
+                                   Text="Appliqués quand le jeu démarre, restaurés quand il se ferme. Gardés avec « Enregistrer »." />
+                        <Border Margin="{StaticResource Margin.StackXL}" Style="{StaticResource Card}" DataContext="{Binding Editor}">
+                            <StackPanel>
+                                <CheckBox IsChecked="{Binding Enabled}" Content="Optimiser ce jeu pendant les parties" FontWeight="SemiBold" />
+                                <StackPanel Margin="0,8,0,0" IsEnabled="{Binding Enabled}">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="16" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel Grid.Column="0" Margin="0,8,0,0">
+                                            <Label Style="{StaticResource Text.FieldLabel}" Content="_Plan d'alimentation" Target="{Binding ElementName=PowerBox}" />
+                                            <ComboBox x:Name="PowerBox" ItemsSource="{Binding PowerSchemeOptions}" SelectedItem="{Binding SelectedPowerScheme}"
+                                                      DisplayMemberPath="Label" AutomationProperties.Name="Plan d'alimentation" />
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="2" Margin="0,8,0,0">
+                                            <Label Style="{StaticResource Text.FieldLabel}" Content="P_riorité du jeu" Target="{Binding ElementName=PriorityBox}" />
+                                            <ComboBox x:Name="PriorityBox" ItemsSource="{Binding PriorityOptions}" SelectedItem="{Binding SelectedPriority}"
+                                                      DisplayMemberPath="Label" AutomationProperties.Name="Priorité du jeu" />
+                                            <TextBlock Margin="0,6,0,0" Style="{StaticResource Text.Caption}"
+                                                       Text="Effet généralement faible. « Haute » peut rendre le vocal ou le streaming moins réactifs ; certains anti-cheats refusent ce changement (il est alors ignoré)." />
+                                        </StackPanel>
+                                    </Grid>
 
-                    <!-- Graphismes (Windows) : réglage durable, appliqué à part (pas par « Enregistrer »), annulable -->
-                    <Expander Style="{StaticResource Expander.Row}" DataContext="{Binding Graphics}" AutomationProperties.Name="Graphismes (Windows)">
-                        <Expander.Header>
-                            <DockPanel>
-                                <TextBlock Width="30" Style="{StaticResource Text.Icon}" Foreground="{StaticResource Brush.Accent}" Text="&#xE7F4;" />
-                                <TextBlock Width="210" VerticalAlignment="Center" Style="{StaticResource Text.Body}" FontWeight="SemiBold" Text="Graphismes (Windows)" />
-                                <TextBlock VerticalAlignment="Center" Style="{StaticResource Text.Secondary}" Text="{Binding Summary}"
-                                           TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
-                            </DockPanel>
-                        </Expander.Header>
-                        <StackPanel>
-                            <TextBlock Style="{StaticResource Text.Caption}" TextWrapping="Wrap"
-                                       Text="Préférences graphiques que Windows garde pour ce jeu, prises en compte au prochain lancement." />
-                            <!-- Auto HDR : lecture seule (encodage de Windows non documenté), réglage dans Windows -->
-                            <TextBlock Style="{StaticResource Text.Label}" Text="Auto HDR" />
-                            <TextBlock Style="{StaticResource Text.Secondary}" Text="{Binding AutoHdrText}" TextWrapping="Wrap" />
-                            <TextBlock Margin="0,4,0,0" Style="{StaticResource Text.Caption}" Text="{Binding HdrText}" TextWrapping="Wrap" />
-                            <Button Margin="0,10,0,0" HorizontalAlignment="Left" Style="{StaticResource Button.Secondary}"
-                                    Command="{Binding OpenWindowsGraphicsSettingsCommand}" AutomationProperties.Name="Ouvrir les réglages graphiques de Windows">
-                                <StackPanel Orientation="Horizontal">
-                                    <TextBlock Style="{StaticResource Text.Icon}" FontSize="13" Text="&#xE8A7;" />
-                                    <TextBlock Margin="8,0,0,0" Text="Ouvrir les réglages graphiques de Windows" />
+                                    <Label Margin="0,16,0,0" Style="{StaticResource Text.FieldLabel}" Content="Programmes à _fermer" Target="{Binding ElementName=NewProcessBox}" />
+                                    <TextBlock Margin="{StaticResource Margin.StackS}" Style="{StaticResource Text.Caption}"
+                                               Text="Fermés normalement au lancement du jeu, puis arrêtés de force après 5 secondes : les données non enregistrées peuvent être perdues. Jamais les composants de Windows ni les services ; relancés sans droits administrateur." />
+                                    <ItemsControl ItemsSource="{Binding ProcessesToClose}" Focusable="False">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate DataType="{x:Type vm:ProcessRowViewModel}">
+                                                <Border Margin="0,2" Padding="12,4,4,4" CornerRadius="{StaticResource Radius.Control}" Background="{StaticResource Brush.Control}">
+                                                    <DockPanel>
+                                                        <controls:IconButton DockPanel.Dock="Right" Style="{StaticResource Button.Icon}" Glyph="&#xE711;" IsLabelVisible="False"
+                                                                             Label="{Binding ExeName, StringFormat='Ne plus fermer {0}'}" Command="{Binding RemoveCommand}" />
+                                                        <CheckBox DockPanel.Dock="Right" Margin="12,0" VerticalAlignment="Center" IsChecked="{Binding Relaunch}"
+                                                                  Content="Relancer après" AutomationProperties.Name="{Binding ExeName, StringFormat='Relancer {0} après la partie'}" />
+                                                        <TextBlock VerticalAlignment="Center" Style="{StaticResource Text.Body}" FontFamily="{StaticResource Font.Mono}" Text="{Binding ExeName}" />
+                                                    </DockPanel>
+                                                </Border>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                    <TextBlock Style="{StaticResource Text.Secondary}" Text="Aucun programme fermé pendant les parties."
+                                               Visibility="{Binding HasProcessesToClose, Converter={StaticResource InverseBoolToVisibility}}" />
+                                    <DockPanel Margin="0,8,0,0">
+                                        <Button DockPanel.Dock="Right" Margin="8,0,0,0" Style="{StaticResource Button.Secondary}"
+                                                Content="Programmes ouverts…" Command="{Binding PickRunningProgramsCommand}" />
+                                        <Button DockPanel.Dock="Right" Margin="8,0,0,0" Style="{StaticResource Button.Secondary}"
+                                                Content="Ajouter" Command="{Binding AddProcessCommand}" />
+                                        <Grid>
+                                            <TextBox x:Name="NewProcessBox" VerticalContentAlignment="Center" Text="{Binding NewProcessName, UpdateSourceTrigger=PropertyChanged}"
+                                                     AutomationProperties.Name="Nom du programme à fermer" AutomationProperties.HelpText="Par exemple chrome.exe" />
+                                            <TextBlock Margin="12,0,0,0" VerticalAlignment="Center" IsHitTestVisible="False" Style="{StaticResource Text.Secondary}"
+                                                       Foreground="{StaticResource Brush.TextMuted}" Text="ex. chrome.exe">
+                                                <TextBlock.Visibility>
+                                                    <MultiBinding Converter="{StaticResource EmptyAndUnfocusedToVisibility}">
+                                                        <Binding ElementName="NewProcessBox" Path="Text" />
+                                                        <Binding ElementName="NewProcessBox" Path="IsKeyboardFocused" />
+                                                    </MultiBinding>
+                                                </TextBlock.Visibility>
+                                            </TextBlock>
+                                        </Grid>
+                                    </DockPanel>
                                 </StackPanel>
-                            </Button>
-                            <!-- Carte graphique : seulement sur les PC à plusieurs cartes ; appliqué avec confirmation, annulable -->
-                            <StackPanel Visibility="{Binding ShowGpu, Converter={StaticResource BoolToVisibility}}">
-                                <TextBlock Style="{StaticResource Text.Label}" Text="Carte graphique" />
-                                <ComboBox ItemsSource="{Binding GpuOptions}" SelectedItem="{Binding SelectedGpu}" DisplayMemberPath="Label"
-                                          AutomationProperties.Name="Carte graphique pour ce jeu" />
-                                <TextBlock Margin="0,4,0,0" Style="{StaticResource Text.Caption}" Text="{Binding AppliedText}" TextWrapping="Wrap" />
-                                <Button Margin="0,10,0,0" HorizontalAlignment="Left" Style="{StaticResource Button.Secondary}" Content="Appliquer"
-                                        Command="{Binding ApplyCommand}" AutomationProperties.Name="Appliquer la carte graphique" />
+
+                                <!-- Ce qui se passera (toujours visible, généré par le moteur des parties) -->
+                                <Border Margin="0,16,0,0" Padding="14,10" CornerRadius="{StaticResource Radius.Control}" Background="{StaticResource Brush.InfoSoft}">
+                                    <StackPanel>
+                                        <TextBlock Style="{StaticResource Text.BodyStrong}" Text="Ce qui se passera" />
+                                        <ItemsControl Margin="0,4,0,0" ItemsSource="{Binding Summary}" Focusable="False">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <TextBlock Margin="0,1" Style="{StaticResource Text.Secondary}" Text="{Binding}" />
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </StackPanel>
+                                </Border>
                             </StackPanel>
-                            <TextBlock Margin="0,12,0,0" Style="{StaticResource Text.Caption}" Text="{Binding GpuNote}" TextWrapping="Wrap" />
-                        </StackPanel>
-                    </Expander>
+                        </Border>
 
-                    <!-- Disque du jeu : SSD ou disque dur, espace libre -->
-                    <Expander Style="{StaticResource Expander.Row}" AutomationProperties.Name="Disque du jeu">
-                        <Expander.Header>
-                            <DockPanel>
-                                <TextBlock Width="30" Style="{StaticResource Text.Icon}" Foreground="{StaticResource Brush.Accent}" Text="&#xEDA2;" />
-                                <TextBlock Width="210" VerticalAlignment="Center" Style="{StaticResource Text.Body}" FontWeight="SemiBold" Text="Disque du jeu" />
-                                <TextBlock VerticalAlignment="Center" Style="{StaticResource Text.Secondary}" Text="{Binding DiskSummary}"
-                                           TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
-                            </DockPanel>
-                        </Expander.Header>
-                        <StackPanel>
-                            <TextBlock FontWeight="SemiBold" FontSize="15" Text="{Binding Disk.Summary}">
-                                <TextBlock.Style>
-                                    <Style TargetType="TextBlock">
-                                        <Setter Property="Foreground" Value="{StaticResource Brush.Ok}" />
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding DiskLevel}" Value="Fair">
-                                                <Setter Property="Foreground" Value="{StaticResource Brush.Warning}" />
-                                            </DataTrigger>
-                                            <DataTrigger Binding="{Binding DiskLevel}" Value="Poor">
-                                                <Setter Property="Foreground" Value="{StaticResource Brush.Danger}" />
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </TextBlock.Style>
-                            </TextBlock>
-                            <TextBlock Margin="0,2,0,0" Style="{StaticResource Text.Secondary}" Text="{Binding Disk.Detail}" TextWrapping="Wrap" />
-                            <ItemsControl Margin="0,4,0,0" ItemsSource="{Binding Disk.Advice}">
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate>
-                                        <TextBlock Margin="0,4,0,0" Style="{StaticResource Text.Caption}" Text="{Binding StringFormat='• {0}'}" TextWrapping="Wrap" />
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
-                        </StackPanel>
-                    </Expander>
+                        <!-- Réglages permanents : « Appliquer… » confirmé, « Restaurer l'original… » -->
+                        <TextBlock Style="{StaticResource Text.SectionTitle}" Text="Réglages permanents (Windows et pilote)" />
+                        <TextBlock Margin="0,4,0,12" Style="{StaticResource Text.Secondary}"
+                                   Text="Gardés après la partie. Appliqués tout de suite après confirmation, sans « Enregistrer » ; « Restaurer l'original… » rétablit le réglage d'origine." />
 
-                    <!-- Mesures -->
-                    <Expander Style="{StaticResource Expander.Row}" AutomationProperties.Name="Mesures">
-                        <Expander.Header>
-                            <DockPanel>
-                                <TextBlock Width="30" Style="{StaticResource Text.Icon}" Foreground="{StaticResource Brush.Accent}" Text="&#xE9D2;" />
-                                <TextBlock Width="210" VerticalAlignment="Center" Style="{StaticResource Text.Body}" FontWeight="SemiBold" Text="Mesures" />
-                                <TextBlock VerticalAlignment="Center" Style="{StaticResource Text.Secondary}" Text="{Binding MeasuresSummary}"
-                                           TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
-                            </DockPanel>
-                        </Expander.Header>
-                        <StackPanel>
-                            <TextBlock Style="{StaticResource Text.Caption}" Text="Aucune mesure pour ce jeu. Utilisez « Mesurer les FPS »."
-                                       Visibility="{Binding HasCaptures, Converter={StaticResource InverseBoolToVisibility}}" />
-                            <ItemsControl ItemsSource="{Binding Captures}">
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate DataType="{x:Type vm:CaptureItemViewModel}">
-                                        <Border Margin="0,3" Padding="12,8" CornerRadius="{StaticResource Radius.Control}" Background="{StaticResource Brush.Control}">
-                                            <DockPanel>
-                                                <StackPanel DockPanel.Dock="Right" HorizontalAlignment="Right">
-                                                    <TextBlock HorizontalAlignment="Right" FontWeight="SemiBold" Foreground="{StaticResource Brush.Accent}"
-                                                               Text="{Binding AverageFps, StringFormat='{}{0} FPS'}" />
-                                                    <TextBlock HorizontalAlignment="Right" Style="{StaticResource Text.Caption}"
-                                                               Text="{Binding OnePercentLow, StringFormat='1 % low {0}'}" />
-                                                </StackPanel>
-                                                <StackPanel>
-                                                    <TextBlock Style="{StaticResource Text.Body}" Text="{Binding Label}" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" />
-                                                    <TextBlock Style="{StaticResource Text.Caption}" Text="{Binding Date}" />
-                                                </StackPanel>
-                                            </DockPanel>
-                                        </Border>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
-                        </StackPanel>
-                    </Expander>
-
-                    <!-- Temps de jeu -->
-                    <Expander Style="{StaticResource Expander.Row}" AutomationProperties.Name="Temps de jeu">
-                        <Expander.Header>
-                            <DockPanel>
-                                <TextBlock Width="30" Style="{StaticResource Text.Icon}" Foreground="{StaticResource Brush.Accent}" Text="&#xE916;" />
-                                <TextBlock Width="210" VerticalAlignment="Center" Style="{StaticResource Text.Body}" FontWeight="SemiBold" Text="Temps de jeu" />
-                                <TextBlock VerticalAlignment="Center" Style="{StaticResource Text.Secondary}" Text="{Binding PlaytimeSummary}"
-                                           TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
-                            </DockPanel>
-                        </Expander.Header>
-                        <StackPanel>
-                            <TextBlock Style="{StaticResource Text.Secondary}" Text="{Binding PlaytimeDetail}" TextWrapping="Wrap" />
-                            <ItemsControl Margin="0,8,0,0" ItemsSource="{Binding RecentSessions}">
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate DataType="{x:Type vm:SessionRow}">
-                                        <DockPanel Margin="0,3">
-                                            <TextBlock DockPanel.Dock="Right" Style="{StaticResource Text.Body}" FontSize="13" Text="{Binding Duration}" />
-                                            <TextBlock Style="{StaticResource Text.Caption}" FontSize="13" Text="{Binding Date}" />
-                                        </DockPanel>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
-                        </StackPanel>
-                    </Expander>
-
-                    <!-- Profil -->
-                    <Expander Style="{StaticResource Expander.Row}" AutomationProperties.Name="Profil">
-                        <Expander.Header>
-                            <DockPanel>
-                                <TextBlock Width="30" Style="{StaticResource Text.Icon}" Foreground="{StaticResource Brush.Accent}" Text="&#xE946;" />
-                                <TextBlock Width="210" VerticalAlignment="Center" Style="{StaticResource Text.Body}" FontWeight="SemiBold" Text="Profil" />
-                                <TextBlock VerticalAlignment="Center" Style="{StaticResource Text.Secondary}" Text="{Binding ExeName}"
-                                           TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
-                            </DockPanel>
-                        </Expander.Header>
-                        <StackPanel>
-                            <TextBlock Style="{StaticResource Text.Label}" Text="Nom" />
-                            <TextBox Text="{Binding Editor.Name, UpdateSourceTrigger=PropertyChanged}" />
-                            <TextBlock Style="{StaticResource Text.Label}" Text="Exécutable surveillé" />
-                            <TextBlock Style="{StaticResource Text.Mono}" Text="{Binding Editor.ExePath}" TextWrapping="Wrap" />
-                            <StackPanel Margin="0,10,0,0" Orientation="Horizontal">
-                                <Button Style="{StaticResource Button.SecondarySmall}" Content="Changer d'exécutable…" Command="{Binding Editor.ChangeExeCommand}" />
-                                <Button Margin="8,0,0,0" Style="{StaticResource Button.Danger}" Content="Retirer ce jeu" Command="{Binding Editor.DeleteCommand}" />
+                        <!-- Plafond de FPS : profil NVIDIA du jeu (carte masquée sans pilote NVIDIA) -->
+                        <Border Margin="{StaticResource Margin.StackL}" Style="{StaticResource Card}" DataContext="{Binding FrameCap}"
+                                Visibility="{Binding IsAvailable, Converter={StaticResource BoolToVisibility}}">
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource Text.SectionTitle}" Text="Plafond de FPS (pilote NVIDIA)" />
+                                <TextBlock Margin="0,4,0,0" Style="{StaticResource Text.Caption}" Text="{Binding ProfileText}" />
+                                <TextBlock Margin="0,8,0,0" Style="{StaticResource Text.Body}" Text="{Binding CurrentText}" />
+                                <Label Margin="0,12,0,0" Style="{StaticResource Text.FieldLabel}" Content="Nouveau plafond (_FPS)" Target="{Binding ElementName=FpsBox}" />
+                                <WrapPanel>
+                                    <TextBox x:Name="FpsBox" Width="90" Margin="0,0,8,8" Text="{Binding FpsText, UpdateSourceTrigger=PropertyChanged}"
+                                             AutomationProperties.Name="Nouveau plafond de FPS" AutomationProperties.HelpText="0 = aucun plafond" />
+                                    <Button Margin="0,0,8,8" Style="{StaticResource Button.Secondary}" Content="Appliquer…" Command="{Binding ApplyCommand}"
+                                            AutomationProperties.Name="Appliquer le plafond de FPS…" />
+                                    <Button Margin="0,0,8,8" Style="{StaticResource Button.Ghost}" Content="Restaurer l'original…" Command="{Binding UndoCommand}"
+                                            AutomationProperties.Name="Restaurer le plafond de FPS d'origine…"
+                                            Visibility="{Binding HasAppliedChange, Converter={StaticResource BoolToVisibility}}" />
+                                    <Button Margin="0,0,0,8" Style="{StaticResource Button.Ghost}" Content="{Binding UseSuggestionLabel}" Command="{Binding UseSuggestionCommand}"
+                                            Visibility="{Binding HasSuggestion, Converter={StaticResource BoolToVisibility}}" />
+                                </WrapPanel>
+                                <TextBlock Style="{StaticResource FieldError}" Text="{Binding InputError}" />
+                                <TextBlock Margin="0,4,0,0" Style="{StaticResource Text.Caption}" Text="{Binding SuggestionText}" />
+                                <TextBlock Margin="0,4,0,0" Style="{StaticResource Text.Caption}" Text="{Binding AppliedText}" />
                             </StackPanel>
-                        </StackPanel>
-                    </Expander>
+                        </Border>
+
+                        <!-- Graphismes (Windows) : Auto HDR (lecture seule) et carte graphique (PC à plusieurs cartes) -->
+                        <Border Style="{StaticResource Card}" DataContext="{Binding Graphics}">
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource Text.SectionTitle}" Text="Graphismes (Windows)" />
+                                <TextBlock Margin="0,4,0,0" Style="{StaticResource Text.Caption}"
+                                           Text="Préférences graphiques que Windows garde pour ce jeu, prises en compte au prochain lancement." />
+                                <TextBlock Margin="0,12,0,0" Style="{StaticResource Text.BodyStrong}" Text="Auto HDR" />
+                                <TextBlock Margin="0,2,0,0" Style="{StaticResource Text.Secondary}" Text="{Binding AutoHdrText}" />
+                                <TextBlock Margin="0,4,0,0" Style="{StaticResource Text.Caption}" Text="{Binding HdrText}" />
+                                <controls:IconButton Margin="0,10,0,0" HorizontalAlignment="Left" Style="{StaticResource Button.Secondary}" Glyph="&#xE8A7;"
+                                                     Label="Ouvrir les réglages graphiques de Windows" Command="{Binding OpenWindowsGraphicsSettingsCommand}" />
+                                <StackPanel Margin="0,16,0,0" Visibility="{Binding ShowGpu, Converter={StaticResource BoolToVisibility}}">
+                                    <Label Style="{StaticResource Text.FieldLabel}" Content="_Carte graphique pour ce jeu" Target="{Binding ElementName=GpuBox}" />
+                                    <WrapPanel>
+                                        <ComboBox x:Name="GpuBox" MinWidth="240" Margin="0,0,8,8" ItemsSource="{Binding GpuOptions}" SelectedItem="{Binding SelectedGpu}"
+                                                  DisplayMemberPath="Label" AutomationProperties.Name="Carte graphique pour ce jeu" />
+                                        <Button Margin="0,0,8,8" Style="{StaticResource Button.Secondary}" Content="Appliquer…" Command="{Binding ApplyCommand}"
+                                                AutomationProperties.Name="Appliquer la carte graphique…" />
+                                        <Button Margin="0,0,0,8" Style="{StaticResource Button.Ghost}" Content="Restaurer l'original…" Command="{Binding RestoreCommand}"
+                                                AutomationProperties.Name="Restaurer la carte graphique d'origine…"
+                                                Visibility="{Binding HasAppliedChange, Converter={StaticResource BoolToVisibility}}" />
+                                    </WrapPanel>
+                                    <TextBlock Style="{StaticResource Text.Caption}" Text="{Binding AppliedText}" />
+                                </StackPanel>
+                                <TextBlock Margin="0,12,0,0" Style="{StaticResource Text.Caption}" Text="{Binding GpuNote}" />
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+
+                    <!-- ===== Propriétés ===== -->
+                    <StackPanel Visibility="{Binding IsPropertiesTab, Converter={StaticResource BoolToVisibility}}" DataContext="{Binding Editor}">
+                        <Border Margin="{StaticResource Margin.StackL}" Style="{StaticResource Card}">
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource Text.SectionTitle}" Text="Jeu" />
+                                <Label Margin="0,12,0,0" Style="{StaticResource Text.FieldLabel}" Content="_Nom" Target="{Binding ElementName=NameBox}" />
+                                <TextBox x:Name="NameBox" Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Nom" />
+                                <TextBlock Margin="0,4,0,0" Style="{StaticResource FieldError}" Text="{Binding NameError}" />
+                                <TextBlock Margin="0,16,0,0" Style="{StaticResource Text.BodyStrong}" Text="Fichier .exe surveillé" />
+                                <TextBlock Margin="0,4,0,0" Style="{StaticResource Text.Mono}" Text="{Binding ExePath}" />
+                                <TextBlock Margin="0,4,0,0" Style="{StaticResource Text.Caption}"
+                                           Text="Le processus du jeu lui-même (pas son lanceur) : c'est son démarrage qui déclenche les réglages de partie." />
+                                <Button Margin="0,8,0,0" HorizontalAlignment="Left" Style="{StaticResource Button.Secondary}" Content="Parcourir…"
+                                        Command="{Binding ChangeExeCommand}" AutomationProperties.Name="Choisir un autre fichier .exe…" />
+                            </StackPanel>
+                        </Border>
+
+                        <Border Margin="{StaticResource Margin.StackL}" Style="{StaticResource Card}">
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource Text.SectionTitle}" Text="Lancement" />
+                                <TextBlock Margin="0,4,0,0" Style="{StaticResource Text.Caption}"
+                                           Text="Comment « Jouer » démarre ce jeu. Toujours sans droits administrateur ; les réglages de partie s'appliquent ensuite d'eux-mêmes." />
+                                <Label Margin="0,12,0,0" Style="{StaticResource Text.FieldLabel}" Content="_Mode de lancement" Target="{Binding ElementName=LaunchModeBox}" />
+                                <ComboBox x:Name="LaunchModeBox" ItemsSource="{Binding LaunchModeOptions}" SelectedItem="{Binding SelectedLaunchMode}"
+                                          DisplayMemberPath="Label" AutomationProperties.Name="Mode de lancement" />
+
+                                <StackPanel Visibility="{Binding IsSteamMode, Converter={StaticResource BoolToVisibility}}">
+                                    <Label Margin="0,12,0,0" Style="{StaticResource Text.FieldLabel}" Content="Numéro du jeu sur Steam (_appid)" Target="{Binding ElementName=AppIdBox}" />
+                                    <TextBox x:Name="AppIdBox" Width="160" HorizontalAlignment="Left" FontFamily="{StaticResource Font.Mono}"
+                                             Text="{Binding SteamAppId, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Numéro du jeu sur Steam" />
+                                    <TextBlock Margin="0,4,0,0" Style="{StaticResource Text.Caption}"
+                                               Text="Facultatif : retrouvé automatiquement si le jeu est installé dans une bibliothèque Steam." />
+                                </StackPanel>
+
+                                <StackPanel Visibility="{Binding IsLauncherMode, Converter={StaticResource BoolToVisibility}}">
+                                    <Label Margin="0,12,0,0" Style="{StaticResource Text.FieldLabel}" Content="_Lanceur" Target="{Binding ElementName=LauncherBox}" />
+                                    <DockPanel>
+                                        <Button DockPanel.Dock="Right" Margin="8,0,0,0" Style="{StaticResource Button.Secondary}" Content="Parcourir…"
+                                                Command="{Binding BrowseLauncherCommand}" AutomationProperties.Name="Choisir le lanceur…" />
+                                        <TextBox x:Name="LauncherBox" VerticalContentAlignment="Center" FontFamily="{StaticResource Font.Mono}"
+                                                 Text="{Binding LauncherPath, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Lanceur" />
+                                    </DockPanel>
+                                </StackPanel>
+
+                                <Label Margin="0,12,0,0" Style="{StaticResource Text.FieldLabel}" Content="A_rguments (facultatif)" Target="{Binding ElementName=ArgsBox}" />
+                                <TextBox x:Name="ArgsBox" FontFamily="{StaticResource Font.Mono}" Text="{Binding LaunchArguments, UpdateSourceTrigger=PropertyChanged}"
+                                         AutomationProperties.Name="Arguments de lancement" />
+
+                                <Border Margin="0,14,0,0" Padding="12,8" CornerRadius="{StaticResource Radius.Control}" Background="{StaticResource Brush.Control}">
+                                    <StackPanel>
+                                        <TextBlock Style="{StaticResource Text.Caption}" Text="Sera lancé :" />
+                                        <TextBlock Style="{StaticResource Text.Mono}" Foreground="{StaticResource Brush.Text}" Text="{Binding LaunchPreview}" />
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Style="{StaticResource Card}">
+                            <DockPanel>
+                                <Button DockPanel.Dock="Right" Margin="16,0,0,0" VerticalAlignment="Center" Style="{StaticResource Button.Danger}"
+                                        Content="Retirer de Mes jeux…" Command="{Binding DeleteCommand}" />
+                                <StackPanel>
+                                    <TextBlock Style="{StaticResource Text.SectionTitle}" Text="Retirer de Mes jeux" />
+                                    <TextBlock Margin="0,4,0,0" Style="{StaticResource Text.Secondary}"
+                                               Text="Seuls ses réglages OptiGame sont supprimés : le jeu reste installé." />
+                                </StackPanel>
+                            </DockPanel>
+                        </Border>
+                    </StackPanel>
                 </StackPanel>
             </StackPanel>
         </ScrollViewer>

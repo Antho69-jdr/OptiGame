@@ -106,10 +106,11 @@
         <GradientStop Color="#1D2633" Offset="0" />
         <GradientStop Color="#0E1014" Offset="1" />
     </LinearGradientBrush>
-    <!-- Fondu de la bannière vers le fond de la fenêtre, pour la lisibilité du titre -->
+    <!-- Fondu de la bannière vers le fond de la fenêtre : au moins 70 % de voile sous le titre (texte ≥ 5:1 même sur une image blanche) -->
     <LinearGradientBrush x:Key="Brush.BannerFade" StartPoint="0,0" EndPoint="0,1">
-        <GradientStop Color="#330E1014" Offset="0" />
-        <GradientStop Color="#990E1014" Offset="0.55" />
+        <GradientStop Color="#4D0E1014" Offset="0" />
+        <GradientStop Color="#B30E1014" Offset="0.45" />
+        <GradientStop Color="#F20E1014" Offset="0.8" />
         <GradientStop Color="#FF0E1014" Offset="1" />
     </LinearGradientBrush>
     <!-- Dock -->

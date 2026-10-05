@@ -25,6 +25,7 @@ public sealed partial class ProfileEditorViewModel : ObservableObject
     {
         _describeLaunch = describeLaunch;
         _original = profile;
+        ProcessesToClose.CollectionChanged += (_, _) => OnPropertyChanged(nameof(HasProcessesToClose));
         _schemes = schemes;
         _programs = programs;
         _dialogs = dialogs;
@@ -58,9 +59,9 @@ public sealed partial class ProfileEditorViewModel : ObservableObject
 
     public IReadOnlyList<LaunchModeOption> LaunchModeOptions { get; } =
     [
-        new(LaunchMode.Automatic, "Automatique (recommandé) : Steam si possible, sinon l'exécutable"),
+        new(LaunchMode.Automatic, "Automatique (recommandé) : Steam si possible, sinon le fichier .exe"),
         new(LaunchMode.Steam, "Par Steam"),
-        new(LaunchMode.Executable, "Exécutable du jeu"),
+        new(LaunchMode.Executable, "Fichier .exe du jeu"),
         new(LaunchMode.Launcher, "Autre lanceur (ex. RSI Launcher)"),
     ];
 
@@ -121,6 +122,8 @@ public sealed partial class ProfileEditorViewModel : ObservableObject
 
     public ObservableCollection<ProcessRowViewModel> ProcessesToClose { get; } = [];
 
+    public bool HasProcessesToClose => ProcessesToClose.Count > 0;
+
     public ObservableCollection<string> Summary { get; } = [];
 
     [ObservableProperty] private string _name;
@@ -129,7 +132,22 @@ public sealed partial class ProfileEditorViewModel : ObservableObject
     [ObservableProperty] private PowerSchemeOption _selectedPowerScheme;
     [ObservableProperty] private PriorityOption _selectedPriority;
     [ObservableProperty] private string _newProcessName = "";
-    [ObservableProperty] private bool _isDirty;
+
+    /// <summary>Différent de la version enregistrée (comparaison, pas un simple drapeau : revenir à l'original efface la barre).</summary>
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(SaveCommand), nameof(RevertCommand))]
+    private bool _isDirty;
+
+    /// <summary>Modifications dans l'onglet « Optimisation » (réglages de partie).</summary>
+    [ObservableProperty] private bool _isOptimizationDirty;
+
+    /// <summary>Modifications dans l'onglet « Propriétés » (nom, fichier .exe, lancement).</summary>
+    [ObservableProperty] private bool _isPropertiesDirty;
+
+    /// <summary>Erreur de saisie affichée sous le champ du nom ; vide si tout va bien.</summary>
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(SaveCommand))]
+    private string _nameError = "";
 
     partial void OnNameChanged(string value) => Touch();
     partial void OnExePathChanged(string value) => Touch();
@@ -181,14 +199,17 @@ public sealed partial class ProfileEditorViewModel : ObservableObject
         }
     }
 
-    [RelayCommand]
+    private bool CanSave() => IsDirty && NameError.Length == 0;
+
+    /// <summary>« Enregistrer » (ou Ctrl+S) : seulement s'il y a des modifications valides.</summary>
+    [RelayCommand(CanExecute = nameof(CanSave))]
     private async Task SaveAsync() => await _save(ToProfile());
 
     [RelayCommand]
     private void Delete() => _delete(_original);
 
-    /// <summary>Recharge la version enregistrée.</summary>
-    [RelayCommand]
+    /// <summary>« Abandonner les modifications » : recharge la version enregistrée.</summary>
+    [RelayCommand(CanExecute = nameof(IsDirty))]
     private void Revert() => _revert();
 
     private GameProfile ToProfile() => new()
@@ -226,7 +247,17 @@ public sealed partial class ProfileEditorViewModel : ObservableObject
 
     private void Touch()
     {
-        IsDirty = true;
+        if (SelectedPowerScheme is null || SelectedPriority is null || SelectedLaunchMode is null) return; // construction
+        var current = ToProfile();
+        IsOptimizationDirty = current.Enabled != _original.Enabled || current.PowerSchemeId != _original.PowerSchemeId ||
+                              current.Priority != _original.Priority ||
+                              !current.ProcessesToClose.Select(p => (p.ExeName.ToLowerInvariant(), p.Relaunch))
+                                  .SequenceEqual(_original.ProcessesToClose.Select(p => (p.ExeName.ToLowerInvariant(), p.Relaunch)));
+        IsPropertiesDirty = current.Name != _original.Name.Trim() || !string.Equals(current.ExePath, _original.ExePath, StringComparison.OrdinalIgnoreCase) ||
+                            current.LaunchMode != _original.LaunchMode || current.SteamAppId != _original.SteamAppId ||
+                            current.LauncherPath != _original.LauncherPath || current.LaunchArguments != _original.LaunchArguments;
+        IsDirty = IsOptimizationDirty || IsPropertiesDirty;
+        NameError = string.IsNullOrWhiteSpace(Name) ? "Donnez un nom au jeu." : "";
         UpdateSummary();
     }
 
@@ -238,7 +269,7 @@ public sealed partial class ProfileEditorViewModel : ObservableObject
         var profile = ToProfile();
         Summary.Add(profile.Enabled
             ? $"Quand {Path.GetFileName(profile.ExePath)} démarre :"
-            : "Profil désactivé : rien ne sera appliqué. S'il était activé, au démarrage du jeu :");
+            : "Optimisation désactivée : rien ne sera appliqué. Si elle était activée, au démarrage du jeu :");
         foreach (var line in Core.Sessions.SessionPlan.Describe(profile, _schemes))
         {
             Summary.Add("• " + line);

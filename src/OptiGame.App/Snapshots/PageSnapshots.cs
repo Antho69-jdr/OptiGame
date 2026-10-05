@@ -98,6 +98,21 @@ internal static class PageSnapshots
             if (PickGame(services.GetRequiredService<ProfileStore>(), ValueAfter(args, GameArgument)) is { } game)
             {
                 pages.Add(("6-fiche-du-jeu", async () => { main.Navigate(library); library.ShowGame(game.Id); await Settle(4000); }));
+                pages.Add(("6b-fiche-optimisation", async () => { library.OpenGame!.SelectedTab = GameTab.Optimization; await Settle(1500); }));
+                pages.Add(("6c-fiche-proprietes", async () => { library.OpenGame!.SelectedTab = GameTab.Properties; await Settle(800); }));
+                // Modification non enregistrée (rien n'est enregistré : la fiche est rechargée juste après)
+                pages.Add(("6d-fiche-modifiee", async () =>
+                {
+                    library.OpenGame!.Editor.Name = library.OpenGame.Name + " (test)";
+                    library.OpenGame.Editor.NewProcessName = "";
+                    await Settle(800);
+                }));
+                pages.Add(("6e-fiche-retour", async () =>
+                {
+                    library.OpenGame!.Editor.RevertCommand.Execute(null);
+                    library.OpenGame!.SelectedTab = GameTab.Overview;
+                    await Settle(800);
+                }));
             }
 
             foreach (var (name, open) in pages.Where(p => Wanted(p.Name)))

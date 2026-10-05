@@ -31,7 +31,7 @@ public sealed partial class GameGraphicsViewModel(GameProfile profile, GameGraph
     private GpuOption? _selectedGpu;
 
     [ObservableProperty]
-    [NotifyCanExecuteChangedFor(nameof(ApplyCommand))]
+    [NotifyCanExecuteChangedFor(nameof(ApplyCommand), nameof(RestoreCommand))]
     private bool _isBusy = true;
 
     [ObservableProperty] private string _autoHdrText = "Lecture des réglages de Windows…";
@@ -39,6 +39,34 @@ public sealed partial class GameGraphicsViewModel(GameProfile profile, GameGraph
     [ObservableProperty] private bool _showGpu;
     [ObservableProperty] private string _gpuNote = "";
     [ObservableProperty] private string _appliedText = "";
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(RestoreCommand))]
+    private bool _hasAppliedChange;
+
+    private bool CanRestore() => !IsBusy && HasAppliedChange;
+
+    /// <summary>« Restaurer l'original… » : même chemin que pour le plafond de FPS (confirmation, puis journal).</summary>
+    [RelayCommand(CanExecute = nameof(CanRestore))]
+    private async Task RestoreAsync()
+    {
+        if (_snapshot?.AppliedChange is not { } applied || !dialogs.ConfirmUndo(applied)) return;
+        IsBusy = true;
+        try
+        {
+            var report = await Task.Run(() => service.Undo(profile.Id));
+            if (!report.Success)
+            {
+                dialogs.ShowError("Restauration impossible", "Le réglage d'origine de la carte graphique n'a pas pu être rétabli : vous pourrez réessayer.",
+                    string.Join("\n", report.Failed.Select(f => $"{f.Target} : {f.Error}")));
+            }
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+        await LoadAsync();
+    }
 
     /// <summary>Résumé d'une ligne pour la liste de la fiche du jeu.</summary>
     [ObservableProperty] private string _summary = "Lecture des réglages de Windows…";
@@ -53,7 +81,7 @@ public sealed partial class GameGraphicsViewModel(GameProfile profile, GameGraph
         catch (Exception ex) when (ex is UnauthorizedAccessException or System.Security.SecurityException or IOException or System.Management.ManagementException)
         {
             log.Error($"Réglages graphiques de « {profile.Name} » illisibles", ex);
-            AutoHdrText = $"Réglages de Windows illisibles : {ex.Message}";
+            AutoHdrText = "Réglages de Windows illisibles pour l'instant : le détail est dans le journal.";
             Summary = "Réglages de Windows illisibles";
             return;
         }
@@ -62,9 +90,9 @@ public sealed partial class GameGraphicsViewModel(GameProfile profile, GameGraph
             IsBusy = false;
         }
 
-        AutoHdrText = _snapshot.State.AutoHdrRaw is { } raw
-            ? $"Auto HDR de ce jeu : géré par Windows (valeur {raw}, encodage non documenté par Microsoft). Pour le changer : bouton ci-dessous, puis ce jeu dans la liste."
-            : "Auto HDR de ce jeu : réglage global de Windows. Pour le régler jeu par jeu : bouton ci-dessous.";
+        AutoHdrText = _snapshot.State.AutoHdrRaw is not null
+            ? "Réglé pour ce jeu dans Windows. OptiGame ne le modifie pas : changez-le dans les réglages graphiques de Windows (ce jeu dans la liste)."
+            : "Réglage global de Windows. Pour le régler jeu par jeu : réglages graphiques de Windows.";
 
         var hdr = _snapshot.Displays.Where(d => d.HdrEnabled).Select(d => d.Name).ToList();
         HdrText = hdr.Count > 0
@@ -81,8 +109,9 @@ public sealed partial class GameGraphicsViewModel(GameProfile profile, GameGraph
             ? $"Une seule carte graphique ({_snapshot.PhysicalGpus[0]}) : le choix de la carte est sans objet sur ce PC."
             : "";
         AppliedText = _snapshot.AppliedChange is { } applied
-            ? $"Réglé par OptiGame le {applied.AppliedAt.ToLocalTime():dd/MM/yyyy à HH:mm}. « Laisser Windows décider » + Appliquer (ou le Diagnostic) rétablit la valeur d'origine."
+            ? $"Réglé par OptiGame le {applied.AppliedAt.ToLocalTime():d MMMM yyyy à HH:mm}."
             : "";
+        HasAppliedChange = _snapshot.AppliedChange is not null;
     }
 
     [RelayCommand]

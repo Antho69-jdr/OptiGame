@@ -52,6 +52,14 @@ public sealed partial class LibraryViewModel : ObservableObject
     private readonly Core.State.ChangeJournal _fixes;
     private int _ratingVersion;
 
+    /// <summary>Notes calculées au moins une fois (avant : la fiche dit « calcul en cours », pas « pas de note »).</summary>
+    private bool _ratingsLoaded;
+
+    /// <summary>Dernier onglet choisi dans une fiche : la suivante s'ouvre sur le même.</summary>
+    private GameTab _lastGameTab = GameTab.Overview;
+
+    private readonly SessionViewModel _session;
+
     /// <summary>Temps de jeu Steam par profil (jeux Steam), relu à chaque changement de la bibliothèque ou de Steam.</summary>
     private IReadOnlyDictionary<Guid, SteamPlaytimeEntry> _steamPlaytime = new Dictionary<Guid, SteamPlaytimeEntry>();
     private int _steamReadVersion;
@@ -67,8 +75,10 @@ public sealed partial class LibraryViewModel : ObservableObject
         TimeProvider time, FileLog log, GameLauncher launcher, PlaytimeStore playtime, SteamPlaytimeReader steamReader,
         GameGraphicsService graphics, NewSteamGamesViewModel newGames, GameRatingService ratings, Platform.Measurement.AutoCapture autoCapture,
         FrameCapService frameCap, Platform.Library.StoreOwnedLibrary storeLibrary, Platform.Library.StoreCoverCache storeCovers,
-        GameTimeGate gate, [FromKeyedServices(Platform.JournalKeys.Fixes)] Core.State.ChangeJournal fixes, UnsavedChangesGuard unsaved)
+        GameTimeGate gate, [FromKeyedServices(Platform.JournalKeys.Fixes)] Core.State.ChangeJournal fixes, UnsavedChangesGuard unsaved,
+        SessionViewModel session)
     {
+        _session = session;
         unsaved.Register(ConfirmDiscard);
         // Dock activé ou non (Paramètres) : épingles des jaquettes affichées seulement s'il l'est.
         settings.Changed += (_, _) => OnUi(() => OnPropertyChanged(nameof(IsDockEnabled)));
@@ -214,8 +224,13 @@ public sealed partial class LibraryViewModel : ObservableObject
             return result;
         });
         if (version != _ratingVersion) return;
+        _ratingsLoaded = true;
         foreach (var card in Games) card.Rating = ratings.GetValueOrDefault(card.Id);
-        if (OpenGame is not null) OpenGame.Rating = ratings.GetValueOrDefault(OpenGame.Id);
+        if (OpenGame is not null)
+        {
+            OpenGame.Rating = ratings.GetValueOrDefault(OpenGame.Id);
+            OpenGame.IsRatingLoaded = true;
+        }
     }
 
     /// <summary>Relit le temps Steam (localconfig.vdf + manifestes, hors du thread UI) ; la lecture la plus récente l'emporte.</summary>
@@ -928,7 +943,11 @@ public sealed partial class LibraryViewModel : ObservableObject
             graphics: new GameGraphicsViewModel(profile, _graphics, _dialogs, _log),
             frameCap: new FrameCapViewModel(profile, _frameCap, _dialogs, _log),
             isPinned: profile.DockOrder.HasValue,
-            isPlaying: _sessions.Current?.Profile.Id == id);
+            isPlaying: _sessions.Current?.Profile.Id == id,
+            initialTab: _lastGameTab,
+            rememberTab: tab => _lastGameTab = tab,
+            endSession: _session.EndNowCommand,
+            isDockEnabled: () => IsDockEnabled);
         RefreshPagePlaytime(OpenGame);
         _ = LoadPageImagesAsync(OpenGame, profile);
         _ = LoadSteamAppIdAsync(OpenGame, profile);
@@ -936,9 +955,9 @@ public sealed partial class LibraryViewModel : ObservableObject
         _ = OpenGame.FrameCap.LoadAsync();
         _ = LoadDiskAsync(OpenGame, profile);
         OpenGame.Rating = Games.FirstOrDefault(c => c.Id == id)?.Rating; // déjà calculée pour la jaquette
+        OpenGame.IsRatingLoaded = _ratingsLoaded;
     }
 
-    /// <summary>Appid Steam de la page (lecture des manifestes Steam, hors du thread UI) : affiche le bouton « Page Steam ».</summary>
     /// <summary>Disque du jeu (WMI + questions au disque, hors du thread UI). Les jeux Steam sont dans « steamapps\common ».</summary>
     private async Task LoadDiskAsync(GamePageViewModel page, GameProfile profile)
     {
@@ -948,13 +967,16 @@ public sealed partial class LibraryViewModel : ObservableObject
             page.Disk = await Task.Run(() => Platform.Storage.GameDiskReader.Read(profile.ExePath) is { } facts
                 ? Core.Library.GameDisk.Assess(facts, isSteam)
                 : null);
+            page.IsDiskUnreadable = page.Disk is null;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or System.Management.ManagementException)
         {
             _log.Warn($"Disque de « {profile.Name} » illisible : {ex.Message}");
+            page.IsDiskUnreadable = true;
         }
     }
 
+    /// <summary>Appid Steam de la fiche (lecture des manifestes Steam, hors du thread UI) : affiche « Voir sur Steam ».</summary>
     private async Task LoadSteamAppIdAsync(GamePageViewModel page, GameProfile profile)
     {
         try

@@ -9,8 +9,9 @@ using OptiGame.Core.Profiles;
 namespace OptiGame.App.ViewModels;
 
 /// <summary>
-/// Carte « Pilote NVIDIA » de la page du jeu : plafond de FPS dans le profil du pilote. « Appliquer » passe par la confirmation
-/// habituelle et le journal des corrections (annulable ici ou depuis le Diagnostic). L'état affiché est toujours relu dans le pilote.
+/// « Plafond de FPS (pilote NVIDIA) », onglet Optimisation de la fiche : réglage du profil NVIDIA du jeu. « Appliquer… » passe par
+/// la confirmation habituelle et le journal des optimisations (« Restaurer l'original… » ici ou depuis le Diagnostic). L'état
+/// affiché est toujours relu dans le pilote ; le champ part de la valeur actuelle (jamais de la valeur conseillée, proposée à part).
 /// </summary>
 public sealed partial class FrameCapViewModel(GameProfile profile, FrameCapService service, IDialogService dialogs, FileLog log) : ObservableObject
 {
@@ -29,6 +30,18 @@ public sealed partial class FrameCapViewModel(GameProfile profile, FrameCapServi
     private string _fpsText = "";
 
     [ObservableProperty] private string _profileText = "Lecture du pilote NVIDIA…";
+
+    /// <summary>Valeur conseillée (fréquence de l'écran − 3), proposée par un bouton ; 0 tant que le pilote n'est pas lu.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(UseSuggestionLabel), nameof(HasSuggestion))]
+    private int _suggestedFps;
+
+    public bool HasSuggestion => SuggestedFps > 0;
+
+    public string UseSuggestionLabel => $"Utiliser la valeur conseillée ({SuggestedFps})";
+
+    [RelayCommand]
+    private void UseSuggestion() => FpsText = SuggestedFps.ToString(CultureInfo.CurrentCulture);
 
     /// <summary>Résumé d'une ligne pour la liste de la fiche du jeu.</summary>
     [ObservableProperty] private string _summary = "Lecture du pilote…";
@@ -55,8 +68,8 @@ public sealed partial class FrameCapViewModel(GameProfile profile, FrameCapServi
         catch (Exception ex) when (ex is Platform.Gpu.NvidiaApiException or System.Management.ManagementException or InvalidOperationException)
         {
             log.Error($"Profil NVIDIA de « {profile.Name} » illisible", ex);
-            ProfileText = $"Profil du pilote NVIDIA illisible : {ex.Message}";
-            Summary = "Profil du pilote illisible";
+            ProfileText = "Profil NVIDIA illisible pour l'instant : le détail est dans le journal.";
+            Summary = "Profil NVIDIA illisible";
             return;
         }
         finally
@@ -66,8 +79,8 @@ public sealed partial class FrameCapViewModel(GameProfile profile, FrameCapServi
 
         var setting = _snapshot.Setting;
         ProfileText = setting.ProfileName is { } name
-            ? $"Profil du pilote pour ce jeu : « {name} »{(setting.ProfileIsPredefined ? " (créé par NVIDIA)" : "")}."
-            : $"Aucun profil du pilote pour ce jeu (le profil global s'applique) : OptiGame créera « OptiGame - {Path.GetFileName(profile.ExePath)} ».";
+            ? $"Profil NVIDIA de ce jeu : « {name} »{(setting.ProfileIsPredefined ? " (créé par NVIDIA)" : "")}."
+            : $"Ce jeu n'a pas de profil NVIDIA (le profil global s'applique) : OptiGame créera « OptiGame - {Path.GetFileName(profile.ExePath)} ».";
         CurrentText = setting.Value is { } own
             ? $"Plafond actuel : {FrameRateCap.Describe(own)} (défini dans ce profil)."
             : setting.EffectiveValue is { } inherited and > 0
@@ -75,13 +88,13 @@ public sealed partial class FrameCapViewModel(GameProfile profile, FrameCapServi
                 : "Plafond actuel : aucun.";
         Summary = setting.Value is { } capped and > 0 ? $"Plafond de FPS : {capped} FPS"
             : setting.EffectiveValue is { } global and > 0 ? $"Plafond de FPS : {global} FPS (profil global)" : "Aucun plafond de FPS";
-        var suggested = FrameRateCap.Suggested(_snapshot.RefreshHz);
-        SuggestionText = $"Conseillé : {suggested} FPS (écran à {_snapshot.RefreshHz} Hz − 3), surtout avec G-Sync / FreeSync. " +
+        SuggestedFps = FrameRateCap.Suggested(_snapshot.RefreshHz);
+        SuggestionText = $"Conseillé : {SuggestedFps} FPS (écran à {_snapshot.RefreshHz} Hz − 3), surtout avec G-Sync ou FreeSync. " +
                          "Si le jeu a son propre limiteur ou NVIDIA Reflex, préférez-les. 0 = aucun plafond.";
-        FpsText = (setting.Value is { } v ? (int)v : suggested).ToString(CultureInfo.CurrentCulture);
+        FpsText = ((int)(setting.Value ?? 0)).ToString(CultureInfo.CurrentCulture);
         HasAppliedChange = _snapshot.AppliedChange is not null;
         AppliedText = _snapshot.AppliedChange is { } applied
-            ? $"Réglé par OptiGame le {applied.AppliedAt.ToLocalTime():dd/MM/yyyy à HH:mm}. « Annuler » rétablit la valeur d'origine."
+            ? $"Réglé par OptiGame le {applied.AppliedAt.ToLocalTime():d MMMM yyyy à HH:mm}."
             : "";
     }
 

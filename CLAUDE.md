@@ -82,7 +82,11 @@ src/OptiGame.App/        WPF : composition DI, tray, vues/viewmodels, dialogue d
                          UnsavedChangesGuard pour Quitter
   Mes jeux               LibraryViewModel (grille de jaquettes Controls/CoverTile, installés et non installés ; « Ajouter des jeux ▾ »,
                          recherche / tri / filtres en WrapPanel, « 3 sur 42 jeux », état « aucun résultat », messages en InfoBar,
-                         nouveaux jeux Steam en UN bandeau) → GamePageViewModel (bannière + éditeur du profil).
+                         nouveaux jeux Steam en UN bandeau) → GamePageViewModel (fiche : fil d'Ariane, bannière à hauteur de
+                         contenu avec Jouer / « Arrêter l'optimisation… » + « … », 3 onglets GameTab Vue d'ensemble / Optimisation /
+                         Propriétés, dernier onglet gardé ; réglages de partie + propriétés = barre « Enregistrer » (Ctrl+S,
+                         IsDirty COMPARÉ à la version enregistrée, point sur l'onglet modifié) ; réglages permanents NVIDIA /
+                         Windows = « Appliquer… » confirmé + « Restaurer l'original… » ; images décodées par ImageLoader, IsAsync).
                          Rapidité : jaquettes décodées UNE fois par Converters/ImageLoader (cache borné à 96 Mo, images
                          figées) à la taille réelle à l'écran (198 unités × échelle d'affichage de MainWindow, PerMonitorV2),
                          grises = pixels COPIÉS dans une image autonome (un FormatConvertedBitmap garde l'image couleur :

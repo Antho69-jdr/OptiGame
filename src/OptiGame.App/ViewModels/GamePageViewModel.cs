@@ -5,7 +5,19 @@ using OptiGame.Core.Profiles;
 
 namespace OptiGame.App.ViewModels;
 
-/// <summary>Page d'un jeu : bannière, jaquette, réglages du profil (éditeur), captures de ce jeu.</summary>
+/// <summary>Onglets de la fiche du jeu.</summary>
+public enum GameTab
+{
+    Overview,
+    Optimization,
+    Properties,
+}
+
+/// <summary>
+/// Fiche d'un jeu : bannière (Jouer, menu « … »), puis trois onglets — Vue d'ensemble (note, temps de jeu, mesures, disque),
+/// Optimisation (réglages de partie, enregistrés par « Enregistrer » ; réglages permanents de Windows et du pilote, appliqués
+/// tout de suite après confirmation), Propriétés (nom, fichier .exe, lancement, retrait).
+/// </summary>
 public sealed partial class GamePageViewModel(
     GameProfile profile,
     ProfileEditorViewModel editor,
@@ -20,23 +32,66 @@ public sealed partial class GamePageViewModel(
     GameGraphicsViewModel graphics,
     FrameCapViewModel frameCap,
     bool isPinned,
-    bool isPlaying) : ObservableObject
+    bool isPlaying,
+    GameTab initialTab,
+    Action<GameTab> rememberTab,
+    System.Windows.Input.ICommand endSession,
+    Func<bool> isDockEnabled) : ObservableObject
 {
+    // ---- Onglets (le dernier choisi est gardé d'une fiche à l'autre) ----
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsOverviewTab), nameof(IsOptimizationTab), nameof(IsPropertiesTab))]
+    private GameTab _selectedTab = initialTab;
+
+    partial void OnSelectedTabChanged(GameTab value) => rememberTab(value);
+
+    public bool IsOverviewTab
+    {
+        get => SelectedTab == GameTab.Overview;
+        set { if (value) SelectedTab = GameTab.Overview; }
+    }
+
+    public bool IsOptimizationTab
+    {
+        get => SelectedTab == GameTab.Optimization;
+        set { if (value) SelectedTab = GameTab.Optimization; }
+    }
+
+    public bool IsPropertiesTab
+    {
+        get => SelectedTab == GameTab.Properties;
+        set { if (value) SelectedTab = GameTab.Properties; }
+    }
+
+    /// <summary>Le dock est activé : « Épingler au dock » proposé dans le menu « … ».</summary>
+    public bool IsDockEnabled => isDockEnabled();
+
+    /// <summary>Pendant la partie : « Arrêter l'optimisation… » (confirmation, puis restauration) à la place de « Jouer ».</summary>
+    public System.Windows.Input.ICommand EndSessionCommand { get; } = endSession;
+
+    /// <summary>Les notes de la bibliothèque ont été calculées au moins une fois : « pas de note » n'est dit qu'après.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsRatingPending), nameof(HasNoRating))]
+    private bool _isRatingLoaded;
+
+    public bool IsRatingPending => !IsRatingLoaded && Rating is null;
+
+    public bool HasNoRating => IsRatingLoaded && Rating is null;
+
     /// <summary>Note du jeu par rapport au PC (mesurée ou estimée) ; null = pas encore de note.</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasRating), nameof(ScoreText), nameof(PresetText), nameof(RatingHeadline), nameof(RatingAdvice),
-        nameof(RatingSource), nameof(RatingDetails), nameof(RatingLevel), nameof(HasRequirementsLink), nameof(ScoreTile), nameof(RatingTileDetail))]
+        nameof(RatingSource), nameof(RatingDetails), nameof(RatingLevel), nameof(HasRequirementsLink),
+        nameof(IsRatingPending), nameof(HasNoRating), nameof(RatingKind))]
     private Core.Rating.GameRating? _rating;
 
     public bool HasRating => Rating is not null;
 
-    /// <summary>Tuile de la note : « 84 » (ou « ≈ 77 » pour une estimation), « — » sans note.</summary>
-    public string ScoreTile => Rating is null ? "—" : Rating.Source == Core.Rating.RatingSource.Measured ? $"{Rating.Score}" : $"≈ {Rating.Score}";
-
-    public string RatingTileDetail => Rating is null ? "Pas encore de note"
-        : Rating.Preset is { } preset ? $"{Rating.Headline} · {Core.Rating.GameRatings.Label(preset)} conseillé" : Rating.Headline;
-
     public string ScoreText => Rating is null ? "" : $"{Rating.Score}";
+
+    /// <summary>« mesurée » ou « estimée » (le caractère estimé d'une note est toujours dit).</summary>
+    public string RatingKind => Rating?.Source == Core.Rating.RatingSource.Measured ? "Note mesurée" : "Note estimée";
 
     public string PresetText => Rating?.Preset is not { } preset ? ""
         : $"Réglage conseillé : {Core.Rating.GameRatings.Label(preset)}" +
@@ -131,13 +186,20 @@ public sealed partial class GamePageViewModel(
     public bool HasCaptures => Captures.Count > 0;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HasCover))]
+    [NotifyPropertyChangedFor(nameof(HasCover), nameof(CoverImage))]
     private string? _coverPath;
 
     public bool HasCover => CoverPath is not null;
 
+    /// <summary>Jaquette décodée hors du thread de l'interface (liaison IsAsync), comme la grille.</summary>
+    public System.Windows.Media.ImageSource? CoverImage => Converters.ImageLoader.Load(CoverPath, Converters.ImageLoader.PixelsFor(135));
+
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HeroImage))]
     private string? _heroPath;
+
+    /// <summary>Bannière décodée hors du thread de l'interface (liaison IsAsync).</summary>
+    public System.Windows.Media.ImageSource? HeroImage => Converters.ImageLoader.Load(HeroPath, Converters.ImageLoader.PixelsFor(1280));
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(PlayCommand))]
@@ -161,24 +223,25 @@ public sealed partial class GamePageViewModel(
 
     // ---- Mesures (tuile et ligne de la liste) ----
 
-    public string LatestFps => Captures.FirstOrDefault() is { } latest ? $"{latest.AverageFps} FPS" : "—";
-
-    public string LatestFpsDetail => Captures.FirstOrDefault() is { } latest ? $"1 % low {latest.OnePercentLow} · {latest.Date}" : "Aucune mesure";
-
     public string MeasuresSummary => Captures.FirstOrDefault() is { } latest
-        ? $"{Captures.Count} mesure{(Captures.Count > 1 ? "s" : "")} · dernière {latest.AverageFps} FPS"
-        : "Aucune mesure : « Mesurer les FPS » ou jouez plus de 5 minutes";
+        ? $"{Core.Text.FrenchText.Count(Captures.Count, "mesure", "mesures")} · dernière : {latest.AverageFps} FPS"
+        : "Aucune mesure : « Mesurer les FPS », ou jouez plus de 5 minutes (mesure automatique).";
 
     /// <summary>Disque d'installation (lu en arrière-plan à l'ouverture de la page) ; null tant qu'il n'est pas lu.</summary>
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HasDisk), nameof(DiskLevel), nameof(DiskTile), nameof(DiskTileDetail), nameof(DiskSummary))]
+    [NotifyPropertyChangedFor(nameof(HasDisk), nameof(DiskLevel), nameof(DiskTile), nameof(DiskSummary), nameof(IsDiskPending))]
     private Core.Library.GameDiskReport? _disk;
+
+    /// <summary>Le disque n'a pas pu être lu (fin de « Lecture… », jamais d'attente infinie).</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsDiskPending), nameof(DiskSummary))]
+    private bool _isDiskUnreadable;
+
+    public bool IsDiskPending => Disk is null && !IsDiskUnreadable;
 
     public string DiskTile => Disk?.Type ?? "Disque";
 
-    public string DiskTileDetail => Disk is null ? "Lecture…" : $"{Disk.FreeText} libres · {Disk.Summary.TrimEnd('.')}";
-
-    public string DiskSummary => Disk?.Detail ?? "Lecture du disque…";
+    public string DiskSummary => Disk?.Detail ?? (IsDiskUnreadable ? "Disque illisible pour l'instant (disque externe débranché, droits…)." : "Lecture du disque…");
 
     public bool HasDisk => Disk is not null;
 
@@ -228,7 +291,7 @@ public sealed partial class GamePageViewModel(
     private Task PlayAsync() => play();
 }
 
-/// <summary>Ligne « Dernières parties » de la page du jeu.</summary>
+/// <summary>Ligne « Dernières parties » de la fiche du jeu.</summary>
 public sealed record SessionRow(string Date, string Duration);
 
 public sealed record PlayedPresetOption(Core.Rating.GraphicsPreset? Value, string Label);

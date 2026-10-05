@@ -127,6 +127,24 @@ grille, flèches d'une jaquette à l'autre).
   n'est plus visible. Première fermeture : un dialogue dit qu'OptiGame continue dans la zone de notification
   (« Continuer en arrière-plan » par défaut, ou « Quitter OptiGame »), une seule fois.
 
+## Fiche du jeu
+
+- Fil d'Ariane « Mes jeux › Nom » (Échap / Alt+← reviennent à la grille, avec la garde des modifications).
+- Bannière à hauteur de son contenu (jamais rognée) : jaquette, nom (`Text.Hero`), temps de jeu ; **Jouer** (seule action
+  principale) ou, pendant la partie, « Arrêter l'optimisation… » ; « Mesurer les FPS » ; menu « … » (Voir sur Steam,
+  Épingler au dock si le dock est activé, Changer la jaquette…, Retirer de Mes jeux…).
+- Trois onglets (`Segment`, flèches pour passer de l'un à l'autre), le dernier choisi est gardé :
+  - **Vue d'ensemble** : note (chiffre + mot + « Note mesurée / estimée », « Calcul de la note… » tant qu'elle n'est pas
+    calculée), « Mon réglage dans le jeu » (gardé tout de suite), puis temps de jeu, mesures et disque en cartes (2 colonnes,
+    1 sous 720 de large ; `WidthToColumnsConverter`).
+  - **Optimisation** : « Réglages de partie » (case « Optimiser ce jeu pendant les parties », réglages grisés sinon,
+    avertissements en ligne, « Ce qui se passera » toujours visible) → barre **Enregistrer** ; « Réglages permanents (Windows
+    et pilote) » → **Appliquer…** confirmé et **Restaurer l'original…**, état relu, jamais stocké.
+  - **Propriétés** : nom (validé en ligne), fichier .exe surveillé, lancement, retrait du jeu (bouton Danger).
+- Barre « Modifications non enregistrées » hors du défilement : « Abandonner les modifications » / « Enregistrer » (Ctrl+S) ;
+  l'état modifié est une COMPARAISON avec la version enregistrée (revenir à l'original efface la barre), point sur l'onglet
+  concerné et dans son nom accessible.
+
 ## Dialogues
 
 Un seul langage : **aucune MessageBox Win32**, sauf le message bloquant d'`App.LoadStateFiles` (fichier d'état illisible),
