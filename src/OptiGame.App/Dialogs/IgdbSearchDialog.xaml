@@ -32,13 +32,13 @@
             <ListBox.ItemTemplate>
                 <DataTemplate>
                     <StackPanel Width="144" Margin="4">
-                        <Border Height="192" CornerRadius="8" Background="{StaticResource Brush.Control}">
+                        <Border Height="192" CornerRadius="{StaticResource Radius.Cover}" Background="{StaticResource Brush.Control}">
                             <Border.Style>
                                 <Style TargetType="Border" />
                             </Border.Style>
                             <Grid>
                                 <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" Style="{StaticResource Text.Caption}" Text="…" />
-                                <Border CornerRadius="8">
+                                <Border CornerRadius="{StaticResource Radius.Cover}">
                                     <Border.Background>
                                         <ImageBrush Stretch="UniformToFill" ImageSource="{Binding ThumbPath, Converter={StaticResource PathToImage}, ConverterParameter=280}" />
                                     </Border.Background>

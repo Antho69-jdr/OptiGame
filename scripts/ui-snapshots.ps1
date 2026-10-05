@@ -7,7 +7,7 @@
 # Résultat : artifacts\ui-snapshots\<Label>\<page>-<largeur>x<hauteur>.png + snapshot.log
 param(
     [string]$Label = 'courant',
-    [string]$Sizes = '',
+    [string[]]$Sizes = @(),
     [string]$Game = '',
     [switch]$Reseed
 )
@@ -38,7 +38,7 @@ if ($LASTEXITCODE -ne 0) { throw 'Compilation échouée.' }
 $output = Join-Path $repo "artifacts\ui-snapshots\$Label"
 if (Test-Path $output) { Remove-Item -Recurse -Force $output }
 $arguments = @('--snapshot', "`"$output`"")
-if ($Sizes) { $arguments += @('--sizes', $Sizes) }
+if ($Sizes) { $arguments += @('--sizes', ($Sizes -join ',')) }
 if ($Game) { $arguments += @('--game', "`"$Game`"") }
 
 $env:__COMPAT_LAYER = 'RunAsInvoker'

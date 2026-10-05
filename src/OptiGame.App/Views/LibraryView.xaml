@@ -14,9 +14,8 @@
 
         <!-- Jaquette cliquable : image arrondie (ImageBrush), léger zoom et liseré d'accent au survol -->
         <Style x:Key="CoverCard" TargetType="Button">
-            <Setter Property="Cursor" Value="Hand" />
             <Setter Property="Margin" Value="0,0,20,24" />
-            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+            <Setter Property="FocusVisualStyle" Value="{StaticResource Focus.RingCard}" />
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
@@ -26,25 +25,19 @@
                                     <ScaleTransform x:Name="Scale" ScaleX="1" ScaleY="1" />
                                 </Grid.RenderTransform>
                                 <!-- Remplaçant sans jaquette : dégradé + initiales -->
-                                <Border CornerRadius="10">
-                                    <Border.Background>
-                                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                                            <GradientStop Color="#243040" Offset="0" />
-                                            <GradientStop Color="#151A22" Offset="1" />
-                                        </LinearGradientBrush>
-                                    </Border.Background>
+                                <Border CornerRadius="{StaticResource Radius.Cover}" Background="{StaticResource Brush.CoverPlaceholder}">
                                     <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" FontFamily="{StaticResource Font.Display}"
                                                FontSize="44" FontWeight="SemiBold" Foreground="{StaticResource Brush.TextMuted}" Text="{Binding Initials}" />
                                 </Border>
-                                <Border CornerRadius="10" Visibility="{Binding HasCover, Converter={StaticResource BoolToVisibility}}">
+                                <Border CornerRadius="{StaticResource Radius.Cover}" Visibility="{Binding HasCover, Converter={StaticResource BoolToVisibility}}">
                                     <Border.Background>
                                         <ImageBrush Stretch="UniformToFill" ImageSource="{Binding CoverImage, IsAsync=True}" />
                                     </Border.Background>
                                 </Border>
-                                <Border x:Name="Outline" CornerRadius="10" BorderThickness="2" BorderBrush="Transparent" />
+                                <Border x:Name="Outline" CornerRadius="{StaticResource Radius.Cover}" BorderThickness="2" BorderBrush="Transparent" />
                                 <!-- Bouton « Jouer » au survol -->
                                 <Button x:Name="PlayButton" Width="48" Height="48" Margin="0,0,10,10" HorizontalAlignment="Right" VerticalAlignment="Bottom"
-                                        Visibility="Collapsed" Cursor="Hand" ToolTip="Jouer" AutomationProperties.Name="{Binding Name, StringFormat='Jouer à {0}'}"
+                                        Visibility="Collapsed" ToolTip="Jouer" AutomationProperties.Name="{Binding Name, StringFormat='Jouer à {0}'}"
                                         Command="{Binding DataContext.PlayCardCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                         CommandParameter="{Binding}">
                                     <Button.Template>
@@ -63,7 +56,7 @@
                                 </Button>
                                 <!-- Coin bas gauche, au survol : retirer le jeu de « Mes jeux » (confirmation ; jamais pendant la partie) -->
                                 <Button x:Name="RemoveButton" Width="32" Height="32" Margin="8,0,0,18" HorizontalAlignment="Left" VerticalAlignment="Bottom"
-                                        Visibility="Collapsed" Cursor="Hand" ToolTip="Retirer de Mes jeux"
+                                        Visibility="Collapsed" ToolTip="Retirer de Mes jeux"
                                         AutomationProperties.Name="{Binding Name, StringFormat='Retirer {0} de Mes jeux'}"
                                         Command="{Binding DataContext.RemoveCardCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                         CommandParameter="{Binding}">
@@ -85,7 +78,7 @@
                                     </Button.Template>
                                 </Button>
                                 <!-- Coin haut droit : note du jeu sur ce PC (« ≈ » = estimation) -->
-                                <Border Margin="8" HorizontalAlignment="Right" VerticalAlignment="Top" Style="{StaticResource Badge}" Background="#CC0E1014"
+                                <Border Margin="8" HorizontalAlignment="Right" VerticalAlignment="Top" Style="{StaticResource Badge}" Background="{StaticResource Brush.Scrim}"
                                         Visibility="{Binding HasRating, Converter={StaticResource BoolToVisibility}}" ToolTip="{Binding RatingTooltip}"
                                         AutomationProperties.Name="{Binding RatingTooltip}">
                                     <TextBlock x:Name="RatingText" Text="{Binding RatingBadge}" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource Brush.Ok}" />
@@ -94,7 +87,7 @@
                                 <StackPanel Margin="8" HorizontalAlignment="Left" VerticalAlignment="Top" Orientation="Horizontal">
                                     <!-- Épinglé : toujours visible (épingle pleine) ; sinon seulement au survol. Hidden et non
                                          Collapsed : la place reste réservée, les pastilles ne bougent pas au survol. -->
-                                    <Button x:Name="PinButton" Width="32" Height="32" Cursor="Hand" Visibility="Hidden"
+                                    <Button x:Name="PinButton" Width="32" Height="32" Visibility="Hidden"
                                             Command="{Binding DataContext.TogglePinCardCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                             CommandParameter="{Binding}">
                                         <Button.Template>
@@ -134,15 +127,15 @@
                                                 Visibility="{Binding IsPlaying, Converter={StaticResource BoolToVisibility}}">
                                             <TextBlock Text="En cours" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource Brush.OnAccent}" />
                                         </Border>
-                                        <Border Style="{StaticResource Badge}" Background="#CC0E1014"
+                                        <Border Style="{StaticResource Badge}" Background="{StaticResource Brush.Scrim}"
                                                 Visibility="{Binding Enabled, Converter={StaticResource InverseBoolToVisibility}}">
                                             <TextBlock Text="Profil désactivé" FontSize="11" Foreground="{StaticResource Brush.TextSecondary}" />
                                         </Border>
-                                        <Border Style="{StaticResource Badge}" Background="#E60E1014" ToolTip="Le fichier .exe du jeu a disparu : il a été désinstallé (ou déplacé)."
+                                        <Border Style="{StaticResource Badge}" Background="{StaticResource Brush.ScrimStrong}" ToolTip="Le fichier .exe du jeu a disparu : il a été désinstallé (ou déplacé)."
                                                 Visibility="{Binding IsUninstalled, Converter={StaticResource BoolToVisibility}}">
                                             <TextBlock Text="Désinstallé" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource Brush.Warning}" />
                                         </Border>
-                                        <Border Style="{StaticResource Badge}" Background="#E60E1014" ToolTip="Le disque du jeu n'est pas branché (disque externe, lecteur réseau)."
+                                        <Border Style="{StaticResource Badge}" Background="{StaticResource Brush.ScrimStrong}" ToolTip="Le disque du jeu n'est pas branché (disque externe, lecteur réseau)."
                                                 Visibility="{Binding IsDriveUnavailable, Converter={StaticResource BoolToVisibility}}">
                                             <TextBlock Text="Disque absent" FontSize="11" Foreground="{StaticResource Brush.TextSecondary}" />
                                         </Border>
@@ -421,24 +414,18 @@
                                     <Grid x:Name="Root" Width="198" Margin="0,0,20,24" Background="Transparent" ToolTip="{Binding Name}">
                                         <StackPanel>
                                             <Grid Height="264">
-                                                <Border CornerRadius="10">
-                                                    <Border.Background>
-                                                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                                                            <GradientStop Color="#1B222D" Offset="0" />
-                                                            <GradientStop Color="#12161D" Offset="1" />
-                                                        </LinearGradientBrush>
-                                                    </Border.Background>
+                                                <Border CornerRadius="{StaticResource Radius.Cover}" Background="{StaticResource Brush.CoverPlaceholderMuted}">
                                                     <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" FontFamily="{StaticResource Font.Display}"
                                                                FontSize="44" FontWeight="SemiBold" Foreground="{StaticResource Brush.TextMuted}" Text="{Binding Initials}"
                                                                Visibility="{Binding HasCover, Converter={StaticResource InverseBoolToVisibility}}" />
                                                 </Border>
-                                                <Border x:Name="Cover" CornerRadius="10" Opacity="0.45" Visibility="{Binding HasCover, Converter={StaticResource BoolToVisibility}}">
+                                                <Border x:Name="Cover" CornerRadius="{StaticResource Radius.Cover}" Opacity="0.45" Visibility="{Binding HasCover, Converter={StaticResource BoolToVisibility}}">
                                                     <Border.Background>
                                                         <ImageBrush Stretch="UniformToFill" ImageSource="{Binding CoverImage, IsAsync=True}" />
                                                     </Border.Background>
                                                 </Border>
-                                                <Border x:Name="Outline" CornerRadius="10" BorderThickness="1" BorderBrush="{StaticResource Brush.Border}" />
-                                                <Border Margin="8" HorizontalAlignment="Left" VerticalAlignment="Top" Style="{StaticResource Badge}" Background="#CC0E1014">
+                                                <Border x:Name="Outline" CornerRadius="{StaticResource Radius.Cover}" BorderThickness="1" BorderBrush="{StaticResource Brush.Border}" />
+                                                <Border Margin="8" HorizontalAlignment="Left" VerticalAlignment="Top" Style="{StaticResource Badge}" Background="{StaticResource Brush.Scrim}">
                                                     <TextBlock Text="{Binding StoreLabel, StringFormat='Non installé · {0}'}" FontSize="11" Foreground="{StaticResource Brush.TextSecondary}" />
                                                 </Border>
                                                 <!-- Au survol : installer (fenêtre de Steam) ou ouvrir la page Steam -->

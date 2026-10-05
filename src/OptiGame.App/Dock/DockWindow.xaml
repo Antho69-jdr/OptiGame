@@ -13,7 +13,7 @@
 
         <!-- Info-bulle sombre au nom du jeu -->
         <Style TargetType="ToolTip">
-            <Setter Property="Background" Value="#F0181C23" />
+            <Setter Property="Background" Value="{StaticResource Brush.Overlay}" />
             <Setter Property="Foreground" Value="{StaticResource Brush.Text}" />
             <Setter Property="BorderBrush" Value="{StaticResource Brush.Border}" />
             <Setter Property="Padding" Value="10,5" />
@@ -23,9 +23,9 @@
     </Window.Resources>
 
     <Grid x:Name="Root">
-        <!-- Bande de déclenchement du masquage automatique : invisible (alpha 1/255) mais réceptive à la souris.
+        <!-- Bande de déclenchement du masquage automatique : invisible (alpha 1/255, Brush.HitTestOnly) mais réceptive à la souris.
              Les zones entièrement transparentes (alpha 0) laissent passer les clics vers les fenêtres en dessous. -->
-        <Border x:Name="Trigger" Background="#01000000" MouseEnter="OnTriggerEnter" />
+        <Border x:Name="Trigger" Background="{StaticResource Brush.HitTestOnly}" MouseEnter="OnTriggerEnter" />
 
         <Grid x:Name="Shelf" MouseEnter="OnShelfEnter" MouseLeave="OnShelfLeave" MouseMove="OnShelfMouseMove">
             <Grid.RenderTransform>
@@ -33,7 +33,7 @@
             </Grid.RenderTransform>
 
             <!-- Plateau : suit la taille des icônes au repos, les icônes agrandies en débordent -->
-            <Border x:Name="Plate" CornerRadius="20" Background="#E6121620" BorderBrush="#40FFFFFF" BorderThickness="1" />
+            <Border x:Name="Plate" CornerRadius="20" Background="{StaticResource Brush.DockPlate}" BorderBrush="{StaticResource Brush.DockBorder}" BorderThickness="1" />
 
             <StackPanel x:Name="Row" Margin="5">
                 <ItemsControl x:Name="ItemsHost" ItemsSource="{Binding Items}" Focusable="False">
@@ -45,7 +45,7 @@
                     <ItemsControl.ItemTemplate>
                         <DataTemplate DataType="{x:Type vm:DockItemViewModel}">
                             <!-- RenderTransform (grossissement, soulèvement, glisser) créé par le code, une instance par cellule -->
-                            <Grid x:Name="Cell" Margin="5" Background="Transparent" Cursor="Hand" ToolTip="{Binding Name}"
+                            <Grid x:Name="Cell" Margin="5" Background="Transparent" ToolTip="{Binding Name}"
                                   ToolTipService.InitialShowDelay="150" ToolTipService.BetweenShowDelay="0"
                                   ToolTipService.Placement="{Binding TipPlacement, RelativeSource={RelativeSource AncestorType=Window}}"
                                   PreviewMouseLeftButtonDown="OnItemMouseDown" PreviewMouseMove="OnItemMouseMove"
@@ -54,13 +54,7 @@
                                   AutomationProperties.Name="{Binding Name}">
                                 <Grid Width="{Binding IconWidth, RelativeSource={RelativeSource AncestorType=Window}}"
                                       Height="{Binding IconHeight, RelativeSource={RelativeSource AncestorType=Window}}">
-                                    <Border CornerRadius="14">
-                                        <Border.Background>
-                                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                                                <GradientStop Color="#2A3646" Offset="0" />
-                                                <GradientStop Color="#171C25" Offset="1" />
-                                            </LinearGradientBrush>
-                                        </Border.Background>
+                                    <Border CornerRadius="14" Background="{StaticResource Brush.DockPlaceholder}">
                                         <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="18" FontWeight="SemiBold"
                                                    Foreground="{StaticResource Brush.TextSecondary}" Text="{Binding Initials}" />
                                     </Border>
@@ -69,7 +63,7 @@
                                             <ImageBrush Stretch="UniformToFill" ImageSource="{Binding CoverPath, Converter={StaticResource PathToImage}, ConverterParameter=320}" />
                                         </Border.Background>
                                     </Border>
-                                    <Border CornerRadius="14" BorderThickness="1" BorderBrush="#33FFFFFF" />
+                                    <Border CornerRadius="14" BorderThickness="1" BorderBrush="{StaticResource Brush.OverlayBorder}" />
                                 </Grid>
                                 <!-- Jeu en cours -->
                                 <Ellipse Width="6" Height="6" Margin="0,0,0,-9" HorizontalAlignment="Center" VerticalAlignment="Bottom"
@@ -86,10 +80,10 @@
                                Text="Épinglez des jeux depuis « Mes jeux »" />
                 </Border>
 
-                <Border x:Name="Divider" Background="#40FFFFFF" />
+                <Border x:Name="Divider" Background="{StaticResource Brush.DockBorder}" />
 
                 <!-- OptiGame -->
-                <Grid x:Name="OgCell" Margin="5" Background="Transparent" Cursor="Hand" ToolTip="OptiGame"
+                <Grid x:Name="OgCell" Margin="5" Background="Transparent" ToolTip="OptiGame"
                       ToolTipService.InitialShowDelay="150"
                       ToolTipService.Placement="{Binding TipPlacement, RelativeSource={RelativeSource AncestorType=Window}}"
                       MouseLeftButtonUp="OnOptiGameClick" ToolTipOpening="OnTipOpening" AutomationProperties.Name="Ouvrir OptiGame">

@@ -1,0 +1,153 @@
+<UserControl x:Class="OptiGame.App.Snapshots.ComponentGallery"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:OptiGame.App.Controls">
+    <!-- Galerie du système de design (docs/design-system.md), rendue en PNG par le mode « snapshot ». Jamais affichée dans l'appli. -->
+    <UserControl.Resources>
+        <Style x:Key="Swatch" TargetType="Border">
+            <Setter Property="Width" Value="132" />
+            <Setter Property="Height" Value="56" />
+            <Setter Property="Margin" Value="0,0,8,8" />
+            <Setter Property="CornerRadius" Value="{StaticResource Radius.Small}" />
+            <Setter Property="BorderBrush" Value="{StaticResource Brush.ControlBorder}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Padding" Value="8,4" />
+        </Style>
+    </UserControl.Resources>
+    <StackPanel Margin="{StaticResource Padding.Page}">
+        <TextBlock Style="{StaticResource Text.PageTitle}" Text="Système de design" />
+        <TextBlock Margin="0,4,0,24" Style="{StaticResource Text.Secondary}" Text="Jetons et composants de Themes/Theme.xaml" />
+
+        <TextBlock Style="{StaticResource Text.SectionTitle}" Text="Surfaces et textes" Margin="{StaticResource Margin.StackS}" />
+        <WrapPanel Margin="{StaticResource Margin.StackL}">
+            <Border Style="{StaticResource Swatch}" Background="{StaticResource Brush.Window}"><TextBlock Style="{StaticResource Text.Caption}" Text="Window" /></Border>
+            <Border Style="{StaticResource Swatch}" Background="{StaticResource Brush.Sidebar}"><TextBlock Style="{StaticResource Text.Caption}" Text="Sidebar" /></Border>
+            <Border Style="{StaticResource Swatch}" Background="{StaticResource Brush.Card}"><TextBlock Style="{StaticResource Text.Caption}" Text="Card" /></Border>
+            <Border Style="{StaticResource Swatch}" Background="{StaticResource Brush.CardHover}"><TextBlock Style="{StaticResource Text.Caption}" Text="CardHover" /></Border>
+            <Border Style="{StaticResource Swatch}" Background="{StaticResource Brush.Control}"><TextBlock Style="{StaticResource Text.Caption}" Text="Control" /></Border>
+            <Border Style="{StaticResource Swatch}" Background="{StaticResource Brush.ControlHover}"><TextBlock Style="{StaticResource Text.Caption}" Text="ControlHover" /></Border>
+            <Border Style="{StaticResource Swatch}" Background="{StaticResource Brush.ControlSelected}"><TextBlock Style="{StaticResource Text.Secondary}" FontSize="12" Text="ControlSelected" /></Border>
+        </WrapPanel>
+        <Border Style="{StaticResource Card}" Margin="{StaticResource Margin.StackXL}">
+            <StackPanel>
+                <TextBlock Style="{StaticResource Text.Body}" Text="Text — texte principal (≥ 11:1)" />
+                <TextBlock Style="{StaticResource Text.Secondary}" Text="TextSecondary — texte secondaire (≥ 5,5:1)" />
+                <TextBlock Style="{StaticResource Text.Caption}" FontSize="14" Text="TextMuted — légendes et aides (≥ 4,5:1)" />
+                <TextBlock FontSize="14" Foreground="{StaticResource Brush.TextDisabled}" Text="TextDisabled — contrôles désactivés uniquement" />
+            </StackPanel>
+        </Border>
+
+        <TextBlock Style="{StaticResource Text.SectionTitle}" Text="Rôles de couleur" Margin="{StaticResource Margin.StackS}" />
+        <WrapPanel Margin="{StaticResource Margin.StackXL}">
+            <Border Style="{StaticResource Swatch}" Background="{StaticResource Brush.Accent}"><TextBlock Foreground="{StaticResource Brush.OnAccent}" FontSize="12" FontWeight="SemiBold" Text="Marque · action · sélection" TextWrapping="Wrap" /></Border>
+            <Border Style="{StaticResource Swatch}" Background="{StaticResource Brush.OkSoft}"><TextBlock Foreground="{StaticResource Brush.Ok}" FontSize="12" FontWeight="SemiBold" Text="Succès" /></Border>
+            <Border Style="{StaticResource Swatch}" Background="{StaticResource Brush.WarningSoft}"><TextBlock Foreground="{StaticResource Brush.Warning}" FontSize="12" FontWeight="SemiBold" Text="Avertissement" /></Border>
+            <Border Style="{StaticResource Swatch}" Background="{StaticResource Brush.DangerSoft}"><TextBlock Foreground="{StaticResource Brush.Danger}" FontSize="12" FontWeight="SemiBold" Text="Erreur" /></Border>
+            <Border Style="{StaticResource Swatch}" Background="{StaticResource Brush.InfoSoft}"><TextBlock Foreground="{StaticResource Brush.Info}" FontSize="12" FontWeight="SemiBold" Text="Info" /></Border>
+            <Border Style="{StaticResource Swatch}" Background="{StaticResource Brush.Card}"><StackPanel><TextBlock Foreground="{StaticResource Brush.Series1}" FontSize="12" FontWeight="SemiBold" Text="Série 1 (avant)" /><TextBlock Foreground="{StaticResource Brush.Series2}" FontSize="12" FontWeight="SemiBold" Text="Série 2 (après)" /></StackPanel></Border>
+        </WrapPanel>
+
+        <TextBlock Style="{StaticResource Text.SectionTitle}" Text="Typographie" Margin="{StaticResource Margin.StackS}" />
+        <Border Style="{StaticResource Card}" Margin="{StaticResource Margin.StackXL}">
+            <StackPanel>
+                <TextBlock Style="{StaticResource Text.Hero}" Text="Hero 40 — nom du jeu" />
+                <TextBlock Style="{StaticResource Text.PageTitle}" Text="PageTitle 28 — titre de page" />
+                <TextBlock Style="{StaticResource Text.Title}" Text="Title 20 — titre de dialogue, verdict" />
+                <TextBlock Style="{StaticResource Text.SectionTitle}" Text="SectionTitle 16 — titre de section ou de carte" />
+                <TextBlock Style="{StaticResource Text.BodyStrong}" Text="BodyStrong 14 — libellé fort" />
+                <TextBlock Style="{StaticResource Text.Body}" Text="Body 14 — texte courant, phrases complètes." />
+                <TextBlock Style="{StaticResource Text.Caption}" Text="Caption 12 — légende, aide d'une ligne" />
+                <TextBlock Style="{StaticResource Text.Mono}" Text="Mono 12 — HKCU\Software\Microsoft\GameBar" />
+                <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                    <TextBlock Style="{StaticResource Text.Stat}" Text="144" />
+                    <TextBlock Margin="6,0,0,4" VerticalAlignment="Bottom" Style="{StaticResource Text.Secondary}" Text="FPS moyens (Stat 28)" />
+                </StackPanel>
+            </StackPanel>
+        </Border>
+
+        <TextBlock Style="{StaticResource Text.SectionTitle}" Text="Boutons" Margin="{StaticResource Margin.StackS}" />
+        <Border Style="{StaticResource Card}" Margin="{StaticResource Margin.StackXL}">
+            <StackPanel>
+                <WrapPanel>
+                    <controls:IconButton Margin="0,0,8,8" Style="{StaticResource Button.PrimaryLarge}" Glyph="&#xE768;" Label="Jouer" />
+                    <Button Margin="0,0,8,8" Style="{StaticResource Button.Primary}" Content="Appliquer les 3 optimisations…" />
+                    <Button Margin="0,0,8,8" Style="{StaticResource Button.Secondary}" Content="Parcourir…" />
+                    <controls:IconButton Margin="0,0,8,8" Style="{StaticResource Button.Secondary}" Glyph="&#xE72C;" Label="Actualiser" />
+                    <Button Margin="0,0,8,8" Style="{StaticResource Button.Ghost}" Content="Voir les nouveautés" />
+                    <Button Margin="0,0,8,8" Style="{StaticResource Button.Danger}" Content="Retirer de Mes jeux…" />
+                    <Button Margin="0,0,8,8" Style="{StaticResource Button.DangerFilled}" Content="Retirer le jeu" />
+                    <Button Margin="0,0,8,8" Style="{StaticResource Button.SecondarySmall}" Content="Restaurer l'original…" />
+                    <controls:IconButton Margin="0,0,8,8" Style="{StaticResource Button.Icon}" Glyph="&#xE712;" Label="Plus d'actions" IsLabelVisible="False" />
+                </WrapPanel>
+                <WrapPanel>
+                    <Button Margin="0,0,8,0" Style="{StaticResource Button.Primary}" Content="Désactivé" IsEnabled="False" />
+                    <Button Margin="0,0,8,0" Style="{StaticResource Button.Secondary}" Content="Désactivé" IsEnabled="False" />
+                    <!-- Anneau de focus clavier (reproduction statique de Focus.Ring) -->
+                    <Grid Margin="12,0,8,0">
+                        <Button Style="{StaticResource Button.Secondary}" Content="Focus clavier" />
+                        <Border Margin="-3" BorderBrush="{StaticResource Brush.FocusRing}" BorderThickness="2" CornerRadius="7" IsHitTestVisible="False" />
+                    </Grid>
+                </WrapPanel>
+            </StackPanel>
+        </Border>
+
+        <TextBlock Style="{StaticResource Text.SectionTitle}" Text="Badges" Margin="{StaticResource Margin.StackS}" />
+        <WrapPanel Margin="{StaticResource Margin.StackXL}">
+            <Border Margin="0,0,8,0" Style="{StaticResource Badge.Neutral}"><TextBlock Text="Disque absent" /></Border>
+            <Border Margin="0,0,8,0" Style="{StaticResource Badge.Success}"><StackPanel Orientation="Horizontal"><TextBlock Style="{StaticResource Text.Icon}" FontSize="12" Text="&#xE73E;" Margin="0,0,4,0" /><TextBlock Text="OK" /></StackPanel></Border>
+            <Border Margin="0,0,8,0" Style="{StaticResource Badge.Warning}"><StackPanel Orientation="Horizontal"><TextBlock Style="{StaticResource Text.Icon}" FontSize="12" Text="&#xE7BA;" Margin="0,0,4,0" /><TextBlock Text="À corriger" /></StackPanel></Border>
+            <Border Margin="0,0,8,0" Style="{StaticResource Badge.Danger}"><StackPanel Orientation="Horizontal"><TextBlock Style="{StaticResource Text.Icon}" FontSize="12" Text="&#xEA39;" Margin="0,0,4,0" /><TextBlock Text="Non vérifié" /></StackPanel></Border>
+            <Border Margin="0,0,8,0" Style="{StaticResource Badge.Info}"><StackPanel Orientation="Horizontal"><TextBlock Style="{StaticResource Text.Icon}" FontSize="12" Text="&#xE946;" Margin="0,0,4,0" /><TextBlock Text="À savoir" /></StackPanel></Border>
+            <Border Margin="0,0,8,0" Style="{StaticResource Badge.Neutral}"><StackPanel Orientation="Horizontal"><TextBlock Style="{StaticResource Text.Icon}" FontSize="12" Text="&#xEA18;" Margin="0,0,4,0" /><TextBlock Text="Droits administrateur" /></StackPanel></Border>
+            <Border Margin="0,0,8,0" Style="{StaticResource Badge.Neutral}"><StackPanel Orientation="Horizontal"><TextBlock Style="{StaticResource Text.Icon}" FontSize="12" Text="&#xE777;" Margin="0,0,4,0" /><TextBlock Text="Redémarrage requis" /></StackPanel></Border>
+        </WrapPanel>
+
+        <TextBlock Style="{StaticResource Text.SectionTitle}" Text="InfoBar" Margin="{StaticResource Margin.StackS}" />
+        <StackPanel Margin="{StaticResource Margin.StackXL}">
+            <controls:InfoBar Margin="{StaticResource Margin.StackS}" Severity="Info" Title="Mise à jour disponible" Message="OptiGame 1.3.0 est prête à être installée." IsClosable="True">
+                <Button Style="{StaticResource Button.Secondary}" Content="Voir les nouveautés" />
+            </controls:InfoBar>
+            <controls:InfoBar Margin="{StaticResource Margin.StackS}" Severity="Success" Title="3 optimisations appliquées." Message="Redémarrez Windows pour que l'une d'elles soit prise en compte." IsClosable="True" />
+            <controls:InfoBar Margin="{StaticResource Margin.StackS}" Severity="Warning" Title="1 jeu n'est plus installé" Message="Rien n'est retiré automatiquement : un jeu réinstallé au même endroit retrouve ses réglages.">
+                <Button Style="{StaticResource Button.Secondary}" Content="Retirer de Mes jeux…" />
+            </controls:InfoBar>
+            <controls:InfoBar Severity="Error" Title="Restauration impossible" Message="Les réglages de la dernière partie n'ont pas pu être restaurés. OptiGame réessaiera au prochain démarrage.">
+                <StackPanel Orientation="Horizontal">
+                    <Button Margin="0,0,8,0" Style="{StaticResource Button.Secondary}" Content="Réessayer" />
+                    <Button Style="{StaticResource Button.Ghost}" Content="Ouvrir le journal" />
+                </StackPanel>
+            </controls:InfoBar>
+        </StackPanel>
+
+        <TextBlock Style="{StaticResource Text.SectionTitle}" Text="Sélection et lignes" Margin="{StaticResource Margin.StackS}" />
+        <Border HorizontalAlignment="Left" Padding="3" CornerRadius="{StaticResource Radius.Control}" Background="{StaticResource Brush.Control}" Margin="{StaticResource Margin.StackL}">
+            <StackPanel Orientation="Horizontal">
+                <RadioButton Style="{StaticResource Segment}" Content="Vue d'ensemble" IsChecked="True" GroupName="Gallery" />
+                <RadioButton Style="{StaticResource Segment}" Content="Optimisation" GroupName="Gallery" />
+                <RadioButton Style="{StaticResource Segment}" Content="Propriétés" GroupName="Gallery" />
+            </StackPanel>
+        </Border>
+        <Expander Style="{StaticResource Expander.Row}" AutomationProperties.Name="Mode Jeu" IsExpanded="True">
+            <Expander.Header>
+                <StackPanel>
+                    <TextBlock Style="{StaticResource Text.BodyStrong}" Text="Mode Jeu" />
+                    <TextBlock Style="{StaticResource Text.Caption}" Text="Activé — Windows donne la priorité au jeu." />
+                </StackPanel>
+            </Expander.Header>
+            <TextBlock Style="{StaticResource Text.Secondary}" Text="Contenu détaillé de la ligne repliable." />
+        </Expander>
+        <Expander Style="{StaticResource Expander.Row}" AutomationProperties.Name="Enregistrement en arrière-plan">
+            <Expander.Header>
+                <StackPanel>
+                    <TextBlock Style="{StaticResource Text.BodyStrong}" Text="Enregistrement en arrière-plan" />
+                    <TextBlock Style="{StaticResource Text.Caption}" Text="Désactivé par OptiGame le 4 oct. 2026." />
+                </StackPanel>
+            </Expander.Header>
+        </Expander>
+        <WrapPanel Margin="0,8,0,0">
+            <CheckBox Margin="0,0,24,0" Content="Case Fluent (accent)" IsChecked="True" />
+            <ComboBox Width="200" SelectedIndex="0"><ComboBoxItem Content="Liste Fluent" /></ComboBox>
+            <TextBox Width="200" Margin="12,0,0,0" Text="Champ Fluent" />
+        </WrapPanel>
+    </StackPanel>
+</UserControl>

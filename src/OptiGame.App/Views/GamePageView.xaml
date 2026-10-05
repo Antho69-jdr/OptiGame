@@ -33,14 +33,7 @@
             <StackPanel>
                 <!-- Bannière -->
                 <Grid Height="320">
-                    <Border>
-                        <Border.Background>
-                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                                <GradientStop Color="#1D2633" Offset="0" />
-                                <GradientStop Color="#0E1014" Offset="1" />
-                            </LinearGradientBrush>
-                        </Border.Background>
-                    </Border>
+                    <Border Background="{StaticResource Brush.BannerPlaceholder}" />
                     <Border>
                         <Border.Background>
                             <ImageBrush Stretch="UniformToFill" AlignmentY="Top"
@@ -48,18 +41,10 @@
                         </Border.Background>
                     </Border>
                     <!-- Fondu vers le fond de la fenêtre, pour la lisibilité du titre -->
-                    <Border>
-                        <Border.Background>
-                            <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
-                                <GradientStop Color="#330E1014" Offset="0" />
-                                <GradientStop Color="#990E1014" Offset="0.55" />
-                                <GradientStop Color="#FF0E1014" Offset="1" />
-                            </LinearGradientBrush>
-                        </Border.Background>
-                    </Border>
+                    <Border Background="{StaticResource Brush.BannerFade}" />
 
                     <Button Margin="24,20,0,0" HorizontalAlignment="Left" VerticalAlignment="Top" Style="{StaticResource Button.Secondary}"
-                            Background="#990E1014" Command="{Binding BackCommand}">
+                            Background="{StaticResource Brush.ScrimLight}" Command="{Binding BackCommand}">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Style="{StaticResource Text.Icon}" FontSize="13" Text="&#xE72B;" />
                             <TextBlock Margin="8,0,0,0" Text="Mes jeux" />
@@ -69,11 +54,11 @@
                     <DockPanel Margin="32,0,32,24" VerticalAlignment="Bottom">
                         <!-- Jaquette -->
                         <Grid DockPanel.Dock="Left" Width="135" Height="180" Margin="0,0,24,0">
-                            <Border CornerRadius="10" Background="{StaticResource Brush.Control}">
+                            <Border CornerRadius="{StaticResource Radius.Cover}" Background="{StaticResource Brush.Control}">
                                 <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="34" FontWeight="SemiBold"
                                            Foreground="{StaticResource Brush.TextMuted}" Text="{Binding Initials}" />
                             </Border>
-                            <Border CornerRadius="10" BorderBrush="#33FFFFFF" BorderThickness="1"
+                            <Border CornerRadius="{StaticResource Radius.Cover}" BorderBrush="{StaticResource Brush.OverlayBorder}" BorderThickness="1"
                                     Visibility="{Binding HasCover, Converter={StaticResource BoolToVisibility}}">
                                 <Border.Background>
                                     <ImageBrush Stretch="UniformToFill" ImageSource="{Binding CoverPath, Converter={StaticResource PathToImage}, ConverterParameter=270}" />

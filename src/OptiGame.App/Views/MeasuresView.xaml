@@ -183,11 +183,11 @@
                         <StackPanel Visibility="{Binding IsComparison, Converter={StaticResource BoolToVisibility}}">
                             <TextBlock Style="{StaticResource Text.SectionTitle}" Text="Comparaison" />
                             <StackPanel Margin="0,6,0,0" Orientation="Horizontal">
-                                <Rectangle Width="10" Height="10" RadiusX="2" RadiusY="2" Fill="{StaticResource Brush.Info}" VerticalAlignment="Center" />
+                                <Rectangle Width="10" Height="10" RadiusX="2" RadiusY="2" Fill="{StaticResource Brush.Series1}" VerticalAlignment="Center" />
                                 <TextBlock Margin="6,0,0,0" Style="{StaticResource Text.Caption}" Text="{Binding Before.Label, StringFormat='Avant : {0}'}" />
                             </StackPanel>
                             <StackPanel Orientation="Horizontal">
-                                <Rectangle Width="10" Height="10" RadiusX="2" RadiusY="2" Fill="{StaticResource Brush.Warning}" VerticalAlignment="Center" />
+                                <Rectangle Width="10" Height="10" RadiusX="2" RadiusY="2" Fill="{StaticResource Brush.Series2}" VerticalAlignment="Center" />
                                 <TextBlock Margin="6,0,0,0" Style="{StaticResource Text.Caption}" Text="{Binding After.Label, StringFormat='Après : {0}'}" />
                             </StackPanel>
                             <ItemsControl Margin="0,12,0,0" ItemsSource="{Binding Comparison}">

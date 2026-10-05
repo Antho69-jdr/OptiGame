@@ -19,12 +19,14 @@ public sealed class FrametimeChart : FrameworkElement
         nameof(Secondary), typeof(IReadOnlyList<double>), typeof(FrametimeChart),
         new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.AffectsRender));
 
-    // Couleurs du thème sombre (Brush.Info / Brush.Warning / Brush.Border / Brush.TextMuted).
-    private static readonly Brush PrimaryBrush = Frozen(new SolidColorBrush(Color.FromRgb(0x60, 0xA5, 0xFA)));
-    private static readonly Brush SecondaryBrush = Frozen(new SolidColorBrush(Color.FromRgb(0xF5, 0xA5, 0x24)));
-    private static readonly Pen GridPen = Frozen(new Pen(new SolidColorBrush(Color.FromRgb(0x26, 0x2C, 0x36)), 1));
-    private static readonly Brush LabelBrush = Frozen(new SolidColorBrush(Color.FromRgb(0x6B, 0x72, 0x80)));
-    private static readonly Typeface LabelFont = new("Segoe UI");
+    // Couleurs du thème (Brush.Series1 / Brush.Series2 : bleu / orange, sans sens de statut ; Brush.Border ; Brush.TextMuted),
+    // lues une fois et figées.
+    private Brush? _primaryBrush;
+    private Brush? _secondaryBrush;
+    private Pen? _gridPen;
+    private Brush? _labelBrush;
+    private Typeface? _labelFont;
+    private double _labelSize;
 
     /// <summary>Repères usuels : 240, 144, 60 et 30 FPS.</summary>
     private static readonly double[] ReferenceLines = [4.17, 6.94, 16.67, 33.33];
@@ -50,10 +52,11 @@ public sealed class FrametimeChart : FrameworkElement
     {
         // Fond transparent : le graphe prend la couleur de la carte qui le contient (hit-test conservé).
         dc.DrawRectangle(Brushes.Transparent, null, new Rect(RenderSize));
+        EnsureThemeResources();
         var plot = new Rect(LeftMargin, 8, Math.Max(0, ActualWidth - LeftMargin - 8), Math.Max(0, ActualHeight - 8 - BottomMargin));
         if (plot.Width < 20 || plot.Height < 20) return;
 
-        var series = new[] { (Primary, PrimaryBrush), (Secondary, SecondaryBrush) }
+        var series = new[] { (Primary, _primaryBrush!), (Secondary, _secondaryBrush!) }
             .Where(s => s.Item1 is { Count: > 1 })
             .Select(s => (Data: s.Item1!, Brush: s.Item2))
             .ToList();
@@ -72,7 +75,7 @@ public sealed class FrametimeChart : FrameworkElement
         foreach (var reference in ReferenceLines.Where(r => r < yMax))
         {
             var y = plot.Bottom - reference / yMax * plot.Height;
-            dc.DrawLine(GridPen, new Point(plot.Left, y), new Point(plot.Right, y));
+            dc.DrawLine(_gridPen, new Point(plot.Left, y), new Point(plot.Right, y));
             // Pas de libellés qui se chevauchent quand l'échelle est grande.
             if (lastLabelY - y >= 14)
             {
@@ -80,7 +83,7 @@ public sealed class FrametimeChart : FrameworkElement
                 lastLabelY = y;
             }
         }
-        dc.DrawLine(GridPen, new Point(plot.Left, plot.Bottom), new Point(plot.Right, plot.Bottom));
+        dc.DrawLine(_gridPen, new Point(plot.Left, plot.Bottom), new Point(plot.Right, plot.Bottom));
         Label(dc, "0 s", new Point(plot.Left, plot.Bottom + 2));
         Label(dc, $"{xMax:0} s", new Point(plot.Right - 30, plot.Bottom + 2));
 
@@ -132,12 +135,25 @@ public sealed class FrametimeChart : FrameworkElement
     }
 
     private void Label(DrawingContext dc, string text, Point origin) =>
-        dc.DrawText(new FormattedText(text, CultureInfo.CurrentCulture, FlowDirection.LeftToRight, LabelFont, 11, LabelBrush,
+        dc.DrawText(new FormattedText(text, CultureInfo.CurrentCulture, FlowDirection.LeftToRight, _labelFont!, _labelSize, _labelBrush!,
             VisualTreeHelper.GetDpi(this).PixelsPerDip), origin);
 
-    private static T Frozen<T>(T freezable) where T : Freezable
+    private void EnsureThemeResources()
     {
-        freezable.Freeze();
-        return freezable;
+        if (_primaryBrush is not null) return;
+        _primaryBrush = ThemeBrush("Brush.Series1");
+        _secondaryBrush = ThemeBrush("Brush.Series2");
+        _labelBrush = ThemeBrush("Brush.TextMuted");
+        _gridPen = new Pen(ThemeBrush("Brush.Border"), 1);
+        _gridPen.Freeze();
+        _labelFont = new Typeface((FontFamily)FindResource("Font.Text"), FontStyles.Normal, FontWeights.Normal, FontStretches.Normal);
+        _labelSize = (double)FindResource("FontSize.Caption");
+    }
+
+    private Brush ThemeBrush(string key)
+    {
+        var brush = ((Brush)FindResource(key)).CloneCurrentValue();
+        brush.Freeze();
+        return brush;
     }
 }

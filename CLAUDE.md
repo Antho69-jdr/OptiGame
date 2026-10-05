@@ -56,8 +56,11 @@ src/OptiGame.Core/       net10.0, aucune dépendance Windows, 100 % testable
 src/OptiGame.Platform/   net10.0-windows : implémentations réelles (registre, WMI, P/Invoke), Privileged/,
                          Processes/, Startup/ (tâche planifiée), Measurement/ (runner PresentMon)
 src/OptiGame.App/        WPF : composition DI, tray, vues/viewmodels, dialogue de confirmation
-  Themes/Theme.xaml      thème sombre « gaming » : palette (Brush.*), styles Button.Primary/Secondary/Ghost/Danger,
-                         Card, Banner, Badge, NavButton, Text.* — jamais de couleur codée en dur dans les vues
+  Themes/Theme.xaml      système de design (docs/design-system.md, refonte UI depuis le 2026-10-05) : couleurs à rôle (marque/action/
+                         sélection = vert ; statuts Fluent Ok/Warning/Danger/Info + Soft ; séries de graphe), échelle typographique
+                         FontSize.*/Text.*, espacements Space.*/Padding.*/Margin.*, rayons Radius.*, Focus.Ring, boutons Button.*,
+                         Badge.*, Segment, Expander.Row, NavButton ; Controls/InfoBar et Controls/IconButton (nom UIA = libellé).
+                         JAMAIS de couleur, taille de police ni rayon codé en dur dans les vues ; vérifier avec ui-snapshots.ps1
   Assets/                Logo (choisi le 2026-10-04 : cadran de vitesse ouvert en « O » + triangle « lecture ») : OptiGame.svg
                          (case 64) et OptiGame-small.svg (variante épaisse pour ≤ 24 px) → OptiGame.ico = 16, 20, 24 depuis
                          -small, 32 → 256 depuis le logo (rsvg-convert, puis `convert i16.png … i256.png OptiGame.ico` d'ImageMagick,

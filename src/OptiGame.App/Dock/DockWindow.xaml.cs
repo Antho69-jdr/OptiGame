@@ -149,8 +149,10 @@ public partial class DockWindow : Window
         OgCell.Visibility = Divider.Visibility = settings.DockShowOptiGame ? Visibility.Visible : Visibility.Collapsed;
         (IconWidth, IconHeight) = DockLayout.IconSize(settings.DockIconSize, settings.DockIconShape);
         var (background, border) = DockLayout.PlateAlpha(settings.DockOpacity);
-        Plate.Background = new SolidColorBrush(Color.FromArgb(background, 0x12, 0x16, 0x20));
-        Plate.BorderBrush = new SolidColorBrush(Color.FromArgb(border, 0xFF, 0xFF, 0xFF));
+        var plateColor = (Color)FindResource("Color.DockPlate");
+        var highlight = (Color)FindResource("Color.Highlight");
+        Plate.Background = new SolidColorBrush(Color.FromArgb(background, plateColor.R, plateColor.G, plateColor.B));
+        Plate.BorderBrush = new SolidColorBrush(Color.FromArgb(border, highlight.R, highlight.G, highlight.B));
         Orientation = Horizontal ? Orientation.Horizontal : Orientation.Vertical;
         Row.Orientation = Orientation;
         TipPlacement = edge switch
@@ -648,7 +650,7 @@ public partial class DockWindow : Window
         // Rayon : jusqu'au coin le plus éloigné, pour que l'onde traverse toute la jaquette.
         var radius = new[] { new Point(0, 0), new Point(size.Width, 0), new Point(0, size.Height), new Point(size.Width, size.Height) }
             .Max(corner => (corner - at).Length);
-        var white = Color.FromRgb(0xFF, 0xFF, 0xFF);
+        var white = (Color)cell.FindResource("Color.Highlight");
         var wave = new Ellipse
         {
             Width = radius * 2,

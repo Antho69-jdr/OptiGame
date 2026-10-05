@@ -15,23 +15,25 @@
                 Accent du thème Fluent (cases cochées, curseurs, sélection de texte…) aligné sur le vert d'OptiGame.
                 Déclaré ici et non dans Theme.xaml : les ressources directes de l'application priment sur tous les
                 dictionnaires fusionnés, dont celui du thème Fluent. Noms relevés dans PresentationFramework.Fluent.dll (10.0.9).
+                Brosses = couleurs Color.Accent* de Themes/Theme.xaml. Les 8 valeurs Color ci-dessous RECOPIENT ces couleurs :
+                un alias StaticResource n'est pas accepté ici par le compilateur XAML (erreur MC2000) ; les garder identiques.
             -->
             <Color x:Key="AccentColor">#2FD27A</Color>
-            <SolidColorBrush x:Key="AccentFillColorDefaultBrush" Color="#2FD27A" />
-            <SolidColorBrush x:Key="AccentFillColorSecondaryBrush" Color="#2FD27A" Opacity="0.9" />
-            <SolidColorBrush x:Key="AccentFillColorTertiaryBrush" Color="#2FD27A" Opacity="0.8" />
-            <SolidColorBrush x:Key="AccentFillColorSelectedTextBackgroundBrush" Color="#2FD27A" />
-            <SolidColorBrush x:Key="AccentDefaultBrush" Color="#2FD27A" />
-            <SolidColorBrush x:Key="AccentSecondaryBrush" Color="#2FD27A" Opacity="0.9" />
-            <SolidColorBrush x:Key="AccentTertiaryBrush" Color="#2FD27A" Opacity="0.8" />
-            <SolidColorBrush x:Key="AccentButtonBorderBrush" Color="#22B566" />
-            <SolidColorBrush x:Key="AccentControlElevationBorderBrush" Color="#22B566" />
-            <SolidColorBrush x:Key="AccentTextFillColorPrimaryBrush" Color="#6FEBA8" />
-            <SolidColorBrush x:Key="AccentTextFillColorSecondaryBrush" Color="#98F2C1" />
-            <SolidColorBrush x:Key="AccentTextFillColorTertiaryBrush" Color="#4BE391" />
-            <SolidColorBrush x:Key="TextOnAccentFillColorPrimaryBrush" Color="#06140C" />
-            <SolidColorBrush x:Key="TextOnAccentFillColorSecondaryBrush" Color="#1A3A28" />
-            <SolidColorBrush x:Key="TextOnAccentFillColorSelectedTextBrush" Color="#06140C" />
+            <SolidColorBrush x:Key="AccentFillColorDefaultBrush" Color="{StaticResource Color.Accent}" />
+            <SolidColorBrush x:Key="AccentFillColorSecondaryBrush" Color="{StaticResource Color.Accent}" Opacity="0.9" />
+            <SolidColorBrush x:Key="AccentFillColorTertiaryBrush" Color="{StaticResource Color.Accent}" Opacity="0.8" />
+            <SolidColorBrush x:Key="AccentFillColorSelectedTextBackgroundBrush" Color="{StaticResource Color.Accent}" />
+            <SolidColorBrush x:Key="AccentDefaultBrush" Color="{StaticResource Color.Accent}" />
+            <SolidColorBrush x:Key="AccentSecondaryBrush" Color="{StaticResource Color.Accent}" Opacity="0.9" />
+            <SolidColorBrush x:Key="AccentTertiaryBrush" Color="{StaticResource Color.Accent}" Opacity="0.8" />
+            <SolidColorBrush x:Key="AccentButtonBorderBrush" Color="{StaticResource Color.AccentPressed}" />
+            <SolidColorBrush x:Key="AccentControlElevationBorderBrush" Color="{StaticResource Color.AccentPressed}" />
+            <SolidColorBrush x:Key="AccentTextFillColorPrimaryBrush" Color="{StaticResource Color.AccentText}" />
+            <SolidColorBrush x:Key="AccentTextFillColorSecondaryBrush" Color="{StaticResource Color.AccentLight3}" />
+            <SolidColorBrush x:Key="AccentTextFillColorTertiaryBrush" Color="{StaticResource Color.AccentHover}" />
+            <SolidColorBrush x:Key="TextOnAccentFillColorPrimaryBrush" Color="{StaticResource Color.OnAccent}" />
+            <SolidColorBrush x:Key="TextOnAccentFillColorSecondaryBrush" Color="{StaticResource Color.OnAccentSecondary}" />
+            <SolidColorBrush x:Key="TextOnAccentFillColorSelectedTextBrush" Color="{StaticResource Color.OnAccent}" />
             <!-- Clés système d'accent (.NET 9+), alimentées par Windows et utilisées par les modèles Fluent -->
             <Color x:Key="{x:Static SystemColors.AccentColorKey}">#2FD27A</Color>
             <Color x:Key="{x:Static SystemColors.AccentColorLight1Key}">#4BE391</Color>
@@ -40,13 +42,13 @@
             <Color x:Key="{x:Static SystemColors.AccentColorDark1Key}">#22B566</Color>
             <Color x:Key="{x:Static SystemColors.AccentColorDark2Key}">#198F50</Color>
             <Color x:Key="{x:Static SystemColors.AccentColorDark3Key}">#11693A</Color>
-            <SolidColorBrush x:Key="{x:Static SystemColors.AccentColorBrushKey}" Color="#2FD27A" />
-            <SolidColorBrush x:Key="{x:Static SystemColors.AccentColorLight1BrushKey}" Color="#4BE391" />
-            <SolidColorBrush x:Key="{x:Static SystemColors.AccentColorLight2BrushKey}" Color="#2FD27A" />
-            <SolidColorBrush x:Key="{x:Static SystemColors.AccentColorLight3BrushKey}" Color="#98F2C1" />
-            <SolidColorBrush x:Key="{x:Static SystemColors.AccentColorDark1BrushKey}" Color="#22B566" />
-            <SolidColorBrush x:Key="{x:Static SystemColors.AccentColorDark2BrushKey}" Color="#198F50" />
-            <SolidColorBrush x:Key="{x:Static SystemColors.AccentColorDark3BrushKey}" Color="#11693A" />
+            <SolidColorBrush x:Key="{x:Static SystemColors.AccentColorBrushKey}" Color="{StaticResource Color.Accent}" />
+            <SolidColorBrush x:Key="{x:Static SystemColors.AccentColorLight1BrushKey}" Color="{StaticResource Color.AccentHover}" />
+            <SolidColorBrush x:Key="{x:Static SystemColors.AccentColorLight2BrushKey}" Color="{StaticResource Color.Accent}" />
+            <SolidColorBrush x:Key="{x:Static SystemColors.AccentColorLight3BrushKey}" Color="{StaticResource Color.AccentLight3}" />
+            <SolidColorBrush x:Key="{x:Static SystemColors.AccentColorDark1BrushKey}" Color="{StaticResource Color.AccentPressed}" />
+            <SolidColorBrush x:Key="{x:Static SystemColors.AccentColorDark2BrushKey}" Color="{StaticResource Color.AccentDark2}" />
+            <SolidColorBrush x:Key="{x:Static SystemColors.AccentColorDark3BrushKey}" Color="{StaticResource Color.AccentDark3}" />
 
             <BooleanToVisibilityConverter x:Key="TrayBoolToVisibility" />
             <conv:InverseBoolToVisibilityConverter x:Key="InverseBoolToVisibility" />

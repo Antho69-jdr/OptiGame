@@ -87,6 +87,14 @@ internal static class PageSnapshots
                 }
             }
             window.CloseForGame();
+
+            // Galerie : mise en page hors fenêtre (sa hauteur dépasse l'écran), sur le fond de la fenêtre.
+            var gallery = new ComponentGallery { Background = (Brush)Application.Current.FindResource("Brush.Window") };
+            gallery.Measure(new Size(1000, double.PositiveInfinity));
+            gallery.Arrange(new Rect(new Size(1000, gallery.DesiredSize.Height)));
+            gallery.UpdateLayout();
+            SaveElement(gallery, Path.Combine(output, "0-galerie.png"));
+            Log("0-galerie.png");
             Log("Terminé.");
         }
         catch (Exception ex)
@@ -108,13 +116,19 @@ internal static class PageSnapshots
     private static void Save(Window window, string path)
     {
         window.UpdateLayout();
-        var root = (FrameworkElement)window.Content;
+        Render((FrameworkElement)window.Content, window.Background, path);
+    }
+
+    private static void SaveElement(System.Windows.Controls.Control element, string path) => Render(element, element.Background, path);
+
+    private static void Render(FrameworkElement root, Brush background, string path)
+    {
         var size = new Size(root.ActualWidth, root.ActualHeight);
         var visual = new DrawingVisual();
         using (var dc = visual.RenderOpen())
         {
-            dc.DrawRectangle(window.Background, null, new Rect(size));
-            dc.DrawRectangle(new VisualBrush(root) { Stretch = Stretch.None, AlignmentX = AlignmentX.Left, AlignmentY = AlignmentY.Top },
+            dc.DrawRectangle(background, null, new Rect(size));
+            dc.DrawRectangle(new VisualBrush(root) { Stretch = Stretch.None, ViewboxUnits = BrushMappingMode.Absolute, Viewbox = new Rect(size) },
                 null, new Rect(size));
         }
         var bitmap = new RenderTargetBitmap((int)Math.Ceiling(size.Width), (int)Math.Ceiling(size.Height), 96, 96, PixelFormats.Pbgra32);
