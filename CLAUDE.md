@@ -322,6 +322,8 @@ vit dans Core ; Platform ne fait que lire/écrire le système.
 - Nullable activé, avertissements traités comme erreurs.
 - Un commit par étape fonctionnelle ; ne passer à la phase suivante qu'après test par l'utilisateur.
 - Vérifier tout chemin de registre / classe WMI sur la machine avant de s'en servir ; signaler s'il est absent.
+- Interface : audit UI/UX complet du 2026-10-05 (v1.2.1) dans `docs/ui-ux-audit-2026-10-05.md` : système de design actuel,
+  contrastes calculés, problèmes priorisés avec preuves fichier:ligne, contraintes à préserver, glossaire (un terme par concept).
 
 ## Distribution (installeur)
 
