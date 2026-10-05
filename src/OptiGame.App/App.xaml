@@ -53,6 +53,7 @@
             <BooleanToVisibilityConverter x:Key="TrayBoolToVisibility" />
             <conv:InverseBoolToVisibilityConverter x:Key="InverseBoolToVisibility" />
             <conv:EmptyAndUnfocusedToVisibilityConverter x:Key="EmptyAndUnfocusedToVisibility" />
+            <conv:AllTrueToVisibilityConverter x:Key="AllTrueToVisibility" />
             <tb:TaskbarIcon x:Key="TrayIcon"
                             ToolTipText="{Binding Session.TrayToolTip}"
                             NoLeftClickDelay="True"

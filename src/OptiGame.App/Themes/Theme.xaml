@@ -801,6 +801,144 @@
         </Setter>
     </Style>
 
+    <!-- ===== Jaquette (controls:CoverTile) : 198 × 264 (ImageLoader.GridCoverWidth), titre et légende dessous ===== -->
+    <Style TargetType="controls:CoverTile">
+        <Setter Property="Margin" Value="0,0,20,24" />
+        <Setter Property="FocusVisualStyle" Value="{StaticResource Focus.RingCard}" />
+        <Setter Property="Foreground" Value="{StaticResource Brush.Text}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="controls:CoverTile">
+                    <StackPanel Width="198" Background="Transparent">
+                        <Grid x:Name="Cover" Height="264" RenderTransformOrigin="0.5,0.5">
+                            <Grid.RenderTransform>
+                                <ScaleTransform x:Name="Scale" ScaleX="1" ScaleY="1" />
+                            </Grid.RenderTransform>
+                            <Border CornerRadius="{StaticResource Radius.Cover}" Background="{StaticResource Brush.CoverPlaceholder}">
+                                <!-- Initiales seulement sans image (sinon elles transparaîtraient sous une jaquette atténuée) -->
+                                <TextBlock x:Name="InitialsText" HorizontalAlignment="Center" VerticalAlignment="Center" FontFamily="{StaticResource Font.Display}"
+                                           FontSize="{StaticResource FontSize.Hero}" FontWeight="SemiBold" Foreground="{StaticResource Brush.TextMuted}"
+                                           Text="{TemplateBinding Initials}" Visibility="Collapsed" />
+                            </Border>
+                            <Border x:Name="ImageLayer" CornerRadius="{StaticResource Radius.Cover}">
+                                <Border.Background>
+                                    <ImageBrush Stretch="UniformToFill" ImageSource="{Binding Image, RelativeSource={RelativeSource TemplatedParent}}" />
+                                </Border.Background>
+                            </Border>
+                            <Border x:Name="Outline" CornerRadius="{StaticResource Radius.Cover}" BorderThickness="1"
+                                    BorderBrush="{StaticResource Brush.OverlayBorder}" />
+                            <ContentPresenter Margin="8" HorizontalAlignment="Left" VerticalAlignment="Top" Content="{TemplateBinding TopLeft}" />
+                            <ContentPresenter Margin="8" HorizontalAlignment="Right" VerticalAlignment="Top" Content="{TemplateBinding TopRight}" />
+                            <ContentPresenter x:Name="Actions" Margin="10" VerticalAlignment="Bottom" Content="{TemplateBinding Actions}"
+                                              Visibility="Collapsed" />
+                        </Grid>
+                        <TextBlock x:Name="TitleText" Margin="2,10,2,0" Style="{StaticResource Text.BodyStrong}" Text="{TemplateBinding Title}"
+                                   TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" ToolTip="{TemplateBinding Title}" />
+                        <StackPanel Margin="2,3,2,0" Orientation="Horizontal">
+                            <TextBlock x:Name="CaptionIcon" Margin="0,0,5,0" Style="{StaticResource Text.Icon}" FontSize="{StaticResource IconSize.Small}"
+                                       Foreground="{StaticResource Brush.TextMuted}" Text="{TemplateBinding CaptionGlyph}" />
+                            <TextBlock Style="{StaticResource Text.Caption}" Text="{TemplateBinding Caption}" TextTrimming="CharacterEllipsis"
+                                       TextWrapping="NoWrap" />
+                        </StackPanel>
+                    </StackPanel>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="Image" Value="{x:Null}">
+                            <Setter TargetName="ImageLayer" Property="Visibility" Value="Collapsed" />
+                            <Setter TargetName="InitialsText" Property="Visibility" Value="Visible" />
+                        </Trigger>
+                        <Trigger Property="CaptionGlyph" Value="{x:Null}">
+                            <Setter TargetName="CaptionIcon" Property="Visibility" Value="Collapsed" />
+                        </Trigger>
+                        <Trigger Property="IsDimmed" Value="True">
+                            <Setter TargetName="ImageLayer" Property="Opacity" Value="0.45" />
+                            <Setter TargetName="TitleText" Property="Foreground" Value="{StaticResource Brush.TextSecondary}" />
+                        </Trigger>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Actions" Property="Visibility" Value="Visible" />
+                            <Setter TargetName="Outline" Property="BorderBrush" Value="{StaticResource Brush.TextSecondary}" />
+                            <Setter TargetName="Outline" Property="BorderThickness" Value="2" />
+                        </Trigger>
+                        <MultiTrigger>
+                            <MultiTrigger.Conditions>
+                                <Condition Property="IsMouseOver" Value="True" />
+                                <Condition Property="IsDimmed" Value="True" />
+                            </MultiTrigger.Conditions>
+                            <Setter TargetName="ImageLayer" Property="Opacity" Value="0.7" />
+                        </MultiTrigger>
+                        <!-- Zoom de survol, seulement si les effets d'animation de Windows sont activés -->
+                        <MultiDataTrigger>
+                            <MultiDataTrigger.Conditions>
+                                <Condition Binding="{Binding IsMouseOver, RelativeSource={RelativeSource Self}}" Value="True" />
+                                <Condition Binding="{Binding Source={x:Static controls:CoverTile.AnimationsEnabled}}" Value="True" />
+                            </MultiDataTrigger.Conditions>
+                            <MultiDataTrigger.EnterActions>
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetName="Scale" Storyboard.TargetProperty="ScaleX" To="1.03" Duration="0:0:0.12" />
+                                        <DoubleAnimation Storyboard.TargetName="Scale" Storyboard.TargetProperty="ScaleY" To="1.03" Duration="0:0:0.12" />
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </MultiDataTrigger.EnterActions>
+                            <MultiDataTrigger.ExitActions>
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetName="Scale" Storyboard.TargetProperty="ScaleX" To="1" Duration="0:0:0.12" />
+                                        <DoubleAnimation Storyboard.TargetName="Scale" Storyboard.TargetProperty="ScaleY" To="1" Duration="0:0:0.12" />
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </MultiDataTrigger.ExitActions>
+                        </MultiDataTrigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- Petit bouton rond posé sur une jaquette (épingle, corbeille) : raccourci souris, hors de la tabulation -->
+    <Style x:Key="Button.CoverRound" TargetType="Button">
+        <Setter Property="Width" Value="32" />
+        <Setter Property="Height" Value="32" />
+        <Setter Property="Focusable" Value="False" />
+        <Setter Property="Foreground" Value="{StaticResource Brush.Text}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="Round" CornerRadius="{StaticResource Radius.Round}" Background="{StaticResource Brush.CoverButton}"
+                            BorderThickness="1" BorderBrush="{StaticResource Brush.CoverButtonBorder}">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" TextElement.FontFamily="{StaticResource Font.Icons}"
+                                          TextElement.FontSize="14" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Round" Property="Background" Value="{StaticResource Brush.CoverButtonHover}" />
+                            <Setter TargetName="Round" Property="BorderBrush" Value="{StaticResource Brush.TextSecondary}" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+    <!-- Bouton rond « Jouer » d'une jaquette (action principale au survol) -->
+    <Style x:Key="Button.CoverPlay" TargetType="Button" BasedOn="{StaticResource Button.CoverRound}">
+        <Setter Property="Width" Value="48" />
+        <Setter Property="Height" Value="48" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="Round" CornerRadius="{StaticResource Radius.Round}" Background="{StaticResource Brush.Accent}">
+                        <TextBlock Margin="3,0,0,0" HorizontalAlignment="Center" VerticalAlignment="Center" Style="{StaticResource Text.Icon}"
+                                   FontSize="18" Foreground="{StaticResource Brush.OnAccent}" Text="&#xE768;" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Round" Property="Background" Value="{StaticResource Brush.AccentHover}" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <!-- ===== InfoBar (modèle WinUI) : gravité = fond + icône de forme + nom accessible ; annoncée aux lecteurs d'écran ===== -->
     <Style TargetType="controls:InfoBar">
         <Setter Property="Focusable" Value="False" />

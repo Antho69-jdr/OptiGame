@@ -39,6 +39,15 @@ public partial class LibraryView : UserControl
 
     private void OnUninstalledListReset(object? sender, EventArgs e) => GridScroll.ScrollToTop();
 
+    /// <summary>« Ajouter des jeux » : menu sous le bouton (clic, Entrée ou Espace) ; le premier choix reçoit le focus clavier.</summary>
+    private void OnAddGamesClick(object sender, System.Windows.RoutedEventArgs e)
+    {
+        if (AddGamesButton.ContextMenu is not { } menu) return;
+        menu.PlacementTarget = AddGamesButton;
+        menu.Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom;
+        menu.IsOpen = true;
+    }
+
     /// <summary>
     /// Jeux non installés : la page suivante s'ajoute quand il reste moins de deux écrans à faire défiler, mais seulement si l'on
     /// descend ou si le contenu ou la fenêtre grandit. Une liste ramenée à sa première page laisse le défilement au bas de la liste

@@ -97,8 +97,13 @@ un bord). Tous les styles maison le posent en `FocusVisualStyle` ; WPF ne l'affi
 | Divulgation | `Expander.Disclosure` | chevron + texte secondaire (« Détails techniques ») ; `AutomationProperties.Name` plus précis si plusieurs dans une liste |
 | Liste à cocher | `CheckList` + `CheckList.Item` (ListBox `SelectionMode=Multiple`) | ligne entière = case (clic, Espace), flèches ; éléments : `CanSelect`, `AccessibleName` ; la sélection = `SelectedItems` ; bouton « Ajouter 3 jeux » inactif à 0 |
 
-À venir dans la refonte (voir `docs/ui-ux-audit-2026-10-05.md`) : ligne de réglage façon Paramètres de Windows 11, bouton
-fractionné, menu « … », CoverTile unique.
+| Jaquette | `controls:CoverTile` (`Image` lié avec IsAsync, `Initials`, `Title`, `Caption`, `CaptionGlyph`, `IsDimmed`, `TopLeft`, `TopRight`, `Actions`) | une seule pour installés et non installés ; bouton focalisable : Entrée = action principale, touche Menu = toutes les actions (menu contextuel complet) ; `Actions` = raccourcis souris hors tabulation (`Button.CoverPlay`, `Button.CoverRound`) ; voile sur l'image seulement ; zoom de survol seulement si les effets d'animation de Windows sont activés ; nom accessible = jeu + tout ce que disent les pastilles |
+| Bouton à menu | Button + ContextMenu ouvert sous le bouton (« Ajouter des jeux ▾ ») | nom accessible + HelpText « Ouvre un menu » ; choix avec « … » |
+
+Grilles de jaquettes : `ItemsControl` + `WrapPanel`, `KeyboardNavigation.TabNavigation="Once"` (Tab entre et sort de la
+grille, flèches d'une jaquette à l'autre).
+
+À venir dans la refonte (voir `docs/ui-ux-audit-2026-10-05.md`) : ligne de réglage façon Paramètres de Windows 11, menu « … ».
 
 ## Coque (fenêtre principale)
 

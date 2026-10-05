@@ -691,7 +691,7 @@ public partial class DockWindow : Window
             Items =
             {
                 MenuItem("Jouer", () => _vm.LaunchCommand.Execute(item)),
-                MenuItem("Ouvrir la page du jeu", () => _vm.OpenGameCommand.Execute(item)),
+                MenuItem("Ouvrir la fiche", () => _vm.OpenGameCommand.Execute(item)),
                 new Separator(),
                 MenuItem("Retirer du dock", () => _vm.UnpinCommand.Execute(item)),
             },

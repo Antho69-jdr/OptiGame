@@ -62,6 +62,15 @@ internal static class PageSnapshots
             var pages = new List<(string Name, Func<Task> Open)>
             {
                 ("1-mes-jeux", async () => { main.Navigate(library); await Settle(4000); }),
+                ("1b-mes-jeux-aucun-resultat", async () => { main.Navigate(library); library.SearchText = "zzzz"; await Settle(1200); }),
+                ("1c-mes-jeux-epic", async () =>
+                {
+                    main.Navigate(library);
+                    library.SearchText = "";
+                    library.SelectedStore = library.StoreOptions[2];
+                    await Settle(2500);
+                }),
+                ("1d-mes-jeux-filtres-effaces", async () => { library.ClearFiltersCommand.Execute(null); await Settle(800); }),
                 ("2-diagnostic", async () => { main.Navigate(main.Diagnostic); await WaitUntil(() => !main.Diagnostic.IsBusy && main.Diagnostic.HasResults, 60_000); }),
                 ("3-pilotes", async () =>
                 {

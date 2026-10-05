@@ -80,7 +80,9 @@ src/OptiGame.App/        WPF : composition DI, tray, vues/viewmodels, dialogue d
                          en InfoBar (erreurs de détection / restauration : JAMAIS seulement en notification), raccourcis Ctrl+1…5,
                          Ctrl+F, F5, Échap/Alt+←, place de la fenêtre dans settings.json (Core/Settings/WindowLayout),
                          UnsavedChangesGuard pour Quitter
-  Mes jeux               LibraryViewModel (grille de jaquettes) → GamePageViewModel (bannière + éditeur du profil).
+  Mes jeux               LibraryViewModel (grille de jaquettes Controls/CoverTile, installés et non installés ; « Ajouter des jeux ▾ »,
+                         recherche / tri / filtres en WrapPanel, « 3 sur 42 jeux », état « aucun résultat », messages en InfoBar,
+                         nouveaux jeux Steam en UN bandeau) → GamePageViewModel (bannière + éditeur du profil).
                          Rapidité : jaquettes décodées UNE fois par Converters/ImageLoader (cache borné à 96 Mo, images
                          figées) à la taille réelle à l'écran (198 unités × échelle d'affichage de MainWindow, PerMonitorV2),
                          grises = pixels COPIÉS dans une image autonome (un FormatConvertedBitmap garde l'image couleur :
@@ -356,8 +358,10 @@ vit dans Core ; Platform ne fait que lire/écrire le système.
   « OptiGame-Setup » ; tag `v*` → brouillon de version GitHub, REFUSÉ si le tag ≠ `v<Version>` (le 2026-10-04, un tag v1.1.0
   posé sur le commit de la 1.0.0 avait publié en brouillon un installeur 1.0.0). Lancée à la demande et à chaque changement
   de l'installeur.
-- Publier une version : monter `<Version>`, mettre sur main, puis l'UTILISATEUR pousse le tag (`git tag vX.Y.Z origin/main`,
-  `git push origin vX.Y.Z` : la session cloud ne peut pas pousser de tags, erreur 403) et publie le brouillon créé par la CI.
+- Publier une version : monter `<Version>`, mettre sur main (accord de l'utilisateur pour chaque version), puis pousser le tag
+  (`git tag vX.Y.Z origin/main`, `git push origin vX.Y.Z`) : une session LOCALE y est autorisée par l'utilisateur depuis le
+  2026-10-05 ; la session cloud ne le peut pas (erreur 403), l'utilisateur le fait alors. L'utilisateur publie le brouillon
+  créé par la CI.
 - Non signé : Windows SmartScreen avertit au premier lancement de l'installeur (« Informations complémentaires »).
 
 ## Mises à jour automatiques

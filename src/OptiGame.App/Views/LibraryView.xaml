@@ -5,359 +5,180 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="clr-namespace:OptiGame.App.ViewModels"
              xmlns:views="clr-namespace:OptiGame.App.Views"
-             xmlns:conv="clr-namespace:OptiGame.App.Converters"
+             xmlns:controls="clr-namespace:OptiGame.App.Controls"
              mc:Ignorable="d"
              d:DataContext="{d:DesignInstance vm:LibraryViewModel}">
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
-        <conv:PathToImageConverter x:Key="PathToImage" />
 
-        <!-- Jaquette cliquable : image arrondie (ImageBrush), léger zoom et liseré d'accent au survol -->
-        <Style x:Key="CoverCard" TargetType="Button">
-            <Setter Property="Margin" Value="0,0,20,24" />
-            <Setter Property="FocusVisualStyle" Value="{StaticResource Focus.RingCard}" />
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="Button">
-                        <StackPanel Width="198" Background="Transparent">
-                            <Grid x:Name="Cover" Height="264" RenderTransformOrigin="0.5,0.5">
-                                <Grid.RenderTransform>
-                                    <ScaleTransform x:Name="Scale" ScaleX="1" ScaleY="1" />
-                                </Grid.RenderTransform>
-                                <!-- Remplaçant sans jaquette : dégradé + initiales -->
-                                <Border CornerRadius="{StaticResource Radius.Cover}" Background="{StaticResource Brush.CoverPlaceholder}">
-                                    <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" FontFamily="{StaticResource Font.Display}"
-                                               FontSize="44" FontWeight="SemiBold" Foreground="{StaticResource Brush.TextMuted}" Text="{Binding Initials}" />
-                                </Border>
-                                <Border CornerRadius="{StaticResource Radius.Cover}" Visibility="{Binding HasCover, Converter={StaticResource BoolToVisibility}}">
-                                    <Border.Background>
-                                        <ImageBrush Stretch="UniformToFill" ImageSource="{Binding CoverImage, IsAsync=True}" />
-                                    </Border.Background>
-                                </Border>
-                                <Border x:Name="Outline" CornerRadius="{StaticResource Radius.Cover}" BorderThickness="2" BorderBrush="Transparent" />
-                                <!-- Bouton « Jouer » au survol -->
-                                <Button x:Name="PlayButton" Width="48" Height="48" Margin="0,0,10,10" HorizontalAlignment="Right" VerticalAlignment="Bottom"
-                                        Visibility="Collapsed" ToolTip="Jouer" AutomationProperties.Name="{Binding Name, StringFormat='Jouer à {0}'}"
-                                        Command="{Binding DataContext.PlayCardCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                        CommandParameter="{Binding}">
-                                    <Button.Template>
-                                        <ControlTemplate TargetType="Button">
-                                            <Border x:Name="Round" CornerRadius="24" Background="{StaticResource Brush.Accent}">
-                                                <TextBlock Margin="3,0,0,0" HorizontalAlignment="Center" VerticalAlignment="Center" Style="{StaticResource Text.Icon}"
-                                                           FontSize="18" Foreground="{StaticResource Brush.OnAccent}" Text="&#xE768;" />
-                                            </Border>
-                                            <ControlTemplate.Triggers>
-                                                <Trigger Property="IsMouseOver" Value="True">
-                                                    <Setter TargetName="Round" Property="Background" Value="{StaticResource Brush.AccentHover}" />
-                                                </Trigger>
-                                            </ControlTemplate.Triggers>
-                                        </ControlTemplate>
-                                    </Button.Template>
-                                </Button>
-                                <!-- Coin bas gauche, au survol : retirer le jeu de « Mes jeux » (confirmation ; jamais pendant la partie) -->
-                                <Button x:Name="RemoveButton" Width="32" Height="32" Margin="8,0,0,18" HorizontalAlignment="Left" VerticalAlignment="Bottom"
-                                        Visibility="Collapsed" ToolTip="Retirer de Mes jeux"
-                                        AutomationProperties.Name="{Binding Name, StringFormat='Retirer {0} de Mes jeux'}"
-                                        Command="{Binding DataContext.RemoveCardCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                        CommandParameter="{Binding}">
-                                    <Button.Template>
-                                        <ControlTemplate TargetType="Button">
-                                            <Border x:Name="Round" CornerRadius="16" Background="{StaticResource Brush.CoverButton}" BorderThickness="1"
-                                                    BorderBrush="{StaticResource Brush.CoverButtonBorder}">
-                                                <TextBlock x:Name="Glyph" HorizontalAlignment="Center" VerticalAlignment="Center" Style="{StaticResource Text.Icon}"
-                                                           FontSize="14" Foreground="{StaticResource Brush.Text}" Text="&#xE74D;" />
-                                            </Border>
-                                            <ControlTemplate.Triggers>
-                                                <Trigger Property="IsMouseOver" Value="True">
-                                                    <Setter TargetName="Round" Property="Background" Value="{StaticResource Brush.CoverButtonHover}" />
-                                                    <Setter TargetName="Round" Property="BorderBrush" Value="{StaticResource Brush.Danger}" />
-                                                    <Setter TargetName="Glyph" Property="Foreground" Value="{StaticResource Brush.Danger}" />
-                                                </Trigger>
-                                            </ControlTemplate.Triggers>
-                                        </ControlTemplate>
-                                    </Button.Template>
-                                </Button>
-                                <!-- Coin haut droit : note du jeu sur ce PC (« ≈ » = estimation) -->
-                                <Border Margin="8" HorizontalAlignment="Right" VerticalAlignment="Top" Style="{StaticResource Badge}" Background="{StaticResource Brush.Scrim}"
-                                        Visibility="{Binding HasRating, Converter={StaticResource BoolToVisibility}}" ToolTip="{Binding RatingTooltip}"
-                                        AutomationProperties.Name="{Binding RatingTooltip}">
-                                    <TextBlock x:Name="RatingText" Text="{Binding RatingBadge}" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource Brush.Ok}" />
-                                </Border>
-                                <!-- Coin haut gauche : épingle du dock, puis pastilles -->
-                                <StackPanel Margin="8" HorizontalAlignment="Left" VerticalAlignment="Top" Orientation="Horizontal">
-                                    <!-- Épinglé : toujours visible (épingle pleine) ; sinon seulement au survol. Hidden et non
-                                         Collapsed : la place reste réservée, les pastilles ne bougent pas au survol. -->
-                                    <Button x:Name="PinButton" Width="32" Height="32" Visibility="Hidden"
-                                            Command="{Binding DataContext.TogglePinCardCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                            CommandParameter="{Binding}">
-                                        <Button.Template>
-                                            <ControlTemplate TargetType="Button">
-                                                <Border x:Name="Round" CornerRadius="16" Background="{StaticResource Brush.CoverButton}" BorderThickness="1"
-                                                        BorderBrush="{StaticResource Brush.CoverButtonBorder}">
-                                                    <TextBlock x:Name="Glyph" HorizontalAlignment="Center" VerticalAlignment="Center" Style="{StaticResource Text.Icon}"
-                                                               FontSize="14" Foreground="{StaticResource Brush.Text}" Text="&#xE718;" />
-                                                </Border>
-                                                <ControlTemplate.Triggers>
-                                                    <DataTrigger Binding="{Binding IsPinned}" Value="True">
-                                                        <Setter TargetName="Glyph" Property="Text" Value="&#xE841;" />
-                                                        <Setter TargetName="Glyph" Property="Foreground" Value="{StaticResource Brush.Accent}" />
-                                                    </DataTrigger>
-                                                    <Trigger Property="IsMouseOver" Value="True">
-                                                        <Setter TargetName="Round" Property="Background" Value="{StaticResource Brush.CoverButtonHover}" />
-                                                        <Setter TargetName="Round" Property="BorderBrush" Value="{StaticResource Brush.Accent}" />
-                                                    </Trigger>
-                                                </ControlTemplate.Triggers>
-                                            </ControlTemplate>
-                                        </Button.Template>
-                                        <Button.Style>
-                                            <Style TargetType="Button">
-                                                <Setter Property="ToolTip" Value="Épingler au dock" />
-                                                <Setter Property="AutomationProperties.Name" Value="{Binding Name, StringFormat='Épingler {0} au dock'}" />
-                                                <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding IsPinned}" Value="True">
-                                                        <Setter Property="ToolTip" Value="Retirer du dock" />
-                                                        <Setter Property="AutomationProperties.Name" Value="{Binding Name, StringFormat='Retirer {0} du dock'}" />
-                                                    </DataTrigger>
-                                                </Style.Triggers>
-                                            </Style>
-                                        </Button.Style>
-                                    </Button>
-                                    <StackPanel Margin="6,0,0,0">
-                                        <Border Style="{StaticResource Badge}" Background="{StaticResource Brush.Accent}"
-                                                Visibility="{Binding IsPlaying, Converter={StaticResource BoolToVisibility}}">
-                                            <TextBlock Text="En cours" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource Brush.OnAccent}" />
-                                        </Border>
-                                        <Border Style="{StaticResource Badge}" Background="{StaticResource Brush.Scrim}"
-                                                Visibility="{Binding Enabled, Converter={StaticResource InverseBoolToVisibility}}">
-                                            <TextBlock Text="Profil désactivé" FontSize="11" Foreground="{StaticResource Brush.TextSecondary}" />
-                                        </Border>
-                                        <Border Style="{StaticResource Badge}" Background="{StaticResource Brush.ScrimStrong}" ToolTip="Le fichier .exe du jeu a disparu : il a été désinstallé (ou déplacé)."
-                                                Visibility="{Binding IsUninstalled, Converter={StaticResource BoolToVisibility}}">
-                                            <TextBlock Text="Désinstallé" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource Brush.Warning}" />
-                                        </Border>
-                                        <Border Style="{StaticResource Badge}" Background="{StaticResource Brush.ScrimStrong}" ToolTip="Le disque du jeu n'est pas branché (disque externe, lecteur réseau)."
-                                                Visibility="{Binding IsDriveUnavailable, Converter={StaticResource BoolToVisibility}}">
-                                            <TextBlock Text="Disque absent" FontSize="11" Foreground="{StaticResource Brush.TextSecondary}" />
-                                        </Border>
-                                    </StackPanel>
-                                </StackPanel>
-                            </Grid>
-                            <TextBlock Margin="2,10,2,0" Style="{StaticResource Text.Body}" FontWeight="SemiBold" Text="{Binding Name}"
-                                       TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" ToolTip="{Binding Name}" />
-                            <StackPanel Margin="2,3,2,0" Orientation="Horizontal">
-                                <TextBlock Style="{StaticResource Text.Icon}" FontSize="11" Foreground="{StaticResource Brush.TextMuted}" Text="&#xE823;" />
-                                <TextBlock Margin="5,0,0,0" Style="{StaticResource Text.Caption}" Text="{Binding PlaytimeText}" TextTrimming="CharacterEllipsis" />
-                            </StackPanel>
-                        </StackPanel>
-                        <ControlTemplate.Triggers>
-                            <DataTrigger Binding="{Binding IsPinned}" Value="True">
-                                <Setter TargetName="PinButton" Property="Visibility" Value="Visible" />
-                            </DataTrigger>
-                            <DataTrigger Binding="{Binding IsUninstalled}" Value="True">
-                                <Setter TargetName="Cover" Property="Opacity" Value="0.5" />
-                            </DataTrigger>
-                            <DataTrigger Binding="{Binding IsDriveUnavailable}" Value="True">
-                                <Setter TargetName="Cover" Property="Opacity" Value="0.5" />
-                            </DataTrigger>
-                            <DataTrigger Binding="{Binding RatingLevel}" Value="Fair">
-                                <Setter TargetName="RatingText" Property="Foreground" Value="{StaticResource Brush.Warning}" />
-                            </DataTrigger>
-                            <DataTrigger Binding="{Binding RatingLevel}" Value="Poor">
-                                <Setter TargetName="RatingText" Property="Foreground" Value="{StaticResource Brush.Danger}" />
-                            </DataTrigger>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Outline" Property="BorderBrush" Value="{StaticResource Brush.Accent}" />
-                                <Setter TargetName="PlayButton" Property="Visibility" Value="Visible" />
-                                <Setter TargetName="PinButton" Property="Visibility" Value="Visible" />
-                                <Setter TargetName="RemoveButton" Property="Visibility" Value="Visible" />
-                                <Trigger.EnterActions>
-                                    <BeginStoryboard>
-                                        <Storyboard>
-                                            <DoubleAnimation Storyboard.TargetName="Scale" Storyboard.TargetProperty="ScaleX" To="1.03" Duration="0:0:0.12" />
-                                            <DoubleAnimation Storyboard.TargetName="Scale" Storyboard.TargetProperty="ScaleY" To="1.03" Duration="0:0:0.12" />
-                                        </Storyboard>
-                                    </BeginStoryboard>
-                                </Trigger.EnterActions>
-                                <Trigger.ExitActions>
-                                    <BeginStoryboard>
-                                        <Storyboard>
-                                            <DoubleAnimation Storyboard.TargetName="Scale" Storyboard.TargetProperty="ScaleX" To="1" Duration="0:0:0.12" />
-                                            <DoubleAnimation Storyboard.TargetName="Scale" Storyboard.TargetProperty="ScaleY" To="1" Duration="0:0:0.12" />
-                                        </Storyboard>
-                                    </BeginStoryboard>
-                                </Trigger.ExitActions>
-                            </Trigger>
-                            <Trigger Property="IsKeyboardFocused" Value="True">
-                                <Setter TargetName="Outline" Property="BorderBrush" Value="{StaticResource Brush.Accent}" />
-                            </Trigger>
-                            <!-- Après le survol, qu'il remplace : pas de corbeille sur le jeu en cours -->
-                            <DataTrigger Binding="{Binding IsPlaying}" Value="True">
-                                <Setter TargetName="RemoveButton" Property="Visibility" Value="Collapsed" />
-                            </DataTrigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
+        <!-- Pastille de note : chiffre coloré par niveau (le chiffre porte le sens, la couleur le double) -->
+        <Style x:Key="RatingText" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource Brush.Ok}" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding RatingLevel}" Value="Fair">
+                    <Setter Property="Foreground" Value="{StaticResource Brush.Warning}" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding RatingLevel}" Value="Poor">
+                    <Setter Property="Foreground" Value="{StaticResource Brush.Danger}" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- Ligne discrète (recherche des jaquettes) : repliée quand elle est vide, annoncée quand elle change -->
+        <Style x:Key="QuietStatus" TargetType="TextBlock" BasedOn="{StaticResource Text.Caption}">
+            <Setter Property="AutomationProperties.LiveSetting" Value="Polite" />
+            <Style.Triggers>
+                <Trigger Property="Text" Value="">
+                    <Setter Property="Visibility" Value="Collapsed" />
+                </Trigger>
+            </Style.Triggers>
         </Style>
     </UserControl.Resources>
 
     <Grid>
         <!-- Grille -->
         <DockPanel Margin="32,24,32,0" Visibility="{Binding IsGridVisible, Converter={StaticResource BoolToVisibility}}">
-            <DockPanel DockPanel.Dock="Top" Margin="0,0,0,20">
-                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
-                    <ComboBox Width="170" Margin="0,0,10,0" VerticalAlignment="Center" ItemsSource="{Binding SortOptions}"
-                              SelectedItem="{Binding SelectedSort}" AutomationProperties.Name="Trier les jeux" ToolTip="Trier" />
-                    <Grid Width="220" Margin="0,0,10,0">
-                        <TextBox x:Name="SearchBox" VerticalContentAlignment="Center" Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
-                                 AutomationProperties.Name="Filtrer les jeux" />
-                        <!-- Texte indicatif tant que le champ est vide -->
-                        <TextBlock Margin="12,0,0,0" VerticalAlignment="Center" IsHitTestVisible="False" Style="{StaticResource Text.Caption}" FontSize="14"
-                                   Text="Filtrer les jeux…">
-                            <TextBlock.Visibility>
-                                <MultiBinding Converter="{StaticResource EmptyAndUnfocusedToVisibility}">
-                                    <Binding ElementName="SearchBox" Path="Text" />
-                                    <Binding ElementName="SearchBox" Path="IsKeyboardFocused" />
-                                </MultiBinding>
-                            </TextBlock.Visibility>
-                        </TextBlock>
-                    </Grid>
-                    <Button Margin="0,0,8,0" Style="{StaticResource Button.Secondary}" Command="{Binding RefreshLibraryCommand}"
-                            ToolTip="Revérifie vos jeux sur le disque (jeux désinstallés) et relit vos bibliothèques Steam, Epic Games et GOG.">
+            <!-- En-tête : titre et nombre de jeux ; à droite, actualiser et le menu d'ajout (une seule action principale) -->
+            <DockPanel DockPanel.Dock="Top" Margin="0,0,0,16">
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Top">
+                    <controls:IconButton Margin="0,0,8,0" Style="{StaticResource Button.Icon}" Glyph="&#xE72C;" IsLabelVisible="False"
+                                         Label="Actualiser (F5)" Command="{Binding RefreshLibraryCommand}"
+                                         AutomationProperties.HelpText="Revérifie vos jeux sur le disque et relit vos bibliothèques Steam, Epic Games et GOG." />
+                    <Button x:Name="AddGamesButton" Style="{StaticResource Button.Primary}" Click="OnAddGamesClick"
+                            AutomationProperties.Name="Ajouter des jeux" AutomationProperties.HelpText="Ouvre un menu : détecter les jeux installés ou choisir un fichier .exe.">
                         <StackPanel Orientation="Horizontal">
-                            <TextBlock Style="{StaticResource Text.Icon}" FontSize="14" Text="&#xE72C;" />
-                            <TextBlock Margin="8,0,0,0">
-                                <TextBlock.Style>
-                                    <Style TargetType="TextBlock">
-                                        <Setter Property="Text" Value="Actualiser" />
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding IsRefreshing}" Value="True">
-                                                <Setter Property="Text" Value="Actualisation…" />
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </TextBlock.Style>
-                            </TextBlock>
+                            <TextBlock Style="{StaticResource Text.Icon}" Text="&#xE710;" />
+                            <TextBlock Margin="8,0,10,0" VerticalAlignment="Center" Text="Ajouter des jeux" />
+                            <TextBlock Style="{StaticResource Text.Icon}" FontSize="{StaticResource IconSize.Small}" Text="&#xE70D;" />
                         </StackPanel>
-                    </Button>
-                    <Button Margin="0,0,8,0" Style="{StaticResource Button.Secondary}" Command="{Binding ScanGamesCommand}">
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock Style="{StaticResource Text.Icon}" FontSize="14" Text="&#xE721;" />
-                            <TextBlock Margin="8,0,0,0">
-                                <TextBlock.Style>
-                                    <Style TargetType="TextBlock">
-                                        <Setter Property="Text" Value="Rechercher des jeux installés" />
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding IsScanning}" Value="True">
-                                                <Setter Property="Text" Value="Recherche en cours…" />
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </TextBlock.Style>
-                            </TextBlock>
-                        </StackPanel>
-                    </Button>
-                    <Button Style="{StaticResource Button.Primary}" Command="{Binding AddGameCommand}">
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock Style="{StaticResource Text.Icon}" FontSize="14" Text="&#xE710;" />
-                            <TextBlock Margin="8,0,0,0" Text="Ajouter un jeu" />
-                        </StackPanel>
+                        <Button.ContextMenu>
+                            <ContextMenu>
+                                <MenuItem Header="Détecter les jeux installés…" Command="{Binding ScanGamesCommand}">
+                                    <MenuItem.Icon>
+                                        <TextBlock Style="{StaticResource Text.Icon}" Text="&#xE721;" />
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <MenuItem Header="Choisir un fichier .exe…" Command="{Binding AddGameCommand}">
+                                    <MenuItem.Icon>
+                                        <TextBlock Style="{StaticResource Text.Icon}" Text="&#xE8E5;" />
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                            </ContextMenu>
+                        </Button.ContextMenu>
                     </Button>
                 </StackPanel>
                 <StackPanel>
                     <TextBlock Style="{StaticResource Text.PageTitle}" Text="Mes jeux" />
-                    <TextBlock Margin="0,4,0,0" Style="{StaticResource Text.Secondary}" Text="{Binding Subtitle}" />
+                    <TextBlock Margin="0,4,0,0" Style="{StaticResource Text.Secondary}" Text="{Binding Subtitle}" AutomationProperties.LiveSetting="Polite" />
                 </StackPanel>
             </DockPanel>
 
-            <!-- Filtres : genre et type (catégories du magasin Steam), jeux possédés non installés -->
-            <DockPanel DockPanel.Dock="Top" Margin="0,-8,0,16">
-                <CheckBox DockPanel.Dock="Right" VerticalAlignment="Center" IsChecked="{Binding ShowUninstalled}" Content="{Binding UninstalledToggleText}"
+            <!-- Recherche, tri et filtres : passent à la ligne quand la fenêtre est étroite -->
+            <WrapPanel DockPanel.Dock="Top" Margin="0,0,0,4">
+                <Grid Width="260" Margin="0,0,12,8">
+                    <TextBox x:Name="SearchBox" Padding="32,0,8,0" VerticalContentAlignment="Center"
+                             Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Rechercher dans Mes jeux"
+                             AutomationProperties.HelpText="Ctrl+F" />
+                    <TextBlock Margin="11,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Center" IsHitTestVisible="False"
+                               Style="{StaticResource Text.Icon}" Foreground="{StaticResource Brush.TextSecondary}" Text="&#xE721;" />
+                    <!-- Texte indicatif tant que le champ est vide -->
+                    <TextBlock Margin="33,0,0,0" VerticalAlignment="Center" IsHitTestVisible="False" Style="{StaticResource Text.Secondary}"
+                               Foreground="{StaticResource Brush.TextMuted}" Text="Rechercher dans Mes jeux">
+                        <TextBlock.Visibility>
+                            <MultiBinding Converter="{StaticResource EmptyAndUnfocusedToVisibility}">
+                                <Binding ElementName="SearchBox" Path="Text" />
+                                <Binding ElementName="SearchBox" Path="IsKeyboardFocused" />
+                            </MultiBinding>
+                        </TextBlock.Visibility>
+                    </TextBlock>
+                </Grid>
+                <StackPanel Margin="0,0,12,8" Orientation="Horizontal">
+                    <Label Margin="0,0,8,0" Padding="0" VerticalAlignment="Center" Foreground="{StaticResource Brush.TextSecondary}"
+                           Content="_Trier par" Target="{Binding ElementName=SortBox}" />
+                    <ComboBox x:Name="SortBox" Width="170" ItemsSource="{Binding SortOptions}" SelectedItem="{Binding SelectedSort}"
+                              AutomationProperties.Name="Trier par" />
+                </StackPanel>
+                <ComboBox Width="170" Margin="0,0,8,8" ItemsSource="{Binding StoreOptions}" SelectedItem="{Binding SelectedStore}" DisplayMemberPath="Label"
+                          AutomationProperties.Name="Filtrer par magasin" />
+                <ComboBox Width="170" Margin="0,0,8,8" ItemsSource="{Binding GenreOptions}" SelectedItem="{Binding SelectedGenre}" DisplayMemberPath="Label"
+                          AutomationProperties.Name="Filtrer par genre" AutomationProperties.HelpText="Genres du magasin Steam ; les jeux hors Steam n'en ont pas." />
+                <ComboBox Width="170" Margin="0,0,8,8" ItemsSource="{Binding KindOptions}" SelectedItem="{Binding SelectedKind}" DisplayMemberPath="Label"
+                          AutomationProperties.Name="Filtrer par type" />
+                <Button Margin="0,0,12,8" Style="{StaticResource Button.Ghost}" Content="Effacer les filtres" Command="{Binding ClearFiltersCommand}"
+                        Visibility="{Binding IsFiltered, Converter={StaticResource BoolToVisibility}}" />
+                <CheckBox Margin="0,0,0,8" VerticalAlignment="Center" IsChecked="{Binding ShowUninstalled}" Content="{Binding UninstalledToggleText}"
                           Visibility="{Binding HasUninstalled, Converter={StaticResource BoolToVisibility}}"
-                          ToolTip="Afficher, grisés, les jeux de vos bibliothèques qui ne sont pas installés (Steam, Epic Games, GOG), lus dans les fichiers des lanceurs ; jaquettes Epic et GOG téléchargées une fois." />
-                <StackPanel Orientation="Horizontal">
-                    <ComboBox Width="190" Margin="0,0,10,0" ItemsSource="{Binding StoreOptions}" SelectedItem="{Binding SelectedStore}" DisplayMemberPath="Label"
-                              AutomationProperties.Name="Filtrer par plateforme" ToolTip="Magasin du jeu (Steam, Epic Games, GOG)" />
-                    <ComboBox Width="190" Margin="0,0,10,0" ItemsSource="{Binding GenreOptions}" SelectedItem="{Binding SelectedGenre}" DisplayMemberPath="Label"
-                              AutomationProperties.Name="Filtrer par genre" ToolTip="Genre (d'après le magasin Steam ; les jeux hors Steam n'en ont pas)" />
-                    <ComboBox Width="190" Margin="0,0,10,0" ItemsSource="{Binding KindOptions}" SelectedItem="{Binding SelectedKind}" DisplayMemberPath="Label"
-                              AutomationProperties.Name="Filtrer par type" ToolTip="Type de jeu (d'après le magasin Steam)" />
-                    <Button Style="{StaticResource Button.Ghost}" Content="Effacer les filtres" Command="{Binding ClearFiltersCommand}"
-                            Visibility="{Binding IsFiltered, Converter={StaticResource BoolToVisibility}}" />
-                </StackPanel>
-            </DockPanel>
+                          AutomationProperties.HelpText="Jeux de vos bibliothèques Steam, Epic Games et GOG qui ne sont pas installés, lus dans les fichiers des lanceurs. Jaquettes Epic et GOG téléchargées une fois." />
+            </WrapPanel>
 
-            <TextBlock DockPanel.Dock="Top" Margin="0,0,0,12" Style="{StaticResource Text.Status}" Text="{Binding LaunchStatus}" />
-            <TextBlock DockPanel.Dock="Top" Margin="0,0,0,12" Text="{Binding ArtworkStatus}">
-                <TextBlock.Style>
-                    <Style TargetType="TextBlock" BasedOn="{StaticResource Text.Status}">
-                        <Setter Property="FontWeight" Value="Normal" />
-                        <Setter Property="Foreground" Value="{StaticResource Brush.TextMuted}" />
-                    </Style>
-                </TextBlock.Style>
-            </TextBlock>
+            <!-- Messages : emplacement fixe, au-dessus de la grille -->
+            <controls:InfoBar DockPanel.Dock="Top" Margin="0,0,0,12" Severity="{Binding LaunchStatusSeverity}" Message="{Binding LaunchStatus}"
+                              IsClosable="True" CloseCommand="{Binding DismissLaunchStatusCommand}"
+                              Visibility="{Binding HasLaunchStatus, Converter={StaticResource BoolToVisibility}}" />
+            <TextBlock DockPanel.Dock="Top" Margin="0,0,0,8" Style="{StaticResource QuietStatus}" Text="{Binding ArtworkStatus}" />
 
             <!-- Jeux désinstallés : signalés, retirés seulement après confirmation -->
-            <Border DockPanel.Dock="Top" Margin="0,0,0,12" Style="{StaticResource Banner}" Background="{StaticResource Brush.WarningSoft}"
-                    BorderBrush="{StaticResource Brush.Warning}" Visibility="{Binding HasUninstalledProfiles, Converter={StaticResource BoolToVisibility}}">
-                <DockPanel>
-                    <Button DockPanel.Dock="Right" Margin="12,0,0,0" VerticalAlignment="Center" Style="{StaticResource Button.Secondary}"
-                            Content="Retirer de Mes jeux…" Command="{Binding RemoveUninstalledProfilesCommand}" />
-                    <TextBlock DockPanel.Dock="Left" Margin="0,0,12,0" VerticalAlignment="Center" Style="{StaticResource Text.Icon}"
-                               FontSize="18" Foreground="{StaticResource Brush.Warning}" Text="&#xE7BA;" />
-                    <StackPanel VerticalAlignment="Center">
-                        <TextBlock Style="{StaticResource Text.Body}" FontWeight="SemiBold" TextWrapping="Wrap" Text="{Binding UninstalledProfilesText}" />
-                        <TextBlock Margin="0,2,0,0" Style="{StaticResource Text.Caption}" TextWrapping="Wrap"
-                                   Text="Rien n'est retiré automatiquement : un jeu réinstallé au même endroit retrouve son profil." />
-                    </StackPanel>
-                </DockPanel>
-            </Border>
+            <controls:InfoBar DockPanel.Dock="Top" Margin="0,0,0,12" Severity="Warning" Title="{Binding UninstalledProfilesText}"
+                              Message="Rien n'est retiré automatiquement : un jeu réinstallé au même endroit retrouve ses réglages."
+                              Visibility="{Binding HasUninstalledProfiles, Converter={StaticResource BoolToVisibility}}">
+                <Button Style="{StaticResource Button.Secondary}" Content="Retirer de Mes jeux…" Command="{Binding RemoveUninstalledProfilesCommand}" />
+            </controls:InfoBar>
 
-            <!-- Nouveaux jeux Steam installés : rien n'est ajouté sans clic -->
-            <ItemsControl DockPanel.Dock="Top" ItemsSource="{Binding NewGames.Proposals}"
-                          Visibility="{Binding NewGames.HasProposals, Converter={StaticResource BoolToVisibility}}">
-                <ItemsControl.ItemTemplate>
-                    <DataTemplate>
-                        <Border Margin="0,0,0,12" Style="{StaticResource Banner}" Background="{StaticResource Brush.AccentSoft}" BorderBrush="{StaticResource Brush.Accent}">
-                            <DockPanel>
-                                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
-                                    <Button Margin="0,0,8,0" Style="{StaticResource Button.Primary}" Content="Ajouter à Mes jeux"
-                                            Command="{Binding DataContext.NewGames.AddCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                            CommandParameter="{Binding}" AutomationProperties.Name="{Binding Name, StringFormat='Ajouter {0} à Mes jeux'}" />
-                                    <Button Style="{StaticResource Button.Ghost}" Content="Ignorer"
-                                            Command="{Binding DataContext.NewGames.IgnoreCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                            CommandParameter="{Binding}" AutomationProperties.Name="{Binding Name, StringFormat='Ignorer {0}'}" />
-                                </StackPanel>
-                                <TextBlock DockPanel.Dock="Left" Margin="0,0,12,0" VerticalAlignment="Center" Style="{StaticResource Text.Icon}"
-                                           FontSize="18" Foreground="{StaticResource Brush.Accent}" Text="&#xE7FC;" />
-                                <StackPanel VerticalAlignment="Center">
-                                    <TextBlock Style="{StaticResource Text.Body}" FontWeight="SemiBold">
-                                        <Run Text="Nouveau jeu Steam installé : " /><Run Text="{Binding Name, Mode=OneWay}" />
-                                    </TextBlock>
-                                    <TextBlock Margin="0,2,0,0" Style="{StaticResource Text.Caption}" Text="{Binding Detail}" />
-                                </StackPanel>
-                            </DockPanel>
-                        </Border>
-                    </DataTemplate>
-                </ItemsControl.ItemTemplate>
-            </ItemsControl>
-
-            <Grid>
-                <!-- Bibliothèque vide -->
-                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="460"
-                            Visibility="{Binding HasGames, Converter={StaticResource InverseBoolToVisibility}}">
-                    <TextBlock HorizontalAlignment="Center" Style="{StaticResource Text.Icon}" FontSize="48" Foreground="{StaticResource Brush.TextMuted}" Text="&#xE7FC;" />
-                    <TextBlock Margin="0,16,0,0" HorizontalAlignment="Center" Style="{StaticResource Text.SectionTitle}" Text="Aucun jeu pour l'instant" />
-                    <TextBlock Margin="0,8,0,0" TextAlignment="Center" Style="{StaticResource Text.Secondary}"
-                               Text="Lancez une recherche des jeux installés (Steam et vos dossiers de jeux), ou ajoutez un jeu en choisissant son fichier .exe." />
+            <!-- Nouveaux jeux Steam installés : un seul bandeau ; rien n'est ajouté sans clic -->
+            <controls:InfoBar DockPanel.Dock="Top" Margin="0,0,0,12" Severity="Info" DataContext="{Binding NewGames}"
+                              Title="{Binding BannerTitle}" Message="{Binding BannerMessage}"
+                              Visibility="{Binding HasProposals, Converter={StaticResource BoolToVisibility}}">
+                <StackPanel Orientation="Horizontal">
+                    <Button Margin="0,0,8,0" Style="{StaticResource Button.Secondary}" Content="{Binding AddAllLabel}" Command="{Binding AddAllCommand}" />
+                    <Button Style="{StaticResource Button.Ghost}" Content="Ne plus proposer" Command="{Binding IgnoreAllCommand}"
+                            AutomationProperties.HelpText="Ces jeux resteront ajoutables avec « Détecter les jeux installés… »." />
                 </StackPanel>
+            </controls:InfoBar>
 
-                <!-- Le ScrollViewer rogne ce qui dépasse de ses bords : la marge négative + la marge intérieure
-                     laissent 12 px au zoom de survol (1,03) sur la première rangée et la première colonne,
-                     sans déplacer les jaquettes. -->
-                <ScrollViewer x:Name="GridScroll" VerticalScrollBarVisibility="Auto" Margin="-12,-8,0,0" ScrollChanged="OnGridScrollChanged">
-                    <StackPanel>
-                    <ItemsControl ItemsSource="{Binding GamesView}" Margin="12,12,0,0">
+            <!-- Le ScrollViewer rogne ce qui dépasse de ses bords : la marge négative + la marge intérieure
+                 laissent 12 px au zoom de survol (1,03) sur la première rangée et la première colonne,
+                 sans déplacer les jaquettes. -->
+            <ScrollViewer x:Name="GridScroll" VerticalScrollBarVisibility="Auto" Margin="-12,-8,0,0" ScrollChanged="OnGridScrollChanged">
+                <StackPanel Margin="12,12,0,0">
+                    <!-- Aucun jeu : les deux façons d'en ajouter -->
+                    <StackPanel Margin="0,24,0,32" HorizontalAlignment="Center" MaxWidth="480"
+                                Visibility="{Binding HasGames, Converter={StaticResource InverseBoolToVisibility}}">
+                        <TextBlock HorizontalAlignment="Center" Style="{StaticResource Text.Icon}" FontSize="{StaticResource FontSize.Hero}"
+                                   Foreground="{StaticResource Brush.TextMuted}" Text="&#xE7FC;" />
+                        <TextBlock Margin="0,16,0,0" HorizontalAlignment="Center" Style="{StaticResource Text.SectionTitle}" Text="Aucun jeu pour l'instant" />
+                        <TextBlock Margin="0,8,0,0" TextAlignment="Center" Style="{StaticResource Text.Secondary}"
+                                   Text="OptiGame trouve les jeux installés avec Steam, Epic Games, GOG ou dans vos dossiers de jeux. Un autre jeu s'ajoute par son fichier .exe." />
+                        <StackPanel Margin="0,16,0,0" HorizontalAlignment="Center" Orientation="Horizontal">
+                            <Button Margin="0,0,8,0" Style="{StaticResource Button.Primary}" Content="Détecter les jeux installés…" Command="{Binding ScanGamesCommand}" />
+                            <Button Style="{StaticResource Button.Secondary}" Content="Choisir un fichier .exe…" Command="{Binding AddGameCommand}" />
+                        </StackPanel>
+                    </StackPanel>
+
+                    <!-- Aucun résultat pour la recherche ou les filtres -->
+                    <StackPanel Margin="0,24,0,32" HorizontalAlignment="Center" MaxWidth="480"
+                                Visibility="{Binding HasNoResults, Converter={StaticResource BoolToVisibility}}">
+                        <TextBlock HorizontalAlignment="Center" Style="{StaticResource Text.Icon}" FontSize="{StaticResource FontSize.Hero}"
+                                   Foreground="{StaticResource Brush.TextMuted}" Text="&#xE721;" />
+                        <TextBlock Margin="0,16,0,0" HorizontalAlignment="Center" TextAlignment="Center" Style="{StaticResource Text.SectionTitle}"
+                                   Text="{Binding NoResultsText}" AutomationProperties.LiveSetting="Polite" />
+                        <TextBlock Margin="0,8,0,0" TextAlignment="Center" Style="{StaticResource Text.Secondary}"
+                                   Text="Vérifiez l'orthographe, ou effacez la recherche et les filtres." />
+                        <Button Margin="0,16,0,0" HorizontalAlignment="Center" Style="{StaticResource Button.Secondary}"
+                                Content="Effacer la recherche et les filtres" Command="{Binding ClearFiltersCommand}" />
+                    </StackPanel>
+
+                    <!-- Jeux de « Mes jeux » -->
+                    <TextBlock Margin="2,0,0,12" Style="{StaticResource Text.SectionTitle}" Text="{Binding InstalledHeader}">
+                        <TextBlock.Visibility>
+                            <MultiBinding Converter="{StaticResource AllTrueToVisibility}">
+                                <Binding Path="IsUninstalledSectionVisible" />
+                                <Binding Path="HasVisibleGames" />
+                            </MultiBinding>
+                        </TextBlock.Visibility>
+                    </TextBlock>
+                    <!-- Flèches pour aller d'une jaquette à l'autre ; Tab sort de la grille ; Entrée ouvre la fiche ; touche Menu : actions -->
+                    <ItemsControl ItemsSource="{Binding GamesView}" Focusable="False" KeyboardNavigation.TabNavigation="Once"
+                                  AutomationProperties.Name="Mes jeux">
                         <ItemsControl.ItemsPanel>
                             <ItemsPanelTemplate>
                                 <WrapPanel />
@@ -365,20 +186,98 @@
                         </ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>
                             <DataTemplate DataType="{x:Type vm:GameCardViewModel}">
-                                <Button Style="{StaticResource CoverCard}" AutomationProperties.Name="{Binding Name}"
-                                        Command="{Binding DataContext.OpenCardCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                        CommandParameter="{Binding}"
-                                        Tag="{Binding DataContext, RelativeSource={RelativeSource AncestorType=UserControl}}">
+                                <controls:CoverTile Image="{Binding CoverImage, IsAsync=True}" Initials="{Binding Initials}" Title="{Binding Name}"
+                                                    Caption="{Binding PlaytimeText}" CaptionGlyph="&#xE823;" IsDimmed="{Binding IsDimmed}"
+                                                    AutomationProperties.Name="{Binding AccessibleName}"
+                                                    AutomationProperties.HelpText="Entrée : ouvrir la fiche. Touche Menu : jouer, épingler, retirer."
+                                                    Command="{Binding DataContext.OpenCardCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                    CommandParameter="{Binding}"
+                                                    Tag="{Binding DataContext, RelativeSource={RelativeSource AncestorType=UserControl}}">
+                                    <controls:CoverTile.TopLeft>
+                                        <StackPanel Orientation="Horizontal">
+                                            <!-- Épinglé au dock (indicateur) -->
+                                            <Border Margin="0,0,6,0" Width="28" Height="28" CornerRadius="{StaticResource Radius.Round}" Background="{StaticResource Brush.Scrim}"
+                                                    Visibility="{Binding IsPinned, Converter={StaticResource BoolToVisibility}}" ToolTip="Épinglé au dock">
+                                                <TextBlock HorizontalAlignment="Center" Style="{StaticResource Text.Icon}" FontSize="{StaticResource IconSize.Small}"
+                                                           Foreground="{StaticResource Brush.Text}" Text="&#xE841;" />
+                                            </Border>
+                                            <StackPanel>
+                                                <Border Margin="{StaticResource Margin.StackXS}" Style="{StaticResource Badge.Overlay}"
+                                                        Visibility="{Binding IsPlaying, Converter={StaticResource BoolToVisibility}}">
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <Ellipse Width="6" Height="6" Margin="0,0,5,0" VerticalAlignment="Center" Fill="{StaticResource Brush.Ok}" />
+                                                        <TextBlock Text="Partie en cours" />
+                                                    </StackPanel>
+                                                </Border>
+                                                <Border Margin="{StaticResource Margin.StackXS}" Style="{StaticResource Badge.Overlay}"
+                                                        Visibility="{Binding Enabled, Converter={StaticResource InverseBoolToVisibility}}">
+                                                    <TextBlock Foreground="{StaticResource Brush.TextSecondary}" Text="Optimisation désactivée" />
+                                                </Border>
+                                                <Border Margin="{StaticResource Margin.StackXS}" Style="{StaticResource Badge.Overlay}"
+                                                        Visibility="{Binding IsUninstalled, Converter={StaticResource BoolToVisibility}}">
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <TextBlock Margin="0,0,4,0" Style="{StaticResource Text.Icon}" FontSize="{StaticResource IconSize.Small}"
+                                                                   Foreground="{StaticResource Brush.Warning}" Text="&#xE7BA;" />
+                                                        <TextBlock Text="Désinstallé" />
+                                                    </StackPanel>
+                                                </Border>
+                                                <Border Margin="{StaticResource Margin.StackXS}" Style="{StaticResource Badge.Overlay}"
+                                                        Visibility="{Binding IsDriveUnavailable, Converter={StaticResource BoolToVisibility}}">
+                                                    <TextBlock Foreground="{StaticResource Brush.TextSecondary}" Text="Disque absent" />
+                                                </Border>
+                                            </StackPanel>
+                                        </StackPanel>
+                                    </controls:CoverTile.TopLeft>
+                                    <controls:CoverTile.TopRight>
+                                        <Border Style="{StaticResource Badge.Overlay}" ToolTip="{Binding RatingTooltip}"
+                                                Visibility="{Binding HasRating, Converter={StaticResource BoolToVisibility}}">
+                                            <TextBlock Style="{StaticResource RatingText}" Text="{Binding RatingBadge}" />
+                                        </Border>
+                                    </controls:CoverTile.TopRight>
+                                    <!-- Raccourcis souris (au clavier : menu contextuel) -->
+                                    <controls:CoverTile.Actions>
+                                        <DockPanel>
+                                            <Button DockPanel.Dock="Right" Style="{StaticResource Button.CoverPlay}" ToolTip="Jouer"
+                                                    Command="{Binding DataContext.PlayCardCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                    CommandParameter="{Binding}" />
+                                            <StackPanel VerticalAlignment="Bottom" Orientation="Horizontal">
+                                                <Button Margin="0,0,6,0" Style="{StaticResource Button.CoverRound}" Content="&#xE718;"
+                                                        Command="{Binding DataContext.TogglePinCardCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                        CommandParameter="{Binding}"
+                                                        Visibility="{Binding DataContext.IsDockEnabled, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BoolToVisibility}}">
+                                                    <Button.ToolTip>
+                                                        <TextBlock>
+                                                            <TextBlock.Style>
+                                                                <Style TargetType="TextBlock">
+                                                                    <Setter Property="Text" Value="Épingler au dock" />
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding IsPinned}" Value="True">
+                                                                            <Setter Property="Text" Value="Retirer du dock" />
+                                                                        </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </TextBlock.Style>
+                                                        </TextBlock>
+                                                    </Button.ToolTip>
+                                                </Button>
+                                                <Button Style="{StaticResource Button.CoverRound}" Content="&#xE74D;" ToolTip="Retirer de Mes jeux…"
+                                                        Command="{Binding DataContext.RemoveCardCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                        CommandParameter="{Binding}"
+                                                        Visibility="{Binding IsPlaying, Converter={StaticResource InverseBoolToVisibility}}" />
+                                            </StackPanel>
+                                        </DockPanel>
+                                    </controls:CoverTile.Actions>
                                     <!-- Le menu contextuel n'hérite pas de l'arbre visuel : la bibliothèque passe par Tag. -->
-                                    <Button.ContextMenu>
+                                    <controls:CoverTile.ContextMenu>
                                         <ContextMenu DataContext="{Binding PlacementTarget.Tag, RelativeSource={RelativeSource Self}}">
-                                            <MenuItem Header="Jouer" Command="{Binding PlayCardCommand}"
+                                            <MenuItem Header="Jouer" FontWeight="SemiBold" Command="{Binding PlayCardCommand}"
                                                       CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
-                                            <MenuItem Header="Ouvrir la page du jeu" Command="{Binding OpenCardCommand}"
+                                            <MenuItem Header="Ouvrir la fiche" Command="{Binding OpenCardCommand}"
                                                       CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
-                                            <Separator />
+                                            <Separator Visibility="{Binding IsDockEnabled, Converter={StaticResource BoolToVisibility}}" />
                                             <MenuItem Command="{Binding TogglePinCardCommand}"
-                                                      CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}">
+                                                      CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                      Visibility="{Binding IsDockEnabled, Converter={StaticResource BoolToVisibility}}">
                                                 <MenuItem.Style>
                                                     <Style TargetType="MenuItem" BasedOn="{StaticResource {x:Type MenuItem}}">
                                                         <Setter Property="Header" Value="Épingler au dock" />
@@ -394,16 +293,25 @@
                                             <MenuItem Header="Retirer de Mes jeux…" Command="{Binding RemoveCardCommand}"
                                                       CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
                                         </ContextMenu>
-                                    </Button.ContextMenu>
-                                </Button>
+                                    </controls:CoverTile.ContextMenu>
+                                </controls:CoverTile>
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
 
-                    <!-- Jeux Steam possédés, non installés : jaquettes grisées (cache du client Steam), installer ou voir la page -->
-                    <StackPanel Margin="12,8,0,0" Visibility="{Binding IsUninstalledSectionVisible, Converter={StaticResource BoolToVisibility}}">
-                        <TextBlock Margin="2,0,0,14" Style="{StaticResource Text.Caption}" FontWeight="SemiBold" Text="{Binding UninstalledHeader}" />
-                        <ItemsControl ItemsSource="{Binding VisibleUninstalled}">
+                    <!-- Jeux possédés, non installés (Steam, Epic Games, GOG) : jaquettes atténuées ; Entrée ou clic = installer -->
+                    <StackPanel Margin="0,8,0,0">
+                        <StackPanel.Visibility>
+                            <MultiBinding Converter="{StaticResource AllTrueToVisibility}">
+                                <Binding Path="IsUninstalledSectionVisible" />
+                                <Binding Path="HasVisibleUninstalled" />
+                            </MultiBinding>
+                        </StackPanel.Visibility>
+                        <TextBlock Margin="2,0,0,2" Style="{StaticResource Text.SectionTitle}" Text="{Binding UninstalledHeader}" />
+                        <TextBlock Margin="2,0,0,12" Style="{StaticResource Text.Caption}"
+                                   Text="Possédés dans vos bibliothèques Steam, Epic Games et GOG. Clic ou Entrée : ouvrir leur installation dans le lanceur." />
+                        <ItemsControl ItemsSource="{Binding VisibleUninstalled}" Focusable="False" KeyboardNavigation.TabNavigation="Once"
+                                      AutomationProperties.Name="Jeux non installés">
                             <ItemsControl.ItemsPanel>
                                 <ItemsPanelTemplate>
                                     <WrapPanel />
@@ -411,51 +319,43 @@
                             </ItemsControl.ItemsPanel>
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate DataType="{x:Type vm:OwnedGameCardViewModel}">
-                                    <Grid x:Name="Root" Width="198" Margin="0,0,20,24" Background="Transparent" ToolTip="{Binding Name}">
-                                        <StackPanel>
-                                            <Grid Height="264">
-                                                <Border CornerRadius="{StaticResource Radius.Cover}" Background="{StaticResource Brush.CoverPlaceholderMuted}">
-                                                    <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" FontFamily="{StaticResource Font.Display}"
-                                                               FontSize="44" FontWeight="SemiBold" Foreground="{StaticResource Brush.TextMuted}" Text="{Binding Initials}"
-                                                               Visibility="{Binding HasCover, Converter={StaticResource InverseBoolToVisibility}}" />
-                                                </Border>
-                                                <Border x:Name="Cover" CornerRadius="{StaticResource Radius.Cover}" Opacity="0.45" Visibility="{Binding HasCover, Converter={StaticResource BoolToVisibility}}">
-                                                    <Border.Background>
-                                                        <ImageBrush Stretch="UniformToFill" ImageSource="{Binding CoverImage, IsAsync=True}" />
-                                                    </Border.Background>
-                                                </Border>
-                                                <Border x:Name="Outline" CornerRadius="{StaticResource Radius.Cover}" BorderThickness="1" BorderBrush="{StaticResource Brush.Border}" />
-                                                <Border Margin="8" HorizontalAlignment="Left" VerticalAlignment="Top" Style="{StaticResource Badge}" Background="{StaticResource Brush.Scrim}">
-                                                    <TextBlock Text="{Binding StoreLabel, StringFormat='Non installé · {0}'}" FontSize="11" Foreground="{StaticResource Brush.TextSecondary}" />
-                                                </Border>
-                                                <!-- Au survol : installer (fenêtre de Steam) ou ouvrir la page Steam -->
-                                                <StackPanel x:Name="Actions" Margin="12" VerticalAlignment="Bottom" Visibility="Collapsed">
-                                                    <Button Style="{StaticResource Button.Primary}" HorizontalAlignment="Stretch"
-                                                            Command="{Binding DataContext.InstallOwnedCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                            CommandParameter="{Binding}" AutomationProperties.Name="{Binding Name, StringFormat='Installer {0}'}">
-                                                        <StackPanel Orientation="Horizontal">
-                                                            <TextBlock Style="{StaticResource Text.Icon}" FontSize="13" Text="&#xE896;" />
-                                                            <TextBlock Margin="8,0,0,0" Text="{Binding InstallLabel}" />
-                                                        </StackPanel>
-                                                    </Button>
-                                                    <Button Margin="0,6,0,0" Style="{StaticResource Button.Secondary}" HorizontalAlignment="Stretch" Content="Page Steam"
-                                                            Visibility="{Binding HasStorePage, Converter={StaticResource BoolToVisibility}}"
-                                                            Command="{Binding DataContext.OpenOwnedStorePageCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                            CommandParameter="{Binding}" AutomationProperties.Name="{Binding Name, StringFormat='Page Steam de {0}'}" />
-                                                </StackPanel>
-                                            </Grid>
-                                            <TextBlock Margin="2,10,2,0" Style="{StaticResource Text.Body}" FontWeight="SemiBold" Foreground="{StaticResource Brush.TextSecondary}"
-                                                       Text="{Binding Name}" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" />
-                                            <TextBlock Margin="2,3,2,0" Style="{StaticResource Text.Caption}" Text="{Binding GenresText}" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" />
-                                        </StackPanel>
-                                    </Grid>
-                                    <DataTemplate.Triggers>
-                                        <Trigger SourceName="Root" Property="IsMouseOver" Value="True">
-                                            <Setter TargetName="Actions" Property="Visibility" Value="Visible" />
-                                            <Setter TargetName="Cover" Property="Opacity" Value="0.7" />
-                                            <Setter TargetName="Outline" Property="BorderBrush" Value="{StaticResource Brush.Accent}" />
-                                        </Trigger>
-                                    </DataTemplate.Triggers>
+                                    <controls:CoverTile Image="{Binding CoverImage, IsAsync=True}" Initials="{Binding Initials}" Title="{Binding Name}"
+                                                        Caption="{Binding CaptionText}" IsDimmed="True" AutomationProperties.Name="{Binding AccessibleName}"
+                                                        Command="{Binding DataContext.InstallOwnedCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                        CommandParameter="{Binding}"
+                                                        Tag="{Binding DataContext, RelativeSource={RelativeSource AncestorType=UserControl}}">
+                                        <controls:CoverTile.TopLeft>
+                                            <Border Style="{StaticResource Badge.Overlay}">
+                                                <TextBlock Foreground="{StaticResource Brush.TextSecondary}" Text="Non installé" />
+                                            </Border>
+                                        </controls:CoverTile.TopLeft>
+                                        <controls:CoverTile.Actions>
+                                            <StackPanel>
+                                                <Button Style="{StaticResource Button.Primary}" HorizontalAlignment="Stretch" Focusable="False"
+                                                        Command="{Binding DataContext.InstallOwnedCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                        CommandParameter="{Binding}">
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <TextBlock Style="{StaticResource Text.Icon}" FontSize="{StaticResource IconSize.Small}" Text="&#xE896;" />
+                                                        <TextBlock Margin="8,0,0,0" Text="{Binding InstallLabel}" />
+                                                    </StackPanel>
+                                                </Button>
+                                                <Button Margin="0,6,0,0" Style="{StaticResource Button.Secondary}" HorizontalAlignment="Stretch" Focusable="False"
+                                                        Content="Voir sur Steam" Visibility="{Binding HasStorePage, Converter={StaticResource BoolToVisibility}}"
+                                                        Command="{Binding DataContext.OpenOwnedStorePageCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                        CommandParameter="{Binding}" />
+                                            </StackPanel>
+                                        </controls:CoverTile.Actions>
+                                        <controls:CoverTile.ContextMenu>
+                                            <ContextMenu DataContext="{Binding PlacementTarget.Tag, RelativeSource={RelativeSource Self}}">
+                                                <MenuItem FontWeight="SemiBold" Header="{Binding PlacementTarget.DataContext.InstallLabel, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                          Command="{Binding InstallOwnedCommand}"
+                                                          CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                                                <MenuItem Header="Voir sur Steam" Command="{Binding OpenOwnedStorePageCommand}"
+                                                          CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                          Visibility="{Binding PlacementTarget.DataContext.HasStorePage, RelativeSource={RelativeSource AncestorType=ContextMenu}, Converter={StaticResource BoolToVisibility}}" />
+                                            </ContextMenu>
+                                        </controls:CoverTile.ContextMenu>
+                                    </controls:CoverTile>
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
@@ -464,12 +364,11 @@
                                 Content="{Binding ShowMoreUninstalledText}" Command="{Binding ShowMoreUninstalledCommand}"
                                 Visibility="{Binding HasMoreUninstalled, Converter={StaticResource BoolToVisibility}}" />
                     </StackPanel>
-                    </StackPanel>
-                </ScrollViewer>
-            </Grid>
+                </StackPanel>
+            </ScrollViewer>
         </DockPanel>
 
-        <!-- Page du jeu. Modèle implicite (par type) et non ContentTemplate : avec un ContentTemplate explicite,
+        <!-- Fiche du jeu. Modèle implicite (par type) et non ContentTemplate : avec un ContentTemplate explicite,
              WPF instancie la page même quand OpenGame est null, en lui donnant le ViewModel de la bibliothèque. -->
         <ContentControl Content="{Binding OpenGame}" Focusable="False"
                         Visibility="{Binding IsGridVisible, Converter={StaticResource InverseBoolToVisibility}}">

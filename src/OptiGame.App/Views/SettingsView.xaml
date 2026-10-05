@@ -61,7 +61,7 @@
                     <TextBlock Style="{StaticResource Text.SectionTitle}" Text="Dock" />
                     <CheckBox Margin="0,14,0,0" IsChecked="{Binding DockEnabled}" Content="Afficher le dock des jeux épinglés" />
                     <TextBlock Margin="28,6,0,0" Style="{StaticResource Text.Caption}"
-                               Text="Épinglez des jeux depuis « Mes jeux » (page du jeu, ou clic droit sur une jaquette). Clic pour jouer, clic droit pour les options, glisser pour réordonner. Le dock se masque pendant vos parties et quand une application est en plein écran." />
+                               Text="Épinglez des jeux depuis « Mes jeux » (fiche du jeu, ou clic droit sur une jaquette). Clic pour jouer, clic droit pour les options, glisser pour réordonner. Le dock se masque pendant vos parties et quand une application est en plein écran." />
                     <WrapPanel Margin="28,6,0,0">
                         <StackPanel Margin="0,0,16,0">
                             <TextBlock Style="{StaticResource Text.Label}" Text="Position" />
@@ -170,7 +170,7 @@
                 <StackPanel>
                     <TextBlock Style="{StaticResource Text.SectionTitle}" Text="Dossiers de jeux" />
                     <TextBlock Margin="0,6,0,0" Style="{StaticResource Text.Secondary}"
-                               Text="Utilisés par « Rechercher des jeux installés » (Mes jeux), en plus des bibliothèques Steam détectées automatiquement. Chaque sous-dossier est considéré comme un jeu." />
+                               Text="Utilisés par « Détecter les jeux installés… » (Mes jeux), en plus des bibliothèques Steam détectées automatiquement. Chaque sous-dossier est considéré comme un jeu." />
                     <ItemsControl Margin="0,10,0,0" ItemsSource="{Binding GameFolders}">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>

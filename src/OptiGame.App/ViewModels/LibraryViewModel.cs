@@ -70,6 +70,8 @@ public sealed partial class LibraryViewModel : ObservableObject
         GameTimeGate gate, [FromKeyedServices(Platform.JournalKeys.Fixes)] Core.State.ChangeJournal fixes, UnsavedChangesGuard unsaved)
     {
         unsaved.Register(ConfirmDiscard);
+        // Dock activé ou non (Paramètres) : épingles des jaquettes affichées seulement s'il l'est.
+        settings.Changed += (_, _) => OnUi(() => OnPropertyChanged(nameof(IsDockEnabled)));
         _gate = gate;
         _fixes = fixes;
         _steamReader = steamReader;
@@ -261,7 +263,7 @@ public sealed partial class LibraryViewModel : ObservableObject
 
     public IReadOnlyList<StoreOption> StoreOptions { get; } =
     [
-        new(null, "Toutes les plateformes"),
+        new(null, "Tous les magasins"),
         .. new[] { GameSource.Steam, GameSource.Epic, GameSource.Gog }
             .Select(s => new StoreOption(s, Core.Library.StoreCatalogs.Label(s))),
     ];
@@ -297,6 +299,38 @@ public sealed partial class LibraryViewModel : ObservableObject
         GamesView.Refresh();
         ShowUninstalledList(keepShownCount);
         OnPropertyChanged(nameof(IsFiltered));
+        NotifyCounts();
+    }
+
+    /// <summary>Jeux de « Mes jeux » retenus par la recherche et les filtres.</summary>
+    public int VisibleGamesCount => GamesView.Cast<object>().Count();
+
+    public bool HasVisibleGames => VisibleGamesCount > 0;
+
+    /// <summary>Jeux non installés retenus par la recherche et les filtres (la section se masque s'il n'y en a aucun).</summary>
+    public bool HasVisibleUninstalled => _uninstalledFiltered.Count > 0;
+
+    /// <summary>Recherche ou filtres actifs et rien à montrer (ni jeu installé, ni non installé affiché).</summary>
+    public bool HasNoResults => IsFiltered && (Games.Count > 0 || IsUninstalledSectionVisible) && VisibleGamesCount == 0 &&
+                                (!IsUninstalledSectionVisible || _uninstalledFiltered.Count == 0);
+
+    public string NoResultsText => string.IsNullOrWhiteSpace(SearchText)
+        ? "Aucun jeu ne correspond à ces filtres"
+        : $"Aucun jeu ne correspond à « {SearchText.Trim()} »";
+
+    /// <summary>En-tête des jeux installés, quand la section des non installés est affichée aussi.</summary>
+    public string InstalledHeader => $"Installés · {VisibleGamesCount}";
+
+    private void NotifyCounts()
+    {
+        OnPropertyChanged(nameof(VisibleGamesCount));
+        OnPropertyChanged(nameof(HasVisibleGames));
+        OnPropertyChanged(nameof(HasVisibleUninstalled));
+        OnPropertyChanged(nameof(HasNoResults));
+        OnPropertyChanged(nameof(NoResultsText));
+        OnPropertyChanged(nameof(Subtitle));
+        OnPropertyChanged(nameof(InstalledHeader));
+        OnPropertyChanged(nameof(UninstalledHeader));
     }
 
     public bool IsFiltered => SelectedGenre?.Name is not null || SelectedKind?.Kind is not null || SelectedStore?.Store is not null ||
@@ -324,6 +358,7 @@ public sealed partial class LibraryViewModel : ObservableObject
             _settings.Update(s => s.LibraryShowUninstalled = value);
             OnPropertyChanged();
             OnPropertyChanged(nameof(IsUninstalledSectionVisible));
+            NotifyCounts();
             if (value) _ = FetchStoreCoversAsync();
             else TrimUninstalledToFirstPage(); // section masquée : ses jaquettes déjà chargées sont libérées
         }
@@ -338,9 +373,10 @@ public sealed partial class LibraryViewModel : ObservableObject
 
     public bool IsUninstalledSectionVisible => ShowUninstalled && HasUninstalled;
 
-    public string UninstalledToggleText => $"Jeux non installés ({UninstalledGames.Count})";
+    public string UninstalledToggleText => $"Afficher les jeux non installés ({UninstalledGames.Count})";
 
-    public string UninstalledHeader => $"DANS VOS BIBLIOTHÈQUES, NON INSTALLÉS ({_uninstalledFiltered.Count})";
+    /// <summary>En-tête de la section : jeux possédés dans les bibliothèques des magasins, non installés.</summary>
+    public string UninstalledHeader => $"Non installés · {_uninstalledFiltered.Count}";
 
     private const int UninstalledPageSize = 48;
 
@@ -525,7 +561,7 @@ public sealed partial class LibraryViewModel : ObservableObject
         OnPropertyChanged(nameof(HasUninstalled));
         OnPropertyChanged(nameof(IsUninstalledSectionVisible));
         OnPropertyChanged(nameof(UninstalledToggleText));
-        OnPropertyChanged(nameof(Subtitle));
+        NotifyCounts();
         ApplyFilters(keepShownCount: true);
         if (ShowUninstalled) _ = FetchStoreCoversAsync();
     }
@@ -577,9 +613,9 @@ public sealed partial class LibraryViewModel : ObservableObject
     {
         try
         {
-            LaunchStatus = game.Store == GameSource.Steam
+            ShowLaunchStatus(game.Store == GameSource.Steam
                 ? InstallSteam(game)
-                : _launcher.InstallStoreGame(game.Store, game.Key, game.Name);
+                : _launcher.InstallStoreGame(game.Store, game.Key, game.Name));
         }
         catch (Exception ex) when (ex is LaunchException or System.ComponentModel.Win32Exception or InvalidOperationException or ArgumentException)
         {
@@ -618,12 +654,13 @@ public sealed partial class LibraryViewModel : ObservableObject
     [ObservableProperty]
     private string _artworkStatus = "";
 
-    public string Subtitle => (Games.Count switch
-    {
-        0 => "Aucun jeu pour l'instant.",
-        1 => "1 jeu",
-        var n => $"{n} jeux",
-    });
+    /// <summary>« 42 jeux », ou « 3 sur 42 jeux » quand une recherche ou un filtre est actif.</summary>
+    public string Subtitle => Games.Count == 0
+        ? "Aucun jeu pour l'instant"
+        : IsFiltered ? $"{VisibleGamesCount} sur {FrenchText.Count(Games.Count, "jeu", "jeux")}" : FrenchText.Count(Games.Count, "jeu", "jeux");
+
+    /// <summary>Le dock est affiché : l'épingle des jaquettes n'a de sens qu'alors.</summary>
+    public bool IsDockEnabled => _settings.Get().DockEnabled;
 
     private IReadOnlyList<PowerScheme> Schemes
     {
@@ -654,9 +691,18 @@ public sealed partial class LibraryViewModel : ObservableObject
     [RelayCommand]
     private void RemoveCard(GameCardViewModel card) => RemoveGame(card.Id);
 
-    /// <summary>Message temporaire (lancement en cours, erreur…), affiché en haut de la grille et de la page du jeu.</summary>
+    /// <summary>Message temporaire (lancement en cours, bibliothèque actualisée…), en InfoBar en haut de la grille et de la fiche.</summary>
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasLaunchStatus))]
     private string _launchStatus = "";
+
+    public bool HasLaunchStatus => LaunchStatus.Length > 0;
+
+    [ObservableProperty]
+    private Controls.Severity _launchStatusSeverity = Controls.Severity.Info;
+
+    [RelayCommand]
+    private void DismissLaunchStatus() => LaunchStatus = "";
 
     /// <summary>Lance le jeu sans droits administrateur ; le profil s'appliquera par la détection habituelle.</summary>
     public async Task PlayAsync(Guid id)
@@ -701,8 +747,9 @@ public sealed partial class LibraryViewModel : ObservableObject
         }
     }
 
-    private async void ShowLaunchStatus(string text)
+    private async void ShowLaunchStatus(string text, Controls.Severity severity = Controls.Severity.Info)
     {
+        LaunchStatusSeverity = severity;
         LaunchStatus = text;
         await Task.Delay(TimeSpan.FromSeconds(12));
         if (LaunchStatus == text) LaunchStatus = "";
@@ -781,7 +828,7 @@ public sealed partial class LibraryViewModel : ObservableObject
                 (games.Count == 0
                     ? "Aucun jeu installé n'a été trouvé dans Steam, Epic Games, GOG ni dans vos dossiers de jeux."
                     : games.Count == 1 ? "Le jeu détecté est déjà dans Mes jeux." : $"Les {games.Count} jeux détectés sont déjà dans Mes jeux.") +
-                "\n\nUn jeu installé ailleurs s'ajoute avec « Ajouter un jeu » (son fichier .exe), ou en ajoutant son dossier dans Paramètres.");
+                "\n\nUn jeu installé ailleurs s'ajoute avec « Ajouter des jeux », puis « Choisir un fichier .exe… », ou en ajoutant son dossier dans Paramètres.");
             return;
         }
         var selection = _dialogs.PickInstalledGames(games, HasProfile, folders);
@@ -1113,7 +1160,7 @@ public sealed partial class LibraryViewModel : ObservableObject
                 0 => "Bibliothèque actualisée : tous vos jeux sont installés.",
                 1 => "Bibliothèque actualisée : 1 jeu n'est plus installé.",
                 _ => $"Bibliothèque actualisée : {missing} jeux ne sont plus installés.",
-            });
+            }, missing == 0 ? Controls.Severity.Success : Controls.Severity.Warning);
         }
         finally
         {
@@ -1165,7 +1212,7 @@ public sealed partial class LibraryViewModel : ObservableObject
             }
         }
         OnPropertyChanged(nameof(HasGames));
-        OnPropertyChanged(nameof(Subtitle));
+        NotifyCounts();
         _ = LoadSteamPlaytimeAsync(); // profils ajoutés, retirés ou modifiés : leur jeu Steam a pu changer
         _ = LoadRatingsAsync();
         _libraryLoad = Logged(LoadLibrariesAsync(), "Lecture des bibliothèques des magasins"); // genres et types des cartes recréées, jeux non installés
@@ -1210,6 +1257,7 @@ public sealed partial class GameCardViewModel(GameProfile profile, bool isPlayin
     public bool Enabled { get; } = profile.Enabled;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(AccessibleName))]
     private bool _isPinned = profile.DockOrder.HasValue;
 
     /// <summary>Initiales affichées tant qu'il n'y a pas de jaquette.</summary>
@@ -1230,19 +1278,39 @@ public sealed partial class GameCardViewModel(GameProfile profile, bool isPlayin
         Converters.ImageLoader.Load(CoverPath, Converters.ImageLoader.PixelsFor(Converters.ImageLoader.GridCoverWidth));
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(AccessibleName))]
     private bool _isPlaying = isPlaying;
 
     /// <summary>Exe du profil toujours sur le disque ? Vérifié à chaque rechargement de la grille et par « Actualiser ».</summary>
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(IsUninstalled), nameof(IsDriveUnavailable))]
+    [NotifyPropertyChangedFor(nameof(IsUninstalled), nameof(IsDriveUnavailable), nameof(IsDimmed), nameof(AccessibleName))]
     private InstallState _installState = InstallState.Installed;
 
     public bool IsUninstalled => InstallState == InstallState.Uninstalled;
 
+    /// <summary>Jaquette atténuée : jeu désinstallé ou disque absent.</summary>
+    public bool IsDimmed => InstallState != InstallState.Installed;
+
+    /// <summary>
+    /// Nom lu par les lecteurs d'écran : le jeu et tout ce que les pastilles disent (rien n'est porté par la seule image ou
+    /// une info-bulle) ; « Entrée » ouvre la fiche, la touche Menu donne les actions.
+    /// </summary>
+    public string AccessibleName => string.Join(", ", new[]
+    {
+        Name,
+        IsPlaying ? "partie en cours" : null,
+        IsUninstalled ? "désinstallé" : null,
+        IsDriveUnavailable ? "disque absent" : null,
+        Enabled ? null : "optimisation désactivée",
+        Rating is null ? null : $"note {Rating.Score} sur 100 ({(Rating.Source == Core.Rating.RatingSource.Measured ? "mesurée" : "estimée")})",
+        IsPinned ? "épinglé au dock" : null,
+        PlaytimeText,
+    }.OfType<string>());
+
     public bool IsDriveUnavailable => InstallState == InstallState.DriveUnavailable;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(PlaytimeText), nameof(LastPlayedTicks), nameof(TotalTicks))]
+    [NotifyPropertyChangedFor(nameof(PlaytimeText), nameof(LastPlayedTicks), nameof(TotalTicks), nameof(AccessibleName))]
     private PlaytimeSummary _playtime = PlaytimeSummary.None;
 
     /// <summary>Sous le nom de la jaquette : « 12 h 05 » (temps Steam compris) ou « Jamais joué ».</summary>
@@ -1253,7 +1321,7 @@ public sealed partial class GameCardViewModel(GameProfile profile, bool isPlayin
 
     /// <summary>Note du jeu (mesurée ou estimée) ; null = pas de pastille.</summary>
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HasRating), nameof(RatingBadge), nameof(RatingLevel), nameof(RatingTooltip))]
+    [NotifyPropertyChangedFor(nameof(HasRating), nameof(RatingBadge), nameof(RatingLevel), nameof(RatingTooltip), nameof(AccessibleName))]
     private Core.Rating.GameRating? _rating;
 
     public bool HasRating => Rating is not null;
@@ -1340,7 +1408,13 @@ public sealed partial class OwnedGameCardViewModel : ObservableObject
     public string StoreLabel => Core.Library.StoreCatalogs.Label(Store);
 
     /// <summary>Steam et Epic ouvrent leur installation ; GOG ouvre la page du jeu dans GOG Galaxy, d'où l'installer.</summary>
-    public string InstallLabel => "Installer";
+    public string InstallLabel => Store == GameSource.Gog ? "Ouvrir dans GOG Galaxy" : "Installer";
+
+    /// <summary>« Non installé · Steam » sous la jaquette, avec les genres s'il y en a.</summary>
+    public string CaptionText => GenresText.Length > 0 ? $"{StoreLabel} · {GenresText}" : StoreLabel;
+
+    public string AccessibleName => $"{Name}, non installé, {StoreLabel}" + (GenresText.Length > 0 ? $", {GenresText}" : "") +
+                                    $". Entrée : {InstallLabel.ToLowerInvariant()}";
 
     public bool HasStorePage => Store == GameSource.Steam;
 }

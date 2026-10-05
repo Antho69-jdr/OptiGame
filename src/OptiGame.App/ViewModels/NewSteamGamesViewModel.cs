@@ -42,6 +42,39 @@ public sealed partial class NewSteamGamesViewModel : ObservableObject
 
     public bool HasProposals => Proposals.Count > 0;
 
+    /// <summary>Bandeau groupé de « Mes jeux » : un seul, quel que soit le nombre de jeux proposés.</summary>
+    public string BannerTitle => Proposals.Count == 1
+        ? $"Nouveau jeu Steam installé : {Proposals[0].Name}"
+        : $"{Proposals.Count} nouveaux jeux Steam installés";
+
+    public string BannerMessage => Proposals.Count == 1
+        ? Proposals[0].Detail
+        : string.Join(", ", Proposals.Select(p => p.Name)) + ". Leur fichier .exe se modifie ensuite dans leur fiche.";
+
+    public string AddAllLabel => Proposals.Count == 1 ? "Ajouter à Mes jeux" : $"Ajouter les {Proposals.Count} jeux";
+
+    /// <summary>Ajoute tous les jeux proposés (rien n'est ajouté sans ce clic).</summary>
+    [RelayCommand]
+    private void AddAll()
+    {
+        foreach (var proposal in Proposals.ToList()) Add(proposal);
+    }
+
+    /// <summary>« Ne plus proposer » : ces jeux restent ajoutables par « Détecter les jeux installés… ».</summary>
+    [RelayCommand]
+    private void IgnoreAll()
+    {
+        foreach (var proposal in Proposals.ToList()) Ignore(proposal);
+    }
+
+    private void NotifyProposals()
+    {
+        OnPropertyChanged(nameof(HasProposals));
+        OnPropertyChanged(nameof(BannerTitle));
+        OnPropertyChanged(nameof(BannerMessage));
+        OnPropertyChanged(nameof(AddAllLabel));
+    }
+
     /// <summary>Un jeu proposé vient d'être ajouté (la bibliothèque recharge ses jaquettes).</summary>
     public event EventHandler<Guid>? GameAdded;
 
@@ -89,7 +122,7 @@ public sealed partial class NewSteamGamesViewModel : ObservableObject
                 _notifications.Show("Nouveau jeu installé", $"{game.Name} : ajoutez-le à « Mes jeux » depuis OptiGame.");
             }
         }
-        OnPropertyChanged(nameof(HasProposals));
+        NotifyProposals();
     }
 
     [RelayCommand]
@@ -98,7 +131,7 @@ public sealed partial class NewSteamGamesViewModel : ObservableObject
         if (proposal?.Game is not { SteamAppId: { } appId } game) return;
         if (game.Candidates.FirstOrDefault() is not { } exe)
         {
-            _dialogs.ShowError($"{game.Name} n'a pas été ajouté", $"Aucun fichier .exe n'a été trouvé dans {game.Folder}. Ajoutez le jeu avec « Ajouter un jeu » en choisissant son fichier .exe.");
+            _dialogs.ShowError($"{game.Name} n'a pas été ajouté", $"Aucun fichier .exe n'a été trouvé dans {game.Folder}. Ajoutez-le avec « Ajouter des jeux » puis « Choisir un fichier .exe… ».");
             return;
         }
 
@@ -134,7 +167,7 @@ public sealed partial class NewSteamGamesViewModel : ObservableObject
             if (!s.SteamKnownAppIds.Contains(appId)) s.SteamKnownAppIds.Add(appId);
         });
         Proposals.Remove(proposal);
-        OnPropertyChanged(nameof(HasProposals));
+        NotifyProposals();
     }
 }
 
@@ -145,6 +178,6 @@ public sealed class NewGameProposalViewModel(InstalledGame game)
     public string Name => LibraryViewModel.CleanName(Game.Name);
 
     public string Detail => Game.Candidates.FirstOrDefault() is { } exe
-        ? $"Exécutable : {Path.GetFileName(exe.Path)} (modifiable ensuite dans la page du jeu)"
+        ? $"Fichier .exe : {Path.GetFileName(exe.Path)} (modifiable ensuite dans sa fiche)"
         : "Aucun exécutable trouvé pour l'instant.";
 }
