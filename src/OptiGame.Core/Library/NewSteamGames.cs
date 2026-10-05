@@ -22,4 +22,12 @@ public static class NewSteamGames
             .Select(i => i.AppId)
             .Distinct()
             .ToList();
+
+    /// <summary>
+    /// Jeux « déjà vus » à écarter des propositions. null (premier passage) : rien n'est proposé, l'existant est mémorisé.
+    /// Mes jeux vide : AUCUN n'est écarté, les jeux déjà installés sont proposés — sinon un nouvel utilisateur ne voyait que
+    /// ses jeux Steam non installés (grisés), jamais les installés (signalé le 2026-10-05).
+    /// </summary>
+    public static IReadOnlyCollection<string>? KnownToSkip(IReadOnlyCollection<string>? known, int profileCount) =>
+        profileCount == 0 ? [] : known;
 }

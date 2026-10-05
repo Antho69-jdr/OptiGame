@@ -43,9 +43,16 @@ public sealed partial class NewSteamGamesViewModel : ObservableObject
     public bool HasProposals => Proposals.Count > 0;
 
     /// <summary>Bandeau groupé de « Mes jeux » : un seul, quel que soit le nombre de jeux proposés.</summary>
-    public string BannerTitle => Proposals.Count == 1
-        ? $"Nouveau jeu Steam installé : {Proposals[0].Name}"
-        : $"{Proposals.Count} nouveaux jeux Steam installés";
+    /// <summary>Mes jeux vide : ce sont les jeux Steam déjà installés qui sont proposés, pas seulement les nouveaux.</summary>
+    private bool _offersInstalledGames;
+
+    public string BannerTitle => (Proposals.Count, _offersInstalledGames) switch
+    {
+        (1, false) => $"Nouveau jeu Steam installé : {Proposals[0].Name}",
+        (1, true) => $"Jeu Steam installé, pas encore dans Mes jeux : {Proposals[0].Name}",
+        (var n, false) => $"{n} nouveaux jeux Steam installés",
+        (var n, true) => $"{n} jeux Steam installés, pas encore dans Mes jeux",
+    };
 
     public string BannerMessage => Proposals.Count == 1
         ? Proposals[0].Detail
@@ -82,6 +89,7 @@ public sealed partial class NewSteamGamesViewModel : ObservableObject
     {
         var profiles = _store.GetAll();
         var known = _settings.Get().SteamKnownAppIds;
+        var skip = NewSteamGames.KnownToSkip(known, profiles.Count);
         IReadOnlyList<GameLibraryScanner.SteamApp> apps;
         IReadOnlyList<InstalledGame> games;
         try
@@ -89,9 +97,9 @@ public sealed partial class NewSteamGamesViewModel : ObservableObject
             (apps, games) = await Task.Run(() =>
             {
                 var apps = GameLibraryScanner.SteamApps();
-                if (known is null) return (apps, (IReadOnlyList<InstalledGame>)[]);
+                if (skip is null) return (apps, (IReadOnlyList<InstalledGame>)[]);
                 var profileAppIds = profiles.Select(p => GameLibraryScanner.SteamAppIdFor(p, apps)).OfType<string>().ToHashSet();
-                var ids = NewSteamGames.ToPropose(apps.Select(a => new SteamInstall(a.AppId, a.StateFlags)), known, profileAppIds);
+                var ids = NewSteamGames.ToPropose(apps.Select(a => new SteamInstall(a.AppId, a.StateFlags)), skip, profileAppIds);
                 return (apps, (IReadOnlyList<InstalledGame>)ids.Select(id => GameLibraryScanner.ToInstalledGame(apps.First(a => a.AppId == id))).ToList());
             });
         }
@@ -103,20 +111,23 @@ public sealed partial class NewSteamGamesViewModel : ObservableObject
 
         if (known is null)
         {
-            // Premier passage : les jeux déjà installés sont mémorisés, pas proposés.
+            // Premier passage : les jeux déjà installés sont mémorisés ; proposés quand même si Mes jeux est vide.
             _settings.Update(s => s.SteamKnownAppIds = apps.Select(a => a.AppId).Distinct().ToList());
             _log.Info($"Nouveaux jeux Steam : {apps.Count} jeu(x) déjà installé(s) mémorisé(s), seuls les prochains seront proposés.");
-            return;
+            if (profiles.Count > 0) return;
         }
 
+        var offersInstalledGames = profiles.Count == 0;
         // Rien de nouveau : on ne touche pas au bandeau (chaque changement fait relire les bibliothèques à « Mes jeux »).
-        if (Proposals.Select(p => p.Game.SteamAppId).SequenceEqual(games.Select(g => g.SteamAppId))) return;
+        if (offersInstalledGames == _offersInstalledGames && Proposals.Select(p => p.Game.SteamAppId).SequenceEqual(games.Select(g => g.SteamAppId))) return;
+        _offersInstalledGames = offersInstalledGames;
 
         Proposals.Clear();
         foreach (var game in games)
         {
             Proposals.Add(new NewGameProposalViewModel(game));
-            if (game.SteamAppId is { } id && _notified.Add(id))
+            // Jeux déjà installés proposés à un Mes jeux vide : le bandeau suffit (pas une notification par jeu).
+            if (!_offersInstalledGames && game.SteamAppId is { } id && _notified.Add(id))
             {
                 _log.Info($"Nouveau jeu Steam installé : {game.Name} ({id}), proposé dans « Mes jeux ».");
                 _notifications.Show("Nouveau jeu installé", $"{game.Name} : ajoutez-le à « Mes jeux » depuis OptiGame.");
