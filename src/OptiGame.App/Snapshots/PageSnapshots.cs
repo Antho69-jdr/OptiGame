@@ -159,6 +159,33 @@ internal static class PageSnapshots
 
             if (Wanted("9-dock")) await SnapshotDock(services, output, Log);
 
+            // « Changer le fond… » avec les vrais services (IGDB interrogé si les identifiants sont copiés) : rien n'est choisi.
+            if (Wanted("7z-fond") && PickGame(services.GetRequiredService<ProfileStore>(), ValueAfter(args, GameArgument)) is { } backgroundGame)
+            {
+                var igdb = services.GetRequiredService<Platform.Artwork.IgdbClient>();
+                var artwork = services.GetRequiredService<Platform.Artwork.ArtworkCache>();
+                var steamHero = uint.TryParse(backgroundGame.SteamAppId, out var appId) ? Platform.Library.SteamOwnedLibrary.HeroPath(appId) : null;
+                Func<Task<IReadOnlyList<Core.Artwork.IgdbBackground>>>? loadIgdb = igdb.IsConfigured
+                    ? async () =>
+                    {
+                        var id = backgroundGame.IgdbGameId ?? Core.Artwork.Igdb.BestMatch(backgroundGame.Name, await igdb.SearchAsync(backgroundGame.Name))?.Id;
+                        var found = id is { } igdbId ? await igdb.BackgroundsAsync(igdbId) : [];
+                        Log($"Fonds IGDB de {backgroundGame.Name} (jeu {id}) : {found.Count}");
+                        return found;
+                    }
+                    : null;
+                var dialog = new Dialogs.BackgroundPickerDialog(backgroundGame.Name, steamHero, loadIgdb,
+                    imageId => artwork.GetAsync(imageId, Core.Artwork.Igdb.BackgroundThumbSize), hasCustomBackground: true)
+                {
+                    WindowStartupLocation = WindowStartupLocation.Manual, Left = -32000, Top = -32000, ShowActivated = false,
+                };
+                dialog.Show();
+                await Settle(8000);
+                Save(dialog, Path.Combine(output, "7z-fond.png"));
+                Log("7z-fond.png");
+                dialog.Close();
+            }
+
             // Galerie : mise en page hors fenêtre (sa hauteur dépasse l'écran), sur le fond de la fenêtre.
             if (!Wanted("0-galerie"))
             {

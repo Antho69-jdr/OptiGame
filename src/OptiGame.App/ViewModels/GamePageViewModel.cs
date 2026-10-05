@@ -24,6 +24,7 @@ public sealed partial class GamePageViewModel(
     IReadOnlyList<CaptureItemViewModel> captures,
     Action back,
     Func<Task> changeCover,
+    Func<Task> changeBackground,
     Action measure,
     Func<Task> play,
     Action togglePin,
@@ -281,6 +282,9 @@ public sealed partial class GamePageViewModel(
 
     [RelayCommand]
     private Task ChangeCoverAsync() => changeCover();
+
+    [RelayCommand]
+    private Task ChangeBackgroundAsync() => changeBackground();
 
     [RelayCommand]
     private void Measure() => measure();

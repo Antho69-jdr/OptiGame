@@ -54,6 +54,7 @@ public sealed class ProfileStore
                 copy.IgdbGameId = stored.IgdbGameId;
                 copy.CoverImageId = stored.CoverImageId;
                 copy.HeroImageId = stored.HeroImageId;
+                copy.CustomHeroFile = stored.CustomHeroFile; // ne change que par SetCustomHero
                 copy.DockOrder = stored.DockOrder; // idem pour le dock : ne change que par SetPinned / MoveInDock
                 copy.GraphicsPreset = stored.GraphicsPreset; // idem : ne change que par SetGraphicsPreset
                 _document.Profiles[index] = copy;
@@ -79,6 +80,24 @@ public sealed class ProfileStore
             _store.Save(_document);
         }
         ArtworkChanged?.Invoke(this, id);
+    }
+
+    /// <summary>
+    /// Fond de la fiche choisi par l'utilisateur (nom de fichier dans covers\heroes ; null = fond d'origine). Renvoie l'ancien
+    /// fichier, que l'appelant supprime. Sans effet si le profil n'existe plus (renvoie alors le nouveau, à supprimer aussi).
+    /// </summary>
+    public string? SetCustomHero(Guid id, string? customHeroFile)
+    {
+        string? previous;
+        lock (_lock)
+        {
+            if (_document.Profiles.FirstOrDefault(p => p.Id == id) is not { } profile) return customHeroFile;
+            previous = profile.CustomHeroFile;
+            profile.CustomHeroFile = customHeroFile;
+            _store.Save(_document);
+        }
+        ArtworkChanged?.Invoke(this, id);
+        return previous;
     }
 
     /// <summary>Réglage graphique indiqué pour ce jeu (null = non indiqué). Sans effet si le profil n'existe plus.</summary>

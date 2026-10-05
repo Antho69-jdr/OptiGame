@@ -155,6 +155,10 @@ IGDB (jaquettes) : identifiants Twitch saisis dans Paramètres, secret chiffré 
 jeton gardé en mémoire, 4 requêtes/s max, images en cache dans `covers\`. Seul le nom du jeu est envoyé. Les jaquettes
 d'un profil ne changent que par `ProfileStore.SetArtwork` (`Save` conserve celles déjà enregistrées). Format de réponse
 confirmé sur de vrais appels le 2026-09-30 (5 jeux trouvés, jaquettes et bannières).
+Fond de la fiche : `GameProfile.CustomHeroFile` (choisi par « Changer le fond… », `BackgroundPickerDialog` ; copie dans
+`covers\heroes`, nom neuf à chaque choix, ancien fichier supprimé ; ne change que par `ProfileStore.SetCustomHero`), sinon
+`library_hero.jpg` de Steam (`SteamOwnedLibrary.HeroPath`, local), sinon 1re illustration IGDB (parfois un logo). Fonds IGDB :
+`fields artworks.image_id,screenshots.image_id; where id = <jeu>` (vérifié en vrai le 2026-10-05 : Portal 2 = 8 images).
 
 PresentMon : version console téléchargée depuis github.com/GameTechDev/PresentMon (v2.6.0, signée Intel) dans
 `%LocalAppData%\OptiGame\tools`, détectée automatiquement ; capture = ETW, droits admin requis.

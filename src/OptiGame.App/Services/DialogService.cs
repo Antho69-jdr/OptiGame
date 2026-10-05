@@ -57,6 +57,10 @@ public interface IDialogService
 
     /// <summary>Recherche IGDB avec aperçus ; renvoie le jeu choisi ou null.</summary>
     IgdbGame? PickIgdbGame(string initialQuery, Func<string, Task<IReadOnlyList<IgdbGame>>> search, Func<string, Task<string?>> loadThumbnail);
+
+    /// <summary>« Changer le fond… » : renvoie le fond choisi, ou null si l'utilisateur annule.</summary>
+    Dialogs.BackgroundChoice? PickBackground(string gameName, string? steamHeroPath, Func<Task<IReadOnlyList<IgdbBackground>>>? loadIgdb,
+        Func<string, Task<string?>> loadThumbnail, bool hasCustomBackground);
 }
 
 public sealed class DialogService(FileLog log) : IDialogService
@@ -130,6 +134,13 @@ public sealed class DialogService(FileLog log) : IDialogService
     public IgdbGame? PickIgdbGame(string initialQuery, Func<string, Task<IReadOnlyList<IgdbGame>>> search, Func<string, Task<string?>> loadThumbnail)
     {
         var dialog = new IgdbSearchDialog(initialQuery, search, loadThumbnail);
+        return ShowOwned(dialog) == true ? dialog.Selected : null;
+    }
+
+    public Dialogs.BackgroundChoice? PickBackground(string gameName, string? steamHeroPath, Func<Task<IReadOnlyList<IgdbBackground>>>? loadIgdb,
+        Func<string, Task<string?>> loadThumbnail, bool hasCustomBackground)
+    {
+        var dialog = new Dialogs.BackgroundPickerDialog(gameName, steamHeroPath, loadIgdb, loadThumbnail, hasCustomBackground);
         return ShowOwned(dialog) == true ? dialog.Selected : null;
     }
 

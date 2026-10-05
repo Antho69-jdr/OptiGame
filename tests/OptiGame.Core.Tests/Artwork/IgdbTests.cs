@@ -44,6 +44,24 @@ public sealed class IgdbTests
     }
 
     [Fact]
+    public void Backgrounds_are_artworks_then_screenshots_without_duplicates()
+    {
+        Assert.Equal("fields artworks.image_id,screenshots.image_id; where id = 1942; limit 1;", Igdb.BackgroundsQuery(1942));
+
+        var backgrounds = Igdb.ParseBackgrounds("""
+            [ { "id": 1942,
+                "screenshots": [ { "id": 9, "image_id": "sc1" }, { "id": 10, "image_id": "ar1" } ],
+                "artworks": [ { "id": 1, "image_id": "ar1" }, { "id": 2, "image_id": "ar2" } ] } ]
+            """);
+
+        Assert.Equal(
+            [new IgdbBackground("ar1", BackgroundKind.Artwork), new IgdbBackground("ar2", BackgroundKind.Artwork), new IgdbBackground("sc1", BackgroundKind.Screenshot)],
+            backgrounds);
+        Assert.Empty(Igdb.ParseBackgrounds("""[ { "id": 8 } ]"""));
+        Assert.Throws<FormatException>(() => Igdb.ParseBackgrounds("""{ "message": "Authorization Failure" }"""));
+    }
+
+    [Fact]
     public void Search_query_escapes_quotes_and_requests_image_fields()
     {
         var query = Igdb.SearchQuery("Tom Clancy's \"Rainbow\" Six\\Siege", limit: 5);

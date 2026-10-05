@@ -6,6 +6,18 @@ namespace OptiGame.Core.Artwork;
 /// <summary>Jeu trouvé sur IGDB, avec les identifiants d'images utiles (jaquette et bannière).</summary>
 public sealed record IgdbGame(long Id, string Name, int? Year, string? CoverImageId, string? HeroImageId);
 
+public enum BackgroundKind
+{
+    /// <summary>Illustration (« artwork ») : image promotionnelle, souvent sans interface.</summary>
+    Artwork,
+
+    /// <summary>Capture d'écran du jeu.</summary>
+    Screenshot,
+}
+
+/// <summary>Image IGDB proposée comme fond de la fiche du jeu.</summary>
+public sealed record IgdbBackground(string ImageId, BackgroundKind Kind);
+
 /// <summary>
 /// Requêtes et réponses de l'API IGDB v4 (documentation api-docs.igdb.com consultée le 2026-09-30) :
 /// POST https://api.igdb.com/v4/games, en-têtes Client-ID et Authorization: Bearer, corps en syntaxe « Apicalypse ».
@@ -64,6 +76,36 @@ public static class Igdb
             ?? results.FirstOrDefault(g => g.CoverImageId is not null);
     }
 
+
+    /// <summary>Aperçu d'un fond dans « Changer le fond… » (569×320).</summary>
+    public const string BackgroundThumbSize = "screenshot_med";
+
+    /// <summary>Toutes les illustrations et captures d'écran d'un jeu IGDB (fonds proposés), par son identifiant.</summary>
+    public static string BackgroundsQuery(long gameId) =>
+        $"fields artworks.image_id,screenshots.image_id; where id = {gameId.ToString(CultureInfo.InvariantCulture)}; limit 1;";
+
+    /// <summary>Réponse de BackgroundsQuery → images, illustrations d'abord (faites pour servir de fond), sans doublon.</summary>
+    public static IReadOnlyList<IgdbBackground> ParseBackgrounds(string json)
+    {
+        using var document = JsonDocument.Parse(json);
+        if (document.RootElement.ValueKind != JsonValueKind.Array)
+        {
+            throw new FormatException("Réponse IGDB inattendue : un tableau de jeux était attendu.");
+        }
+        var backgrounds = new List<IgdbBackground>();
+        foreach (var game in document.RootElement.EnumerateArray())
+        {
+            foreach (var (property, kind) in new[] { ("artworks", BackgroundKind.Artwork), ("screenshots", BackgroundKind.Screenshot) })
+            {
+                if (!game.TryGetProperty(property, out var images) || images.ValueKind != JsonValueKind.Array) continue;
+                foreach (var image in images.EnumerateArray())
+                {
+                    if (ImageId(image) is { } id && backgrounds.All(b => b.ImageId != id)) backgrounds.Add(new IgdbBackground(id, kind));
+                }
+            }
+        }
+        return backgrounds;
+    }
     public static string Normalize(string name) =>
         new(name.Where(char.IsLetterOrDigit).Select(c => char.ToLower(c, CultureInfo.InvariantCulture)).ToArray());
 

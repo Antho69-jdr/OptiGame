@@ -63,6 +63,10 @@ public sealed class IgdbClient(AppSettingsStore settings, FileLog log)
         return Igdb.ParseGames(json);
     }
 
+    /// <summary>Illustrations et captures d'écran d'un jeu IGDB (fonds proposés pour sa fiche).</summary>
+    public async Task<IReadOnlyList<IgdbBackground>> BackgroundsAsync(long gameId, CancellationToken cancellation = default) =>
+        Igdb.ParseBackgrounds(await PostGamesAsync(Igdb.BackgroundsQuery(gameId), cancellation));
+
     /// <summary>Vérifie les identifiants (obtention d'un jeton et une petite recherche).</summary>
     public async Task<string> TestAsync(CancellationToken cancellation = default)
     {

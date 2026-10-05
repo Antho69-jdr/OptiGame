@@ -17,6 +17,46 @@ public sealed class ArtworkCache(AppPaths paths, FileLog log)
     public string PathFor(string imageId, string size) =>
         Path.Combine(Directory, $"{string.Concat(imageId.Where(char.IsLetterOrDigit))}_{size}.jpg");
 
+    /// <summary>Fonds choisis par l'utilisateur (« Changer le fond… »), un fichier par choix.</summary>
+    public string HeroesDirectory => Path.Combine(Directory, "heroes");
+
+    /// <summary>Chemin du fond choisi, s'il existe encore (null sinon : la fiche reprend le fond d'origine).</summary>
+    public string? CustomHeroPath(string? file) =>
+        file is not null && File.Exists(Path.Combine(HeroesDirectory, file)) ? Path.Combine(HeroesDirectory, file) : null;
+
+    /// <summary>
+    /// Copie une image choisie comme fond (image IGDB en cache, bannière de Steam, fichier du PC) et renvoie son nom. Nom
+    /// nouveau à chaque choix : l'ancienne image décodée en mémoire n'est jamais réaffichée par erreur.
+    /// </summary>
+    public string StoreCustomHero(Guid profileId, string sourcePath)
+    {
+        System.IO.Directory.CreateDirectory(HeroesDirectory);
+        var extension = Path.GetExtension(sourcePath).ToLowerInvariant() is ".png" ? ".png" : ".jpg";
+        var file = $"{profileId:N}-{DateTime.UtcNow:yyyyMMddHHmmssfff}{extension}";
+        var path = Path.Combine(HeroesDirectory, file);
+        File.Copy(sourcePath, path + ".tmp", overwrite: true);
+        File.Move(path + ".tmp", path, overwrite: true);
+        return file;
+    }
+
+    /// <summary>Supprime un fond qui n'est plus utilisé (erreur journalisée, jamais bloquante).</summary>
+    public void DeleteCustomHero(string? file)
+    {
+        if (file is null || Path.GetFileName(file) != file) return; // jamais en dehors du dossier des fonds
+        try
+        {
+            File.Delete(Path.Combine(HeroesDirectory, file));
+        }
+        catch (IOException ex)
+        {
+            log.Warn($"Ancien fond {file} non supprimé : {ex.Message}");
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            log.Warn($"Ancien fond {file} non supprimé : {ex.Message}");
+        }
+    }
+
     /// <summary>Chemin local de l'image si elle est déjà en cache, sinon null (aucun accès réseau).</summary>
     public string? TryGetCached(string? imageId, string size) =>
         imageId is not null && File.Exists(PathFor(imageId, size)) ? PathFor(imageId, size) : null;

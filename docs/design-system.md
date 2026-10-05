@@ -133,7 +133,8 @@ grille, flèches d'une jaquette à l'autre).
 - Fil d'Ariane « Mes jeux › Nom » (Échap / Alt+← reviennent à la grille, avec la garde des modifications).
 - Bannière à hauteur de son contenu (jamais rognée) : jaquette, nom (`Text.Hero`), temps de jeu ; **Jouer** (seule action
   principale) ou, pendant la partie, « Arrêter l'optimisation… » ; « Mesurer les FPS » ; menu « … » (Voir sur Steam,
-  Épingler au dock si le dock est activé, Changer la jaquette…, Retirer de Mes jeux…).
+  Épingler au dock si le dock est activé, Changer la jaquette…, Changer le fond…, Retirer de Mes jeux…). Fond : choisi, sinon bannière Steam
+  locale, sinon illustration IGDB.
 - Trois onglets (`Segment`, flèches pour passer de l'un à l'autre), le dernier choisi est gardé :
   - **Vue d'ensemble** : note (chiffre + mot + « Note mesurée / estimée », « Calcul de la note… » tant qu'elle n'est pas
     calculée), « Mon réglage dans le jeu » (gardé tout de suite), puis temps de jeu, mesures et disque en cartes (2 colonnes,

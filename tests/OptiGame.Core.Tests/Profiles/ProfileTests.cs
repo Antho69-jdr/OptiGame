@@ -91,6 +91,27 @@ public sealed class ProfileTests : IDisposable
         Assert.Null(store.Find(profile.Id)!.CoverImageId);
     }
 
+    [Fact]
+    public void Custom_background_survives_stale_editors_and_cover_changes()
+    {
+        var store = OpenStore();
+        var profile = Profile();
+        store.Save(profile);
+        var editorCopy = store.Find(profile.Id)!;
+        Guid? artworkFor = null;
+        store.ArtworkChanged += (_, id) => artworkFor = id;
+
+        Assert.Null(store.SetCustomHero(profile.Id, "a.jpg"));
+        Assert.Equal(profile.Id, artworkFor);
+        store.Save(editorCopy);                              // éditeur ouvert avant le choix du fond
+        store.SetArtwork(profile.Id, 42, "co1", "ar1");      // nouvelle jaquette : le fond choisi reste
+        Assert.Equal("a.jpg", OpenStore().Find(profile.Id)!.CustomHeroFile);
+
+        Assert.Equal("a.jpg", store.SetCustomHero(profile.Id, null)); // ancien fichier rendu, à supprimer
+        Assert.Null(OpenStore().Find(profile.Id)!.CustomHeroFile);
+        Assert.Equal("b.jpg", store.SetCustomHero(Guid.NewGuid(), "b.jpg")); // jeu retiré entre-temps
+    }
+
     private (ProfileStore Store, GameProfile A, GameProfile B, GameProfile C) ThreeGames()
     {
         var store = OpenStore();

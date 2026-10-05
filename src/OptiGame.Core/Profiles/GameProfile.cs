@@ -58,6 +58,12 @@ public sealed class GameProfile
 
     public string? HeroImageId { get; set; }
 
+    /// <summary>
+    /// Fond choisi par l'utilisateur (« Changer le fond… ») : nom d'un fichier de coversheroes, prioritaire sur la bannière
+    /// IGDB trouvée automatiquement ; null = fond d'origine. Ne change que par <see cref="ProfileStore.SetCustomHero"/>.
+    /// </summary>
+    public string? CustomHeroFile { get; set; }
+
     /// <summary>Réglage graphique utilisé dans le jeu, indiqué par l'utilisateur (note des jeux) ; ne change que par
     /// <see cref="ProfileStore.SetGraphicsPreset"/>.</summary>
     public Rating.GraphicsPreset? GraphicsPreset { get; set; }
@@ -79,6 +85,7 @@ public sealed class GameProfile
         IgdbGameId = IgdbGameId,
         CoverImageId = CoverImageId,
         HeroImageId = HeroImageId,
+        CustomHeroFile = CustomHeroFile,
         GraphicsPreset = GraphicsPreset,
     };
 

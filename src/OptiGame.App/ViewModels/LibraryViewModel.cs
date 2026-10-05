@@ -929,6 +929,7 @@ public sealed partial class LibraryViewModel : ObservableObject
         OpenGame = new GamePageViewModel(profile, editor, captures,
             back: CloseGamePage,
             changeCover: () => ChangeCoverAsync(id),
+            changeBackground: () => ChangeBackgroundAsync(id),
             measure: () =>
             {
                 _measures.SelectTarget(exeName);
@@ -1046,6 +1047,7 @@ public sealed partial class LibraryViewModel : ObservableObject
             return;
         }
         _store.Remove(id);
+        _artwork.DeleteCustomHero(profile.CustomHeroFile); // fond choisi : plus utilisé
         _log.Info($"Jeu retiré de « Mes jeux » : {profile.Name} ({profile.ExePath}).");
         if (OpenGame?.Id == id) OpenGame = null;
         ReloadCards();
@@ -1084,6 +1086,54 @@ public sealed partial class LibraryViewModel : ObservableObject
         {
             await LoadPageImagesAsync(OpenGame, updated);
         }
+    }
+
+    /// <summary>
+    /// « Changer le fond… » : bannière Steam du PC, illustrations et captures IGDB, ou image du PC. L'image choisie est copiée dans
+    /// covers\heroes (le fond ne dépend plus de Steam ni d'IGDB) ; l'ancien fond choisi est supprimé.
+    /// </summary>
+    private async Task ChangeBackgroundAsync(Guid id)
+    {
+        if (_store.Find(id) is not { } profile) return;
+        var appId = OpenGame?.Id == id ? OpenGame.SteamAppId ?? profile.SteamAppId : profile.SteamAppId;
+        var steamHero = uint.TryParse(appId, out var steamId) ? await Task.Run(() => SteamOwnedLibrary.HeroPath(steamId)) : null;
+        Func<Task<IReadOnlyList<IgdbBackground>>>? loadIgdb = _igdb.IsConfigured
+            ? async () =>
+            {
+                var gameId = profile.IgdbGameId ?? Igdb.BestMatch(profile.Name, await _igdb.SearchAsync(profile.Name))?.Id;
+                return gameId is { } igdbId ? await _igdb.BackgroundsAsync(igdbId) : [];
+            }
+            : null;
+
+        var choice = _dialogs.PickBackground(profile.Name, steamHero, loadIgdb,
+            imageId => _artwork.GetAsync(imageId, Igdb.BackgroundThumbSize), profile.CustomHeroFile is not null);
+        if (choice is null) return;
+
+        string? file = null;
+        if (choice.Source != Dialogs.BackgroundSource.Original)
+        {
+            var source = choice.Source == Dialogs.BackgroundSource.Igdb ? await _artwork.GetAsync(choice.ImageId, Igdb.HeroSize) : choice.Path;
+            if (source is null)
+            {
+                _dialogs.ShowError("Fond indisponible", "L'image n'a pas pu être téléchargée depuis IGDB. Vérifiez la connexion à Internet, puis réessayez.");
+                return;
+            }
+            try
+            {
+                file = await Task.Run(() => _artwork.StoreCustomHero(id, source));
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                _log.Error($"Fond de « {profile.Name} » non enregistré", ex);
+                _dialogs.ShowError("Fond non enregistré", "L'image n'a pas pu être copiée dans le dossier des données d'OptiGame.", ex.Message);
+                return;
+            }
+        }
+
+        // ArtworkChanged recharge les images de la fiche ouverte.
+        var previous = _store.SetCustomHero(id, file);
+        if (previous != file) _artwork.DeleteCustomHero(previous);
+        _log.Info(file is null ? $"Fond d'origine rétabli pour « {profile.Name} »." : $"Fond choisi pour « {profile.Name} » ({choice.Source}).");
     }
 
     // ---- Jaquettes ----
@@ -1210,7 +1260,9 @@ public sealed partial class LibraryViewModel : ObservableObject
         }
         foreach (var card in games)
         {
+            var heroFile = _store.Find(card.Id)?.CustomHeroFile;
             _store.Remove(card.Id);
+            _artwork.DeleteCustomHero(heroFile);
             _log.Info($"Jeu désinstallé retiré de « Mes jeux » : {card.Name}.");
         }
         ReloadCards();
@@ -1251,10 +1303,16 @@ public sealed partial class LibraryViewModel : ObservableObject
         if (OpenGame?.Id == id) await LoadPageImagesAsync(OpenGame, profile);
     }
 
+    /// <summary>
+    /// Fond de la fiche : celui choisi par l'utilisateur, sinon la bannière que Steam garde sur le PC (faite pour servir de fond),
+    /// sinon la première illustration IGDB (parfois un simple logo : Portal 2).
+    /// </summary>
     private async Task LoadPageImagesAsync(GamePageViewModel page, GameProfile profile)
     {
         page.CoverPath = await _artwork.GetAsync(profile.CoverImageId, Igdb.CoverSize);
-        page.HeroPath = await _artwork.GetAsync(profile.HeroImageId, Igdb.HeroSize);
+        page.HeroPath = _artwork.CustomHeroPath(profile.CustomHeroFile)
+            ?? (uint.TryParse(profile.SteamAppId, out var appId) ? await Task.Run(() => SteamOwnedLibrary.HeroPath(appId)) : null)
+            ?? await _artwork.GetAsync(profile.HeroImageId, Igdb.HeroSize);
     }
 
     private void RefreshPlaying()

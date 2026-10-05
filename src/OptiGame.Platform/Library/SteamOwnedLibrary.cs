@@ -64,6 +64,10 @@ public static class SteamOwnedLibrary
         return path;
     }
 
+    /// <summary>Bannière large que Steam affiche en haut de la page du jeu (<c>library_hero.jpg</c>, souvent 3840×1240), si Steam l'a
+    /// en cache : proposée comme fond de la fiche, rien n'est téléchargé.</summary>
+    public static string? HeroPath(uint appId) => Find(appId, "library_hero.jpg");
+
     private static string? Find(uint appId, string fileName)
     {
         if (CacheDir() is not { } cache) return null;

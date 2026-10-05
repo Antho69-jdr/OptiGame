@@ -114,7 +114,7 @@
                                                      Command="{Binding MeasureCommand}" AutomationProperties.HelpText="Ouvre la page Mesures, ce jeu choisi." />
                                 <controls:IconButton x:Name="MoreButton" Margin="0,8,0,0" Style="{StaticResource Button.Secondary}" Glyph="&#xE712;"
                                                      IsLabelVisible="False" Label="Plus d'actions" Click="OnMoreClick"
-                                                     AutomationProperties.HelpText="Ouvre un menu : voir sur Steam, dock, jaquette, retirer.">
+                                                     AutomationProperties.HelpText="Ouvre un menu : voir sur Steam, dock, jaquette, fond, retirer.">
                                     <controls:IconButton.ContextMenu>
                                         <ContextMenu>
                                             <MenuItem Header="Voir sur Steam" Command="{Binding OpenStorePageCommand}"
@@ -132,6 +132,7 @@
                                                 </MenuItem.Style>
                                             </MenuItem>
                                             <MenuItem Header="Changer la jaquette…" Command="{Binding ChangeCoverCommand}" />
+                                            <MenuItem Header="Changer le fond…" Command="{Binding ChangeBackgroundCommand}" />
                                             <Separator />
                                             <MenuItem Header="Retirer de Mes jeux…" Command="{Binding Editor.DeleteCommand}" />
                                         </ContextMenu>
