@@ -448,7 +448,7 @@ public sealed partial class DiagnosticItemViewModel : ObservableObject
 
     partial void OnIsExpandedChanged(bool value) => _onExpandedChanged(Result.CheckId, value);
 
-    public string Title => Result.IsEstimate ? $"{Result.Title} (estimation)" : Result.Title;
+    public string Title => FrenchText.Typeset(Result.IsEstimate ? $"{Result.Title} (estimation)" : Result.Title);
 
     public DiagnosticStatus Status => Result.Status;
 
@@ -474,10 +474,10 @@ public sealed partial class DiagnosticItemViewModel : ObservableObject
     /// <summary>« Titre — statut : résumé » (lecteurs d'écran).</summary>
     public string AccessibleName => $"{Title} — {StatusLabel} : {Summary}";
 
-    public string Summary => IsUnverified ? "Ce contrôle n'a pas pu s'exécuter." : Result.Summary;
+    public string Summary => IsUnverified ? "Ce contrôle n'a pas pu s'exécuter." : FrenchText.Typeset(Result.Summary);
 
     /// <summary>Explication (« Pourquoi ») ; pour un contrôle non vérifié, le message technique passe dans les détails.</summary>
-    public string Explanation => IsUnverified ? "" : Result.Explanation;
+    public string Explanation => IsUnverified ? "" : FrenchText.Typeset(Result.Explanation);
 
     public bool HasExplanation => !string.IsNullOrWhiteSpace(Explanation);
 
@@ -503,7 +503,7 @@ public sealed partial class DiagnosticItemViewModel : ObservableObject
 
 public sealed partial class FixViewModel(DiagnosticFix fix, Func<DiagnosticFix, Task> apply)
 {
-    public string Title => fix.Change.Title;
+    public string Title => FrenchText.Typeset(fix.Change.Title);
 
     /// <summary>Libellé du bouton : l'action, suivie de « … » (une confirmation suit).</summary>
     public string ApplyLabel => $"{fix.Change.Title}…";
@@ -520,14 +520,14 @@ public sealed partial class FixViewModel(DiagnosticFix fix, Func<DiagnosticFix, 
 
 public sealed partial class AppliedFixViewModel(ChangeRecord change, TimeProvider time, Func<ChangeRecord, Task> undo)
 {
-    public string Title => change.Title;
+    public string Title => FrenchText.Typeset(change.Title);
 
     public string What => change.What;
 
     public bool RequiresReboot => change.RequiresReboot;
 
     public string AppliedAt =>
-        $"Appliquée le {TimeZoneInfo.ConvertTime(change.AppliedAt, time.LocalTimeZone).ToString("d MMMM yyyy 'à' HH:mm", System.Globalization.CultureInfo.GetCultureInfo("fr-FR"))}";
+        $"Appliquée {FrenchText.When(TimeZoneInfo.ConvertTime(change.AppliedAt, time.LocalTimeZone).DateTime, time.GetLocalNow().DateTime)}";
 
     [RelayCommand]
     private Task UndoAsync() => undo(change);

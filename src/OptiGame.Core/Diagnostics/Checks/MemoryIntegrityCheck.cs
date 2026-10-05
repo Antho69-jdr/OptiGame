@@ -87,6 +87,6 @@ public sealed class MemoryIntegrityCheck(IDeviceGuardProvider deviceGuard, Setti
             "le noyau de Windows (pilotes vulnérables, rootkits). Son coût en jeu va de négligeable à quelques " +
             "pourcents selon le jeu et le processeur : les processeurs récents disposent d'une accélération " +
             "matérielle (MBEC chez Intel, GMET chez AMD) qui le réduit fortement. Recommandation : laissez-la activée, " +
-            "sauf si une mesure avant/après (onglet Mesures) montre un gain réel dans vos jeux.",
+            "sauf si une mesure avant/après (page Mesures) montre un gain réel dans vos jeux.",
     };
 }

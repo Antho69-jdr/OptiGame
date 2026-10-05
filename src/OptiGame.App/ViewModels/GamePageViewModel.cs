@@ -268,11 +268,11 @@ public sealed partial class GamePageViewModel(
             // Steam compte tout, y compris avant OptiGame et en dehors : c'est le total affiché.
             PlaytimeSource.Steam => string.Join(" · ", new[] { "Selon Steam", last, tracked }.OfType<string>()),
             PlaytimeSource.OptiGame => string.Join(" — ", new[] { tracked, last }.OfType<string>()),
-            _ => "Le temps est compté automatiquement pendant les sessions détectées par OptiGame (et repris de Steam pour les jeux Steam).",
+            _ => "Le temps est compté automatiquement pendant les parties détectées par OptiGame (et repris de Steam pour les jeux Steam).",
         };
         PlaytimeLast = summary.LastPlayed is { } lastPlayed ? $"Dernière partie {PlaytimeText.LastPlayed(lastPlayed, now)}" : "";
         RecentSessions = recent.Select(s => new SessionRow(
-            s.StartedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm"),
+            Core.Text.FrenchText.When(s.StartedAt.ToLocalTime().DateTime, now.ToLocalTime().DateTime),
             s.Incomplete ? "durée inconnue" : s.Duration is { } d ? PlaytimeText.Duration(d) : "en cours")).ToList();
     }
 

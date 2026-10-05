@@ -46,7 +46,7 @@ public static class LaunchPlanner
 
             case LaunchMode.Steam:
                 var id = profile.SteamAppId ?? steamAppIdForExe(profile.ExePath)
-                    ?? throw new LaunchException("Appid Steam inconnu : renseignez-le dans la section Lancement du jeu.");
+                    ?? throw new LaunchException("Numéro du jeu sur Steam (appid) inconnu : renseignez-le dans la fiche du jeu, onglet Propriétés, section Lancement.");
                 return Steam(id, arguments, steamExe ?? throw new LaunchException("Steam n'est pas installé (SteamExe absent du registre)."), automatic: false);
 
             case LaunchMode.Launcher:
@@ -67,7 +67,7 @@ public static class LaunchPlanner
     {
         if (!IsValidSteamAppId(appId))
         {
-            throw new LaunchException($"Appid Steam invalide : « {appId} ».");
+            throw new LaunchException($"Numéro du jeu sur Steam (appid) invalide : « {appId} ».");
         }
         // Les arguments du profil suivent l'appid : Steam les transmet au jeu.
         var args = arguments.Length == 0 ? $"-applaunch {appId}" : $"-applaunch {appId} {arguments}";

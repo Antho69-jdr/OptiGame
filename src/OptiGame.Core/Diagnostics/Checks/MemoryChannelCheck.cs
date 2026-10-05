@@ -1,5 +1,6 @@
 using System.Text.RegularExpressions;
 using OptiGame.Core.Abstractions;
+using OptiGame.Core.Text;
 
 namespace OptiGame.Core.Diagnostics.Checks;
 
@@ -27,7 +28,7 @@ public sealed partial class MemoryChannelCheck(IMemoryInfoProvider memory) : IDi
             $"{m.BankLabel} {m.DeviceLocator}".Trim() + (channels[i] is { } c ? $" → canal {c}" : " → canal non identifiable")).ToList();
         if (info.TotalSlots is { } slots)
         {
-            details.Add($"{modules.Count} barrette(s) sur {slots} emplacement(s).");
+            details.Add($"{FrenchText.Count(modules.Count, "barrette", "barrettes")} sur {FrenchText.Count(slots, "emplacement", "emplacements")}.");
         }
 
         if (modules.Count == 1)

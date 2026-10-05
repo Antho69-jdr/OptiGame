@@ -1,5 +1,6 @@
 using System.Security.Cryptography.X509Certificates;
 using System.Text.RegularExpressions;
+using OptiGame.Core.Text;
 
 namespace OptiGame.Core.Drivers;
 
@@ -35,7 +36,7 @@ public static class DriverInstallPlans
     public static DriverInstallPlan ForNvidia(GpuDriverStatus status, NvidiaDriver latest, RestorePointAvailability restorePoint) => new(
         Title: $"Installer le pilote NVIDIA {latest.Version}",
         What: $"{status.GpuName}\n{status.InstalledVersion ?? "?"} → {latest.Version} ({latest.Name}" +
-              (latest.ReleaseDate is { } date ? $", {date:dd/MM/yyyy}" : "") + ")\n" +
+              (latest.ReleaseDate is { } date ? $", {FrenchText.Date(date)}" : "") + ")\n" +
               $"Téléchargement : {latest.DownloadUrl.Host}{(latest.SizeText is { } size ? $" ({FrenchSize(size)})" : "")}\n" +
               "Puis ouverture de l'installeur officiel de NVIDIA : vous y choisissez l'installation express ou personnalisée.",
         Why: "Les nouveaux pilotes apportent des optimisations pour les jeux récents et des corrections de bugs. OptiGame " +
@@ -48,7 +49,7 @@ public static class DriverInstallPlans
     public static DriverInstallPlan ForAmdChipset(ChipsetDriverStatus status, AmdChipsetRelease latest, RestorePointAvailability restorePoint) => new(
         Title: $"Installer le logiciel de chipset AMD {latest.Version}",
         What: $"{status.Description}\n{status.InstalledText}\n→ AMD Chipset Software {latest.Version}" +
-              (latest.ReleaseDate is { } date ? $" du {date:dd/MM/yyyy}" : "") + "\n" +
+              (latest.ReleaseDate is { } date ? $" du {FrenchText.Date(date)}" : "") + "\n" +
               $"Téléchargement : {latest.DownloadUrl.Host}{(latest.SizeText is { } size ? $" ({FrenchSize(size)})" : "")}\n" +
               "Puis ouverture de l'installeur officiel d'AMD : vous y choisissez les composants à installer.",
         Why: "Le logiciel de chipset installe les pilotes de la carte mère (PSP, GPIO, SMBus, PCI…) et les réglages d'énergie " +

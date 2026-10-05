@@ -117,7 +117,7 @@ public sealed class ProcessService : IProcessControl, ISettingAccessor
             var stillRunning = processes.Count(p => !HasExited(p));
             if (stillRunning > 0)
             {
-                throw new InvalidOperationException($"{stillRunning} instance(s) de {exeName} n'ont pas pu être fermées.");
+                throw new InvalidOperationException(stillRunning == 1 ? $"{exeName} n'a pas pu être fermé." : $"{stillRunning} instances de {exeName} n'ont pas pu être fermées.");
             }
             return processes.Count;
         }

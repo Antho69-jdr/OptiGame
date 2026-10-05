@@ -221,7 +221,7 @@
                         <Run Text="Cette copie d'OptiGame ne s'installe pas de mise à jour elle-même : " /><Run Text="{Binding Updates.SelfUpdateBlocker, Mode=OneWay}" /><Run Text="." />
                     </TextBlock>
                     <WrapPanel Margin="0,12,0,0">
-                        <controls:IconButton Margin="0,0,8,0" Style="{StaticResource Button.Secondary}" Glyph="&#xE72C;" Label="Rechercher maintenant"
+                        <controls:IconButton Margin="0,0,8,0" Style="{StaticResource Button.Secondary}" Glyph="&#xE72C;" Label="Rechercher les mises à jour"
                                              Command="{Binding Updates.CheckNowCommand}" />
                         <Button Margin="0,0,8,0" Style="{StaticResource Button.Primary}" Content="Installer maintenant" Command="{Binding Updates.InstallNowCommand}"
                                 Visibility="{Binding Updates.HasPackage, Converter={StaticResource BoolToVisibility}}" />

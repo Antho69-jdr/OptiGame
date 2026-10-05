@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Net;
 using System.Text.RegularExpressions;
+using OptiGame.Core.Text;
 
 namespace OptiGame.Core.Drivers;
 
@@ -82,8 +83,8 @@ public static partial class AmdChipset
             ? $"AMD Chipset Software {packageVersion} installé."
             : drivers.Count == 0
                 ? "Aucun pilote de chipset AMD installé."
-                : $"AMD Chipset Software non installé ; {drivers.Count} pilote(s) AMD séparé(s)" +
-                  (oldest is not null ? $", le plus ancien ({oldest.DeviceName}) du {oldest.Date:dd/MM/yyyy}" : "") + ".";
+                : $"AMD Chipset Software non installé ; {FrenchText.Count(drivers.Count, "pilote AMD séparé", "pilotes AMD séparés")}" +
+                  (oldest is { Date: { } oldestDate } ? $", le plus ancien ({oldest.DeviceName}) du {FrenchText.Date(oldestDate)}" : "") + ".";
 
         if (latest is null)
         {

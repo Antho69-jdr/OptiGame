@@ -1,5 +1,5 @@
-using System.Globalization;
 using OptiGame.Core.Abstractions;
+using OptiGame.Core.Text;
 
 namespace OptiGame.Core.Diagnostics.Checks;
 
@@ -21,7 +21,7 @@ public sealed class GpuDriverAgeCheck(IGpuInfoProvider gpus, TimeProvider time) 
 
         var today = time.GetLocalNow().Date;
         var details = physical.Select(g =>
-            $"{g.Name} : pilote {g.DriverVersion ?? "?"} du {(g.DriverDate is { } d ? d.ToString("d MMMM yyyy", Fr) : "date inconnue")}").ToList();
+            $"{g.Name} : pilote {g.DriverVersion ?? "?"} du {(g.DriverDate is { } d ? FrenchText.Date(d) : "date inconnue")}").ToList();
 
         var old = physical.Where(g => g.DriverDate is { } d && today - d.Date > MaxAge).ToList();
         if (old.Count > 0)
@@ -40,8 +40,6 @@ public sealed class GpuDriverAgeCheck(IGpuInfoProvider gpus, TimeProvider time) 
 
         return Result(DiagnosticStatus.Ok, "Pilote graphique de moins de 6 mois.", details);
     }
-
-    private static readonly CultureInfo Fr = CultureInfo.GetCultureInfo("fr-FR");
 
     private DiagnosticResult Result(DiagnosticStatus status, string summary, IReadOnlyList<string> details) => new()
     {

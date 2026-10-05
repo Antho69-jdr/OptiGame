@@ -109,6 +109,6 @@ public sealed class PlaytimeTests : IDisposable
         Assert.Equal("aujourd'hui", PlaytimeText.LastPlayed(T0, T0.AddHours(2)));
         Assert.Equal("hier", PlaytimeText.LastPlayed(T0, T0.AddDays(1)));
         Assert.Equal("il y a 5 jours", PlaytimeText.LastPlayed(T0, T0.AddDays(5)));
-        Assert.Equal("le 30 septembre 2026", PlaytimeText.LastPlayed(T0, T0.AddDays(60)));
+        Assert.Equal("le 30 sept. 2026", PlaytimeText.LastPlayed(T0, T0.AddDays(60)));
     }
 }

@@ -13,7 +13,7 @@ public static class CaptureReader
         if (!File.Exists(request.OutputCsv))
         {
             throw new InvalidOperationException(
-                $"PresentMon n'a produit aucun fichier. Le jeu ({request.ProcessName}) était-il lancé pendant la capture ?\n\n{presentMonOutput}");
+                $"PresentMon n'a produit aucun fichier. Le jeu ({request.ProcessName}) était-il lancé pendant la mesure ?\n\n{presentMonOutput}");
         }
 
         IReadOnlyList<FrameSample> frames;
@@ -24,7 +24,7 @@ public static class CaptureReader
         if (frames.Count == 0)
         {
             throw new InvalidOperationException(
-                $"Aucune image capturée pour {request.ProcessName}. Le jeu était-il lancé et affiché pendant la capture ?");
+                $"Aucune image capturée pour {request.ProcessName}. Le jeu était-il lancé et affiché pendant la mesure ?");
         }
 
         return new CaptureRecord

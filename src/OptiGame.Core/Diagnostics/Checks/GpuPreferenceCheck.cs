@@ -2,6 +2,7 @@ using OptiGame.Core.Abstractions;
 using OptiGame.Core.Changes;
 using OptiGame.Core.Settings;
 using OptiGame.Core.State;
+using OptiGame.Core.Text;
 
 namespace OptiGame.Core.Diagnostics.Checks;
 
@@ -60,7 +61,7 @@ public sealed class GpuPreferenceCheck(IGpuInfoProvider gpus, IRegistryReader re
         return Result(
             fixes.Count == 0
                 ? "PC hybride : aucune application sans préférence « haute performance » parmi celles connues de Windows."
-                : $"PC hybride : {fixes.Count} application(s) sans préférence « haute performance ».",
+                : $"PC hybride : {FrenchText.Count(fixes.Count, "application", "applications")} sans préférence « haute performance ».",
             details, fixes);
     }
 

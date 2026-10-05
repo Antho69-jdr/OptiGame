@@ -1,5 +1,5 @@
-using System.Globalization;
 using OptiGame.Core.State;
+using OptiGame.Core.Text;
 
 namespace OptiGame.Core.Playtime;
 
@@ -127,7 +127,6 @@ public sealed class PlaytimeStore(IStateStore<PlaytimeDocument> store)
 
 public static class PlaytimeText
 {
-    private static readonly CultureInfo Fr = CultureInfo.GetCultureInfo("fr-FR");
 
     /// <summary>« 12 h 05 », « 42 min », « moins d'1 min ».</summary>
     public static string Duration(TimeSpan duration) => duration.TotalMinutes switch
@@ -137,7 +136,7 @@ public static class PlaytimeText
         _ => $"{(int)duration.TotalHours} h {duration.Minutes:00}",
     };
 
-    /// <summary>« aujourd'hui », « hier », « il y a 3 jours », « le 12 mars 2026 ».</summary>
+    /// <summary>« aujourd'hui », « hier », « il y a 3 jours », « le 12 mars 2026 » (FrenchText.Date).</summary>
     public static string LastPlayed(DateTimeOffset when, DateTimeOffset now)
     {
         var days = (now.Date - when.Date).Days;
@@ -146,7 +145,7 @@ public static class PlaytimeText
             <= 0 => "aujourd'hui",
             1 => "hier",
             < 30 => $"il y a {days} jours",
-            _ => "le " + when.ToString("d MMMM yyyy", Fr),
+            _ => "le " + FrenchText.Date(when.DateTime),
         };
     }
 }

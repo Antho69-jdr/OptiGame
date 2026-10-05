@@ -36,4 +36,22 @@ public class FrenchTextTests
         Assert.Equal("", FrenchText.Typeset(null));
         Assert.Equal("", FrenchText.Typeset(""));
     }
+
+    [Fact]
+    public void Dates_use_one_french_format()
+    {
+        Assert.Equal("22 sept. 2026", FrenchText.Date(new DateOnly(2026, 9, 22)));
+        Assert.Equal("3 mai 2026", FrenchText.Date(new DateTime(2026, 5, 3, 23, 59, 0)));
+        Assert.Equal("3 mars 2026 à 9:05", FrenchText.DateAndTime(new DateTime(2026, 3, 3, 9, 5, 0)));
+    }
+
+    [Theory]
+    [InlineData(0, "aujourd'hui à 14:32")]
+    [InlineData(1, "hier à 14:32")]
+    [InlineData(2, "le 20 sept. 2026 à 14:32")]
+    public void When_is_relative_for_today_and_yesterday(int daysAgo, string expected)
+    {
+        var now = new DateTime(2026, 9, 22, 8, 0, 0);
+        Assert.Equal(expected, FrenchText.When(new DateTime(2026, 9, 22, 14, 32, 0).AddDays(-daysAgo), now));
+    }
 }

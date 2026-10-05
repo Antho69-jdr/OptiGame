@@ -66,7 +66,7 @@ src/OptiGame.App/        WPF : composition DI, tray, vues/viewmodels, dialogue d
                          Dialogues : AUCUNE MessageBox (sauf fichier d'état illisible, avant DI) ; Dialogs/DialogWindow +
                          Controls/DialogLayout ; IDialogService.Confirm(titre, message, VERBE, isDestructive) / ShowInfo /
                          ShowError(titre, message, détails techniques) — « Annuler » par défaut ; Core/Text/FrenchText (pluriels,
-                         espaces insécables).
+                         espaces insécables, SEUL format de date : Date « 22 sept. 2026 » / DateAndTime / When « aujourd'hui à 14:32 »).
                          JAMAIS de couleur, taille de police ni rayon codé en dur dans les vues ; vérifier avec ui-snapshots.ps1
   Assets/                Logo (choisi le 2026-10-04 : cadran de vitesse ouvert en « O » + triangle « lecture ») : OptiGame.svg
                          (case 64) et OptiGame-small.svg (variante épaisse pour ≤ 24 px) → OptiGame.ico = 16, 20, 24 depuis

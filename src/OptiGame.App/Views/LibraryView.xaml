@@ -237,30 +237,31 @@
                                     <!-- Raccourcis souris (au clavier : menu contextuel) -->
                                     <controls:CoverTile.Actions>
                                         <DockPanel>
+                                            <!-- Boutons à icône : nom accessible = action + jeu (l'icône seule serait lue comme un caractère) -->
                                             <Button DockPanel.Dock="Right" Style="{StaticResource Button.CoverPlay}" ToolTip="Jouer"
+                                                    AutomationProperties.Name="{Binding Name, StringFormat='Jouer à {0}'}"
                                                     Command="{Binding DataContext.PlayCardCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                     CommandParameter="{Binding}" />
                                             <StackPanel VerticalAlignment="Bottom" Orientation="Horizontal">
-                                                <Button Margin="0,0,6,0" Style="{StaticResource Button.CoverRound}" Content="&#xE718;"
+                                                <Button Margin="0,0,6,0" Content="&#xE718;"
                                                         Command="{Binding DataContext.TogglePinCardCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                         CommandParameter="{Binding}"
                                                         Visibility="{Binding DataContext.IsDockEnabled, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BoolToVisibility}}">
-                                                    <Button.ToolTip>
-                                                        <TextBlock>
-                                                            <TextBlock.Style>
-                                                                <Style TargetType="TextBlock">
-                                                                    <Setter Property="Text" Value="Épingler au dock" />
-                                                                    <Style.Triggers>
-                                                                        <DataTrigger Binding="{Binding IsPinned}" Value="True">
-                                                                            <Setter Property="Text" Value="Retirer du dock" />
-                                                                        </DataTrigger>
-                                                                    </Style.Triggers>
-                                                                </Style>
-                                                            </TextBlock.Style>
-                                                        </TextBlock>
-                                                    </Button.ToolTip>
+                                                    <Button.Style>
+                                                        <Style TargetType="Button" BasedOn="{StaticResource Button.CoverRound}">
+                                                            <Setter Property="ToolTip" Value="Épingler au dock" />
+                                                            <Setter Property="AutomationProperties.Name" Value="{Binding Name, StringFormat='Épingler {0} au dock'}" />
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding IsPinned}" Value="True">
+                                                                    <Setter Property="ToolTip" Value="Retirer du dock" />
+                                                                    <Setter Property="AutomationProperties.Name" Value="{Binding Name, StringFormat='Retirer {0} du dock'}" />
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Button.Style>
                                                 </Button>
                                                 <Button Style="{StaticResource Button.CoverRound}" Content="&#xE74D;" ToolTip="Retirer de Mes jeux…"
+                                                        AutomationProperties.Name="{Binding Name, StringFormat='Retirer {0} de Mes jeux…'}"
                                                         Command="{Binding DataContext.RemoveCardCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                         CommandParameter="{Binding}"
                                                         Visibility="{Binding IsPlaying, Converter={StaticResource InverseBoolToVisibility}}" />

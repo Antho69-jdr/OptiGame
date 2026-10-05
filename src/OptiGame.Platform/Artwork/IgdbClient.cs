@@ -6,6 +6,7 @@ using System.Text.Json;
 using OptiGame.Core.Artwork;
 using OptiGame.Core.Logging;
 using OptiGame.Core.Settings;
+using OptiGame.Core.Text;
 
 namespace OptiGame.Platform.Artwork;
 
@@ -67,7 +68,7 @@ public sealed class IgdbClient(AppSettingsStore settings, FileLog log)
     {
         _token = null;
         var results = await SearchAsync("Overwatch", cancellation);
-        return $"Connexion réussie : {results.Count} résultat(s) pour « Overwatch ».";
+        return $"Connexion réussie : {FrenchText.Count(results.Count, "résultat", "résultats")} pour « Overwatch ».";
     }
 
     private async Task<string> PostGamesAsync(string body, CancellationToken cancellation)

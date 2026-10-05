@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text;
 
 namespace OptiGame.Core.Text;
@@ -42,5 +43,31 @@ public static class FrenchText
             builder.Append(c);
         }
         return builder.ToString();
+    }
+
+    private static readonly CultureInfo French = CultureInfo.GetCultureInfo("fr-FR");
+
+    /// <summary>Le format de date de toute l'interface : « 22 sept. 2026 » (mois abrégé à la française).</summary>
+    public static string Date(DateOnly date) => date.ToString("d MMM yyyy", French);
+
+    /// <summary>Partie date d'une date et heure (déjà en heure locale) : « 22 sept. 2026 ».</summary>
+    public static string Date(DateTime date) => date.ToString("d MMM yyyy", French);
+
+    /// <summary>« 22 sept. 2026 à 14:32 », « 3 mars 2026 à 9:05 » (heure locale).</summary>
+    public static string DateAndTime(DateTime local) => $"{Date(local)} à {local.ToString("H:mm", French)}";
+
+    /// <summary>
+    /// Moment récent, relatif quand c'est plus parlant : « aujourd'hui à 14:32 », « hier à 9:05 », sinon « le 22 sept. 2026
+    /// à 14:32 ». S'écrit après un participe : « Appliquée aujourd'hui à 14:32 », « Appliquée le 22 sept. 2026 à 14:32 ».
+    /// </summary>
+    public static string When(DateTime local, DateTime nowLocal)
+    {
+        var time = local.ToString("H:mm", French);
+        return (nowLocal.Date - local.Date).Days switch
+        {
+            0 => $"aujourd'hui à {time}",
+            1 => $"hier à {time}",
+            _ => $"le {Date(local)} à {time}",
+        };
     }
 }

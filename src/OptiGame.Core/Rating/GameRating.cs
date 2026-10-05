@@ -3,6 +3,7 @@ using System.Net;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using OptiGame.Core.Measurement;
+using OptiGame.Core.Text;
 
 namespace OptiGame.Core.Rating;
 
@@ -250,7 +251,7 @@ public static class GameRatings
             var headline = measured.Score >= 85 ? "Très fluide" : measured.Score >= 70 ? "Fluide" : measured.Score >= 50 ? "Correct" : "Peu fluide";
             var details = new List<string>
             {
-                $"Mesuré sur {measured.Captures} capture(s) : {measured.AverageFps:0} FPS moyens, 1 % low {measured.OnePercentLowFps:0} FPS (écran {measured.RefreshHz} Hz).",
+                $"Mesuré sur {FrenchText.Count(measured.Captures, "mesure", "mesures")} : {measured.AverageFps:0} FPS moyens, 1 % low {measured.OnePercentLowFps:0} FPS (écran {measured.RefreshHz} Hz).",
             };
             var gpu = Percent(measured.Load?.GpuBusy);
             details.Add(measured.Bottleneck switch

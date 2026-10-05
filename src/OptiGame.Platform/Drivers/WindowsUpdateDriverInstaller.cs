@@ -1,5 +1,6 @@
 using System.Runtime.InteropServices;
 using OptiGame.Core.Drivers;
+using OptiGame.Core.Text;
 
 namespace OptiGame.Platform.Drivers;
 
@@ -42,7 +43,7 @@ internal static class WindowsUpdateDriverInstaller
             }
             if (titles.Count == 0) return new WindowsUpdateInstallReport([], false, skipped);
 
-            progress($"Téléchargement par Windows Update ({titles.Count} pilote(s))…");
+            progress($"Téléchargement par Windows Update ({FrenchText.Count(titles.Count, "pilote", "pilotes")})…");
             dynamic downloader = session.CreateUpdateDownloader();
             downloader.Updates = updates;
             downloader.Download();

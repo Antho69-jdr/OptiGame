@@ -226,5 +226,9 @@ Celui de l'audit (§ 7), adopté le 2026-10-05 : **partie** (jamais « session �
 **Voir les nouveautés**, **Droits administrateur** · **Redémarrage requis**, **FPS moyens** · **1 % les plus lents** ·
 **Temps d'image P99**.
 
-Typographie : espace fine insécable (U+202F) avant `: ; ? ! %` et dans les « » ; vrais pluriels (jamais « (s) ») ;
-points de suspension sur toute commande qui ouvre une confirmation ou une saisie ; un seul format de date.
+Typographie : espace insécable avant `:`, fine insécable (U+202F) avant `; ? ! %` et dans les « » ; vrais pluriels (jamais « (s) ») ;
+points de suspension sur toute commande qui ouvre une confirmation ou une saisie (jamais sur le bouton final d'un dialogue) ;
+un seul format de date, `FrenchText.Date` (« 22 sept. 2026 »), `DateAndTime` (« 22 sept. 2026 à 14:32 ») et `When` pour un moment
+récent (« aujourd'hui à 14:32 », « hier à 9:05 », sinon « le 22 sept. 2026 à 14:32 »). `FrenchText.Typeset` est appliqué aux
+dialogues, aux alertes de la coque, à toute `InfoBar` (coercition de Title / Message) et aux textes du Diagnostic venus de Core.
+Noms accessibles des boutons à icône : action + jeu (« Jouer à Portal 2 », « Retirer Portal 2 du dock »).

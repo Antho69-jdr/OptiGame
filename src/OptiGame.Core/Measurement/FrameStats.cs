@@ -25,7 +25,7 @@ public sealed record FrameStats(
         var valid = frameTimesMs.Where(t => t > 0 && double.IsFinite(t)).ToArray();
         if (valid.Length == 0)
         {
-            throw new InvalidOperationException("Aucune image exploitable dans la capture.");
+            throw new InvalidOperationException("Aucune image exploitable dans la mesure.");
         }
 
         var total = valid.Sum();

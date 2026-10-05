@@ -162,7 +162,7 @@ public sealed partial class MeasuresViewModel : ObservableObject
     {
         var exe = TargetExe!;
         var now = _time.GetLocalNow();
-        var label = string.IsNullOrWhiteSpace(Label) ? $"{Path.GetFileNameWithoutExtension(exe)} — {now:dd/MM HH:mm}" : Label.Trim();
+        var label = string.IsNullOrWhiteSpace(Label) ? $"{Path.GetFileNameWithoutExtension(exe)} — {Core.Text.FrenchText.DateAndTime(now.DateTime)}" : Label.Trim();
         var csvName = $"{now:yyyyMMdd-HHmmss}_{Path.GetFileNameWithoutExtension(exe)}.csv";
         var request = new CaptureRequest(PresentMonPath!, exe, SelectedDuration, SelectedDelay, Path.Combine(_store.Directory, csvName));
 
@@ -374,8 +374,7 @@ public sealed class CaptureItemViewModel(CaptureRecord record, TimeProvider time
 
     public string Game => Record.ProcessName;
 
-    public string Date => TimeZoneInfo.ConvertTime(Record.CapturedAt, time.LocalTimeZone)
-        .ToString("d MMM yyyy, HH:mm", System.Globalization.CultureInfo.GetCultureInfo("fr-FR"));
+    public string Date => Core.Text.FrenchText.DateAndTime(TimeZoneInfo.ConvertTime(Record.CapturedAt, time.LocalTimeZone).DateTime);
 
     public string Profile => Record.ActiveProfile ?? "—";
 

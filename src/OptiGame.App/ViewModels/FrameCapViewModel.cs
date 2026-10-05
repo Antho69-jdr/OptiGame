@@ -94,7 +94,7 @@ public sealed partial class FrameCapViewModel(GameProfile profile, FrameCapServi
         FpsText = ((int)(setting.Value ?? 0)).ToString(CultureInfo.CurrentCulture);
         HasAppliedChange = _snapshot.AppliedChange is not null;
         AppliedText = _snapshot.AppliedChange is { } applied
-            ? $"Réglé par OptiGame le {applied.AppliedAt.ToLocalTime():d MMMM yyyy à HH:mm}."
+            ? $"Réglé par OptiGame {Core.Text.FrenchText.When(applied.AppliedAt.ToLocalTime().DateTime, DateTime.Now)}."
             : "";
     }
 

@@ -46,7 +46,7 @@ public sealed class CpuBoostCheck(IPowerSchemeProvider power) : IDiagnosticCheck
         {
             problems.Add($"l'état maximal est limité à {max} %");
             fixes.Add(Fix("fix.power.maxstate", active, PowerSettings.ProcThrottleMax, 100,
-                "Rétablir l'état maximal du processeur à 100 %",
+                "Remettre l'état maximal du processeur à 100 %",
                 $"Plan « {name} », sur secteur : état maximal du processeur {max} % → 100 % (valeur par défaut de Windows)."));
         }
 

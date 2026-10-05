@@ -83,7 +83,7 @@ public sealed class AmdChipsetTests
         var status = AmdChipset.Evaluate("Ryzen 5 3600 · B450", null, DevDrivers, Latest, Page);
 
         Assert.Equal(DriverState.UpdateAvailable, status.State);
-        Assert.Equal("AMD Chipset Software non installé ; 5 pilote(s) AMD séparé(s), le plus ancien (AMD PSP 11.0 Device) du 03/06/2020.", status.InstalledText);
+        Assert.Equal("AMD Chipset Software non installé ; 5 pilotes AMD séparés, le plus ancien (AMD PSP 11.0 Device) du 3 juin 2020.", status.InstalledText);
         Assert.Equal("Nouveau logiciel de chipset disponible : 8.08.12.551.", status.Message);
     }
 
@@ -153,7 +153,7 @@ public sealed class AmdChipsetInstallPlanTests
         var plan = DriverInstallPlans.ForAmdChipset(status, latest, RestorePointAvailability.Available);
 
         Assert.Equal("Installer le logiciel de chipset AMD 8.08.12.551", plan.Title);
-        Assert.Contains("→ AMD Chipset Software 8.08.12.551 du 14/08/2026", plan.What);
+        Assert.Contains("→ AMD Chipset Software 8.08.12.551 du 14 août 2026", plan.What);
         Assert.Contains("drivers.amd.com (79 Mo)", plan.What);
         Assert.Contains("Advanced Micro Devices", plan.Why);
         Assert.Contains("ne peut pas annuler", plan.NotReversible);

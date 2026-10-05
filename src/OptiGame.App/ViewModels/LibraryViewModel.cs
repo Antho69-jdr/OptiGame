@@ -1000,7 +1000,7 @@ public sealed partial class LibraryViewModel : ObservableObject
         catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException or ArgumentException)
         {
             _log.Error($"Ouverture de la page Steam {appId} impossible", ex);
-            _dialogs.ShowError("Page Steam inaccessible", "Ni Steam ni le navigateur n'ont pu ouvrir la page du jeu.", ex.Message);
+            _dialogs.ShowError("Impossible de voir le jeu sur Steam", "Ni Steam ni le navigateur n'ont pu ouvrir sa page du magasin Steam.", ex.Message);
         }
     }
 

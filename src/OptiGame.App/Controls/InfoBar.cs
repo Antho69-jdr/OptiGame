@@ -27,10 +27,13 @@ public class InfoBar : ContentControl
         nameof(Severity), typeof(Severity), typeof(InfoBar), new PropertyMetadata(Severity.Info, OnTextChanged));
 
     public static readonly DependencyProperty TitleProperty = DependencyProperty.Register(
-        nameof(Title), typeof(string), typeof(InfoBar), new PropertyMetadata(null, OnTextChanged));
+        nameof(Title), typeof(string), typeof(InfoBar), new PropertyMetadata(null, OnTextChanged, CoerceTypeset));
 
     public static readonly DependencyProperty MessageProperty = DependencyProperty.Register(
-        nameof(Message), typeof(string), typeof(InfoBar), new PropertyMetadata(null, OnTextChanged));
+        nameof(Message), typeof(string), typeof(InfoBar), new PropertyMetadata(null, OnTextChanged, CoerceTypeset));
+
+    /// <summary>Titre et message en typographie française (espaces insécables avant « : ; ? ! % »), d'où qu'ils viennent.</summary>
+    private static object CoerceTypeset(DependencyObject d, object value) => value is string text ? Core.Text.FrenchText.Typeset(text) : value;
 
     public static readonly DependencyProperty IsClosableProperty = DependencyProperty.Register(
         nameof(IsClosable), typeof(bool), typeof(InfoBar), new PropertyMetadata(false));

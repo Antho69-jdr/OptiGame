@@ -488,7 +488,6 @@ public abstract partial class InstallableDriverViewModel : ObservableObject
 
 public sealed partial class GpuDriverItemViewModel(GpuDriverStatus status, DateTime? installedDate) : InstallableDriverViewModel
 {
-    private static readonly CultureInfo Fr = CultureInfo.GetCultureInfo("fr-FR");
 
     public GpuDriverStatus Status { get; } = status;
 
@@ -508,14 +507,14 @@ public sealed partial class GpuDriverItemViewModel(GpuDriverStatus status, DateT
     public override string Message => Status.Message;
 
     public override string Installed => $"Installé : {InstalledVersionText}" +
-                                        (installedDate is { } d ? $" du {d.ToString("d MMMM yyyy", Fr)}" : "");
+                                        (installedDate is { } d ? $" du {FrenchText.Date(d)}" : "");
 
     public override string InstalledVersionText => Status.InstalledVersion ?? "version inconnue";
 
     public override bool HasLatest => Status.Latest is not null;
 
     public override string Latest => Status.Latest is { } l
-        ? $"Disponible chez NVIDIA : {l.Version}" + (l.ReleaseDate is { } r ? $" du {r.ToString("d MMMM yyyy", Fr)}" : "") +
+        ? $"Disponible chez NVIDIA : {l.Version}" + (l.ReleaseDate is { } r ? $" du {FrenchText.Date(r)}" : "") +
           (l.SizeText is { } size ? $" ({DriverInstallPlans.FrenchSize(size)})" : "")
         : "";
 
@@ -527,7 +526,6 @@ public sealed partial class GpuDriverItemViewModel(GpuDriverStatus status, DateT
 /// <summary>Logiciel de chipset AMD (carte mère).</summary>
 public sealed class ChipsetDriverItemViewModel(ChipsetDriverStatus status) : InstallableDriverViewModel
 {
-    private static readonly CultureInfo Fr = CultureInfo.GetCultureInfo("fr-FR");
 
     public ChipsetDriverStatus Status { get; } = status;
 
@@ -553,7 +551,7 @@ public sealed class ChipsetDriverItemViewModel(ChipsetDriverStatus status) : Ins
     public override bool HasLatest => Status.Latest is not null;
 
     public override string Latest => Status.Latest is { } l
-        ? $"Disponible chez AMD : AMD Chipset Software {l.Version}" + (l.ReleaseDate is { } r ? $" du {r.ToString("d MMMM yyyy", Fr)}" : "") +
+        ? $"Disponible chez AMD : AMD Chipset Software {l.Version}" + (l.ReleaseDate is { } r ? $" du {FrenchText.Date(r)}" : "") +
           (l.SizeText is { } size ? $" ({DriverInstallPlans.FrenchSize(size)})" : "")
         : "";
 
@@ -576,7 +574,7 @@ public sealed partial class WindowsUpdateDriverItemViewModel(WindowsUpdateDriver
     public string Details => string.Join(" · ", new[]
     {
         Update.DriverClass is { } c ? $"Catégorie : {c}" : null,
-        Update.DriverDate is { } d ? $"du {d.ToString("d MMMM yyyy", CultureInfo.GetCultureInfo("fr-FR"))}" : null,
+        Update.DriverDate is { } d ? $"du {FrenchText.Date(d)}" : null,
         Update.SizeBytes is > 0 and var size ? $"{size / 1048576.0:N1} Mo" : null,
         Update.MayRequireReboot ? "redémarrage possible" : null,
     }.OfType<string>());

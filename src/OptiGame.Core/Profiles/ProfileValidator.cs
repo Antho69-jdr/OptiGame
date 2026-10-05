@@ -41,7 +41,7 @@ public static class ProfileValidator
 
         if (profile.SteamAppId is not null && !Launching.LaunchPlanner.IsValidSteamAppId(profile.SteamAppId))
         {
-            errors.Add($"Appid Steam invalide : « {profile.SteamAppId} » (nombre attendu, ex. 578080).");
+            errors.Add($"Numéro du jeu sur Steam (appid) invalide : « {profile.SteamAppId} » (nombre attendu, ex. 578080).");
         }
 
         if (profile.LaunchMode == Launching.LaunchMode.Launcher &&

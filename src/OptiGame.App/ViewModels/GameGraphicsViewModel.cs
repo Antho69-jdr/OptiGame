@@ -109,7 +109,7 @@ public sealed partial class GameGraphicsViewModel(GameProfile profile, GameGraph
             ? $"Une seule carte graphique ({_snapshot.PhysicalGpus[0]}) : le choix de la carte est sans objet sur ce PC."
             : "";
         AppliedText = _snapshot.AppliedChange is { } applied
-            ? $"Réglé par OptiGame le {applied.AppliedAt.ToLocalTime():d MMMM yyyy à HH:mm}."
+            ? $"Réglé par OptiGame {Core.Text.FrenchText.When(applied.AppliedAt.ToLocalTime().DateTime, DateTime.Now)}."
             : "";
         HasAppliedChange = _snapshot.AppliedChange is not null;
     }
