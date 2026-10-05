@@ -194,13 +194,8 @@
                                                     CommandParameter="{Binding}"
                                                     Tag="{Binding DataContext, RelativeSource={RelativeSource AncestorType=UserControl}}">
                                     <controls:CoverTile.TopLeft>
+                                        <!-- États du jeu. « Épinglé au dock » : bouton d'épingle vert au survol (plus d'icône permanente) -->
                                         <StackPanel Orientation="Horizontal">
-                                            <!-- Épinglé au dock (indicateur) -->
-                                            <Border Margin="0,0,6,0" Width="28" Height="28" CornerRadius="{StaticResource Radius.Round}" Background="{StaticResource Brush.Scrim}"
-                                                    Visibility="{Binding IsPinned, Converter={StaticResource BoolToVisibility}}" ToolTip="Épinglé au dock">
-                                                <TextBlock HorizontalAlignment="Center" Style="{StaticResource Text.Icon}" FontSize="{StaticResource IconSize.Small}"
-                                                           Foreground="{StaticResource Brush.Text}" Text="&#xE841;" />
-                                            </Border>
                                             <StackPanel>
                                                 <Border Margin="{StaticResource Margin.StackXS}" Style="{StaticResource Badge.Overlay}"
                                                         Visibility="{Binding IsPlaying, Converter={StaticResource BoolToVisibility}}">
@@ -254,6 +249,7 @@
                                                             <Style.Triggers>
                                                                 <DataTrigger Binding="{Binding IsPinned}" Value="True">
                                                                     <Setter Property="ToolTip" Value="Retirer du dock" />
+                                                                    <Setter Property="Foreground" Value="{StaticResource Brush.Accent}" />
                                                                     <Setter Property="AutomationProperties.Name" Value="{Binding Name, StringFormat='Retirer {0} du dock'}" />
                                                                 </DataTrigger>
                                                             </Style.Triggers>
