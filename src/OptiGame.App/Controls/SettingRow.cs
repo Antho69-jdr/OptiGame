@@ -47,4 +47,24 @@ public class SettingRow : ContentControl
         get => GetValue(DetailsProperty);
         set => SetValue(DetailsProperty, value);
     }
+
+    public static readonly DependencyProperty CornerRadiusProperty = DependencyProperty.Register(
+        nameof(CornerRadius), typeof(CornerRadius), typeof(SettingRow));
+
+    public static readonly DependencyProperty IsSubSettingProperty = DependencyProperty.Register(
+        nameof(IsSubSetting), typeof(bool), typeof(SettingRow), new PropertyMetadata(false));
+
+    /// <summary>Arrondi de la ligne : carte seule (style par défaut) ou aucun dans une carte de groupe (style SettingsCard).</summary>
+    public CornerRadius CornerRadius
+    {
+        get => (CornerRadius)GetValue(CornerRadiusProperty);
+        set => SetValue(CornerRadiusProperty, value);
+    }
+
+    /// <summary>Sous-réglage : aligné sur le texte du réglage parent (sous son titre, après son icône).</summary>
+    public bool IsSubSetting
+    {
+        get => (bool)GetValue(IsSubSettingProperty);
+        set => SetValue(IsSubSettingProperty, value);
+    }
 }

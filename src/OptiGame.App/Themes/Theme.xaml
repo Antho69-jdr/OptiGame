@@ -148,6 +148,9 @@
     <sys:Double x:Key="Space.XXL">32</sys:Double>
     <Thickness x:Key="Padding.Page">32,24,32,32</Thickness>
     <Thickness x:Key="Padding.Card">20</Thickness>
+    <!-- Paramètres : sous-réglage aligné sur le texte du réglage parent (16 + icône 36) ; contenu d'une carte de groupe -->
+    <Thickness x:Key="Padding.SettingsSub">52,12,16,12</Thickness>
+    <Thickness x:Key="Margin.SettingsCardContent">0,-1,0,0</Thickness>
     <Thickness x:Key="Padding.CardCompact">16,12</Thickness>
     <Thickness x:Key="Padding.Dialog">24</Thickness>
     <Thickness x:Key="Margin.StackXS">0,0,0,4</Thickness>
@@ -807,11 +810,16 @@
         <Setter Property="Focusable" Value="False" />
         <Setter Property="IsTabStop" Value="False" />
         <Setter Property="Margin" Value="0,0,0,4" />
+        <Setter Property="Padding" Value="16,12" />
+        <Setter Property="Background" Value="{StaticResource Brush.Card}" />
+        <Setter Property="BorderBrush" Value="{StaticResource Brush.Border}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="{StaticResource Radius.Card}" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="controls:SettingRow">
-                    <Border x:Name="Root" Padding="16,12" Background="{StaticResource Brush.Card}" BorderBrush="{StaticResource Brush.Border}"
-                            BorderThickness="1" CornerRadius="{StaticResource Radius.Card}">
+                    <Border x:Name="Root" Padding="{TemplateBinding Padding}" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="{TemplateBinding CornerRadius}">
                         <StackPanel>
                             <DockPanel>
                                 <TextBlock x:Name="Icon" DockPanel.Dock="Left" Width="36" Margin="0,2,0,0" VerticalAlignment="Top" Style="{StaticResource Text.Icon}"
@@ -841,10 +849,42 @@
                         <Trigger Property="IsEnabled" Value="False">
                             <Setter TargetName="Root" Property="Opacity" Value="0.5" />
                         </Trigger>
+                        <Trigger Property="IsSubSetting" Value="True">
+                            <Setter TargetName="Root" Property="Padding" Value="{StaticResource Padding.SettingsSub}" />
+                        </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
             </Setter.Value>
         </Setter>
+    </Style>
+
+    <!-- ===== Carte d'un groupe de réglages : UNE carte par groupe, lignes séparées par un trait fin (Paramètres de Windows 11).
+         Contenu : <StackPanel Margin="{StaticResource Margin.SettingsCardContent}"> (le trait de la 1re ligne se confond avec le
+         bord de la carte) ; listes et champs d'un réglage dans un Border Style="SettingsCard.Content", alignés sur son texte. ===== -->
+    <Style x:Key="SettingsCard" TargetType="Border">
+        <Setter Property="Background" Value="{StaticResource Brush.Card}" />
+        <Setter Property="BorderBrush" Value="{StaticResource Brush.Border}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="{StaticResource Radius.Card}" />
+        <Setter Property="ClipToBounds" Value="True" />
+        <Style.Resources>
+            <Style TargetType="controls:SettingRow" BasedOn="{StaticResource {x:Type controls:SettingRow}}">
+                <Setter Property="Margin" Value="0" />
+                <Setter Property="Background" Value="Transparent" />
+                <Setter Property="BorderThickness" Value="0,1,0,0" />
+                <Setter Property="CornerRadius" Value="0" />
+            </Style>
+        </Style.Resources>
+    </Style>
+    <!-- Liste ou champs rattachés au réglage juste au-dessus (sans trait), alignés sur son texte -->
+    <Style x:Key="SettingsCard.Content" TargetType="Border">
+        <Setter Property="Padding" Value="52,0,16,16" />
+    </Style>
+    <!-- Ligne d'une liste dans une carte de groupe (dossier, jeu du dock) : trait fin au-dessus, pas de boîte -->
+    <Style x:Key="SettingsCard.ListItem" TargetType="Border">
+        <Setter Property="Padding" Value="0,4" />
+        <Setter Property="BorderBrush" Value="{StaticResource Brush.Border}" />
+        <Setter Property="BorderThickness" Value="0,1,0,0" />
     </Style>
 
     <!-- Titre de groupe de réglages (Général, Mes jeux, Dock…) -->

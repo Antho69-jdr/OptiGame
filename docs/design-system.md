@@ -170,7 +170,9 @@ grille, flèches d'une jaquette à l'autre).
   `ListItem.Selectable` : jamais d'aplat vert), Suppr et menu « Supprimer… » ; les mesures automatiques arrivent sans
   redémarrer. Comparaison en tableau à en-têtes (colonnes partagées), écart = flèche + valeur + mot (« mieux », « moins
   bien », « stable ») + couleur, « Inverser ». Graphe de 260 de haut, légende dans sa carte, nom accessible = résumé.
-- **Paramètres** : groupes Général · Mes jeux · Dock · Mesures · Mises à jour et à propos · Données, une
+- **Paramètres** : groupes Général · Mes jeux · Dock · Mesures · Mises à jour et à propos · Données, UNE carte par groupe
+  (`SettingsCard` : lignes séparées par un trait fin, sous-réglages `IsSubSetting` et listes `SettingsCard.Content` /
+  `SettingsCard.ListItem` alignés sur le texte du réglage ; jamais une carte par ligne, jugé illisible le 2026-10-05), une
   `controls:SettingRow` par réglage (icône, titre, une phrase, contrôle à droite, « En savoir plus » replié) ; sous-réglages
   grisés quand le parent est désactivé ; PresentMon réglé ici (avertissement si la mesure auto est cochée sans lui) ;
   « Ouvrir le journal », « Quitter OptiGame… ». Tâche planifiée lue et écrite hors du thread de l'interface.
