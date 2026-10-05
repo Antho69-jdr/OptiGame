@@ -26,7 +26,6 @@ public partial class DockWindow : Window
     private const double CellMargin = 10;      // 5 px de chaque côté d'une icône
     private const double ShelfPadding = 10;   // marge de la rangée (5) + marge d'une cellule (5)
     private const double EdgeGap = 6;          // espace entre le dock et le bord de l'écran
-    private const double IconRadius = 14;
     private const double SpringOmega = 22;     // grossissement : ~0,25 s pour rejoindre la cible
     private const double DragThreshold = 6;
     private const double LiftScale = 1.08;     // jaquette « soulevée » pendant un glisser
@@ -39,6 +38,8 @@ public partial class DockWindow : Window
     private readonly DockViewModel _vm;
     private readonly FullscreenWatcher _fullscreen;
     private readonly DispatcherTimer _hideTimer = new() { Interval = TimeSpan.FromMilliseconds(700) };
+    private readonly DispatcherTimer _previewTimer = new() { Interval = TimeSpan.FromSeconds(2) };
+    private bool _menuOpen;
 
     private DockEdge _edge = DockEdge.Bottom;
     private bool _autoHide = true;
@@ -85,8 +86,41 @@ public partial class DockWindow : Window
         _hideTimer.Tick += (_, _) =>
         {
             _hideTimer.Stop();
-            if (_autoHide && !_dragging && !Shelf.IsMouseOver) SlideOut();
+            HideIfIdle();
         };
+        _previewTimer.Tick += (_, _) =>
+        {
+            _previewTimer.Stop();
+            HideIfIdle();
+        };
+    }
+
+    /// <summary>Effets d'animation de Windows (Paramètres > Accessibilité) : sans eux, le dock apparaît et se range sans glisser.</summary>
+    private static bool Animations => SystemParameters.ClientAreaAnimation;
+
+    /// <summary>Masquage automatique : se range sauf si la souris est dessus, sur la bande du bord, ou dans un menu ouvert.</summary>
+    private void HideIfIdle()
+    {
+        if (_autoHide && !_dragging && !_menuOpen && !Shelf.IsMouseOver && !Trigger.IsMouseOver) SlideOut();
+    }
+
+    public static readonly DependencyProperty IconCornerRadiusProperty =
+        DependencyProperty.Register(nameof(IconCornerRadius), typeof(CornerRadius), typeof(DockWindow), new PropertyMetadata(new CornerRadius(14)));
+
+    public static readonly DependencyProperty PlateCornerRadiusProperty =
+        DependencyProperty.Register(nameof(PlateCornerRadius), typeof(CornerRadius), typeof(DockWindow), new PropertyMetadata(new CornerRadius(20)));
+
+    /// <summary>Arrondi des icônes, proportionnel à leur taille (14 px pour 64 px, comme avant).</summary>
+    public CornerRadius IconCornerRadius
+    {
+        get => (CornerRadius)GetValue(IconCornerRadiusProperty);
+        set => SetValue(IconCornerRadiusProperty, value);
+    }
+
+    public CornerRadius PlateCornerRadius
+    {
+        get => (CornerRadius)GetValue(PlateCornerRadiusProperty);
+        set => SetValue(PlateCornerRadiusProperty, value);
     }
 
     public static readonly DependencyProperty IconWidthProperty =
@@ -148,6 +182,9 @@ public partial class DockWindow : Window
         _hideTimer.Interval = TimeSpan.FromSeconds(DockLayout.HideDelay(settings.DockHideDelay));
         OgCell.Visibility = Divider.Visibility = settings.DockShowOptiGame ? Visibility.Visible : Visibility.Collapsed;
         (IconWidth, IconHeight) = DockLayout.IconSize(settings.DockIconSize, settings.DockIconShape);
+        var radius = Math.Round(Math.Min(IconWidth, IconHeight) * 14 / 64);
+        IconCornerRadius = new CornerRadius(radius);
+        PlateCornerRadius = new CornerRadius(radius + 6);
         var (background, border) = DockLayout.PlateAlpha(settings.DockOpacity);
         var plateColor = (Color)FindResource("Color.DockPlate");
         var highlight = (Color)FindResource("Color.Highlight");
@@ -163,25 +200,7 @@ public partial class DockWindow : Window
             _ => PlacementMode.Top,
         };
 
-        // Fenêtre : toute la longueur du bord (zone de travail de l'écran principal, hors barre des tâches),
-        // épaisse de la taille d'une icône agrandie + place pour l'info-bulle.
-        var area = SystemParameters.WorkArea;
-        var thickness = Across * MaxScale + ShelfPadding * 2 + EdgeGap + 40;
-        switch (edge)
-        {
-            case DockEdge.Top:
-                (Left, Top, Width, Height) = (area.Left, area.Top, area.Width, thickness);
-                break;
-            case DockEdge.Left:
-                (Left, Top, Width, Height) = (area.Left, area.Top, thickness, area.Height);
-                break;
-            case DockEdge.Right:
-                (Left, Top, Width, Height) = (area.Right - thickness, area.Top, thickness, area.Height);
-                break;
-            default:
-                (Left, Top, Width, Height) = (area.Left, area.Bottom - thickness, area.Width, thickness);
-                break;
-        }
+        PlaceWindow();
 
         // Étagère collée au bord, centrée ; plateau épais d'une icône au repos (les icônes agrandies en débordent).
         var plate = Across + ShelfPadding * 2;
@@ -224,6 +243,45 @@ public partial class DockWindow : Window
     }
 
     /// <summary>
+    /// Fenêtre : toute la longueur du bord (zone de travail de l'écran principal, hors barre des tâches), épaisse de la
+    /// taille d'une icône agrandie + place pour l'info-bulle. Recalculée quand l'écran, sa mise à l'échelle ou la barre
+    /// des tâches change.
+    /// </summary>
+    private void PlaceWindow()
+    {
+        var area = SystemParameters.WorkArea;
+        var thickness = Across * MaxScale + ShelfPadding * 2 + EdgeGap + 40;
+        switch (_edge)
+        {
+            case DockEdge.Top:
+                (Left, Top, Width, Height) = (area.Left, area.Top, area.Width, thickness);
+                break;
+            case DockEdge.Left:
+                (Left, Top, Width, Height) = (area.Left, area.Top, thickness, area.Height);
+                break;
+            case DockEdge.Right:
+                (Left, Top, Width, Height) = (area.Right - thickness, area.Top, thickness, area.Height);
+                break;
+            default:
+                (Left, Top, Width, Height) = (area.Left, area.Bottom - thickness, area.Width, thickness);
+                break;
+        }
+    }
+
+    /// <summary>
+    /// Réglage du dock modifié : il se montre 2 s pour qu'on en voie l'effet, puis se range s'il se masque automatiquement
+    /// (sauf si la souris est dessus).
+    /// </summary>
+    public void Preview()
+    {
+        if (_suppressed || !_autoHide) return;
+        SlideIn();
+        _hideTimer.Stop();
+        _previewTimer.Stop();
+        _previewTimer.Start();
+    }
+
+    /// <summary>
     /// « Afficher le bureau » (Win+D) : le bureau passe devant les applications et cacherait le dock collé au bureau.
     /// Tant qu'il est affiché, le dock passe au premier plan ; il se recolle au bureau dès qu'une application revient.
     /// </summary>
@@ -243,16 +301,17 @@ public partial class DockWindow : Window
         SetWindowPos(handle, HwndBottom, 0, 0, 0, 0, SwpNoMove | SwpNoSize | SwpNoActivate);
     }
 
-    /// <summary>Masque complètement le dock (partie en cours, application plein écran).</summary>
     /// <summary>Fenêtre fermée (dock désactivé, ou partie en cours) : rien ne doit plus la garder en vie.</summary>
     protected override void OnClosed(EventArgs e)
     {
         CompositionTarget.Rendering -= OnMagnifyFrame; // événement statique : garderait toute la fenêtre
         _magnifying = false;
         _hideTimer.Stop();
+        _previewTimer.Stop();
         base.OnClosed(e);
     }
 
+    /// <summary>Masque complètement le dock (partie en cours, application plein écran).</summary>
     public void SetSuppressed(bool suppressed)
     {
         _suppressed = suppressed;
@@ -275,6 +334,13 @@ public partial class DockWindow : Window
     /// </summary>
     private IntPtr OnWindowMessage(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
     {
+        // Résolution, mise à l'échelle ou barre des tâches modifiées : le dock reprend sa place le long du bord, une fois
+        // que WPF a relu les nouvelles valeurs (SystemParameters.WorkArea).
+        if (msg is WmDisplayChange or WmDpiChanged || (msg == WmSettingChange && wParam == SpiSetWorkArea))
+        {
+            Dispatcher.BeginInvoke(DispatcherPriority.Background, PlaceWindow);
+            return IntPtr.Zero;
+        }
         if (msg != WmWindowPosChanging || !_pinnedToDesktop || _desktopShown) return IntPtr.Zero;
         var pos = Marshal.PtrToStructure<WindowPos>(lParam);
         if ((pos.Flags & SwpNoZOrder) != 0) return IntPtr.Zero;
@@ -304,10 +370,21 @@ public partial class DockWindow : Window
     {
         // Un jeu a pu passer en plein écran après avoir pris le premier plan : on revérifie avant d'apparaître.
         if (_suppressed || _fullscreen.Evaluate()) return;
+        _hideTimer.Stop();
         SlideIn();
     }
 
-    private void OnShelfEnter(object sender, MouseEventArgs e) => _hideTimer.Stop();
+    /// <summary>Souris passée par le bord sans aller jusqu'au dock (vers un autre écran, la barre des tâches…) : il se range.</summary>
+    private void OnTriggerLeave(object sender, MouseEventArgs e)
+    {
+        if (_shown && _autoHide && !Shelf.IsMouseOver) _hideTimer.Start();
+    }
+
+    private void OnShelfEnter(object sender, MouseEventArgs e)
+    {
+        _hideTimer.Stop();
+        _previewTimer.Stop();
+    }
 
     private void OnShelfLeave(object sender, MouseEventArgs e)
     {
@@ -335,7 +412,7 @@ public partial class DockWindow : Window
         var other = Horizontal ? TranslateTransform.XProperty : TranslateTransform.YProperty;
         Slide.BeginAnimation(other, null);
         Slide.SetValue(other, 0.0);
-        if (!animate)
+        if (!animate || !Animations)
         {
             Slide.BeginAnimation(property, null);
             Slide.SetValue(property, to);
@@ -362,6 +439,13 @@ public partial class DockWindow : Window
         if (axis is { } position) _magnifyAxis = position;
         _intensityTarget = axis is null ? 0 : 1;
         if (_magnifying) return; // la boucle en cours appliquera la nouvelle position à la prochaine image
+        if (!Animations)
+        {
+            // Sans effets d'animation : l'effet suit la souris sans ressort (aucune boucle par image).
+            (_intensity, _intensityVelocity) = (_intensityTarget, 0);
+            ApplyMagnification();
+            return;
+        }
         if (_intensity == _intensityTarget)
         {
             if (_intensity > 0) ApplyMagnification();
@@ -513,7 +597,7 @@ public partial class DockWindow : Window
         var at = e.GetPosition(press.Cell);
         if (!new Rect(press.Cell.RenderSize).Contains(at)) return; // relâché en dehors : clic annulé
 
-        Ripple(press.Cell, at);
+        if (Animations) Ripple(press.Cell, at);
         // Lancement juste après le premier rendu de l'onde (Background < Render) : elle démarre sans attendre.
         Dispatcher.BeginInvoke(DispatcherPriority.Background, () => _vm.LaunchCommand.Execute(press.Item));
     }
@@ -605,7 +689,7 @@ public partial class DockWindow : Window
         var other = Horizontal ? TranslateTransform.YProperty : TranslateTransform.XProperty;
         move.BeginAnimation(other, null);
         move.SetValue(other, 0.0);
-        if (animate)
+        if (animate && Animations)
         {
             move.BeginAnimation(property, new DoubleAnimation(offset, ShiftDuration) { EasingFunction = Smooth });
             return;
@@ -618,7 +702,7 @@ public partial class DockWindow : Window
     {
         var lift = RenderParts(cell).Lift;
         (lift.CenterX, lift.CenterY) = (cell.ActualWidth / 2, cell.ActualHeight / 2);
-        var animation = new DoubleAnimation(scale, duration) { EasingFunction = easing };
+        var animation = new DoubleAnimation(scale, Animations ? duration : TimeSpan.Zero) { EasingFunction = easing };
         lift.BeginAnimation(ScaleTransform.ScaleXProperty, animation);
         lift.BeginAnimation(ScaleTransform.ScaleYProperty, animation);
     }
@@ -640,12 +724,12 @@ public partial class DockWindow : Window
     }
 
     /// <summary>Onde lumineuse qui part du point de clic et s'efface, découpée à la forme arrondie de la jaquette.</summary>
-    private static void Ripple(FrameworkElement cell, Point at)
+    private void Ripple(FrameworkElement cell, Point at)
     {
         if (cell is not Panel { Children.Count: > 0 } panel || panel.Children[0] is not Grid icon) return;
         at = cell.TranslatePoint(at, icon);
         var size = icon.RenderSize;
-        icon.Clip = new RectangleGeometry(new Rect(size), IconRadius, IconRadius);
+        icon.Clip = new RectangleGeometry(new Rect(size), IconCornerRadius.TopLeft, IconCornerRadius.TopLeft);
 
         // Rayon : jusqu'au coin le plus éloigné, pour que l'onde traverse toute la jaquette.
         var radius = new[] { new Point(0, 0), new Point(size.Width, 0), new Point(0, size.Height), new Point(size.Width, size.Height) }
@@ -685,38 +769,67 @@ public partial class DockWindow : Window
     private void OnItemRightClick(object sender, MouseButtonEventArgs e)
     {
         if ((sender as FrameworkElement)?.DataContext is not DockItemViewModel item) return;
-        _hideTimer.Stop();
-        var menu = new ContextMenu
-        {
-            Items =
-            {
-                MenuItem("Jouer", () => _vm.LaunchCommand.Execute(item)),
-                MenuItem("Ouvrir la fiche", () => _vm.OpenGameCommand.Execute(item)),
-                new Separator(),
-                MenuItem("Retirer du dock", () => _vm.UnpinCommand.Execute(item)),
-            },
-            PlacementTarget = (UIElement)sender,
-            Placement = TipPlacement,
-        };
-        menu.Closed += (_, _) =>
-        {
-            if (_autoHide && !Shelf.IsMouseOver) _hideTimer.Start();
-        };
-        menu.IsOpen = true;
+        var index = _vm.Items.IndexOf(item);
+        var (toStart, toEnd) = Horizontal ? ("Déplacer vers la gauche", "Déplacer vers la droite") : ("Déplacer vers le haut", "Déplacer vers le bas");
+        var play = MenuItem("Jouer", () => _vm.LaunchCommand.Execute(item), isEnabled: !item.IsLaunching);
+        play.FontWeight = FontWeights.SemiBold; // action du clic
+        OpenMenu((UIElement)sender,
+            play,
+            MenuItem("Ouvrir la fiche", () => _vm.OpenGameCommand.Execute(item)),
+            new Separator(),
+            MenuItem(toStart, () => _vm.MoveBy(item, -1), isEnabled: index > 0),
+            MenuItem(toEnd, () => _vm.MoveBy(item, 1), isEnabled: index < _vm.Items.Count - 1),
+            new Separator(),
+            MenuItem("Retirer du dock", () => _vm.UnpinCommand.Execute(item)));
         e.Handled = true;
     }
 
-    /// <summary>Nom au survol : selon le réglage, et jamais pendant un glisser.</summary>
+    /// <summary>Clic droit sur le plateau, le logo d'OptiGame ou le dock vide : réglages du dock à portée de main.</summary>
+    private void OnShelfRightClick(object sender, MouseButtonEventArgs e)
+    {
+        if (e.Handled) return;
+        var open = MenuItem("Ouvrir OptiGame", () => _vm.OpenOptiGameCommand.Execute(null));
+        open.FontWeight = FontWeights.SemiBold;
+        var autoHide = MenuItem("Masquer automatiquement", () => _vm.ToggleAutoHideCommand.Execute(null));
+        (autoHide.IsCheckable, autoHide.IsChecked) = (true, _vm.AutoHide);
+        OpenMenu(Shelf,
+            open,
+            new Separator(),
+            autoHide,
+            MenuItem("Paramètres du dock…", () => _vm.OpenSettingsCommand.Execute(null)),
+            MenuItem("Désactiver le dock…", () => _vm.DisableCommand.Execute(null)));
+        e.Handled = true;
+    }
+
+    private void OpenMenu(UIElement target, params Control[] items)
+    {
+        _hideTimer.Stop();
+        _previewTimer.Stop();
+        var menu = new ContextMenu { PlacementTarget = target, Placement = target == Shelf ? PlacementMode.MousePoint : TipPlacement };
+        foreach (var item in items) menu.Items.Add(item);
+        menu.Closed += (_, _) =>
+        {
+            _menuOpen = false;
+            if (_autoHide && !Shelf.IsMouseOver) _hideTimer.Start();
+        };
+        _menuOpen = true;
+        menu.IsOpen = true;
+    }
+
+    private void OnEmptyHintClick(object sender, MouseButtonEventArgs e) => _vm.OpenLibraryCommand.Execute(null);
+
+    /// <summary>Nom au survol : selon le réglage (toujours s'il y a un état à dire : désinstallé…), et jamais pendant un glisser.</summary>
     private void OnTipOpening(object sender, ToolTipEventArgs e)
     {
-        if (!_showNames || _dragging) e.Handled = true;
+        var hasStatus = (sender as FrameworkElement)?.DataContext is DockItemViewModel { Status.Length: > 0 };
+        if ((!_showNames && !hasStatus) || _dragging) e.Handled = true;
     }
 
     private void OnOptiGameClick(object sender, MouseButtonEventArgs e) => _vm.OpenOptiGameCommand.Execute(null);
 
-    private static MenuItem MenuItem(string header, Action action)
+    private static MenuItem MenuItem(string header, Action action, bool isEnabled = true)
     {
-        var item = new MenuItem { Header = header };
+        var item = new MenuItem { Header = header, IsEnabled = isEnabled };
         item.Click += (_, _) => action();
         return item;
     }
@@ -727,6 +840,10 @@ public partial class DockWindow : Window
     private const int WsExToolWindow = 0x00000080;
     private const int WsExNoActivate = 0x08000000;
     private const int WmWindowPosChanging = 0x0046;
+    private const int WmSettingChange = 0x001A;
+    private const int WmDisplayChange = 0x007E;
+    private const int WmDpiChanged = 0x02E0;
+    private static readonly IntPtr SpiSetWorkArea = new(0x002F);
     private const uint SwpNoSize = 0x0001;
     private const uint SwpNoMove = 0x0002;
     private const uint SwpNoZOrder = 0x0004;

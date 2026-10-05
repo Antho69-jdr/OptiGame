@@ -157,6 +157,8 @@ internal static class PageSnapshots
                 dialog.Close();
             }
 
+            if (Wanted("9-dock")) await SnapshotDock(services, output, Log);
+
             // Galerie : mise en page hors fenêtre (sa hauteur dépasse l'écran), sur le fond de la fenêtre.
             if (!Wanted("0-galerie"))
             {
@@ -175,6 +177,47 @@ internal static class PageSnapshots
         {
             Log($"ÉCHEC : {ex}");
         }
+    }
+
+    /// <summary>
+    /// Dock hors des écrans, toujours affiché (masquage automatique coupé pour la capture seulement : réglages en mémoire), sur le
+    /// fond coloré : jeux épinglés des données de test, puis états d'exemple (lancement, désinstallé), puis à gauche.
+    /// </summary>
+    private static async Task SnapshotDock(IServiceProvider services, string output, Action<string> log)
+    {
+        var vm = services.GetRequiredService<DockViewModel>();
+        var settings = services.GetRequiredService<Core.Settings.AppSettingsStore>().Get();
+        (settings.DockEnabled, settings.DockAutoHide, settings.DockEdge) = (true, false, Core.Settings.DockEdge.Bottom);
+        var dock = new Dock.DockWindow(vm, services.GetRequiredService<Platform.Display.FullscreenWatcher>()) { ShowActivated = false };
+        // Fond façon fond d'écran, plus clair que le plateau : on voit ses bords et son opacité.
+        var background = new LinearGradientBrush(Color.FromRgb(0x2B, 0x4C, 0x7E), Color.FromRgb(0x6B, 0x3F, 0x6E), 0);
+
+        async Task Capture(string name)
+        {
+            (dock.Left, dock.Top) = (-32000, -32000);
+            await Settle(1200);
+            dock.UpdateLayout();
+            var content = (FrameworkElement)dock.Content;
+            var box = dock.Shelf.TransformToAncestor(content).TransformBounds(new Rect(dock.Shelf.RenderSize));
+            box.Inflate(24, 24);
+            box.Intersect(new Rect(content.RenderSize));
+            Render(content, background, Path.Combine(output, $"{name}.png"), box);
+            log($"{name}.png");
+        }
+
+        dock.ApplySettings(settings);
+        (dock.Left, dock.Top) = (-32000, -32000);
+        dock.Show();
+        await Capture("9-dock");
+
+        if (vm.Items.Count > 0) vm.Items[0].IsLaunching = true;
+        if (vm.Items.Count > 1) vm.Items[1].InstallState = Core.Library.InstallState.Uninstalled;
+        await Capture("9b-dock-etats");
+
+        (settings.DockEdge, settings.DockIconShape, settings.DockIconSize) = (Core.Settings.DockEdge.Left, Core.Settings.DockIconShape.Cover, 48);
+        dock.ApplySettings(settings);
+        await Capture("9c-dock-gauche");
+        dock.Close();
     }
 
     private static IReadOnlyList<Core.Diagnostics.DiagnosticResult> SampleDiagnostic()
@@ -221,14 +264,16 @@ internal static class PageSnapshots
 
     private static void SaveElement(System.Windows.Controls.Control element, string path) => Render(element, element.Background, path);
 
-    private static void Render(FrameworkElement root, Brush background, string path)
+    /// <summary>Rendu de root (ou seulement de region, dans son repère) sur un fond.</summary>
+    private static void Render(FrameworkElement root, Brush background, string path, Rect? region = null)
     {
-        var size = new Size(root.ActualWidth, root.ActualHeight);
+        var box = region ?? new Rect(new Size(root.ActualWidth, root.ActualHeight));
+        var size = box.Size;
         var visual = new DrawingVisual();
         using (var dc = visual.RenderOpen())
         {
             dc.DrawRectangle(background, null, new Rect(size));
-            dc.DrawRectangle(new VisualBrush(root) { Stretch = Stretch.None, ViewboxUnits = BrushMappingMode.Absolute, Viewbox = new Rect(size) },
+            dc.DrawRectangle(new VisualBrush(root) { Stretch = Stretch.None, ViewboxUnits = BrushMappingMode.Absolute, Viewbox = box },
                 null, new Rect(size));
         }
         var bitmap = new RenderTargetBitmap((int)Math.Ceiling(size.Width), (int)Math.Ceiling(size.Height), 96, 96, PixelFormats.Pbgra32);

@@ -57,4 +57,17 @@ public sealed class DockLayoutTests
         Assert.Equal((0.5, 2.0, false, false), (clone.DockOpacity, clone.DockHideDelay, clone.DockShowOptiGame, clone.DockShowNames));
         Assert.Equal(0.9, settings.DockOpacity);
     }
+
+    [Fact]
+    public void Dock_appearance_ignores_unrelated_settings()
+    {
+        var settings = new AppSettings { DockEnabled = true };
+        var before = DockAppearance.From(settings);
+        settings.MainWindowPlacement = new WindowPlacement { Left = 10, Top = 20, Width = 1200 };
+        settings.CloseToTrayExplained = true;
+        Assert.Equal(before, DockAppearance.From(settings));
+
+        settings.DockHideDelay = 1.5;
+        Assert.NotEqual(before, DockAppearance.From(settings));
+    }
 }

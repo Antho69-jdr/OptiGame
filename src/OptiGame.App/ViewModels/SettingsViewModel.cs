@@ -4,6 +4,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using OptiGame.App.Services;
 using OptiGame.Core;
+using OptiGame.Core.Profiles;
 using OptiGame.Core.Settings;
 using OptiGame.Platform.Artwork;
 using OptiGame.Platform.Startup;
@@ -22,9 +23,10 @@ public sealed partial class SettingsViewModel : ObservableObject
     private bool _updating;
 
     private readonly IgdbClient _igdb;
+    private readonly ProfileStore _profiles;
 
     public SettingsViewModel(AutoStartService autoStart, IDialogService dialogs, AppPaths paths, AppSettingsStore settings, IgdbClient igdb,
-        UpdateService updates, MeasuresViewModel measures, ShellAlerts alerts, TrayViewModel tray)
+        UpdateService updates, MeasuresViewModel measures, ShellAlerts alerts, TrayViewModel tray, ProfileStore profiles)
     {
         Updates = updates;
         Measures = measures;
@@ -38,6 +40,12 @@ public sealed partial class SettingsViewModel : ObservableObject
         _dialogs = dialogs;
         _settings = settings;
         _igdb = igdb;
+        _profiles = profiles;
+        profiles.DockChanged += (_, _) => OnUi(RefreshDockGames);
+        profiles.Changed += (_, _) => OnUi(RefreshDockGames); // nom modifié, jeu retiré
+        // Le dock (clic droit) peut changer ses réglages : les cases affichées ici suivent.
+        settings.Changed += (_, _) => OnUi(RefreshDockSettings);
+        RefreshDockGames();
         DataFolder = paths.Root;
         _ = RefreshAutoStartAsync(); // schtasks.exe : hors du thread UI, pour ne pas retarder le démarrage
         RefreshGameFolders();
@@ -157,6 +165,52 @@ public sealed partial class SettingsViewModel : ObservableObject
         get => _settings.Get().DockShowNames;
         set { _settings.Update(s => s.DockShowNames = value); OnPropertyChanged(); }
     }
+
+    private void RefreshDockSettings()
+    {
+        OnPropertyChanged(nameof(DockEnabled));
+        OnPropertyChanged(nameof(DockAutoHide));
+        OnPropertyChanged(nameof(DockAutoHideEnabled));
+    }
+
+    /// <summary>Jeux du dock dans leur ordre : réordonner au clavier (le dock lui-même ne prend jamais le focus).</summary>
+    public ObservableCollection<DockGameEntry> DockGames { get; } = [];
+
+    public bool HasDockGames => DockGames.Count > 0;
+
+    private void RefreshDockGames()
+    {
+        var dock = _profiles.GetDock();
+        DockGames.Clear();
+        for (var i = 0; i < dock.Count; i++)
+        {
+            DockGames.Add(new DockGameEntry(dock[i].Id, dock[i].Name, CanMoveUp: i > 0, CanMoveDown: i < dock.Count - 1));
+        }
+        OnPropertyChanged(nameof(HasDockGames));
+    }
+
+    [RelayCommand]
+    private void MoveDockGameUp(DockGameEntry entry) => MoveDockGame(entry, -1);
+
+    [RelayCommand]
+    private void MoveDockGameDown(DockGameEntry entry) => MoveDockGame(entry, 1);
+
+    private void MoveDockGame(DockGameEntry entry, int delta)
+    {
+        var index = DockGames.IndexOf(entry);
+        if (index < 0) return;
+        _profiles.MoveInDock(entry.Id, Math.Clamp(index + delta, 0, DockGames.Count - 1));
+        // Liste reconstruite par DockChanged : le focus clavier revient sur le jeu déplacé (la vue s'en charge).
+        DockGameMoved?.Invoke(this, new DockGameMove(entry.Id, delta));
+    }
+
+    /// <summary>Jeu déplacé : la vue remet le focus sur sa ligne, au bon bouton.</summary>
+    public event EventHandler<DockGameMove>? DockGameMoved;
+
+    [RelayCommand]
+    private void UnpinDockGame(DockGameEntry entry) => _profiles.SetPinned(entry.Id, false);
+
+    private static void OnUi(Action action) => System.Windows.Application.Current?.Dispatcher.BeginInvoke(action);
 
     public DockEdgeOption SelectedDockEdge
     {
@@ -408,3 +462,9 @@ public sealed record UpdateModeOption(UpdateMode Value, string Label);
 public sealed record DockEdgeOption(DockEdge Value, string Label);
 
 public sealed record DockShapeOption(DockIconShape Value, string Label);
+
+/// <summary>Ligne de « Jeux du dock » (Paramètres) : les boutons Monter / Descendre se grisent aux extrémités.</summary>
+public sealed record DockGameEntry(Guid Id, string Name, bool CanMoveUp, bool CanMoveDown);
+
+/// <summary>Jeu du dock déplacé depuis les Paramètres (Delta -1 = monté, +1 = descendu).</summary>
+public sealed record DockGameMove(Guid Id, int Delta);

@@ -719,21 +719,21 @@ public sealed partial class LibraryViewModel : ObservableObject
     [RelayCommand]
     private void DismissLaunchStatus() => LaunchStatus = "";
 
-    /// <summary>Lance le jeu sans droits administrateur ; le profil s'appliquera par la détection habituelle.</summary>
-    public async Task PlayAsync(Guid id)
+    /// <summary>Lance le jeu sans droits administrateur ; le profil s'appliquera par la détection habituelle. Faux si rien n'a été lancé.</summary>
+    public async Task<bool> PlayAsync(Guid id)
     {
-        if (_store.Find(id) is not { } profile) return;
+        if (_store.Find(id) is not { } profile) return false;
         if (OpenGame is { Editor.IsDirty: true } page && page.Id == id &&
             !_dialogs.Confirm("Jouer sans enregistrer ?",
                 "Vos dernières modifications de ce jeu ne sont pas enregistrées : la partie utilisera les réglages enregistrés.",
                 "Jouer sans enregistrer"))
         {
-            return;
+            return false;
         }
         if (_sessions.Current?.Profile.Id == id)
         {
             _dialogs.ShowInfo($"{profile.Name} est déjà en cours", "La partie est déjà lancée : basculez sur la fenêtre du jeu.");
-            return;
+            return false;
         }
 
         switch (GameInstallation.Of(profile.ExePath, File.Exists, Directory.Exists))
@@ -741,17 +741,18 @@ public sealed partial class LibraryViewModel : ObservableObject
             case InstallState.Uninstalled:
                 _dialogs.ShowInfo($"{profile.Name} n'est plus installé",
                     $"Son fichier .exe est introuvable :\n{profile.ExePath}\n\nRéinstallez-le depuis son lanceur, ou retirez-le de Mes jeux.");
-                return;
+                return false;
             case InstallState.DriveUnavailable:
                 _dialogs.ShowInfo("Disque absent",
                     $"Le disque de {profile.Name} ({GameInstallation.RootOf(profile.ExePath)}) n'est pas disponible. Branchez-le, puis réessayez.");
-                return;
+                return false;
         }
 
         try
         {
             var plan = await Task.Run(() => _launcher.Launch(profile));
             ShowLaunchStatus($"Lancement de {profile.Name} — {plan.Description}…");
+            return true;
         }
         catch (Exception ex) when (ex is LaunchException or System.ComponentModel.Win32Exception or InvalidOperationException)
         {
@@ -759,6 +760,7 @@ public sealed partial class LibraryViewModel : ObservableObject
             _dialogs.ShowError($"Impossible de lancer {profile.Name}",
                 ex is LaunchException ? ex.Message : "Le jeu ou son lanceur n'a pas pu être ouvert. Vérifiez qu'il est bien installé, puis réessayez.",
                 ex.Message);
+            return false;
         }
     }
 

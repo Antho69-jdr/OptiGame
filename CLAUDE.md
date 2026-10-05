@@ -130,7 +130,15 @@ src/OptiGame.App/        WPF : composition DI, tray, vues/viewmodels, dialogue d
                          arrêtée une fois au repos), glisser-déposer interne (capture souris + Core/Dock/DockReorder, jamais DragDrop OLE),
                          onde au clic. Ordre du dock = GameProfile.DockOrder, modifié seulement par ProfileStore.SetPinned
                          / MoveInDock (DockViewModel.Move déplace d'abord l'élément affiché, pour animer son arrivée).
-                         Capture de test : PrintWindow sur la fenêtre « OptiGame — Dock » (zones transparentes = noir).
+                         Replacé SEULEMENT si un réglage du dock change (Core/Dock/DockAppearance : settings.json est réécrit
+                         pour la place de la fenêtre, etc.), puis aperçu de 2 s ; replacé aussi sur WM_DISPLAYCHANGE / DPICHANGED /
+                         SETTINGCHANGE(SPI_SETWORKAREA). Jamais Application.MainWindow (propriétaire des dialogues). Bande du bord
+                         quittée sans toucher le dock = il se range. « Effets d'animation » de Windows coupés : ni glissement, ni
+                         ressort, ni onde. Jaquette : « Lancement… » (12 s ou début de partie, clics ignorés), grisée si désinstallé
+                         / disque absent (GameInstallation, hors thread UI). Clic droit jeu : Jouer, fiche, Déplacer ←/→, Retirer ;
+                         clic droit plateau : Ouvrir OptiGame, Masquer automatiquement, Paramètres du dock…, Désactiver… Ordre au
+                         clavier : Paramètres › Dock › « Jeux du dock » (Monter / Descendre / Retirer, focus rendu à la ligne).
+                         Captures : ui-snapshots -Only 9 (étagère seule, fond coloré) ; sinon PrintWindow sur « OptiGame — Dock ».
 tests/OptiGame.Core.Tests/      xUnit + fakes en mémoire (journal, logique des contrôles)
 tests/OptiGame.Platform.Tests/  intégration sur le vrai registre, UNIQUEMENT sous HKCU\Software\OptiGame.Tests
 tools/OptiGame.DiagDump/        diagnostic en console (lecture seule), pour vérifier les lectures système

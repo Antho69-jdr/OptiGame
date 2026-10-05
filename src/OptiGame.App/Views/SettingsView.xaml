@@ -149,6 +149,38 @@
                     <CheckBox IsChecked="{Binding DockShowOptiGame}" Content="Activé" AutomationProperties.Name="Raccourci vers OptiGame au bout du dock" />
                 </controls:SettingRow>
             </StackPanel>
+            <!-- Ordre du dock au clavier (le dock, sans focus, ne se réordonne qu'à la souris). Modifiable même dock désactivé. -->
+            <controls:SettingRow Glyph="&#xE8FD;" Header="Jeux du dock"
+                                 Description="Dans l'ordre du dock : le premier est à gauche (ou en haut). Aussi par glisser-déposer dans le dock." />
+            <TextBlock Margin="36,0,0,8" Style="{StaticResource Text.Caption}" Visibility="{Binding HasDockGames, Converter={StaticResource InverseBoolToVisibility}}"
+                       Text="Aucun jeu épinglé. Épinglez-en depuis Mes jeux (menu « … » de la fiche, ou clic droit sur une jaquette)." />
+            <ItemsControl x:Name="DockGamesList" Margin="36,0,0,8" ItemsSource="{Binding DockGames}" Focusable="False"
+                          AutomationProperties.Name="Jeux du dock, dans l'ordre">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Border Margin="0,2" Padding="12,4,4,4" CornerRadius="{StaticResource Radius.Control}" Background="{StaticResource Brush.Control}">
+                            <DockPanel>
+                                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                                    <controls:IconButton x:Name="UpButton" Style="{StaticResource Button.Icon}" Glyph="&#xE70E;" IsLabelVisible="False"
+                                                         Label="{Binding Name, StringFormat='Monter {0}'}" ToolTip="Monter" IsEnabled="{Binding CanMoveUp}"
+                                                         Command="{Binding DataContext.MoveDockGameUpCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                         CommandParameter="{Binding}" />
+                                    <controls:IconButton x:Name="DownButton" Style="{StaticResource Button.Icon}" Glyph="&#xE70D;" IsLabelVisible="False"
+                                                         Label="{Binding Name, StringFormat='Descendre {0}'}" ToolTip="Descendre" IsEnabled="{Binding CanMoveDown}"
+                                                         Command="{Binding DataContext.MoveDockGameDownCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                         CommandParameter="{Binding}" />
+                                    <controls:IconButton Style="{StaticResource Button.Icon}" Glyph="&#xE711;" IsLabelVisible="False"
+                                                         Label="{Binding Name, StringFormat='Retirer {0} du dock'}" ToolTip="Retirer du dock"
+                                                         Command="{Binding DataContext.UnpinDockGameCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                         CommandParameter="{Binding}" />
+                                </StackPanel>
+                                <TextBlock VerticalAlignment="Center" Style="{StaticResource Text.Body}" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap"
+                                           Text="{Binding Name}" />
+                            </DockPanel>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
 
             <!-- ===== Mesures ===== -->
             <TextBlock Style="{StaticResource Text.SettingsGroup}" Text="Mesures" />

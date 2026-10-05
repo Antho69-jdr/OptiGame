@@ -25,15 +25,18 @@
     <Grid x:Name="Root">
         <!-- Bande de déclenchement du masquage automatique : invisible (alpha 1/255, Brush.HitTestOnly) mais réceptive à la souris.
              Les zones entièrement transparentes (alpha 0) laissent passer les clics vers les fenêtres en dessous. -->
-        <Border x:Name="Trigger" Background="{StaticResource Brush.HitTestOnly}" MouseEnter="OnTriggerEnter" />
+        <Border x:Name="Trigger" Background="{StaticResource Brush.HitTestOnly}" MouseEnter="OnTriggerEnter" MouseLeave="OnTriggerLeave" />
 
-        <Grid x:Name="Shelf" MouseEnter="OnShelfEnter" MouseLeave="OnShelfLeave" MouseMove="OnShelfMouseMove">
+        <!-- Clic droit sur le plateau (hors jaquette) : menu du dock -->
+        <Grid x:Name="Shelf" MouseEnter="OnShelfEnter" MouseLeave="OnShelfLeave" MouseMove="OnShelfMouseMove"
+              MouseRightButtonUp="OnShelfRightClick">
             <Grid.RenderTransform>
                 <TranslateTransform x:Name="Slide" />
             </Grid.RenderTransform>
 
-            <!-- Plateau : suit la taille des icônes au repos, les icônes agrandies en débordent -->
-            <Border x:Name="Plate" CornerRadius="20" Background="{StaticResource Brush.DockPlate}" BorderBrush="{StaticResource Brush.DockBorder}" BorderThickness="1" />
+            <!-- Plateau : suit la taille des icônes au repos, les icônes agrandies en débordent ; arrondi proportionnel aux icônes -->
+            <Border x:Name="Plate" CornerRadius="{Binding PlateCornerRadius, RelativeSource={RelativeSource AncestorType=Window}}"
+                    Background="{StaticResource Brush.DockPlate}" BorderBrush="{StaticResource Brush.DockBorder}" BorderThickness="1" />
 
             <StackPanel x:Name="Row" Margin="5">
                 <ItemsControl x:Name="ItemsHost" ItemsSource="{Binding Items}" Focusable="False">
@@ -45,51 +48,72 @@
                     <ItemsControl.ItemTemplate>
                         <DataTemplate DataType="{x:Type vm:DockItemViewModel}">
                             <!-- RenderTransform (grossissement, soulèvement, glisser) créé par le code, une instance par cellule -->
-                            <Grid x:Name="Cell" Margin="5" Background="Transparent" ToolTip="{Binding Name}"
+                            <Grid x:Name="Cell" Margin="5" Background="Transparent" ToolTip="{Binding ToolTipText}"
                                   ToolTipService.InitialShowDelay="150" ToolTipService.BetweenShowDelay="0"
                                   ToolTipService.Placement="{Binding TipPlacement, RelativeSource={RelativeSource AncestorType=Window}}"
                                   PreviewMouseLeftButtonDown="OnItemMouseDown" PreviewMouseMove="OnItemMouseMove"
                                   PreviewMouseLeftButtonUp="OnItemMouseUp" LostMouseCapture="OnItemLostCapture" ToolTipOpening="OnTipOpening"
                                   MouseRightButtonUp="OnItemRightClick"
-                                  AutomationProperties.Name="{Binding Name}">
-                                <Grid Width="{Binding IconWidth, RelativeSource={RelativeSource AncestorType=Window}}"
+                                  AutomationProperties.Name="{Binding Name}" AutomationProperties.ItemStatus="{Binding Status}">
+                                <Grid x:Name="Icon" Width="{Binding IconWidth, RelativeSource={RelativeSource AncestorType=Window}}"
                                       Height="{Binding IconHeight, RelativeSource={RelativeSource AncestorType=Window}}">
-                                    <Border CornerRadius="14" Background="{StaticResource Brush.DockPlaceholder}">
-                                        <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="18" FontWeight="SemiBold"
+                                    <Border CornerRadius="{Binding IconCornerRadius, RelativeSource={RelativeSource AncestorType=Window}}"
+                                            Background="{StaticResource Brush.DockPlaceholder}">
+                                        <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="{StaticResource FontSize.Title}" FontWeight="SemiBold"
                                                    Foreground="{StaticResource Brush.TextSecondary}" Text="{Binding Initials}" />
                                     </Border>
-                                    <Border CornerRadius="14" Visibility="{Binding HasCover, Converter={StaticResource BoolToVisibility}}">
+                                    <Border CornerRadius="{Binding IconCornerRadius, RelativeSource={RelativeSource AncestorType=Window}}"
+                                            Visibility="{Binding HasCover, Converter={StaticResource BoolToVisibility}}">
                                         <Border.Background>
                                             <ImageBrush Stretch="UniformToFill" ImageSource="{Binding CoverPath, Converter={StaticResource PathToImage}, ConverterParameter=320}" />
                                         </Border.Background>
                                     </Border>
-                                    <Border CornerRadius="14" BorderThickness="1" BorderBrush="{StaticResource Brush.OverlayBorder}" />
+                                    <Border CornerRadius="{Binding IconCornerRadius, RelativeSource={RelativeSource AncestorType=Window}}"
+                                            BorderThickness="1" BorderBrush="{StaticResource Brush.OverlayBorder}" />
+                                    <!-- Lancement en cours : jaquette voilée et barre de progression (les clics suivants sont ignorés) -->
+                                    <Border x:Name="Launching" CornerRadius="{Binding IconCornerRadius, RelativeSource={RelativeSource AncestorType=Window}}"
+                                            Background="{StaticResource Brush.ScrimLight}" Visibility="Collapsed">
+                                        <ProgressBar Height="4" Margin="8,0,8,8" VerticalAlignment="Bottom" IsIndeterminate="True" IsTabStop="False"
+                                                     AutomationProperties.Name="Lancement en cours" />
+                                    </Border>
                                 </Grid>
-                                <!-- Jeu en cours -->
-                                <Ellipse Width="6" Height="6" Margin="0,0,0,-9" HorizontalAlignment="Center" VerticalAlignment="Bottom"
-                                         Fill="{StaticResource Brush.Accent}" Visibility="{Binding IsPlaying, Converter={StaticResource BoolToVisibility}}" />
                             </Grid>
+                            <DataTemplate.Triggers>
+                                <!-- Désinstallé ou disque absent : grisé comme dans Mes jeux ; le clic explique pourquoi -->
+                                <DataTrigger Binding="{Binding IsUnavailable}" Value="True">
+                                    <Setter TargetName="Icon" Property="Opacity" Value="0.45" />
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding IsLaunching}" Value="True">
+                                    <Setter TargetName="Launching" Property="Visibility" Value="Visible" />
+                                </DataTrigger>
+                            </DataTemplate.Triggers>
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
 
-                <!-- Dock vide -->
-                <Border x:Name="EmptyHint" Margin="6,0" Padding="12,0" VerticalAlignment="Center" HorizontalAlignment="Center"
+                <!-- Dock vide : cliquable, ouvre Mes jeux. Fond propre : lisible quelle que soit l'opacité du plateau. -->
+                <Border x:Name="EmptyHint" Margin="6,0" Padding="16,10" VerticalAlignment="Center" HorizontalAlignment="Center"
+                        CornerRadius="{StaticResource Radius.Card}" Background="{StaticResource Brush.Overlay}"
+                        BorderBrush="{StaticResource Brush.OverlayBorder}" BorderThickness="1" Cursor="Hand"
+                        MouseLeftButtonUp="OnEmptyHintClick" AutomationProperties.Name="Épingler des jeux depuis Mes jeux"
                         Visibility="{Binding IsEmpty, Converter={StaticResource BoolToVisibility}}">
-                    <TextBlock Style="{StaticResource Text.Caption}" FontSize="13" TextWrapping="NoWrap"
-                               Text="Épinglez des jeux depuis « Mes jeux »" />
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Style="{StaticResource Text.Icon}" Margin="0,0,8,0" VerticalAlignment="Center" Text="&#xE718;" />
+                        <TextBlock Style="{StaticResource Text.Body}" TextWrapping="NoWrap" VerticalAlignment="Center"
+                                   Text="Épinglez des jeux depuis Mes jeux" />
+                    </StackPanel>
                 </Border>
 
                 <Border x:Name="Divider" Background="{StaticResource Brush.DockBorder}" />
 
                 <!-- OptiGame -->
-                <Grid x:Name="OgCell" Margin="5" Background="Transparent" ToolTip="OptiGame"
+                <Grid x:Name="OgCell" Margin="5" Background="Transparent" ToolTip="Ouvrir OptiGame"
                       ToolTipService.InitialShowDelay="150"
                       ToolTipService.Placement="{Binding TipPlacement, RelativeSource={RelativeSource AncestorType=Window}}"
                       MouseLeftButtonUp="OnOptiGameClick" ToolTipOpening="OnTipOpening" AutomationProperties.Name="Ouvrir OptiGame">
                     <Border Width="{Binding IconWidth, RelativeSource={RelativeSource AncestorType=Window}}"
                             Height="{Binding IconHeight, RelativeSource={RelativeSource AncestorType=Window}}"
-                            CornerRadius="14" Background="{StaticResource Brush.Accent}">
+                            CornerRadius="{Binding IconCornerRadius, RelativeSource={RelativeSource AncestorType=Window}}" Background="{StaticResource Brush.Accent}">
                         <Image Source="{StaticResource Logo.Mark}" Stretch="Uniform" />
                     </Border>
                 </Grid>

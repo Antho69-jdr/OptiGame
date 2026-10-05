@@ -1,5 +1,6 @@
 using System.Windows;
 using OptiGame.App.ViewModels;
+using OptiGame.Core.Dock;
 using OptiGame.Core.Logging;
 using OptiGame.Core.Sessions;
 using OptiGame.Core.Settings;
@@ -21,12 +22,13 @@ public sealed class DockController(
 {
     private DockWindow? _window;
     private bool _started;
+    private DockAppearance? _applied;
 
     public void Start()
     {
         if (_started) return;
         _started = true;
-        settings.Changed += (_, _) => OnUi(Apply);
+        settings.Changed += (_, _) => OnUi(OnSettingsChanged);
         sessions.SessionStarted += (_, _) => OnUi(UpdateSuppression);
         sessions.SessionEnded += (_, _) => OnUi(Apply); // fermé pour la partie : recréé selon les réglages
         fullscreen.FullscreenChanged += (_, _) => UpdateSuppression();
@@ -45,9 +47,22 @@ public sealed class DockController(
         fullscreen.Dispose();
     }
 
+    /// <summary>
+    /// settings.json est réécrit pour bien d'autres raisons (place de la fenêtre, jeux Steam connus…) : le dock ne se replace
+    /// que si l'un de SES réglages a changé, et se montre alors 2 s pour qu'on voie l'effet (même s'il se masque seul).
+    /// </summary>
+    private void OnSettingsChanged()
+    {
+        var appearance = DockAppearance.From(settings.Get());
+        if (appearance == _applied) return;
+        Apply();
+        _window?.Preview();
+    }
+
     private void Apply()
     {
         var s = settings.Get();
+        _applied = DockAppearance.From(s);
         if (!s.DockEnabled)
         {
             if (_window is not null)
@@ -62,8 +77,13 @@ public sealed class DockController(
         {
             if (ClosedForGame) return; // recréé à la fin de la partie
             fullscreen.Start();
+            var main = Application.Current?.MainWindow;
             _window = new DockWindow(dock, fullscreen);
             _window.Show();
+            // WPF fait de la première fenêtre ouverte la fenêtre principale : le dock (sans focus, toujours là) ne doit
+            // jamais servir de propriétaire aux dialogues.
+            if (Application.Current is { } app && ReferenceEquals(app.MainWindow, _window)) app.MainWindow = main;
+            dock.RefreshInstallStates();
             log.Info("Dock activé.");
         }
         _window.ApplySettings(s);

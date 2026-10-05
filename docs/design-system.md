@@ -175,6 +175,19 @@ grille, flèches d'une jaquette à l'autre).
   grisés quand le parent est désactivé ; PresentMon réglé ici (avertissement si la mesure auto est cochée sans lui) ;
   « Ouvrir le journal », « Quitter OptiGame… ». Tâche planifiée lue et écrite hors du thread de l'interface.
 
+## Dock
+
+- Fenêtre sans focus (jamais au clavier) : chaque action a son équivalent dans la fenêtre — jouer depuis Mes jeux, ordre et
+  retrait dans Paramètres › Dock › « Jeux du dock » (Monter / Descendre / Retirer, nom du jeu dans le nom accessible).
+- Jaquettes : arrondi proportionnel (14 px pour 64 px), plateau = arrondi + 6. États : « Lancement… » (voile `Brush.ScrimLight`
+  + barre indéterminée, 12 s au plus, clics ignorés) ; désinstallé ou disque absent = opacité 0,45 comme dans Mes jeux,
+  état dans l'info-bulle et `AutomationProperties.ItemStatus`.
+- Dock vide : pastille lisible quelle que soit l'opacité du plateau (`Brush.Overlay`), cliquable vers Mes jeux.
+- Menus : clic droit jeu = **Jouer**, Ouvrir la fiche, Déplacer vers la gauche / droite (haut / bas), Retirer du dock ;
+  clic droit plateau = **Ouvrir OptiGame**, Masquer automatiquement (case), Paramètres du dock…, Désactiver le dock… (confirmé).
+- Mouvement : glissement, ressort du grossissement et onde de clic seulement si les effets d'animation de Windows sont activés.
+  Un réglage du dock modifié le montre 2 s, puis il se range s'il se masque automatiquement.
+
 ## Dialogues
 
 Un seul langage : **aucune MessageBox Win32**, sauf le message bloquant d'`App.LoadStateFiles` (fichier d'état illisible),

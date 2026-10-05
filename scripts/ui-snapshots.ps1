@@ -4,7 +4,7 @@
 # (ni détection, ni dock, ni mise à jour). Lecture seule : rien n'est appliqué.
 #   .\scripts\ui-snapshots.ps1 -Label avant
 #   .\scripts\ui-snapshots.ps1 -Label apres -Sizes 880x600,1240x860 -Game "Overwatch"
-#   .\scripts\ui-snapshots.ps1 -Label dialogues -Only 7,0      (préfixes : 0 galerie, 1-6 pages, 7 dialogues)
+#   .\scripts\ui-snapshots.ps1 -Label dialogues -Only 7,0      (préfixes : 0 galerie, 1-6 pages, 7 dialogues, 8 coque, 9 dock)
 # Résultat : artifacts\ui-snapshots\<Label>\<page>-<largeur>x<hauteur>.png + snapshot.log
 param(
     [string]$Label = 'courant',
