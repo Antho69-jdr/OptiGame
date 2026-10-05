@@ -366,6 +366,8 @@ vit dans Core ; Platform ne fait que lire/écrire le système.
   essai toutes les 10 min, et 30 s après la fermeture de la fenêtre (pas tout de suite : quitter OptiGame la ferme aussi).
   Après une mise à jour (`LastRunVersion` plus ancienne) : notification + bandeau « mis à jour », anciens installeurs
   supprimés. Paramètres > Mises à jour (Rechercher / Installer maintenant / Nouveautés) ; bandeau dans la fenêtre.
+- Vérifié en vrai le 2026-10-05 sur la machine de dev : 1.2.0 installée, 1.2.1 publiée → « Rechercher maintenant »,
+  téléchargement, installation à la fermeture de la fenêtre, OptiGame relancé de lui-même en 1.2.1.
 - `DiagDump -- --update-check [--download]` : dernière version publiée, fichier, empreinte, clé de désinstallation ;
   `--download` vérifie aussi le téléchargement complet (dossier temporaire).
 - Sans signature de code, une mise à jour n'est authentique que si le compte GitHub l'est (double authentification) ;
