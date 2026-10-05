@@ -5,7 +5,7 @@ namespace OptiGame.Core.Profiles;
 /// <summary>
 /// Réglages durables faits pour un jeu depuis sa page (carte graphique, plafond de FPS du pilote…) : journal des corrections
 /// (fixes.json), ids « game.&lt;sorte&gt;.&lt;id du profil&gt; ». Retirer le jeu de « Mes jeux » ne les annule pas : ils restent
-/// annulables depuis le Diagnostic (vue Avancé, « Corrections appliquées par OptiGame »).
+/// restaurables depuis la page Diagnostic (« Optimisations actives », « Réglages propres à un jeu »).
 /// </summary>
 public static class GameChanges
 {

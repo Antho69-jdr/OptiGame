@@ -54,6 +54,7 @@
             <conv:InverseBoolToVisibilityConverter x:Key="InverseBoolToVisibility" />
             <conv:EmptyAndUnfocusedToVisibilityConverter x:Key="EmptyAndUnfocusedToVisibility" />
             <conv:AllTrueToVisibilityConverter x:Key="AllTrueToVisibility" />
+            <conv:AnyTrueToVisibilityConverter x:Key="AnyTrueToVisibility" />
             <conv:WidthToColumnsConverter x:Key="WidthToColumns" />
             <conv:LevelToBrushConverter x:Key="LevelToBrush" />
             <conv:DirtySuffixConverter x:Key="DirtySuffix" />

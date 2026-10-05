@@ -90,7 +90,7 @@ public sealed class AppSettings
     /// </summary>
     public bool LightDuringGames { get; set; } = true;
 
-    /// <summary>Diagnostic en vue « Avancé » (chaque correction à la main) plutôt que « Simple » (un bouton).</summary>
+    /// <summary>Ancien choix de vue du Diagnostic (Simple / Avancé) : plus utilisé depuis la page unique (1.5), gardé pour relire les anciens fichiers.</summary>
     public bool DiagnosticAdvanced { get; set; }
 
     /// <summary>« Mes jeux » affiche aussi les jeux Steam possédés mais non installés (jaquettes grisées).</summary>

@@ -5,6 +5,8 @@ using System.Globalization;
 using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using OptiGame.App.Controls;
+using OptiGame.Core.Text;
 using OptiGame.App.Services;
 using OptiGame.Core.Abstractions;
 using OptiGame.Core.Drivers;
@@ -38,12 +40,17 @@ public sealed partial class DriversViewModel(
     public ObservableCollection<WindowsUpdateDriverItemViewModel> Updates { get; } = [];
 
     [ObservableProperty]
-    [NotifyCanExecuteChangedFor(nameof(SearchCommand), nameof(InstallGpuCommand), nameof(InstallChipsetCommand), nameof(InstallUpdatesCommand))]
+    [NotifyCanExecuteChangedFor(nameof(SearchCommand), nameof(InstallGpuCommand), nameof(InstallChipsetCommand), nameof(InstallUpdatesCommand), nameof(InstallItemCommand))]
+    [NotifyPropertyChangedFor(nameof(CanEditUpdates))]
     private bool _isSearching;
 
     [ObservableProperty]
-    [NotifyCanExecuteChangedFor(nameof(SearchCommand), nameof(InstallGpuCommand), nameof(InstallChipsetCommand), nameof(InstallUpdatesCommand))]
+    [NotifyCanExecuteChangedFor(nameof(SearchCommand), nameof(InstallGpuCommand), nameof(InstallChipsetCommand), nameof(InstallUpdatesCommand), nameof(InstallItemCommand))]
+    [NotifyPropertyChangedFor(nameof(CanEditUpdates))]
     private bool _isInstalling;
+
+    /// <summary>Cases de Windows Update modifiables (pas pendant une recherche ni une installation).</summary>
+    public bool CanEditUpdates => !IsSearching && !IsInstalling;
 
     /// <summary>Logiciel de chipset AMD ; null sur un PC sans processeur AMD (la carte est alors masquée).</summary>
     [ObservableProperty]
@@ -83,15 +90,10 @@ public sealed partial class DriversViewModel(
     [RelayCommand(CanExecute = nameof(CanSearch))]
     private async Task SearchAsync()
     {
+        // Les résultats précédents restent affichés (atténués) jusqu'aux nouveaux : la page ne saute pas.
         IsSearching = true;
-        Gpus.Clear();
-        foreach (var update in Updates) update.PropertyChanged -= OnUpdateSelectionChanged;
-        Updates.Clear();
-        HiddenUpdatesNote = "";
-        GpuStatus = "Recherche du dernier pilote auprès de NVIDIA…";
+        GpuStatus = "Recherche des derniers pilotes…";
         UpdatesStatus = "Recherche dans Windows Update (environ 30 secondes)…";
-        Chipset = null;
-        ChipsetStatus = "";
         try
         {
             // Recherches en parallèle : Windows Update est long, NVIDIA et AMD répondent en quelques secondes.
@@ -99,12 +101,15 @@ public sealed partial class DriversViewModel(
             var chipsetTask = Task.Run(() => chipsetClient.CheckAsync());
             var adapters = await Task.Run(() => gpus.GetAdapters().Where(g => g.IsPhysical).ToList());
             string? nvidiaLatest = null;
+            var found = new List<GpuDriverItemViewModel>();
             foreach (var gpu in adapters)
             {
                 var status = await nvidia.CheckAsync(gpu);
                 nvidiaLatest ??= status.Latest?.Version;
-                Gpus.Add(new GpuDriverItemViewModel(status, gpu.DriverDate));
+                found.Add(new GpuDriverItemViewModel(status, gpu.DriverDate));
             }
+            Gpus.Clear();
+            foreach (var item in found) Gpus.Add(item);
             GpuStatus = adapters.Count == 0 ? "Aucune carte graphique physique détectée." : $"Vérifié à {time.GetLocalNow():HH:mm}.";
 
             try
@@ -114,17 +119,24 @@ public sealed partial class DriversViewModel(
                     Chipset = new ChipsetDriverItemViewModel(chipset);
                     ChipsetStatus = $"Vérifié à {time.GetLocalNow():HH:mm}.";
                 }
+                else
+                {
+                    Chipset = null;
+                    ChipsetStatus = "";
+                }
             }
             catch (Exception ex) when (ex is System.Management.ManagementException or UnauthorizedAccessException or System.Security.SecurityException)
             {
                 log.Error("Vérification du chipset AMD impossible", ex);
-                ChipsetStatus = $"Vérification du chipset impossible : {ex.Message}";
+                ChipsetStatus = "Vérification du chipset impossible pour l'instant : le détail est dans le journal.";
             }
 
             try
             {
                 var all = await updatesTask;
                 var hidden = all.Where(u => DriverRules.IsSupersededByNvidia(u, nvidiaLatest)).ToList();
+                foreach (var update in Updates) update.PropertyChanged -= OnUpdateSelectionChanged;
+                Updates.Clear();
                 foreach (var update in all.Except(hidden))
                 {
                     var item = new WindowsUpdateDriverItemViewModel(update);
@@ -133,20 +145,22 @@ public sealed partial class DriversViewModel(
                 }
                 UpdatesStatus = Updates.Count == 0
                     ? "Aucun pilote proposé par Windows Update."
-                    : $"{Updates.Count} pilote(s) proposé(s) par Windows Update. Cochez ceux à installer.";
+                    : $"{FrenchText.Count(Updates.Count, "pilote proposé", "pilotes proposés")} par Windows Update. Cochez ceux à installer.";
                 HiddenUpdatesNote = hidden.Count == 0 ? "" : string.Join("\n", hidden.Select(u =>
                     $"Masqué : « {u.Title} » — NVIDIA publie un pilote plus récent ({nvidiaLatest}), inutile d'installer une version plus ancienne."));
             }
             catch (Exception ex) when (ex is System.Runtime.InteropServices.COMException or InvalidOperationException or UnauthorizedAccessException)
             {
                 log.Error("Recherche des pilotes Windows Update impossible", ex);
-                UpdatesStatus = $"Windows Update ne répond pas : {ex.Message}";
+                UpdatesStatus = "Windows Update ne répond pas pour l'instant : réessayez plus tard (Actualiser). Le détail est dans le journal.";
             }
         }
         finally
         {
             IsSearching = false;
             AvailableCount = Gpus.Count(g => g.IsUpdateAvailable) + (Chipset is { IsUpdateAvailable: true } ? 1 : 0);
+            HasUpdates = Updates.Count > 0;
+            UpdateInstallLabel();
             InstallUpdatesCommand.NotifyCanExecuteChanged();
         }
     }
@@ -235,8 +249,51 @@ public sealed partial class DriversViewModel(
             IsInstalling = false;
         }
 
-        if (installerRan) await SearchAsync(); // versions installées à jour
+        if (!installerRan) return;
+        await SearchAsync(); // versions installées à jour
+        // Bilan : l'installeur a pu être annulé ou échouer sans rien dire.
+        var after = item is ChipsetDriverItemViewModel ? Chipset : (InstallableDriverViewModel?)Gpus.FirstOrDefault(g => g.Name == item.Name);
+        if (after is { IsUpToDate: true })
+        {
+            ShowOutcome(Severity.Success, $"{after.Name} : pilote à jour", "Un redémarrage de Windows peut être demandé par l'installeur.");
+        }
+        else
+        {
+            ShowOutcome(Severity.Warning, "Installation non constatée",
+                $"La version installée n'a pas changé ({after?.InstalledVersionText ?? "inconnue"}). L'installation a peut-être été annulée ; vous pouvez la relancer.");
+        }
     }
+
+    /// <summary>Bilan de la dernière installation (InfoBar fermable).</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasOutcome))]
+    private string _outcomeTitle = "";
+
+    [ObservableProperty] private string _outcomeMessage = "";
+    [ObservableProperty] private Severity _outcomeSeverity = Severity.Success;
+
+    public bool HasOutcome => OutcomeTitle.Length > 0;
+
+    [RelayCommand]
+    private void DismissOutcome() => OutcomeTitle = "";
+
+    private void ShowOutcome(Severity severity, string title, string message)
+    {
+        OutcomeSeverity = severity;
+        OutcomeMessage = message;
+        OutcomeTitle = title;
+    }
+
+    /// <summary>Bouton d'installation commun aux cartes (carte graphique NVIDIA, chipset AMD).</summary>
+    [RelayCommand(CanExecute = nameof(CanInstallItem))]
+    private Task InstallItemAsync(InstallableDriverViewModel? item) => item switch
+    {
+        GpuDriverItemViewModel gpu => InstallGpuAsync(gpu),
+        ChipsetDriverItemViewModel => InstallChipsetAsync(),
+        _ => Task.CompletedTask,
+    };
+
+    private bool CanInstallItem(InstallableDriverViewModel? item) => item is { CanInstall: true } && !IsSearching && !IsInstalling;
 
     [RelayCommand]
     private void CancelDownload() => _download?.Cancel();
@@ -270,7 +327,8 @@ public sealed partial class DriversViewModel(
                 .Concat(report.Skipped.Select(s => $"• {s}"))
                 .ToList();
             log.Info("Installation Windows Update : " + string.Join(" ; ", lines) + (report.RebootRequired ? " (redémarrage requis)" : ""));
-            dialogs.ShowInfo(report.RebootRequired ? "Installation terminée : redémarrage requis" : "Installation terminée",
+            ShowOutcome(report.RebootRequired ? Severity.Warning : Severity.Success,
+                report.RebootRequired ? "Installation terminée : redémarrage requis" : "Installation terminée",
                 (lines.Count == 0 ? "Aucun des pilotes choisis n'est encore proposé par Windows Update." : string.Join("\n", lines)) +
                 (report.RebootRequired ? "\n\nRedémarrez Windows pour terminer l'installation." : ""));
         }
@@ -290,7 +348,28 @@ public sealed partial class DriversViewModel(
 
     private void OnUpdateSelectionChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == nameof(WindowsUpdateDriverItemViewModel.IsSelected)) InstallUpdatesCommand.NotifyCanExecuteChanged();
+        if (e.PropertyName != nameof(WindowsUpdateDriverItemViewModel.IsSelected)) return;
+        UpdateInstallLabel();
+        InstallUpdatesCommand.NotifyCanExecuteChanged();
+    }
+
+    /// <summary>Liste Windows Update non vide : la consigne et le bouton d'installation s'affichent.</summary>
+    [ObservableProperty]
+    private bool _hasUpdates;
+
+    /// <summary>« Installer les 2 pilotes… » (le nombre cochés) ; « Installer… » sans sélection (bouton inactif).</summary>
+    [ObservableProperty]
+    private string _installUpdatesLabel = "Installer…";
+
+    private void UpdateInstallLabel()
+    {
+        var count = Updates.Count(u => u.IsSelected);
+        InstallUpdatesLabel = count switch
+        {
+            0 => "Installer…",
+            1 => "Installer le pilote coché…",
+            _ => $"Installer les {count} pilotes cochés…",
+        };
     }
 
     /// <summary>Protection du système : état réel écrit dans le journal (il n'est lisible qu'avec les droits administrateur).</summary>
@@ -368,6 +447,43 @@ public abstract partial class InstallableDriverViewModel : ObservableObject
         DriverState.UpToDate => "À jour",
         _ => "Non vérifié",
     };
+
+    // Carte commune (carte graphique, chipset) : un seul modèle d'affichage dans DriversView.
+    public abstract string Name { get; }
+
+    public abstract string StateLabel { get; }
+
+    public abstract bool IsUpdateAvailable { get; }
+
+    public abstract bool IsUpToDate { get; }
+
+    public bool IsUnknown => !IsUpdateAvailable && !IsUpToDate;
+
+    public abstract bool CanInstall { get; }
+
+    public abstract string InstallLabel { get; }
+
+    public abstract string Message { get; }
+
+    /// <summary>« Installé : 591.86 du 22 septembre 2026 ».</summary>
+    public abstract string Installed { get; }
+
+    /// <summary>Version installée seule (bilan après installation).</summary>
+    public abstract string InstalledVersionText { get; }
+
+    public abstract bool HasLatest { get; }
+
+    /// <summary>« Disponible : 617.14 du 22 septembre 2026 (750 Mo) ».</summary>
+    public abstract string Latest { get; }
+
+    public abstract Uri? DetailsUrl { get; }
+
+    public abstract string DetailsLabel { get; }
+
+    public bool HasDetails => DetailsUrl is not null;
+
+    /// <summary>« Carte graphique, Mise à jour disponible » (lecteurs d'écran).</summary>
+    public string AccessibleName => $"{Name}, {StateLabel}";
 }
 
 public sealed partial class GpuDriverItemViewModel(GpuDriverStatus status, DateTime? installedDate) : InstallableDriverViewModel
@@ -376,34 +492,36 @@ public sealed partial class GpuDriverItemViewModel(GpuDriverStatus status, DateT
 
     public GpuDriverStatus Status { get; } = status;
 
-    public string Name => Status.GpuName;
+    public override string Name => Status.GpuName;
 
-    public string StateLabel => StateText(Status.State);
+    public override string StateLabel => StateText(Status.State);
 
-    public bool IsUpdateAvailable => Status.State == DriverState.UpdateAvailable;
+    public override bool IsUpdateAvailable => Status.State == DriverState.UpdateAvailable;
 
-    public bool IsUpToDate => Status.State == DriverState.UpToDate;
+    public override bool IsUpToDate => Status.State == DriverState.UpToDate;
 
     /// <summary>Installation proposée : nouveau pilote NVIDIA, téléchargeable depuis les serveurs officiels.</summary>
-    public bool CanInstall => IsUpdateAvailable && Status.Vendor == GpuVendor.Nvidia && Status.Latest is { } l && InstallerFiles.FileNameFor(l.DownloadUrl) is not null;
+    public override bool CanInstall => IsUpdateAvailable && Status.Vendor == GpuVendor.Nvidia && Status.Latest is { } l && InstallerFiles.FileNameFor(l.DownloadUrl) is not null;
 
-    public string InstallLabel => $"Télécharger et installer le {Status.Latest?.Version}";
+    public override string InstallLabel => $"Installer le pilote {Status.Latest?.Version}…";
 
-    public string Message => Status.Message;
+    public override string Message => Status.Message;
 
-    public string Installed => $"Installé : {Status.InstalledVersion ?? "?"}" +
-                               (installedDate is { } d ? $" du {d.ToString("d MMMM yyyy", Fr)}" : "");
+    public override string Installed => $"Installé : {InstalledVersionText}" +
+                                        (installedDate is { } d ? $" du {d.ToString("d MMMM yyyy", Fr)}" : "");
 
-    public bool HasLatest => Status.Latest is not null;
+    public override string InstalledVersionText => Status.InstalledVersion ?? "version inconnue";
 
-    public string Latest => Status.Latest is { } l
-        ? $"Dernier publié par NVIDIA : {l.Version}" + (l.ReleaseDate is { } r ? $" du {r.ToString("d MMMM yyyy", Fr)}" : "") +
+    public override bool HasLatest => Status.Latest is not null;
+
+    public override string Latest => Status.Latest is { } l
+        ? $"Disponible chez NVIDIA : {l.Version}" + (l.ReleaseDate is { } r ? $" du {r.ToString("d MMMM yyyy", Fr)}" : "") +
           (l.SizeText is { } size ? $" ({DriverInstallPlans.FrenchSize(size)})" : "")
         : "";
 
-    public Uri? DetailsUrl => Status.Latest?.DetailsUrl;
+    public override Uri? DetailsUrl => Status.Latest?.DetailsUrl;
 
-    public bool HasDetails => DetailsUrl is not null;
+    public override string DetailsLabel => "Notes de version (nvidia.com)";
 }
 
 /// <summary>Logiciel de chipset AMD (carte mère).</summary>
@@ -413,36 +531,36 @@ public sealed class ChipsetDriverItemViewModel(ChipsetDriverStatus status) : Ins
 
     public ChipsetDriverStatus Status { get; } = status;
 
-    public string Name => Status.Description;
+    public override string Name => Status.Description;
 
-    public string StateLabel => StateText(Status.State);
+    public override string StateLabel => StateText(Status.State);
 
-    public bool IsUpdateAvailable => Status.State == DriverState.UpdateAvailable;
+    public override bool IsUpdateAvailable => Status.State == DriverState.UpdateAvailable;
 
-    public bool IsUpToDate => Status.State == DriverState.UpToDate;
+    public override bool IsUpToDate => Status.State == DriverState.UpToDate;
 
     /// <summary>Installation proposée : version plus récente, téléchargeable depuis drivers.amd.com.</summary>
-    public bool CanInstall => IsUpdateAvailable && Status.Latest is { } l && OfficialInstallers.FileNameFor(InstallerVendor.Amd, l.DownloadUrl) is not null;
+    public override bool CanInstall => IsUpdateAvailable && Status.Latest is { } l && OfficialInstallers.FileNameFor(InstallerVendor.Amd, l.DownloadUrl) is not null;
 
-    public string InstallLabel => $"Télécharger et installer le {Status.Latest?.Version}";
+    public override string InstallLabel => $"Installer le logiciel de chipset {Status.Latest?.Version}…";
 
-    public string Message => Status.Message;
+    public override string Message => Status.Message;
 
-    public string Installed => Status.InstalledText;
+    public override string Installed => Status.InstalledText;
 
-    public bool HasLatest => Status.Latest is not null;
+    public override string InstalledVersionText => Status.InstalledText;
 
-    public string Latest => Status.Latest is { } l
-        ? $"Dernier publié par AMD : AMD Chipset Software {l.Version}" + (l.ReleaseDate is { } r ? $" du {r.ToString("d MMMM yyyy", Fr)}" : "") +
+    public override bool HasLatest => Status.Latest is not null;
+
+    public override string Latest => Status.Latest is { } l
+        ? $"Disponible chez AMD : AMD Chipset Software {l.Version}" + (l.ReleaseDate is { } r ? $" du {r.ToString("d MMMM yyyy", Fr)}" : "") +
           (l.SizeText is { } size ? $" ({DriverInstallPlans.FrenchSize(size)})" : "")
         : "";
 
     /// <summary>Notes de version si AMD les publie, sinon la page de téléchargement du chipset.</summary>
-    public Uri? DetailsUrl => Status.Latest?.ReleaseNotes ?? Status.SupportPage;
+    public override Uri? DetailsUrl => Status.Latest?.ReleaseNotes ?? Status.SupportPage;
 
-    public string DetailsLabel => Status.Latest?.ReleaseNotes is not null ? "Notes de version (amd.com)" : "Page des pilotes (amd.com)";
-
-    public bool HasDetails => DetailsUrl is not null;
+    public override string DetailsLabel => Status.Latest?.ReleaseNotes is not null ? "Notes de version (amd.com)" : "Page des pilotes (amd.com)";
 }
 
 public sealed partial class WindowsUpdateDriverItemViewModel(WindowsUpdateDriver update) : ObservableObject
@@ -458,7 +576,7 @@ public sealed partial class WindowsUpdateDriverItemViewModel(WindowsUpdateDriver
     public string Details => string.Join(" · ", new[]
     {
         Update.DriverClass is { } c ? $"Catégorie : {c}" : null,
-        Update.DriverDate is { } d ? $"du {d:dd/MM/yyyy}" : null,
+        Update.DriverDate is { } d ? $"du {d.ToString("d MMMM yyyy", CultureInfo.GetCultureInfo("fr-FR"))}" : null,
         Update.SizeBytes is > 0 and var size ? $"{size / 1048576.0:N1} Mo" : null,
         Update.MayRequireReboot ? "redémarrage possible" : null,
     }.OfType<string>());

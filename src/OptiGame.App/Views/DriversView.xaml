@@ -4,196 +4,153 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="clr-namespace:OptiGame.App.ViewModels"
+             xmlns:controls="clr-namespace:OptiGame.App.Controls"
              mc:Ignorable="d"
              d:DataContext="{d:DesignInstance vm:DriversViewModel}"
              Loaded="OnLoaded">
+    <!-- Pilotes : lecture seule, sauf installation confirmée (seule exception à la réversibilité : DriverInstallDialog). -->
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
+
+        <!-- Pilote installable (carte graphique NVIDIA, chipset AMD) : un seul modèle -->
+        <DataTemplate x:Key="InstallableDriver" DataType="{x:Type vm:InstallableDriverViewModel}">
+            <StackPanel Margin="0,10,0,0" AutomationProperties.Name="{Binding AccessibleName}">
+                <DockPanel>
+                    <!-- État : icône + mot -->
+                    <Border x:Name="StateBadge" DockPanel.Dock="Right" Margin="12,0,0,0" Style="{StaticResource Badge.Neutral}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock x:Name="StateIcon" Margin="0,0,4,0" Style="{StaticResource Text.Icon}" FontSize="{StaticResource IconSize.Small}" Text="&#xE9CE;" />
+                            <TextBlock Text="{Binding StateLabel}" />
+                        </StackPanel>
+                    </Border>
+                    <TextBlock Style="{StaticResource Text.SectionTitle}" Text="{Binding Name}" AutomationProperties.HeadingLevel="Level3" />
+                </DockPanel>
+                <TextBlock Margin="0,6,0,0" Style="{StaticResource Text.Body}" Text="{Binding Message}" />
+                <!-- Versions : installée, disponible -->
+                <Border Margin="0,10,0,0" Padding="12,8" CornerRadius="{StaticResource Radius.Control}" Background="{StaticResource Brush.Control}">
+                    <StackPanel>
+                        <TextBlock Style="{StaticResource Text.Secondary}" Text="{Binding Installed}" />
+                        <TextBlock Style="{StaticResource Text.Secondary}" Text="{Binding Latest}"
+                                   Visibility="{Binding HasLatest, Converter={StaticResource BoolToVisibility}}" />
+                    </StackPanel>
+                </Border>
+                <WrapPanel Margin="0,4,0,0">
+                    <!-- Installation : confirmation (non annulable par OptiGame), téléchargement officiel, signature vérifiée -->
+                    <controls:IconButton Margin="0,8,8,0" Style="{StaticResource Button.Primary}" Glyph="&#xE896;" Label="{Binding InstallLabel}"
+                                         Command="{Binding DataContext.InstallItemCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                         CommandParameter="{Binding}" Visibility="{Binding CanInstall, Converter={StaticResource BoolToVisibility}}" />
+                    <controls:IconButton Margin="0,8,8,0" Style="{StaticResource Button.Secondary}" Glyph="&#xE8A7;" Label="{Binding DetailsLabel}"
+                                         Command="{Binding DataContext.OpenLinkCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                         CommandParameter="{Binding DetailsUrl}" Visibility="{Binding HasDetails, Converter={StaticResource BoolToVisibility}}" />
+                </WrapPanel>
+                <DockPanel Margin="0,12,0,0" Visibility="{Binding IsDownloading, Converter={StaticResource BoolToVisibility}}">
+                    <Button DockPanel.Dock="Right" Margin="12,0,0,0" Style="{StaticResource Button.Ghost}" Content="Annuler le téléchargement"
+                            Command="{Binding DataContext.CancelDownloadCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+                    <ProgressBar Height="6" VerticalAlignment="Center" Minimum="0" Maximum="100" Value="{Binding Progress}"
+                                 AutomationProperties.Name="Téléchargement de l'installeur" />
+                </DockPanel>
+                <TextBlock Margin="0,8,0,0" Style="{StaticResource Text.Secondary}" Text="{Binding ProgressText}" AutomationProperties.LiveSetting="Polite"
+                           Visibility="{Binding HasProgressText, Converter={StaticResource BoolToVisibility}}" />
+            </StackPanel>
+            <DataTemplate.Triggers>
+                <DataTrigger Binding="{Binding IsUpdateAvailable}" Value="True">
+                    <Setter TargetName="StateBadge" Property="Style" Value="{StaticResource Badge.Info}" />
+                    <Setter TargetName="StateIcon" Property="Text" Value="&#xE896;" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding IsUpToDate}" Value="True">
+                    <Setter TargetName="StateBadge" Property="Style" Value="{StaticResource Badge.Success}" />
+                    <Setter TargetName="StateIcon" Property="Text" Value="&#xE73E;" />
+                </DataTrigger>
+            </DataTemplate.Triggers>
+        </DataTemplate>
+
+        <!-- Cartes atténuées pendant une nouvelle recherche (les résultats précédents restent lisibles) -->
+        <Style x:Key="SearchingCard" TargetType="Border" BasedOn="{StaticResource Card}">
+            <Setter Property="Margin" Value="{StaticResource Margin.StackL}" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsSearching}" Value="True">
+                    <Setter Property="Opacity" Value="0.6" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
     </UserControl.Resources>
 
     <DockPanel Margin="32,24,32,0">
         <!-- En-tête de page -->
-        <DockPanel DockPanel.Dock="Top" Margin="0,0,0,20">
-            <Button DockPanel.Dock="Right" VerticalAlignment="Center" Style="{StaticResource Button.Secondary}" Command="{Binding SearchCommand}">
-                <StackPanel Orientation="Horizontal">
-                    <TextBlock Style="{StaticResource Text.Icon}" FontSize="14" Text="&#xE72C;" />
-                    <TextBlock Margin="8,0,0,0" Text="Rechercher à nouveau" />
-                </StackPanel>
-            </Button>
+        <DockPanel DockPanel.Dock="Top" Margin="0,0,0,16">
+            <controls:IconButton DockPanel.Dock="Right" VerticalAlignment="Top" Style="{StaticResource Button.Secondary}" Glyph="&#xE72C;"
+                                 Label="Actualiser" Command="{Binding SearchCommand}" ToolTip="Rechercher de nouveau (F5)" />
             <StackPanel>
                 <TextBlock Style="{StaticResource Text.PageTitle}" Text="Pilotes" />
                 <TextBlock Margin="0,4,0,0" Style="{StaticResource Text.Secondary}"
                            Text="Compare vos pilotes aux dernières versions publiées. Rien n'est installé sans votre confirmation." />
+                <ProgressBar Margin="0,12,0,0" Height="4" IsIndeterminate="True" AutomationProperties.Name="Recherche des pilotes en cours"
+                             Visibility="{Binding IsSearching, Converter={StaticResource BoolToVisibility}}" />
             </StackPanel>
         </DockPanel>
 
         <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0,0,8,24">
             <StackPanel>
+                <!-- Bilan de la dernière installation -->
+                <controls:InfoBar Margin="{StaticResource Margin.StackL}" Severity="{Binding OutcomeSeverity}" Title="{Binding OutcomeTitle}"
+                                  Message="{Binding OutcomeMessage}" IsClosable="True" CloseCommand="{Binding DismissOutcomeCommand}"
+                                  Visibility="{Binding HasOutcome, Converter={StaticResource BoolToVisibility}}" />
+
                 <!-- Carte graphique -->
-                <Border Margin="0,0,0,16" Style="{StaticResource Card}">
+                <Border Style="{StaticResource SearchingCard}">
                     <StackPanel>
-                        <TextBlock Style="{StaticResource Text.SectionTitle}" Text="Carte graphique" />
-                        <TextBlock Margin="0,4,0,0" Style="{StaticResource Text.Caption}" Text="{Binding GpuStatus}" />
-                        <ItemsControl Margin="0,6,0,0" ItemsSource="{Binding Gpus}">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate DataType="{x:Type vm:GpuDriverItemViewModel}">
-                                    <StackPanel Margin="0,10,0,0">
-                                        <DockPanel>
-                                            <Border x:Name="StateBadge" DockPanel.Dock="Right" Style="{StaticResource Badge}" Background="{StaticResource Brush.InfoSoft}">
-                                                <TextBlock x:Name="StateText" Text="{Binding StateLabel}" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource Brush.Info}" />
-                                            </Border>
-                                            <TextBlock Style="{StaticResource Text.Body}" FontWeight="SemiBold" FontSize="16" Text="{Binding Name}" />
-                                        </DockPanel>
-                                        <TextBlock Margin="0,6,0,0" Style="{StaticResource Text.Body}" Text="{Binding Message}" TextWrapping="Wrap" />
-                                        <TextBlock Margin="0,6,0,0" Style="{StaticResource Text.Secondary}" Text="{Binding Installed}" />
-                                        <TextBlock Style="{StaticResource Text.Secondary}" Text="{Binding Latest}"
-                                                   Visibility="{Binding HasLatest, Converter={StaticResource BoolToVisibility}}" />
-                                        <WrapPanel Margin="0,4,0,0">
-                                            <!-- Installation : confirmation, téléchargement officiel, signature vérifiée, installeur de NVIDIA -->
-                                            <Button Margin="0,8,8,0" Style="{StaticResource Button.Primary}"
-                                                    Command="{Binding DataContext.InstallGpuCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                    CommandParameter="{Binding}"
-                                                    Visibility="{Binding CanInstall, Converter={StaticResource BoolToVisibility}}"
-                                                    AutomationProperties.Name="{Binding InstallLabel}">
-                                                <StackPanel Orientation="Horizontal">
-                                                    <TextBlock Style="{StaticResource Text.Icon}" FontSize="14" Text="&#xE896;" />
-                                                    <TextBlock Margin="8,0,0,0" Text="{Binding InstallLabel}" />
-                                                </StackPanel>
-                                            </Button>
-                                            <Button Margin="0,8,8,0" Style="{StaticResource Button.Secondary}"
-                                                    Command="{Binding DataContext.OpenLinkCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                    CommandParameter="{Binding DetailsUrl}"
-                                                    Visibility="{Binding HasDetails, Converter={StaticResource BoolToVisibility}}">
-                                                <StackPanel Orientation="Horizontal">
-                                                    <TextBlock Style="{StaticResource Text.Icon}" FontSize="13" Text="&#xE8A7;" />
-                                                    <TextBlock Margin="8,0,0,0" Text="Notes de version (nvidia.com)" />
-                                                </StackPanel>
-                                            </Button>
-                                        </WrapPanel>
-                                        <DockPanel Margin="0,12,0,0" Visibility="{Binding IsDownloading, Converter={StaticResource BoolToVisibility}}">
-                                            <Button DockPanel.Dock="Right" Margin="12,0,0,0" Style="{StaticResource Button.Ghost}" Content="Annuler le téléchargement"
-                                                    Command="{Binding DataContext.CancelDownloadCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" />
-                                            <ProgressBar Height="6" VerticalAlignment="Center" Minimum="0" Maximum="100" Value="{Binding Progress}"
-                                                         Foreground="{StaticResource Brush.Accent}" Background="{StaticResource Brush.Control}" BorderThickness="0" />
-                                        </DockPanel>
-                                        <TextBlock Margin="0,8,0,0" Style="{StaticResource Text.Secondary}" Text="{Binding ProgressText}" TextWrapping="Wrap"
-                                                   Visibility="{Binding HasProgressText, Converter={StaticResource BoolToVisibility}}" />
-                                    </StackPanel>
-                                    <DataTemplate.Triggers>
-                                        <DataTrigger Binding="{Binding IsUpdateAvailable}" Value="True">
-                                            <Setter TargetName="StateText" Property="Foreground" Value="{StaticResource Brush.Warning}" />
-                                            <Setter TargetName="StateBadge" Property="Background" Value="{StaticResource Brush.WarningSoft}" />
-                                        </DataTrigger>
-                                        <DataTrigger Binding="{Binding IsUpToDate}" Value="True">
-                                            <Setter TargetName="StateText" Property="Foreground" Value="{StaticResource Brush.Ok}" />
-                                            <Setter TargetName="StateBadge" Property="Background" Value="{StaticResource Brush.OkSoft}" />
-                                        </DataTrigger>
-                                    </DataTemplate.Triggers>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                        <TextBlock Margin="0,14,0,0" Style="{StaticResource Text.Caption}" TextWrapping="Wrap"
-                                   Text="Confidentialité : seul le modèle de votre carte graphique est envoyé au service de recherche de pilotes de NVIDIA." />
+                        <TextBlock Style="{StaticResource Text.Title}" Text="Carte graphique" />
+                        <TextBlock Margin="0,4,0,0" Style="{StaticResource Text.Caption}" Text="{Binding GpuStatus}" AutomationProperties.LiveSetting="Polite" />
+                        <ItemsControl ItemsSource="{Binding Gpus}" ItemTemplate="{StaticResource InstallableDriver}" Focusable="False" />
+                        <TextBlock Margin="0,14,0,0" Style="{StaticResource Text.Caption}"
+                                   Text="Confidentialité : pour une carte NVIDIA, seul son modèle est envoyé au service de recherche de pilotes de NVIDIA." />
                     </StackPanel>
                 </Border>
 
                 <!-- Carte mère : logiciel de chipset AMD (processeurs AMD uniquement) -->
-                <Border Margin="0,0,0,16" Style="{StaticResource Card}" Visibility="{Binding HasChipset, Converter={StaticResource BoolToVisibility}}">
+                <Border Style="{StaticResource SearchingCard}" Visibility="{Binding HasChipset, Converter={StaticResource BoolToVisibility}}">
                     <StackPanel>
-                        <TextBlock Style="{StaticResource Text.SectionTitle}" Text="Carte mère (chipset AMD)" />
+                        <TextBlock Style="{StaticResource Text.Title}" Text="Carte mère (chipset AMD)" />
                         <TextBlock Margin="0,4,0,0" Style="{StaticResource Text.Caption}" Text="{Binding ChipsetStatus}" />
-                        <ContentControl Margin="0,6,0,0" Content="{Binding Chipset}">
-                            <!-- Modèle implicite (par type) : jamais appliqué quand Chipset est null -->
+                        <!-- Modèle choisi ici seulement s'il y a un chipset (jamais de modèle appliqué à null) -->
+                        <ContentControl Content="{Binding Chipset}" Focusable="False">
                             <ContentControl.Resources>
                                 <DataTemplate DataType="{x:Type vm:ChipsetDriverItemViewModel}">
-                                    <StackPanel Margin="0,10,0,0">
-                                        <DockPanel>
-                                            <Border x:Name="StateBadge" DockPanel.Dock="Right" Style="{StaticResource Badge}" Background="{StaticResource Brush.InfoSoft}">
-                                                <TextBlock x:Name="StateText" Text="{Binding StateLabel}" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource Brush.Info}" />
-                                            </Border>
-                                            <TextBlock Style="{StaticResource Text.Body}" FontWeight="SemiBold" FontSize="16" Text="{Binding Name}" TextWrapping="Wrap" />
-                                        </DockPanel>
-                                        <TextBlock Margin="0,6,0,0" Style="{StaticResource Text.Body}" Text="{Binding Message}" TextWrapping="Wrap" />
-                                        <TextBlock Margin="0,6,0,0" Style="{StaticResource Text.Secondary}" Text="{Binding Installed}" TextWrapping="Wrap" />
-                                        <TextBlock Style="{StaticResource Text.Secondary}" Text="{Binding Latest}" TextWrapping="Wrap"
-                                                   Visibility="{Binding HasLatest, Converter={StaticResource BoolToVisibility}}" />
-                                        <WrapPanel Margin="0,4,0,0">
-                                            <Button Margin="0,8,8,0" Style="{StaticResource Button.Primary}"
-                                                    Command="{Binding DataContext.InstallChipsetCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                    Visibility="{Binding CanInstall, Converter={StaticResource BoolToVisibility}}"
-                                                    AutomationProperties.Name="{Binding InstallLabel}">
-                                                <StackPanel Orientation="Horizontal">
-                                                    <TextBlock Style="{StaticResource Text.Icon}" FontSize="14" Text="&#xE896;" />
-                                                    <TextBlock Margin="8,0,0,0" Text="{Binding InstallLabel}" />
-                                                </StackPanel>
-                                            </Button>
-                                            <Button Margin="0,8,8,0" Style="{StaticResource Button.Secondary}"
-                                                    Command="{Binding DataContext.OpenLinkCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                    CommandParameter="{Binding DetailsUrl}"
-                                                    Visibility="{Binding HasDetails, Converter={StaticResource BoolToVisibility}}">
-                                                <StackPanel Orientation="Horizontal">
-                                                    <TextBlock Style="{StaticResource Text.Icon}" FontSize="13" Text="&#xE8A7;" />
-                                                    <TextBlock Margin="8,0,0,0" Text="{Binding DetailsLabel}" />
-                                                </StackPanel>
-                                            </Button>
-                                        </WrapPanel>
-                                        <DockPanel Margin="0,12,0,0" Visibility="{Binding IsDownloading, Converter={StaticResource BoolToVisibility}}">
-                                            <Button DockPanel.Dock="Right" Margin="12,0,0,0" Style="{StaticResource Button.Ghost}" Content="Annuler le téléchargement"
-                                                    Command="{Binding DataContext.CancelDownloadCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" />
-                                            <ProgressBar Height="6" VerticalAlignment="Center" Minimum="0" Maximum="100" Value="{Binding Progress}"
-                                                         Foreground="{StaticResource Brush.Accent}" Background="{StaticResource Brush.Control}" BorderThickness="0" />
-                                        </DockPanel>
-                                        <TextBlock Margin="0,8,0,0" Style="{StaticResource Text.Secondary}" Text="{Binding ProgressText}" TextWrapping="Wrap"
-                                                   Visibility="{Binding HasProgressText, Converter={StaticResource BoolToVisibility}}" />
-                                    </StackPanel>
-                                    <DataTemplate.Triggers>
-                                        <DataTrigger Binding="{Binding IsUpdateAvailable}" Value="True">
-                                            <Setter TargetName="StateText" Property="Foreground" Value="{StaticResource Brush.Warning}" />
-                                            <Setter TargetName="StateBadge" Property="Background" Value="{StaticResource Brush.WarningSoft}" />
-                                        </DataTrigger>
-                                        <DataTrigger Binding="{Binding IsUpToDate}" Value="True">
-                                            <Setter TargetName="StateText" Property="Foreground" Value="{StaticResource Brush.Ok}" />
-                                            <Setter TargetName="StateBadge" Property="Background" Value="{StaticResource Brush.OkSoft}" />
-                                        </DataTrigger>
-                                    </DataTemplate.Triggers>
+                                    <ContentPresenter Content="{Binding}" ContentTemplate="{StaticResource InstallableDriver}" />
                                 </DataTemplate>
                             </ContentControl.Resources>
                         </ContentControl>
-                        <TextBlock Margin="0,14,0,0" Style="{StaticResource Text.Caption}" TextWrapping="Wrap"
+                        <TextBlock Margin="0,14,0,0" Style="{StaticResource Text.Caption}"
                                    Text="Lu sur le site d'AMD (page de téléchargement de votre chipset). Rien n'est envoyé à AMD à part la consultation de cette page." />
                     </StackPanel>
                 </Border>
 
-                <!-- Windows Update -->
-                <Border Style="{StaticResource Card}">
+                <!-- Windows Update : consigne d'abord, rien n'est coché d'office -->
+                <Border Style="{StaticResource SearchingCard}">
                     <StackPanel>
-                        <TextBlock Style="{StaticResource Text.SectionTitle}" Text="Autres pilotes (Windows Update)" />
-                        <TextBlock Margin="0,4,0,0" Style="{StaticResource Text.Caption}" Text="{Binding UpdatesStatus}" />
-                        <ItemsControl Margin="0,6,0,0" ItemsSource="{Binding Updates}">
+                        <TextBlock Style="{StaticResource Text.Title}" Text="Autres pilotes (Windows Update)" />
+                        <TextBlock Margin="0,4,0,0" Style="{StaticResource Text.Caption}" Text="{Binding UpdatesStatus}" AutomationProperties.LiveSetting="Polite" />
+                        <controls:InfoBar Margin="0,12,0,4" Severity="Info"
+                                          Message="N'installez que les pilotes d'un matériel que vous utilisez (par exemple, les pilotes Samsung servent aux téléphones branchés en USB)."
+                                          Visibility="{Binding HasUpdates, Converter={StaticResource BoolToVisibility}}" />
+                        <ItemsControl ItemsSource="{Binding Updates}" Focusable="False" IsEnabled="{Binding CanEditUpdates}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate DataType="{x:Type vm:WindowsUpdateDriverItemViewModel}">
                                     <Border Margin="0,8,0,0" Padding="12,10" CornerRadius="{StaticResource Radius.Control}" Background="{StaticResource Brush.Control}">
-                                        <!-- Rien n'est coché d'office -->
                                         <CheckBox IsChecked="{Binding IsSelected}" VerticalContentAlignment="Top" AutomationProperties.Name="{Binding Title}">
                                             <StackPanel>
-                                                <TextBlock Style="{StaticResource Text.Body}" FontWeight="SemiBold" Text="{Binding Title}" TextWrapping="Wrap" />
-                                                <TextBlock Margin="0,3,0,0" Style="{StaticResource Text.Caption}" Text="{Binding Details}" TextWrapping="Wrap" />
+                                                <TextBlock Style="{StaticResource Text.BodyStrong}" Text="{Binding Title}" />
+                                                <TextBlock Margin="0,3,0,0" Style="{StaticResource Text.Caption}" Text="{Binding Details}" />
                                             </StackPanel>
                                         </CheckBox>
                                     </Border>
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
-                        <Button Margin="0,12,0,0" HorizontalAlignment="Left" Style="{StaticResource Button.Primary}" Command="{Binding InstallUpdatesCommand}"
-                                AutomationProperties.Name="Installer la sélection">
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock Style="{StaticResource Text.Icon}" FontSize="14" Text="&#xE896;" />
-                                <TextBlock Margin="8,0,0,0" Text="Installer la sélection" />
-                            </StackPanel>
-                        </Button>
-                        <TextBlock Margin="0,10,0,0" Style="{StaticResource Text.Caption}" Text="{Binding HiddenUpdatesNote}" TextWrapping="Wrap" />
-                        <TextBlock Margin="0,10,0,0" Style="{StaticResource Text.Caption}" TextWrapping="Wrap"
-                                   Text="Ces pilotes viennent du catalogue de Windows Update. N'installez que ceux d'un matériel que vous utilisez (par exemple, les pilotes Samsung servent aux téléphones branchés en USB)." />
+                        <controls:IconButton Margin="0,12,0,0" HorizontalAlignment="Left" Style="{StaticResource Button.Primary}" Glyph="&#xE896;"
+                                             Label="{Binding InstallUpdatesLabel}" Command="{Binding InstallUpdatesCommand}"
+                                             Visibility="{Binding HasUpdates, Converter={StaticResource BoolToVisibility}}" />
+                        <TextBlock Margin="0,10,0,0" Style="{StaticResource Text.Caption}" Text="{Binding HiddenUpdatesNote}" />
                     </StackPanel>
                 </Border>
             </StackPanel>

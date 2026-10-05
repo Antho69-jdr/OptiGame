@@ -64,5 +64,24 @@ public sealed class OneClickOptimizationTests
     {
         var overview = OneClickOptimization.Overview([Result("refresh", DiagnosticStatus.Ok), Result("hags", DiagnosticStatus.Info, Fix("fix.gpu.hags"))], []);
         Assert.True(overview.IsOptimized);
+        Assert.Equal(DiagnosticVerdict.Ready, overview.Verdict);
+    }
+
+    [Fact]
+    public void A_check_that_could_not_run_is_counted_and_prevents_the_ready_verdict()
+    {
+        // Avant : un contrôle en erreur était rangé dans « À savoir » et la page affichait « Votre PC est prêt ».
+        var overview = OneClickOptimization.Overview([Result("refresh", DiagnosticStatus.Ok), Result("vbs", DiagnosticStatus.Error)], []);
+        Assert.Equal(["vbs"], overview.Unverified.Select(r => r.CheckId));
+        Assert.Equal(DiagnosticVerdict.Incomplete, overview.Verdict);
+        Assert.Equal(0, overview.InfoCount);
+    }
+
+    [Fact]
+    public void The_verdict_puts_what_the_button_can_do_first()
+    {
+        Assert.Equal(DiagnosticVerdict.Recommended, OneClickOptimization.Overview(Results, []).Verdict);
+        var manualOnly = OneClickOptimization.Overview([Result("driver-age", DiagnosticStatus.NeedsAttention), Result("vbs", DiagnosticStatus.Error)], []);
+        Assert.Equal(DiagnosticVerdict.ManualActions, manualOnly.Verdict);
     }
 }

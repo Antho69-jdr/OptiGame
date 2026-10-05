@@ -5,281 +5,265 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="clr-namespace:OptiGame.App.ViewModels"
              xmlns:conv="clr-namespace:OptiGame.App.Converters"
+             xmlns:controls="clr-namespace:OptiGame.App.Controls"
              mc:Ignorable="d"
              d:DataContext="{d:DesignInstance vm:DiagnosticViewModel}">
+    <!-- Une seule page : verdict et action principale, optimisations actives, puis chaque contrôle par statut. -->
     <UserControl.Resources>
         <conv:StatusToBrushConverter x:Key="StatusBrush" />
         <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
 
-        <DataTemplate x:Key="FixButtonTemplate" DataType="{x:Type vm:FixViewModel}">
-            <Button Margin="0,12,8,0" HorizontalAlignment="Left" Style="{StaticResource Button.Primary}" Command="{Binding ApplyCommand}">
-                <StackPanel Orientation="Horizontal">
-                    <TextBlock Text="{Binding Title}" />
-                    <TextBlock Margin="10,0,0,0" Opacity="0.7" FontWeight="Normal" Text="{Binding Badges}" />
-                </StackPanel>
-            </Button>
-        </DataTemplate>
+        <!-- Contrôle : ligne repliable ; en-tête = icône de forme + titre + résumé (sur deux lignes, rien n'est tronqué) + statut en mot -->
+        <DataTemplate x:Key="CheckRow" DataType="{x:Type vm:DiagnosticItemViewModel}">
+            <Expander Style="{StaticResource Expander.Row}" IsExpanded="{Binding IsExpanded}" AutomationProperties.Name="{Binding AccessibleName}">
+                <Expander.Header>
+                    <DockPanel>
+                        <TextBlock DockPanel.Dock="Left" Width="28" Margin="0,1,0,0" VerticalAlignment="Top" Style="{StaticResource Text.Icon}"
+                                   Text="{Binding StatusGlyph}" Foreground="{Binding Status, Converter={StaticResource StatusBrush}}" />
+                        <Border DockPanel.Dock="Right" Margin="12,0,0,0" VerticalAlignment="Top" Style="{StaticResource Badge}"
+                                Background="{Binding Status, Converter={StaticResource StatusBrush}, ConverterParameter=Soft}">
+                            <TextBlock Text="{Binding StatusLabel}" Foreground="{Binding Status, Converter={StaticResource StatusBrush}}" />
+                        </Border>
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource Text.BodyStrong}" Text="{Binding Title}" />
+                            <TextBlock Margin="0,2,0,0" Style="{StaticResource Text.Secondary}" Text="{Binding Summary}" />
+                        </StackPanel>
+                    </DockPanel>
+                </Expander.Header>
+                <StackPanel Margin="28,0,0,0">
+                    <!-- Pourquoi / comment faire d'abord -->
+                    <TextBlock Style="{StaticResource Text.Body}" Text="{Binding Explanation}"
+                               Visibility="{Binding HasExplanation, Converter={StaticResource BoolToVisibility}}" />
 
-        <!-- Corps d'un contrôle (corrections, lien, détails, options avancées) : commun aux cartes et aux lignes repliables -->
-        <DataTemplate x:Key="CheckBody" DataType="{x:Type vm:DiagnosticItemViewModel}">
-            <StackPanel>
-                <ItemsControl ItemsSource="{Binding Fixes}" ItemTemplate="{StaticResource FixButtonTemplate}" />
-
-                <!-- Lien vers une autre page (n'applique rien) -->
-                <Button Margin="0,12,0,0" HorizontalAlignment="Left" Style="{StaticResource Button.Secondary}"
-                        Command="{Binding DataContext.OpenLinkCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                        CommandParameter="{Binding LinkTarget}" AutomationProperties.Name="{Binding LinkLabel}"
-                        Visibility="{Binding HasLink, Converter={StaticResource BoolToVisibility}}">
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock Style="{StaticResource Text.Icon}" FontSize="13" Text="&#xE896;" />
-                        <TextBlock Margin="8,0,0,0" Text="{Binding LinkLabel}" />
-                    </StackPanel>
-                </Button>
-
-                <Expander Margin="0,10,0,0" Header="Détails et explication" Foreground="{StaticResource Brush.TextSecondary}">
-                    <StackPanel Margin="0,8,0,0">
-                        <ItemsControl ItemsSource="{Binding Details}">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate>
-                                    <TextBlock Style="{StaticResource Text.Mono}" Margin="0,1" Text="{Binding StringFormat='• {0}'}" TextWrapping="Wrap" />
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                        <TextBlock Margin="0,10,0,0" Style="{StaticResource Text.Secondary}" Text="{Binding Explanation}" TextWrapping="Wrap"
-                                   Visibility="{Binding HasExplanation, Converter={StaticResource BoolToVisibility}}" />
-                    </StackPanel>
-                </Expander>
-
-                <Expander Margin="0,6,0,0" Header="Options avancées" Foreground="{StaticResource Brush.Danger}"
-                          Visibility="{Binding HasAdvancedFixes, Converter={StaticResource BoolToVisibility}}">
-                    <ItemsControl ItemsSource="{Binding AdvancedFixes}">
+                    <!-- Optimisations proposées (confirmation, restaurables) -->
+                    <ItemsControl ItemsSource="{Binding Fixes}" Focusable="False">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate DataType="{x:Type vm:FixViewModel}">
-                                <Button Margin="0,10,0,0" HorizontalAlignment="Left" Style="{StaticResource Button.Danger}" Command="{Binding ApplyCommand}">
-                                    <StackPanel Orientation="Horizontal">
-                                        <TextBlock Text="{Binding Title}" />
-                                        <TextBlock Margin="10,0,0,0" Opacity="0.7" FontWeight="Normal" Text="{Binding Badges}" />
-                                    </StackPanel>
-                                </Button>
+                                <WrapPanel Margin="0,12,0,0">
+                                    <Button Margin="0,0,10,4" Style="{StaticResource Button.Secondary}" Content="{Binding ApplyLabel}" Command="{Binding ApplyCommand}" />
+                                    <controls:RequirementBadges Margin="0,6,0,0" VerticalAlignment="Center" RequiresAdmin="{Binding RequiresAdmin}"
+                                                                RequiresReboot="{Binding RequiresReboot}" />
+                                </WrapPanel>
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
-                </Expander>
-            </StackPanel>
-        </DataTemplate>
 
-        <!-- Ligne repliable d'un contrôle (« À savoir » et « OK ») -->
-        <DataTemplate x:Key="CheckRow" DataType="{x:Type vm:DiagnosticItemViewModel}">
-            <Expander Style="{StaticResource Expander.Row}" AutomationProperties.Name="{Binding Title}">
-                <Expander.Header>
-                    <DockPanel>
-                        <Ellipse Width="9" Height="9" Margin="2,0,19,0" VerticalAlignment="Center" Fill="{Binding Status, Converter={StaticResource StatusBrush}}" />
-                        <TextBlock Width="280" VerticalAlignment="Center" Style="{StaticResource Text.Body}" FontWeight="SemiBold" Text="{Binding Title}"
-                                   TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" />
-                        <TextBlock VerticalAlignment="Center" Style="{StaticResource Text.Secondary}" Text="{Binding Summary}"
-                                   TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" />
-                    </DockPanel>
-                </Expander.Header>
-                <ContentPresenter Content="{Binding}" ContentTemplate="{StaticResource CheckBody}" />
-            </Expander>
-        </DataTemplate>
-    </UserControl.Resources>
+                    <!-- Lien vers une autre page (n'applique rien) -->
+                    <controls:IconButton Margin="0,12,0,0" HorizontalAlignment="Left" Style="{StaticResource Button.Secondary}" Glyph="&#xE950;"
+                                         Label="{Binding LinkLabel}"
+                                         Command="{Binding DataContext.OpenLinkCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                         CommandParameter="{Binding LinkTarget}" Visibility="{Binding HasLink, Converter={StaticResource BoolToVisibility}}" />
 
-    <DockPanel Margin="32,24,32,0">
-        <!-- En-tête de page : titre, vue Simple / Avancé, nouvelle analyse -->
-        <DockPanel DockPanel.Dock="Top" Margin="0,0,0,20">
-            <Button DockPanel.Dock="Right" Margin="12,0,0,0" VerticalAlignment="Center" Style="{StaticResource Button.Secondary}" Command="{Binding RunCommand}">
-                <StackPanel Orientation="Horizontal">
-                    <TextBlock Style="{StaticResource Text.Icon}" FontSize="14" Text="&#xE72C;" />
-                    <TextBlock Margin="8,0,0,0" Text="Relancer l'analyse" />
-                </StackPanel>
-            </Button>
-            <Border DockPanel.Dock="Right" VerticalAlignment="Center" Padding="3" CornerRadius="{StaticResource Radius.Control}" Background="{StaticResource Brush.Control}">
-                <StackPanel Orientation="Horizontal">
-                    <RadioButton GroupName="DiagnosticView" Style="{StaticResource Segment}" Content="Simple" IsChecked="{Binding IsSimple}" />
-                    <RadioButton GroupName="DiagnosticView" Style="{StaticResource Segment}" Content="Avancé" IsChecked="{Binding IsAdvanced}" />
-                </StackPanel>
-            </Border>
-            <StackPanel>
-                <TextBlock Style="{StaticResource Text.PageTitle}" Text="Diagnostic" />
-                <TextBlock Margin="0,4,0,0" Style="{StaticResource Text.Secondary}" Text="{Binding StatusText}" />
-            </StackPanel>
-        </DockPanel>
+                    <!-- Contrôle non vérifié : réessayer -->
+                    <controls:IconButton Margin="0,12,0,0" HorizontalAlignment="Left" Style="{StaticResource Button.Secondary}" Glyph="&#xE72C;"
+                                         Label="Réessayer" Command="{Binding DataContext.RunCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                         Visibility="{Binding IsUnverified, Converter={StaticResource BoolToVisibility}}" />
 
-        <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0,0,8,24">
-            <Grid>
-                <!-- ===== Vue Simple ===== -->
-                <StackPanel Visibility="{Binding IsSimple, Converter={StaticResource BoolToVisibility}}">
-                    <Border Style="{StaticResource Card}" Padding="28,24">
-                        <DockPanel>
-                            <!-- Pastille d'état -->
-                            <Border DockPanel.Dock="Left" Width="64" Height="64" Margin="0,0,24,0" VerticalAlignment="Top" CornerRadius="{StaticResource Radius.Round}">
-                                <Border.Style>
-                                    <Style TargetType="Border">
-                                        <Setter Property="Background" Value="{StaticResource Brush.WarningSoft}" />
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding IsOptimized}" Value="True">
-                                                <Setter Property="Background" Value="{StaticResource Brush.OkSoft}" />
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </Border.Style>
-                                <TextBlock HorizontalAlignment="Center" FontSize="28">
-                                    <TextBlock.Style>
-                                        <Style TargetType="TextBlock" BasedOn="{StaticResource Text.Icon}">
-                                            <Setter Property="Text" Value="&#xE945;" />
-                                            <Setter Property="Foreground" Value="{StaticResource Brush.Warning}" />
-                                            <Style.Triggers>
-                                                <DataTrigger Binding="{Binding IsOptimized}" Value="True">
-                                                    <Setter Property="Text" Value="&#xE73E;" />
-                                                    <Setter Property="Foreground" Value="{StaticResource Brush.Ok}" />
-                                                </DataTrigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </TextBlock.Style>
-                                </TextBlock>
-                            </Border>
-
-                            <StackPanel>
-                                <TextBlock Style="{StaticResource Text.PageTitle}" FontSize="24" Text="{Binding Headline}" TextWrapping="Wrap" />
-                                <TextBlock Margin="0,4,0,0" Style="{StaticResource Text.Secondary}" Text="{Binding CountsText}" />
-
-                                <WrapPanel Margin="0,18,0,0">
-                                    <Button Margin="0,0,10,8" Padding="24,10" FontSize="15" Style="{StaticResource Button.Primary}"
-                                            Command="{Binding ActivateAllCommand}" AutomationProperties.Name="Activer les optimisations">
-                                        <StackPanel Orientation="Horizontal">
-                                            <TextBlock Style="{StaticResource Text.Icon}" FontSize="15" Text="&#xE945;" />
-                                            <TextBlock Margin="10,0,0,0" Text="{Binding ActivateLabel}" />
-                                        </StackPanel>
-                                    </Button>
-                                    <Button Margin="0,0,10,8" Padding="20,10" Style="{StaticResource Button.Secondary}"
-                                            Command="{Binding DeactivateAllCommand}" AutomationProperties.Name="Désactiver les optimisations"
-                                            Visibility="{Binding HasDiagnosticFixesApplied, Converter={StaticResource BoolToVisibility}}"
-                                            Content="{Binding DeactivateLabel}" />
-                                </WrapPanel>
-
-                                <!-- Ce que fera le bouton -->
-                                <StackPanel Margin="0,10,0,0" Visibility="{Binding HasRecommended, Converter={StaticResource BoolToVisibility}}">
-                                    <TextBlock Style="{StaticResource Text.Caption}" FontWeight="SemiBold" Text="LE BOUTON APPLIQUERA (APRÈS CONFIRMATION)" />
-                                    <ItemsControl Margin="0,4,0,0" ItemsSource="{Binding RecommendedTitles}">
-                                        <ItemsControl.ItemTemplate>
-                                            <DataTemplate>
-                                                <TextBlock Margin="0,2" Style="{StaticResource Text.Secondary}" Text="{Binding StringFormat='• {0}'}" TextWrapping="Wrap" />
-                                            </DataTemplate>
-                                        </ItemsControl.ItemTemplate>
-                                    </ItemsControl>
-                                </StackPanel>
-
-                                <!-- Déjà actives -->
-                                <StackPanel Margin="0,10,0,0" Visibility="{Binding HasDiagnosticFixesApplied, Converter={StaticResource BoolToVisibility}}">
-                                    <TextBlock Style="{StaticResource Text.Caption}" FontWeight="SemiBold" Text="OPTIMISATIONS ACTIVES (ANNULABLES)" />
-                                    <ItemsControl Margin="0,4,0,0" ItemsSource="{Binding AppliedTitles}">
-                                        <ItemsControl.ItemTemplate>
-                                            <DataTemplate>
-                                                <DockPanel Margin="0,2">
-                                                    <TextBlock DockPanel.Dock="Left" Margin="0,0,8,0" Style="{StaticResource Text.Icon}" FontSize="12"
-                                                               Foreground="{StaticResource Brush.Ok}" Text="&#xE73E;" />
-                                                    <TextBlock Style="{StaticResource Text.Secondary}" Text="{Binding}" TextWrapping="Wrap" />
-                                                </DockPanel>
-                                            </DataTemplate>
-                                        </ItemsControl.ItemTemplate>
-                                    </ItemsControl>
-                                </StackPanel>
-                            </StackPanel>
-                        </DockPanel>
-                    </Border>
-
-                    <!-- À faire soi-même -->
-                    <StackPanel Margin="0,24,0,0" Visibility="{Binding HasManualItems, Converter={StaticResource BoolToVisibility}}">
-                        <TextBlock Margin="2,0,0,10" Style="{StaticResource Text.Caption}" FontWeight="SemiBold" Text="À FAIRE DE VOTRE CÔTÉ (OPTIGAME NE PEUT PAS LE FAIRE SEUL)" />
-                        <ItemsControl ItemsSource="{Binding ManualItems}" ItemTemplate="{StaticResource CheckRow}" />
-                    </StackPanel>
-
-                    <!-- Réglages facultatifs -->
-                    <Border Margin="0,16,0,0" Style="{StaticResource Banner}" Background="{StaticResource Brush.InfoSoft}" BorderBrush="{StaticResource Brush.Info}"
-                            Visibility="{Binding HasOptional, Converter={StaticResource BoolToVisibility}}">
-                        <DockPanel>
-                            <Button DockPanel.Dock="Right" Margin="12,0,0,0" VerticalAlignment="Center" Style="{StaticResource Button.SecondarySmall}"
-                                    Content="Vue Avancé" Command="{Binding ShowAdvancedCommand}" />
-                            <TextBlock VerticalAlignment="Center" Style="{StaticResource Text.Body}" Text="{Binding OptionalText}" TextWrapping="Wrap" />
-                        </DockPanel>
-                    </Border>
-                </StackPanel>
-
-                <!-- ===== Vue Avancé ===== -->
-                <StackPanel Visibility="{Binding IsAdvanced, Converter={StaticResource BoolToVisibility}}">
-                    <!-- Corrections appliquées par OptiGame, annulables une à une -->
-                    <Expander Style="{StaticResource Expander.Row}" AutomationProperties.Name="Corrections appliquées par OptiGame"
-                              Visibility="{Binding HasAppliedFixes, Converter={StaticResource BoolToVisibility}}">
-                        <Expander.Header>
-                            <DockPanel>
-                                <TextBlock Width="30" Style="{StaticResource Text.Icon}" Foreground="{StaticResource Brush.Ok}" Text="&#xE73E;" />
-                                <TextBlock VerticalAlignment="Center" Style="{StaticResource Text.Body}" FontWeight="SemiBold" Text="Corrections appliquées par OptiGame" />
-                                <TextBlock Margin="12,0,0,0" VerticalAlignment="Center" Style="{StaticResource Text.Secondary}"
-                                           Text="{Binding AppliedFixes.Count, StringFormat='{}{0} active(s), annulables'}" />
-                            </DockPanel>
-                        </Expander.Header>
-                        <ItemsControl ItemsSource="{Binding AppliedFixes}">
+                    <!-- Valeurs mesurées / détails techniques, repliés -->
+                    <Expander Margin="0,10,0,0" Style="{StaticResource Expander.Disclosure}" Header="{Binding DetailsHeader}"
+                              Visibility="{Binding HasDetails, Converter={StaticResource BoolToVisibility}}">
+                        <ItemsControl Margin="0,4,0,0" ItemsSource="{Binding Details}" Focusable="False">
                             <ItemsControl.ItemTemplate>
-                                <DataTemplate DataType="{x:Type vm:AppliedFixViewModel}">
-                                    <DockPanel Margin="0,8,0,0">
-                                        <Button DockPanel.Dock="Right" VerticalAlignment="Center" Style="{StaticResource Button.SecondarySmall}"
-                                                Content="Annuler" Command="{Binding UndoCommand}" />
-                                        <StackPanel>
-                                            <TextBlock Style="{StaticResource Text.Body}" FontWeight="SemiBold" Text="{Binding Title}" />
-                                            <TextBlock Style="{StaticResource Text.Mono}" Text="{Binding What}" TextWrapping="Wrap" />
-                                            <TextBlock Style="{StaticResource Text.Caption}" Text="{Binding AppliedAt}" />
-                                        </StackPanel>
-                                    </DockPanel>
+                                <DataTemplate>
+                                    <TextBlock Style="{StaticResource Text.Mono}" Margin="0,1" Text="{Binding StringFormat='• {0}'}" />
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
                     </Expander>
 
-                    <!-- À corriger : grandes cartes -->
-                    <TextBlock Margin="2,16,0,10" Style="{StaticResource Text.Caption}" FontWeight="SemiBold" Text="{Binding AttentionHeader}" />
-                    <TextBlock Margin="2,0,0,4" Text="Rien à corriger.">
-                        <TextBlock.Style>
-                            <Style TargetType="TextBlock" BasedOn="{StaticResource Text.Secondary}">
-                                <Setter Property="Visibility" Value="Collapsed" />
-                                <Style.Triggers>
-                                    <DataTrigger Binding="{Binding AttentionItems.Count}" Value="0">
-                                        <Setter Property="Visibility" Value="Visible" />
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </TextBlock.Style>
-                    </TextBlock>
-                    <ItemsControl ItemsSource="{Binding AttentionItems}">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate DataType="{x:Type vm:DiagnosticItemViewModel}">
-                                <Border Margin="0,0,0,12" Style="{StaticResource Card}">
-                                    <StackPanel>
-                                        <DockPanel>
-                                            <Border DockPanel.Dock="Right" Style="{StaticResource Badge}"
-                                                    Background="{Binding Status, Converter={StaticResource StatusBrush}, ConverterParameter=Soft}">
-                                                <TextBlock Text="{Binding StatusLabel}" FontSize="12" FontWeight="SemiBold"
-                                                           Foreground="{Binding Status, Converter={StaticResource StatusBrush}}" />
-                                            </Border>
-                                            <Ellipse DockPanel.Dock="Left" Width="10" Height="10" Margin="0,0,12,0" VerticalAlignment="Center"
-                                                     Fill="{Binding Status, Converter={StaticResource StatusBrush}}" />
-                                            <TextBlock Style="{StaticResource Text.SectionTitle}" Text="{Binding Title}" />
-                                        </DockPanel>
-                                        <TextBlock Margin="22,6,0,0" Style="{StaticResource Text.Secondary}" Text="{Binding Summary}" TextWrapping="Wrap" />
-                                        <ContentPresenter Margin="22,0,0,0" Content="{Binding}" ContentTemplate="{StaticResource CheckBody}" />
-                                    </StackPanel>
-                                </Border>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-
-                    <!-- À savoir et OK : lignes repliables -->
-                    <TextBlock Margin="2,16,0,10" Style="{StaticResource Text.Caption}" FontWeight="SemiBold" Text="{Binding InfoHeader}" />
-                    <ItemsControl ItemsSource="{Binding InfoItems}" ItemTemplate="{StaticResource CheckRow}" />
-                    <TextBlock Margin="2,16,0,10" Style="{StaticResource Text.Caption}" FontWeight="SemiBold" Text="{Binding OkHeader}" />
-                    <ItemsControl ItemsSource="{Binding OkItems}" ItemTemplate="{StaticResource CheckRow}" />
+                    <!-- Options avancées : compromis (sécurité…), double confirmation -->
+                    <StackPanel Margin="0,14,0,0" Visibility="{Binding HasAdvancedFixes, Converter={StaticResource BoolToVisibility}}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Margin="0,0,8,0" Style="{StaticResource Text.Icon}" FontSize="{StaticResource IconSize.Small}"
+                                       Foreground="{StaticResource Brush.Warning}" Text="&#xE7BA;" />
+                            <TextBlock Style="{StaticResource Text.BodyStrong}" Text="Option avancée (compromis expliqué avant d'appliquer)" />
+                        </StackPanel>
+                        <ItemsControl ItemsSource="{Binding AdvancedFixes}" Focusable="False">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="{x:Type vm:FixViewModel}">
+                                    <WrapPanel Margin="0,8,0,0">
+                                        <Button Margin="0,0,10,4" Style="{StaticResource Button.Danger}" Content="{Binding ApplyLabel}" Command="{Binding ApplyCommand}" />
+                                        <controls:RequirementBadges Margin="0,6,0,0" VerticalAlignment="Center" RequiresAdmin="{Binding RequiresAdmin}"
+                                                                    RequiresReboot="{Binding RequiresReboot}" />
+                                    </WrapPanel>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
                 </StackPanel>
-            </Grid>
+            </Expander>
+        </DataTemplate>
+
+        <!-- Optimisation active : restaurable seule -->
+        <DataTemplate x:Key="ActiveRow" DataType="{x:Type vm:AppliedFixViewModel}">
+            <DockPanel Margin="0,10,0,0">
+                <Button DockPanel.Dock="Right" Margin="12,0,0,0" VerticalAlignment="Top" Style="{StaticResource Button.SecondarySmall}"
+                        Content="Restaurer l'original…" Command="{Binding UndoCommand}"
+                        AutomationProperties.Name="{Binding Title, StringFormat='Restaurer l''original : {0}…'}" />
+                <TextBlock DockPanel.Dock="Left" Width="28" Margin="0,1,0,0" VerticalAlignment="Top" Style="{StaticResource Text.Icon}"
+                           Foreground="{StaticResource Brush.Ok}" Text="&#xE930;" />
+                <StackPanel>
+                    <TextBlock Style="{StaticResource Text.BodyStrong}" Text="{Binding Title}" />
+                    <TextBlock Style="{StaticResource Text.Caption}" Text="{Binding AppliedAt}" />
+                    <Expander Margin="0,2,0,0" Style="{StaticResource Expander.Disclosure}" Header="Détails techniques"
+                              AutomationProperties.Name="{Binding Title, StringFormat='Détails techniques : {0}'}">
+                        <TextBlock Margin="0,4,0,0" Style="{StaticResource Text.Mono}" Text="{Binding What}" />
+                    </Expander>
+                </StackPanel>
+            </DockPanel>
+        </DataTemplate>
+
+        <!-- Titre de section (statut + nombre) -->
+        <Style x:Key="SectionHeader" TargetType="TextBlock" BasedOn="{StaticResource Text.SectionTitle}">
+            <Setter Property="Margin" Value="2,16,0,10" />
+        </Style>
+    </UserControl.Resources>
+
+    <DockPanel Margin="32,24,32,0">
+        <!-- En-tête de page -->
+        <DockPanel DockPanel.Dock="Top" Margin="0,0,0,16">
+            <controls:IconButton DockPanel.Dock="Right" VerticalAlignment="Top" Style="{StaticResource Button.Secondary}" Glyph="&#xE72C;"
+                                 Label="Actualiser" Command="{Binding RunCommand}" ToolTip="Relancer l'analyse (F5)"
+                                 AutomationProperties.HelpText="Relance l'analyse, en lecture seule (F5)." />
+            <StackPanel>
+                <TextBlock Style="{StaticResource Text.PageTitle}" Text="Diagnostic" />
+                <TextBlock Margin="0,4,0,0" Style="{StaticResource Text.Secondary}" Text="{Binding StatusText}" AutomationProperties.LiveSetting="Polite" />
+            </StackPanel>
+        </DockPanel>
+
+        <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0,0,8,24">
+            <StackPanel>
+                <!-- Bilan de la dernière action -->
+                <controls:InfoBar Margin="{StaticResource Margin.StackL}" Severity="{Binding OutcomeSeverity}" Title="{Binding OutcomeTitle}"
+                                  Message="{Binding OutcomeMessage}" IsClosable="True" CloseCommand="{Binding DismissOutcomeCommand}"
+                                  Visibility="{Binding HasOutcome, Converter={StaticResource BoolToVisibility}}" />
+
+                <!-- Verdict : neutre tant que l'analyse n'est pas finie -->
+                <Border Style="{StaticResource Card}" Padding="24">
+                    <DockPanel>
+                        <Border DockPanel.Dock="Left" Width="56" Height="56" Margin="0,0,20,0" VerticalAlignment="Top" CornerRadius="{StaticResource Radius.Round}">
+                            <Border.Style>
+                                <Style TargetType="Border">
+                                    <Setter Property="Background" Value="{StaticResource Brush.NeutralSoft}" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding Verdict}" Value="Ready">
+                                            <Setter Property="Background" Value="{StaticResource Brush.OkSoft}" />
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding Verdict}" Value="Recommended">
+                                            <Setter Property="Background" Value="{StaticResource Brush.WarningSoft}" />
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding Verdict}" Value="ManualActions">
+                                            <Setter Property="Background" Value="{StaticResource Brush.WarningSoft}" />
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding Verdict}" Value="Incomplete">
+                                            <Setter Property="Background" Value="{StaticResource Brush.DangerSoft}" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Border.Style>
+                            <TextBlock HorizontalAlignment="Center" FontSize="{StaticResource IconSize.Hero}">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock" BasedOn="{StaticResource Text.Icon}">
+                                        <Setter Property="Text" Value="&#xE9D9;" />
+                                        <Setter Property="Foreground" Value="{StaticResource Brush.TextSecondary}" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding Verdict}" Value="Ready">
+                                                <Setter Property="Text" Value="&#xE73E;" />
+                                                <Setter Property="Foreground" Value="{StaticResource Brush.Ok}" />
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding Verdict}" Value="Recommended">
+                                                <Setter Property="Text" Value="&#xE7BA;" />
+                                                <Setter Property="Foreground" Value="{StaticResource Brush.Warning}" />
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding Verdict}" Value="ManualActions">
+                                                <Setter Property="Text" Value="&#xE7BA;" />
+                                                <Setter Property="Foreground" Value="{StaticResource Brush.Warning}" />
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding Verdict}" Value="Incomplete">
+                                                <Setter Property="Text" Value="&#xEA39;" />
+                                                <Setter Property="Foreground" Value="{StaticResource Brush.Danger}" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                        </Border>
+
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource Text.Title}" Text="{Binding Headline}" AutomationProperties.LiveSetting="Polite" />
+                            <TextBlock Margin="0,4,0,0" Style="{StaticResource Text.Secondary}" Text="{Binding CountsText}" />
+                            <ProgressBar Margin="0,12,0,0" Height="4" IsIndeterminate="True" AutomationProperties.Name="Analyse en cours"
+                                         Visibility="{Binding IsBusy, Converter={StaticResource BoolToVisibility}}" />
+                            <TextBlock Margin="0,12,0,0" Style="{StaticResource Text.Body}" Text="{Binding VerdictDetail}" />
+                            <ItemsControl Margin="0,4,0,0" ItemsSource="{Binding RecommendedTitles}" Focusable="False"
+                                          Visibility="{Binding HasRecommended, Converter={StaticResource BoolToVisibility}}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Margin="0,2" Style="{StaticResource Text.Secondary}" Text="{Binding StringFormat='• {0}'}" />
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <controls:IconButton Margin="0,16,0,0" HorizontalAlignment="Left" Style="{StaticResource Button.PrimaryLarge}" Glyph="&#xE945;"
+                                                 Label="{Binding ApplyAllLabel}" Command="{Binding ApplyAllCommand}"
+                                                 Visibility="{Binding HasRecommended, Converter={StaticResource BoolToVisibility}}" />
+                            <TextBlock Margin="0,12,0,0" Style="{StaticResource Text.Caption}" Text="{Binding OptionalText}"
+                                       Visibility="{Binding HasOptional, Converter={StaticResource BoolToVisibility}}" />
+                        </StackPanel>
+                    </DockPanel>
+                </Border>
+
+                <!-- Optimisations actives : restaurables une à une ou toutes -->
+                <StackPanel>
+                    <StackPanel.Visibility>
+                        <MultiBinding Converter="{StaticResource AnyTrueToVisibility}">
+                            <Binding Path="HasActiveOptimizations" />
+                            <Binding Path="HasGameOptimizations" />
+                        </MultiBinding>
+                    </StackPanel.Visibility>
+                    <DockPanel Margin="2,24,0,0">
+                        <Button DockPanel.Dock="Right" Style="{StaticResource Button.Ghost}" Content="Tout restaurer…" Command="{Binding RestoreAllCommand}"
+                                AutomationProperties.Name="Tout restaurer : les optimisations du Diagnostic…"
+                                Visibility="{Binding CanRestoreAllOptimizations, Converter={StaticResource BoolToVisibility}}" />
+                        <TextBlock Style="{StaticResource Text.SectionTitle}" Text="{Binding ActiveHeader}" />
+                    </DockPanel>
+                    <Border Margin="0,10,0,0" Style="{StaticResource Card}" Padding="20,6,20,16">
+                        <StackPanel>
+                            <ItemsControl ItemsSource="{Binding ActiveOptimizations}" ItemTemplate="{StaticResource ActiveRow}" Focusable="False" />
+                            <!-- Réglages propres à un jeu : repliés (ils se gèrent depuis la fiche du jeu) -->
+                            <Expander Margin="0,14,0,0" Style="{StaticResource Expander.Disclosure}" Header="{Binding GameHeader}"
+                                      Visibility="{Binding HasGameOptimizations, Converter={StaticResource BoolToVisibility}}">
+                                <StackPanel>
+                                    <TextBlock Margin="0,4,0,0" Style="{StaticResource Text.Caption}"
+                                               Text="Plafond de FPS, carte graphique : gérés depuis la fiche du jeu ; restaurables aussi d'ici (par exemple après avoir retiré le jeu)." />
+                                    <ItemsControl ItemsSource="{Binding GameOptimizations}" ItemTemplate="{StaticResource ActiveRow}" Focusable="False" />
+                                </StackPanel>
+                            </Expander>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+
+                <!-- Contrôles par statut -->
+                <StackPanel Visibility="{Binding HasAttention, Converter={StaticResource BoolToVisibility}}">
+                    <TextBlock Margin="2,24,0,10" Style="{StaticResource Text.SectionTitle}" Text="{Binding AttentionHeader}" />
+                    <ItemsControl ItemsSource="{Binding AttentionItems}" ItemTemplate="{StaticResource CheckRow}" Focusable="False" />
+                </StackPanel>
+                <StackPanel Visibility="{Binding HasUnverified, Converter={StaticResource BoolToVisibility}}">
+                    <TextBlock Style="{StaticResource SectionHeader}" Text="{Binding UnverifiedHeader}" />
+                    <ItemsControl ItemsSource="{Binding UnverifiedItems}" ItemTemplate="{StaticResource CheckRow}" Focusable="False" />
+                </StackPanel>
+                <StackPanel Visibility="{Binding HasInfo, Converter={StaticResource BoolToVisibility}}">
+                    <TextBlock Style="{StaticResource SectionHeader}" Text="{Binding InfoHeader}" />
+                    <ItemsControl ItemsSource="{Binding InfoItems}" ItemTemplate="{StaticResource CheckRow}" Focusable="False" />
+                </StackPanel>
+                <!-- OK : repliés en un bloc (rien à faire) -->
+                <Expander Margin="0,16,0,0" Style="{StaticResource Expander.Disclosure}" Visibility="{Binding HasOk, Converter={StaticResource BoolToVisibility}}"
+                          AutomationProperties.Name="{Binding OkHeader}">
+                    <Expander.Header>
+                        <TextBlock Style="{StaticResource Text.SectionTitle}" Text="{Binding OkHeader}" />
+                    </Expander.Header>
+                    <ItemsControl Margin="-24,10,0,0" ItemsSource="{Binding OkItems}" ItemTemplate="{StaticResource CheckRow}" Focusable="False" />
+                </Expander>
+            </StackPanel>
         </ScrollViewer>
     </DockPanel>
 </UserControl>

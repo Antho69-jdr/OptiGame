@@ -72,6 +72,13 @@ internal static class PageSnapshots
                 }),
                 ("1d-mes-jeux-filtres-effaces", async () => { library.ClearFiltersCommand.Execute(null); await Settle(800); }),
                 ("2-diagnostic", async () => { main.Navigate(main.Diagnostic); await WaitUntil(() => !main.Diagnostic.IsBusy && main.Diagnostic.HasResults, 60_000); }),
+                // Diagnostic avec des résultats d'exemple (à corriger, non vérifié, facultatif) : présentés seulement, rien n'est appliqué.
+                ("2b-diagnostic-exemple", async () =>
+                {
+                    main.Navigate(main.Diagnostic);
+                    main.Diagnostic.Present(SampleDiagnostic());
+                    await Settle(800);
+                }),
                 ("3-pilotes", async () =>
                 {
                     var drivers = main.NavItems[2].Page;
@@ -162,6 +169,32 @@ internal static class PageSnapshots
         {
             Log($"ÉCHEC : {ex}");
         }
+    }
+
+    private static IReadOnlyList<Core.Diagnostics.DiagnosticResult> SampleDiagnostic()
+    {
+        static Core.Diagnostics.DiagnosticFix Fix(string id, string title, bool admin, bool reboot, bool advanced = false) => new(new Core.Changes.ReversibleChange
+        {
+            Id = id, Title = title, What = "", Why = "", RequiresAdmin = admin, RequiresReboot = reboot, Writes = [],
+        }, advanced);
+        return
+        [
+            new() { CheckId = "demo.gamemode", Title = "Mode Jeu", Status = Core.Diagnostics.DiagnosticStatus.NeedsAttention,
+                Summary = "Désactivé : Windows ne donne pas la priorité au jeu.",
+                Explanation = "Le Mode Jeu suspend les mises à jour et les notifications pendant la partie.",
+                Details = [@"HKCU\Software\Microsoft\GameBar\AutoGameModeEnabled = 0"],
+                Fixes = [Fix("fix.demo.gamemode", "Activer le Mode Jeu", admin: false, reboot: false)] },
+            new() { CheckId = "demo.hvci", Title = "Intégrité de la mémoire", Status = Core.Diagnostics.DiagnosticStatus.NeedsAttention,
+                Summary = "Activée : quelques pour cent de performances en moins dans certains jeux.",
+                Explanation = "Elle protège le noyau de Windows. La désactiver est un compromis de sécurité.",
+                Fixes = [Fix("fix.demo.hvci", "Désactiver l'intégrité de la mémoire", admin: true, reboot: true, advanced: true)] },
+            new() { CheckId = "demo.vbs", Title = "Sécurité basée sur la virtualisation", Status = Core.Diagnostics.DiagnosticStatus.Error,
+                Summary = "", Explanation = "Accès refusé (0x80041003)." },
+            new() { CheckId = "demo.hags", Title = "Planification GPU à accélération matérielle", Status = Core.Diagnostics.DiagnosticStatus.Info,
+                Summary = "Désactivée. Gain variable selon les jeux.",
+                Fixes = [Fix("fix.demo.hags", "Activer la planification GPU", admin: true, reboot: true)] },
+            new() { CheckId = "demo.refresh", Title = "Fréquence de l'écran", Status = Core.Diagnostics.DiagnosticStatus.Ok, Summary = "165 Hz, la fréquence maximale." },
+        ];
     }
 
     private static GameProfile? PickGame(ProfileStore store, string? name)

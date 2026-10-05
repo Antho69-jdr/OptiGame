@@ -145,6 +145,22 @@ grille, flèches d'une jaquette à l'autre).
   l'état modifié est une COMPARAISON avec la version enregistrée (revenir à l'original efface la barre), point sur l'onglet
   concerné et dans son nom accessible.
 
+## Diagnostic et Pilotes
+
+- **Diagnostic, une seule page** : verdict neutre pendant l'analyse (barre d'activité), puis icône de forme + titre
+  (`DiagnosticVerdict` : Recommended, ManualActions, Incomplete, Ready — jamais « prêt » avec un contrôle non vérifié) ;
+  une seule action principale « Appliquer les N optimisations… » ; bilan en InfoBar (succès, redémarrage), pas de dialogue
+  modal pour un succès. « Optimisations actives » : « Restaurer l'original… » par ligne, « Tout restaurer… » ; les réglages
+  propres à un jeu repliés à part. Contrôles par statut (À corriger · Non vérifié · À savoir · OK replié), ligne =
+  icône de forme + titre + résumé (deux lignes, rien de tronqué) + statut en mot ; dépliage gardé d'une analyse à l'autre ;
+  « Pourquoi » d'abord, puis les optimisations (bouton « Titre… » + exigences en badges), « Valeurs mesurées » repliées,
+  options avancées en bouton Danger ; un contrôle non vérifié a « Réessayer » et ses « Détails techniques ».
+- **Pilotes** : un modèle de carte (`InstallableDriverViewModel`) pour la carte graphique et le chipset — état en badge
+  (icône + mot), versions « Installé » / « Disponible » groupées, « Installer le pilote X… » ; résultats précédents gardés
+  (atténués) pendant une recherche ; bilan après l'installeur officiel (« pilote à jour » ou « installation non constatée ») ;
+  Windows Update : consigne en InfoBar avant la liste, cases verrouillées pendant une installation, « Installer les 2 pilotes
+  cochés… ».
+
 ## Dialogues
 
 Un seul langage : **aucune MessageBox Win32**, sauf le message bloquant d'`App.LoadStateFiles` (fichier d'état illisible),

@@ -37,8 +37,11 @@ src/OptiGame.Core/       net10.0, aucune dépendance Windows, 100 % testable
                          RequiresAdmin / RequiresReboot. Pas de code de restauration par changement : le journal
                          restaure via l'accesseur du Kind, ce qui fonctionne aussi après un crash.
   Diagnostics/           IDiagnosticCheck → DiagnosticResult (OK / ÀCorriger / Info), un fichier par contrôle
-                         ; OneClickOptimization = vue « Simple » (bouton unique : corrections des contrôles « À corriger »,
-                         jamais avancées ni facultatives ; « Désactiver » n'annule que les ids « fix. », jamais « game. »)
+                         ; OneClickOptimization = en-tête de la page Diagnostic (UNE page : verdict DiagnosticVerdict, jamais
+                         « prêt » si un contrôle est Non vérifié ; bouton unique « Appliquer les N optimisations… » = optimisations
+                         des contrôles « À corriger », jamais avancées ni facultatives ; « Tout restaurer… » ne restaure que les ids
+                         « fix. », jamais « game. ») ; contrôles par statut À corriger / Non vérifié (DiagnosticStatus.Error) /
+                         À savoir / OK, chacun restaurable dans « Optimisations actives »
   Abstractions/          IRegistry, IWmi, IPowerPlans, IDisplayInfo, IPowerStatus, IGpuSchedulingInfo…
   Profiles/              GameProfile, ProfileStore (profiles.json), ProfileValidator (processus protégés), GameChanges
                          (réglages « game.* » faits pour un jeu dans fixes.json : gardés quand on le retire, cités à la confirmation)
