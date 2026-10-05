@@ -270,8 +270,7 @@ public sealed partial class MeasuresViewModel : ObservableObject
         HasSelection = Before is not null;
         IsComparison = After is not null;
         Comparison = Before is not null && After is not null ? ComparisonRow.Build(Before.Record.Stats, After.Record.Stats) : [];
-        BeforeFrames = LoadFrames(Before);
-        AfterFrames = LoadFrames(After);
+        LoadChart(Before, After);
         ChartDescription = Before is null ? "Graphe des temps d'image : aucune mesure sélectionnée."
             : After is null ? $"Graphe des temps d'image de « {Before.Label} » : {Before.AverageFps} FPS moyens, pire image {Before.Record.Stats.MaxFrameTimeMs:0.0} ms."
             : $"Graphe des temps d'image : avant {Before.AverageFps} FPS moyens, après {After.AverageFps} FPS moyens.";
@@ -296,9 +295,36 @@ public sealed partial class MeasuresViewModel : ObservableObject
         return Platform.Measurement.CaptureReader.Build(request, label, csvName, capturedAt, presentMonOutput, activeProfile, preset: preset);
     }
 
-    private IReadOnlyList<double>? LoadFrames(CaptureItemViewModel? item)
+    /// <summary>
+    /// Temps d'image déjà lus, par mesure : resélectionner, inverser ou ajouter une deuxième mesure ne relit pas les CSV
+    /// (1 à 2 Mo chacun). Borné à quelques mesures.
+    /// </summary>
+    private readonly Dictionary<Guid, IReadOnlyList<double>?> _frames = [];
+    private int _chartVersion;
+
+    /// <summary>Graphe : CSV lus hors du thread de l'interface ; seule la dernière sélection est affichée.</summary>
+    private async void LoadChart(CaptureItemViewModel? before, CaptureItemViewModel? after)
+    {
+        var version = ++_chartVersion;
+        var beforeFrames = await FramesOfAsync(before);
+        var afterFrames = await FramesOfAsync(after);
+        if (version != _chartVersion) return; // sélection changée entre-temps
+        BeforeFrames = beforeFrames;
+        AfterFrames = afterFrames;
+    }
+
+    private async Task<IReadOnlyList<double>?> FramesOfAsync(CaptureItemViewModel? item)
     {
         if (item is null) return null;
+        if (_frames.TryGetValue(item.Record.Id, out var cached)) return cached;
+        var frames = await Task.Run(() => LoadFrames(item));
+        if (_frames.Count >= 6) _frames.Clear();
+        _frames[item.Record.Id] = frames;
+        return frames;
+    }
+
+    private IReadOnlyList<double>? LoadFrames(CaptureItemViewModel item)
+    {
         try
         {
             return _store.LoadFrameTimes(item.Record);
