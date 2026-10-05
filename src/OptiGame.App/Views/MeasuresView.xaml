@@ -9,140 +9,147 @@
              d:DataContext="{d:DesignInstance vm:MeasuresViewModel}">
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
-        <Style x:Key="StatValue" TargetType="TextBlock">
-            <Setter Property="FontFamily" Value="{StaticResource Font.Display}" />
-            <Setter Property="FontSize" Value="24" />
-            <Setter Property="FontWeight" Value="SemiBold" />
-            <Setter Property="Foreground" Value="{StaticResource Brush.Text}" />
+
+        <!-- Écart de la comparaison : flèche + mot + couleur (jamais la couleur seule) -->
+        <Style x:Key="ChangeText" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource Brush.TextSecondary}" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsBetter}" Value="True">
+                    <Setter Property="Foreground" Value="{StaticResource Brush.Ok}" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding IsBetter}" Value="False">
+                    <Setter Property="Foreground" Value="{StaticResource Brush.Danger}" />
+                </DataTrigger>
+            </Style.Triggers>
         </Style>
     </UserControl.Resources>
 
-    <DockPanel Margin="32,24,32,24">
-        <StackPanel DockPanel.Dock="Top" Margin="0,0,0,20">
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Margin="32,24,32,32">
             <TextBlock Style="{StaticResource Text.PageTitle}" Text="Mesures" />
-            <TextBlock Margin="0,4,0,0" Style="{StaticResource Text.Secondary}"
-                       Text="Mesurez les FPS d'un jeu avec PresentMon, puis comparez avant et après optimisation. Pour comparer, mesurez la même scène avec les mêmes réglages, idéalement plusieurs fois : quelques pourcents d'écart entre deux captures sont normaux." />
-        </StackPanel>
+            <TextBlock Margin="0,4,0,16" Style="{StaticResource Text.Secondary}"
+                       Text="Mesurez les FPS d'un jeu avec PresentMon, puis comparez avant et après optimisation : même scène, mêmes réglages, idéalement plusieurs fois (quelques pourcents d'écart sont normaux)." />
 
-        <!-- PresentMon introuvable -->
-        <Border DockPanel.Dock="Top" Margin="0,0,0,16" Style="{StaticResource Banner}"
-                Background="{StaticResource Brush.WarningSoft}" BorderBrush="{StaticResource Brush.Warning}">
-            <Border.Visibility>
-                <Binding Path="HasPresentMon" Converter="{StaticResource InverseBoolToVisibility}" />
-            </Border.Visibility>
-            <DockPanel>
-                <Button DockPanel.Dock="Right" Style="{StaticResource Button.Secondary}" Content="Choisir PresentMon…" Command="{Binding ChoosePresentMonCommand}" />
-                <TextBlock VerticalAlignment="Center" Style="{StaticResource Text.Body}"
-                           Text="PresentMon (outil open source d'Intel) est nécessaire pour mesurer les FPS. Indiquez la version console (PresentMon-x.y.z-x64.exe)." />
-            </DockPanel>
-        </Border>
+            <!-- PresentMon introuvable -->
+            <controls:InfoBar Margin="{StaticResource Margin.StackL}" Severity="Warning" Title="PresentMon est introuvable"
+                              Message="Cet outil open source d'Intel est nécessaire pour mesurer les FPS. Indiquez sa version console (PresentMon-x.y.z-x64.exe)."
+                              Visibility="{Binding HasPresentMon, Converter={StaticResource InverseBoolToVisibility}}">
+                <Button Style="{StaticResource Button.Secondary}" Content="Parcourir…" Command="{Binding ChoosePresentMonCommand}"
+                        AutomationProperties.Name="Choisir PresentMon…" />
+            </controls:InfoBar>
 
-        <!-- Nouvelle capture -->
-        <Border DockPanel.Dock="Top" Style="{StaticResource Card}">
-            <StackPanel>
-                <WrapPanel>
-                    <StackPanel Margin="0,0,16,0">
-                        <TextBlock Style="{StaticResource Text.Label}" Margin="0,0,0,6" Text="Jeu" />
-                        <ComboBox Width="240" ItemsSource="{Binding Targets}" SelectedItem="{Binding SelectedTarget}" />
-                    </StackPanel>
-                    <StackPanel Margin="0,0,16,0">
-                        <TextBlock Style="{StaticResource Text.Label}" Margin="0,0,0,6" Text="ou nom de l'exe" />
-                        <TextBox Width="160" Text="{Binding CustomExeName, UpdateSourceTrigger=PropertyChanged}" />
-                    </StackPanel>
-                    <StackPanel Margin="0,0,16,0">
-                        <TextBlock Style="{StaticResource Text.Label}" Margin="0,0,0,6" Text="Durée (s)" />
-                        <ComboBox Width="90" ItemsSource="{Binding DurationOptions}" SelectedItem="{Binding SelectedDuration}" />
-                    </StackPanel>
-                    <StackPanel Margin="0,0,16,0">
-                        <TextBlock Style="{StaticResource Text.Label}" Margin="0,0,0,6" Text="Délai (s)" />
-                        <ComboBox Width="90" ItemsSource="{Binding DelayOptions}" SelectedItem="{Binding SelectedDelay}" />
-                    </StackPanel>
-                    <StackPanel Margin="0,0,16,0">
-                        <TextBlock Style="{StaticResource Text.Label}" Margin="0,0,0,6" Text="Libellé" />
-                        <TextBox Width="220" Text="{Binding Label, UpdateSourceTrigger=PropertyChanged}"
-                                 ToolTip="Ex. « Avant optimisation » ; par défaut : jeu + date" />
-                    </StackPanel>
-                    <StackPanel VerticalAlignment="Bottom" Orientation="Horizontal">
-                        <Button Style="{StaticResource Button.Primary}" Command="{Binding StartCaptureCommand}">
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock Style="{StaticResource Text.Icon}" FontSize="14" Text="&#xE768;" />
-                                <TextBlock Margin="8,0,0,0" Text="Démarrer la capture" />
-                            </StackPanel>
-                        </Button>
-                        <Button Margin="8,0,0,0" Style="{StaticResource Button.Secondary}" Content="Annuler" Command="{Binding CancelCaptureCommand}"
-                                Visibility="{Binding IsCapturing, Converter={StaticResource BoolToVisibility}}" />
-                    </StackPanel>
-                </WrapPanel>
-                <TextBlock Margin="0,12,0,0" FontWeight="SemiBold" Foreground="{StaticResource Brush.Accent}" Text="{Binding CaptureStatus}" />
-                <DockPanel Margin="0,6,0,0" Visibility="{Binding HasPresentMon, Converter={StaticResource BoolToVisibility}}">
-                    <Button DockPanel.Dock="Right" Style="{StaticResource Button.Ghost}" Content="Changer…" Command="{Binding ChoosePresentMonCommand}" />
-                    <TextBlock Style="{StaticResource Text.Caption}" VerticalAlignment="Center">
-                        <Run Text="PresentMon : " /><Run Text="{Binding PresentMonPath, Mode=OneWay}" FontFamily="{StaticResource Font.Mono}" />
-                    </TextBlock>
-                </DockPanel>
-            </StackPanel>
-        </Border>
-
-        <Grid Margin="0,16,0,0">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="5*" />
-                <ColumnDefinition Width="16" />
-                <ColumnDefinition Width="4*" />
-            </Grid.ColumnDefinitions>
-            <Grid.RowDefinitions>
-                <RowDefinition Height="*" MinHeight="160" />
-                <RowDefinition Height="16" />
-                <RowDefinition Height="200" />
-            </Grid.RowDefinitions>
-
-            <!-- Captures -->
-            <Border Grid.Column="0" Grid.Row="0" Style="{StaticResource Card}" Padding="16">
-                <DockPanel>
-                    <DockPanel DockPanel.Dock="Top" Margin="0,0,0,10">
-                        <Button DockPanel.Dock="Right" Style="{StaticResource Button.Ghost}" Command="{Binding DeleteSelectedCommand}">
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock Style="{StaticResource Text.Icon}" FontSize="13" Text="&#xE74D;" />
-                                <TextBlock Margin="6,0,0,0" Text="Supprimer" />
-                            </StackPanel>
-                        </Button>
-                        <StackPanel>
-                            <TextBlock Style="{StaticResource Text.SectionTitle}" Text="Captures" />
-                            <TextBlock Style="{StaticResource Text.Caption}" Text="Une capture, ou deux (Ctrl+clic) pour les comparer." />
+            <!-- Nouvelle mesure -->
+            <Border Style="{StaticResource Card}">
+                <StackPanel>
+                    <TextBlock Style="{StaticResource Text.SectionTitle}" Text="Nouvelle mesure" />
+                    <TextBlock Margin="0,4,0,0" Style="{StaticResource Text.Caption}"
+                               Text="Lancez d'abord le jeu, puis démarrez la mesure : elle commence après le délai, le temps de revenir dans le jeu." />
+                    <WrapPanel Margin="0,12,0,0">
+                        <StackPanel Margin="0,0,16,8">
+                            <Label Style="{StaticResource Text.FieldLabel}" Content="_Jeu" Target="{Binding ElementName=TargetBox}" />
+                            <ComboBox x:Name="TargetBox" Width="260" ItemsSource="{Binding Targets}" SelectedItem="{Binding SelectedTarget}"
+                                      AutomationProperties.Name="Jeu à mesurer" />
                         </StackPanel>
-                    </DockPanel>
-                    <ListView x:Name="CaptureList" ItemsSource="{Binding Captures}" SelectionMode="Extended" SelectionChanged="OnSelectionChanged"
-                              Background="Transparent" BorderThickness="0">
-                        <ListView.View>
-                            <GridView>
-                                <GridViewColumn Header="Libellé" Width="150" DisplayMemberBinding="{Binding Label}" />
-                                <GridViewColumn Header="Jeu" Width="100" DisplayMemberBinding="{Binding Game}" />
-                                <GridViewColumn Header="Date" Width="115" DisplayMemberBinding="{Binding Date}" />
-                                <GridViewColumn Header="Profil" Width="80" DisplayMemberBinding="{Binding Profile}" />
-                                <GridViewColumn Header="FPS" Width="55" DisplayMemberBinding="{Binding AverageFps}" />
-                                <GridViewColumn Header="1 % low" Width="65" DisplayMemberBinding="{Binding OnePercentLow}" />
-                            </GridView>
-                        </ListView.View>
-                    </ListView>
-                </DockPanel>
+                        <StackPanel Margin="0,0,16,8">
+                            <Label Style="{StaticResource Text.FieldLabel}" Content="_Durée" Target="{Binding ElementName=DurationBox}" />
+                            <ComboBox x:Name="DurationBox" Width="110" ItemsSource="{Binding DurationOptions}" SelectedItem="{Binding SelectedDuration}"
+                                      ItemStringFormat="{}{0} s" AutomationProperties.Name="Durée en secondes" />
+                        </StackPanel>
+                        <StackPanel Margin="0,0,16,8">
+                            <Label Style="{StaticResource Text.FieldLabel}" Content="Dé_lai avant le début" Target="{Binding ElementName=DelayBox}" />
+                            <ComboBox x:Name="DelayBox" Width="110" ItemsSource="{Binding DelayOptions}" SelectedItem="{Binding SelectedDelay}"
+                                      ItemStringFormat="{}{0} s" AutomationProperties.Name="Délai avant le début, en secondes" />
+                        </StackPanel>
+                        <StackPanel Margin="0,0,16,8">
+                            <Label Style="{StaticResource Text.FieldLabel}" Content="_Libellé (facultatif)" Target="{Binding ElementName=LabelBox}" />
+                            <TextBox x:Name="LabelBox" Width="240" Text="{Binding Label, UpdateSourceTrigger=PropertyChanged}"
+                                     AutomationProperties.Name="Libellé" AutomationProperties.HelpText="Par exemple « Avant optimisation » ; par défaut : le jeu et la date." />
+                        </StackPanel>
+                    </WrapPanel>
+                    <!-- Autre programme : prioritaire sur la liste quand il est rempli (dit) -->
+                    <Expander Style="{StaticResource Expander.Disclosure}" Header="Autre programme (nom du fichier .exe)">
+                        <StackPanel Margin="0,6,0,0">
+                            <TextBox Width="240" HorizontalAlignment="Left" Text="{Binding CustomExeName, UpdateSourceTrigger=PropertyChanged}"
+                                     AutomationProperties.Name="Nom du fichier .exe à mesurer" />
+                            <TextBlock Margin="0,4,0,0" Style="{StaticResource Text.Caption}" Text="Quand ce champ est rempli, il remplace le jeu choisi dans la liste." />
+                        </StackPanel>
+                    </Expander>
+                    <WrapPanel Margin="0,12,0,0">
+                        <controls:IconButton Margin="0,0,8,0" Style="{StaticResource Button.Primary}" Glyph="&#xE768;" Label="Démarrer la mesure"
+                                             Command="{Binding StartCaptureCommand}" />
+                        <Button Style="{StaticResource Button.Secondary}" Content="Annuler la mesure" Command="{Binding CancelCaptureCommand}"
+                                Visibility="{Binding IsCapturing, Converter={StaticResource BoolToVisibility}}" />
+                    </WrapPanel>
+                    <controls:InfoBar Margin="0,12,0,0" Severity="{Binding CaptureStatusSeverity}" Message="{Binding CaptureStatus}"
+                                      IsClosable="True" CloseCommand="{Binding DismissCaptureStatusCommand}"
+                                      Visibility="{Binding HasCaptureStatus, Converter={StaticResource BoolToVisibility}}" />
+                    <ProgressBar Margin="0,8,0,0" Height="4" Maximum="100" Value="{Binding CaptureProgress}" AutomationProperties.Name="Avancement de la mesure"
+                                 Visibility="{Binding IsCapturing, Converter={StaticResource BoolToVisibility}}" />
+                </StackPanel>
             </Border>
 
-            <!-- Détail / comparaison -->
-            <Border Grid.Column="2" Grid.Row="0" Style="{StaticResource Card}" Padding="16">
-                <ScrollViewer VerticalScrollBarVisibility="Auto">
-                    <StackPanel>
-                        <TextBlock Text="Aucune capture sélectionnée.">
-                            <TextBlock.Style>
-                                <Style TargetType="TextBlock" BasedOn="{StaticResource Text.Secondary}">
-                                    <Style.Triggers>
-                                        <DataTrigger Binding="{Binding HasSelection}" Value="True">
-                                            <Setter Property="Visibility" Value="Collapsed" />
-                                        </DataTrigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </TextBlock.Style>
-                        </TextBlock>
+            <!-- Mesures enregistrées et détail : deux colonnes, une seule en fenêtre étroite -->
+            <UniformGrid x:Name="Panels" Margin="0,16,0,0"
+                         Columns="{Binding ActualWidth, RelativeSource={RelativeSource Self}, Converter={StaticResource WidthToColumns}, ConverterParameter=820}">
+                <Border Margin="0,0,8,16" Style="{StaticResource Card}" Padding="16">
+                    <DockPanel>
+                        <DockPanel DockPanel.Dock="Top" Margin="0,0,0,10">
+                            <controls:IconButton DockPanel.Dock="Right" VerticalAlignment="Top" Style="{StaticResource Button.Ghost}" Glyph="&#xE74D;"
+                                                 Label="Supprimer…" Command="{Binding DeleteSelectedCommand}"
+                                                 AutomationProperties.HelpText="Supprime les mesures sélectionnées (touche Suppr)." />
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource Text.SectionTitle}" Text="Mesures enregistrées" />
+                                <TextBlock Style="{StaticResource Text.Caption}" Text="Une mesure, ou deux (Ctrl+clic, ou Maj+flèches) pour les comparer." />
+                            </StackPanel>
+                        </DockPanel>
+                        <TextBlock DockPanel.Dock="Top" Style="{StaticResource Text.Secondary}"
+                                   Text="Aucune mesure pour l'instant. Lancez un jeu, puis « Démarrer la mesure ». Une mesure automatique est aussi faite après 4 minutes de jeu."
+                                   Visibility="{Binding HasCaptures, Converter={StaticResource InverseBoolToVisibility}}" />
+                        <ListBox x:Name="CaptureList" MaxHeight="420" ItemsSource="{Binding Captures}" SelectionMode="Extended"
+                                 SelectionChanged="OnSelectionChanged" KeyDown="OnListKeyDown" Background="Transparent" BorderThickness="0"
+                                 ItemContainerStyle="{StaticResource ListItem.Selectable}"
+                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled" HorizontalContentAlignment="Stretch"
+                                 AutomationProperties.Name="Mesures enregistrées"
+                                 Visibility="{Binding HasCaptures, Converter={StaticResource BoolToVisibility}}">
+                            <ListBox.ContextMenu>
+                                <ContextMenu>
+                                    <MenuItem Header="Supprimer…" Command="{Binding DeleteSelectedCommand}" />
+                                </ContextMenu>
+                            </ListBox.ContextMenu>
+                            <ListBox.ItemTemplate>
+                                <DataTemplate DataType="{x:Type vm:CaptureItemViewModel}">
+                                    <DockPanel Margin="0,4">
+                                        <StackPanel DockPanel.Dock="Right" Margin="12,0,0,0">
+                                            <TextBlock HorizontalAlignment="Right" Style="{StaticResource Text.BodyStrong}" Text="{Binding AverageFps, StringFormat='{}{0} FPS'}" />
+                                            <TextBlock HorizontalAlignment="Right" Style="{StaticResource Text.Caption}" Text="{Binding OnePercentLow, StringFormat='1 % low : {0}'}" />
+                                        </StackPanel>
+                                        <StackPanel>
+                                            <WrapPanel>
+                                                <TextBlock Margin="0,0,8,0" Style="{StaticResource Text.Body}" Text="{Binding Label}" />
+                                                <Border Margin="0,1,6,0" Style="{StaticResource Badge.Neutral}" Visibility="{Binding IsAutomatic, Converter={StaticResource BoolToVisibility}}">
+                                                    <TextBlock Text="Automatique" />
+                                                </Border>
+                                                <Border Margin="0,1,0,0" Style="{StaticResource Badge.Warning}" Visibility="{Binding IsUnreliable, Converter={StaticResource BoolToVisibility}}"
+                                                        ToolTip="Trop peu d'images : le 1 % low n'est pas fiable.">
+                                                    <TextBlock Text="Peu fiable" />
+                                                </Border>
+                                            </WrapPanel>
+                                            <TextBlock Style="{StaticResource Text.Caption}" Text="{Binding Details}" />
+                                        </StackPanel>
+                                    </DockPanel>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </DockPanel>
+                </Border>
 
-                        <!-- Une capture -->
+                <!-- Détail d'une mesure, ou comparaison de deux -->
+                <Border Margin="8,0,0,16" Style="{StaticResource Card}" Padding="16">
+                    <StackPanel>
+                        <TextBlock Style="{StaticResource Text.Secondary}" Text="Sélectionnez une mesure pour voir son détail, ou deux pour les comparer."
+                                   Visibility="{Binding HasSelection, Converter={StaticResource InverseBoolToVisibility}}" />
+
+                        <!-- Une mesure -->
                         <StackPanel DataContext="{Binding Before}">
                             <StackPanel.Style>
                                 <Style TargetType="StackPanel">
@@ -157,92 +164,118 @@
                                 </Style>
                             </StackPanel.Style>
                             <TextBlock Style="{StaticResource Text.SectionTitle}" Text="{Binding Label}" />
-                            <TextBlock Style="{StaticResource Text.Caption}" Text="{Binding Date}" />
+                            <TextBlock Style="{StaticResource Text.Caption}" Text="{Binding Details}" />
                             <UniformGrid Margin="0,14,0,0" Columns="2">
                                 <StackPanel Margin="0,0,0,12">
                                     <TextBlock Style="{StaticResource Text.Caption}" Text="FPS moyens" />
-                                    <TextBlock Style="{StaticResource StatValue}" Foreground="{StaticResource Brush.Accent}" Text="{Binding AverageFps}" />
+                                    <TextBlock Style="{StaticResource Text.Stat}" Text="{Binding AverageFps}" />
                                 </StackPanel>
                                 <StackPanel Margin="0,0,0,12">
-                                    <TextBlock Style="{StaticResource Text.Caption}" Text="1 % low" />
-                                    <TextBlock Style="{StaticResource StatValue}" Text="{Binding OnePercentLow}" />
+                                    <TextBlock Style="{StaticResource Text.Caption}" Text="1 % les plus lents (1 % low)" />
+                                    <TextBlock Style="{StaticResource Text.Stat}" Text="{Binding OnePercentLow}" />
                                 </StackPanel>
                                 <StackPanel>
-                                    <TextBlock Style="{StaticResource Text.Caption}" Text="0,1 % low" />
-                                    <TextBlock Style="{StaticResource StatValue}" Text="{Binding PointOnePercentLow}" />
+                                    <TextBlock Style="{StaticResource Text.Caption}" Text="0,1 % les plus lents" />
+                                    <TextBlock Style="{StaticResource Text.Stat}" Text="{Binding PointOnePercentLow}" />
                                 </StackPanel>
                                 <StackPanel>
-                                    <TextBlock Style="{StaticResource Text.Caption}" Text="Frametime P99" />
-                                    <TextBlock Style="{StaticResource StatValue}" Text="{Binding P99}" />
+                                    <TextBlock Style="{StaticResource Text.Caption}" Text="Temps d'image P99" />
+                                    <TextBlock Style="{StaticResource Text.Stat}" Text="{Binding P99}" />
                                 </StackPanel>
                             </UniformGrid>
                             <TextBlock Margin="0,12,0,0" Style="{StaticResource Text.Caption}" Text="{Binding Summary}" />
                         </StackPanel>
 
-                        <!-- Comparaison -->
-                        <StackPanel Visibility="{Binding IsComparison, Converter={StaticResource BoolToVisibility}}">
-                            <TextBlock Style="{StaticResource Text.SectionTitle}" Text="Comparaison" />
-                            <StackPanel Margin="0,6,0,0" Orientation="Horizontal">
-                                <Rectangle Width="10" Height="10" RadiusX="2" RadiusY="2" Fill="{StaticResource Brush.Series1}" VerticalAlignment="Center" />
-                                <TextBlock Margin="6,0,0,0" Style="{StaticResource Text.Caption}" Text="{Binding Before.Label, StringFormat='Avant : {0}'}" />
-                            </StackPanel>
-                            <StackPanel Orientation="Horizontal">
-                                <Rectangle Width="10" Height="10" RadiusX="2" RadiusY="2" Fill="{StaticResource Brush.Series2}" VerticalAlignment="Center" />
-                                <TextBlock Margin="6,0,0,0" Style="{StaticResource Text.Caption}" Text="{Binding After.Label, StringFormat='Après : {0}'}" />
-                            </StackPanel>
-                            <ItemsControl Margin="0,12,0,0" ItemsSource="{Binding Comparison}">
+                        <!-- Comparaison : tableau à en-têtes, écart en flèche + mot -->
+                        <StackPanel Grid.IsSharedSizeScope="True" Visibility="{Binding IsComparison, Converter={StaticResource BoolToVisibility}}">
+                            <DockPanel>
+                                <controls:IconButton DockPanel.Dock="Right" Style="{StaticResource Button.Ghost}" Glyph="&#xE8CB;" Label="Inverser"
+                                                     Command="{Binding SwapCommand}" AutomationProperties.HelpText="Échange les mesures « avant » et « après »." />
+                                <TextBlock Style="{StaticResource Text.SectionTitle}" Text="Comparaison" />
+                            </DockPanel>
+                            <Grid Margin="10,10,10,4">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" SharedSizeGroup="Before" />
+                                    <ColumnDefinition Width="Auto" SharedSizeGroup="After" />
+                                    <ColumnDefinition Width="Auto" SharedSizeGroup="Change" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Style="{StaticResource Text.Caption}" Text="Mesure" />
+                                <StackPanel Grid.Column="1" Margin="12,0,0,0" HorizontalAlignment="Right" Orientation="Horizontal">
+                                    <Rectangle Width="8" Height="8" Margin="0,0,4,0" VerticalAlignment="Center" Fill="{StaticResource Brush.Series1}" />
+                                    <TextBlock Style="{StaticResource Text.Caption}" Text="Avant" />
+                                </StackPanel>
+                                <StackPanel Grid.Column="2" Margin="12,0,0,0" HorizontalAlignment="Right" Orientation="Horizontal">
+                                    <Rectangle Width="8" Height="8" Margin="0,0,4,0" VerticalAlignment="Center" Fill="{StaticResource Brush.Series2}" />
+                                    <TextBlock Style="{StaticResource Text.Caption}" Text="Après" />
+                                </StackPanel>
+                                <TextBlock Grid.Column="3" Margin="16,0,0,0" HorizontalAlignment="Right" Style="{StaticResource Text.Caption}" Text="Écart" />
+                            </Grid>
+                            <ItemsControl ItemsSource="{Binding Comparison}" Focusable="False">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate DataType="{x:Type vm:ComparisonRow}">
                                         <Border Margin="0,3" Padding="10,6" CornerRadius="{StaticResource Radius.Control}" Background="{StaticResource Brush.Control}">
                                             <Grid>
                                                 <Grid.ColumnDefinitions>
                                                     <ColumnDefinition Width="*" />
-                                                    <ColumnDefinition Width="60" />
-                                                    <ColumnDefinition Width="60" />
-                                                    <ColumnDefinition Width="72" />
+                                                    <ColumnDefinition Width="Auto" SharedSizeGroup="Before" />
+                                                    <ColumnDefinition Width="Auto" SharedSizeGroup="After" />
+                                                    <ColumnDefinition Width="Auto" SharedSizeGroup="Change" />
                                                 </Grid.ColumnDefinitions>
                                                 <TextBlock Style="{StaticResource Text.Secondary}" Text="{Binding Metric}" />
-                                                <TextBlock Grid.Column="1" TextAlignment="Right" Style="{StaticResource Text.Body}" Text="{Binding Before}" />
-                                                <TextBlock Grid.Column="2" TextAlignment="Right" Style="{StaticResource Text.Body}" Text="{Binding After}" />
-                                                <TextBlock Grid.Column="3" TextAlignment="Right" FontWeight="SemiBold" Text="{Binding Change}">
-                                                    <TextBlock.Style>
-                                                        <Style TargetType="TextBlock">
-                                                            <Setter Property="Foreground" Value="{StaticResource Brush.TextMuted}" />
-                                                            <Style.Triggers>
-                                                                <DataTrigger Binding="{Binding IsBetter}" Value="True">
-                                                                    <Setter Property="Foreground" Value="{StaticResource Brush.Ok}" />
-                                                                </DataTrigger>
-                                                                <DataTrigger Binding="{Binding IsBetter}" Value="False">
-                                                                    <Setter Property="Foreground" Value="{StaticResource Brush.Danger}" />
-                                                                </DataTrigger>
-                                                            </Style.Triggers>
-                                                        </Style>
-                                                    </TextBlock.Style>
-                                                </TextBlock>
+                                                <TextBlock Grid.Column="1" Margin="12,0,0,0" TextAlignment="Right" Style="{StaticResource Text.Body}" Text="{Binding Before}" />
+                                                <TextBlock Grid.Column="2" Margin="12,0,0,0" TextAlignment="Right" Style="{StaticResource Text.Body}" Text="{Binding After}" />
+                                                <StackPanel Grid.Column="3" Margin="16,0,0,0" HorizontalAlignment="Right" Orientation="Horizontal">
+                                                    <TextBlock Margin="0,0,4,0" Style="{StaticResource Text.Icon}" FontSize="{StaticResource IconSize.Small}" Text="{Binding Glyph}">
+                                                        <TextBlock.Foreground>
+                                                            <Binding Path="Foreground" ElementName="ChangeLabel" />
+                                                        </TextBlock.Foreground>
+                                                    </TextBlock>
+                                                    <TextBlock x:Name="ChangeLabel" FontWeight="SemiBold" Style="{StaticResource ChangeText}">
+                                                        <Run Text="{Binding Change, Mode=OneWay}" /><Run Text=" " /><Run Text="{Binding Verdict, Mode=OneWay}" FontWeight="Normal" />
+                                                    </TextBlock>
+                                                </StackPanel>
                                             </Grid>
                                         </Border>
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
                             <TextBlock Margin="0,8,0,0" Style="{StaticResource Text.Caption}"
-                                       Text="Vert = mieux, rouge = moins bien, gris = écart inférieur à 1 % (dans la marge de variation normale)." />
+                                       Text="« Stable » : écart inférieur à 1 %, dans la marge de variation normale. Pour le temps d'image P99, plus bas = mieux." />
                         </StackPanel>
 
-                        <TextBlock Margin="0,14,0,0" Style="{StaticResource Text.Caption}"
-                                   Visibility="{Binding HasSelection, Converter={StaticResource BoolToVisibility}}"
-                                   Text="FPS moyens = images ÷ durée. 1 % / 0,1 % low = FPS moyens sur les 1 % / 0,1 % d'images les plus lentes. P99 = 99 % des images sont plus rapides. Calculé sur la cadence de rendu du jeu, chaîne d'affichage principale uniquement (overlays exclus)." />
+                        <TextBlock Margin="0,8,0,0" Style="{StaticResource Text.Caption}" Text="{Binding SelectionNote}" />
+                        <Expander Margin="0,8,0,0" Style="{StaticResource Expander.Disclosure}" Header="Comment lire ces chiffres"
+                                  Visibility="{Binding HasSelection, Converter={StaticResource BoolToVisibility}}">
+                            <TextBlock Margin="0,4,0,0" Style="{StaticResource Text.Caption}"
+                                       Text="FPS moyens = images ÷ durée. 1 % / 0,1 % les plus lents = FPS moyens sur les 1 % / 0,1 % d'images les plus lentes (les saccades). P99 = 99 % des images sont plus rapides. Calculé sur la cadence de rendu du jeu, chaîne d'affichage principale uniquement (overlays exclus)." />
+                        </Expander>
                     </StackPanel>
-                </ScrollViewer>
-            </Border>
+                </Border>
+            </UniformGrid>
 
-            <!-- Graphe -->
-            <Border Grid.Row="2" Grid.ColumnSpan="3" Style="{StaticResource Card}" Padding="16,12">
+            <!-- Graphe des temps d'image, avec sa légende -->
+            <Border Style="{StaticResource Card}" Padding="16,12">
                 <DockPanel>
-                    <TextBlock DockPanel.Dock="Top" Margin="0,0,0,8" Style="{StaticResource Text.SectionTitle}" FontSize="14"
-                               Text="Frametimes — plus bas = mieux ; les pics sont des saccades" />
-                    <controls:FrametimeChart Primary="{Binding BeforeFrames}" Secondary="{Binding AfterFrames}" />
+                    <DockPanel DockPanel.Dock="Top" Margin="0,0,0,8">
+                        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center"
+                                    Visibility="{Binding HasSelection, Converter={StaticResource BoolToVisibility}}">
+                            <Rectangle Width="10" Height="10" Margin="0,0,6,0" RadiusX="2" RadiusY="2" Fill="{StaticResource Brush.Series1}" VerticalAlignment="Center" />
+                            <TextBlock Margin="0,0,16,0" Style="{StaticResource Text.Caption}" Text="{Binding Before.Label}" />
+                            <Rectangle Width="10" Height="10" Margin="0,0,6,0" RadiusX="2" RadiusY="2" Fill="{StaticResource Brush.Series2}" VerticalAlignment="Center"
+                                       Visibility="{Binding IsComparison, Converter={StaticResource BoolToVisibility}}" />
+                            <TextBlock Style="{StaticResource Text.Caption}" Text="{Binding After.Label}"
+                                       Visibility="{Binding IsComparison, Converter={StaticResource BoolToVisibility}}" />
+                        </StackPanel>
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource Text.SectionTitle}" Text="Temps d'image" />
+                            <TextBlock Style="{StaticResource Text.Caption}" Text="Plus bas = mieux ; les pics sont des saccades." />
+                        </StackPanel>
+                    </DockPanel>
+                    <controls:FrametimeChart Height="260" Primary="{Binding BeforeFrames}" Secondary="{Binding AfterFrames}"
+                                             AutomationProperties.Name="{Binding ChartDescription}" />
                 </DockPanel>
             </Border>
-        </Grid>
-    </DockPanel>
+        </StackPanel>
+    </ScrollViewer>
 </UserControl>

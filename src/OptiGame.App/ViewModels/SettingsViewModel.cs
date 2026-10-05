@@ -10,6 +10,10 @@ using OptiGame.Platform.Startup;
 
 namespace OptiGame.App.ViewModels;
 
+/// <summary>
+/// Paramètres, en groupes façon Windows 11 (Général, Mes jeux, Dock, Mesures, Mises à jour et à propos, Données) : chaque case
+/// s'applique tout de suite ; les sous-réglages se grisent quand leur réglage parent est désactivé.
+/// </summary>
 public sealed partial class SettingsViewModel : ObservableObject
 {
     private readonly AutoStartService _autoStart;
@@ -20,9 +24,16 @@ public sealed partial class SettingsViewModel : ObservableObject
     private readonly IgdbClient _igdb;
 
     public SettingsViewModel(AutoStartService autoStart, IDialogService dialogs, AppPaths paths, AppSettingsStore settings, IgdbClient igdb,
-        UpdateService updates)
+        UpdateService updates, MeasuresViewModel measures, ShellAlerts alerts, TrayViewModel tray)
     {
         Updates = updates;
+        Measures = measures;
+        OpenLogCommand = alerts.OpenLogCommand;
+        QuitCommand = tray.ExitCommand;
+        measures.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(MeasuresViewModel.HasPresentMon)) OnPropertyChanged(nameof(ShowsPresentMonWarning));
+        };
         _autoStart = autoStart;
         _dialogs = dialogs;
         _settings = settings;
@@ -34,6 +45,18 @@ public sealed partial class SettingsViewModel : ObservableObject
         IgdbClientId = current.IgdbClientId ?? "";
         HasIgdbSecret = current.IgdbClientSecretProtected is not null;
     }
+
+    /// <summary>PresentMon (chemin, « Parcourir… ») : réglé ici, utilisé par la page Mesures et la mesure automatique.</summary>
+    public MeasuresViewModel Measures { get; }
+
+    /// <summary>Journal d'OptiGame (logs\optigame.log), ouvert par l'Explorateur.</summary>
+    public System.Windows.Input.ICommand OpenLogCommand { get; }
+
+    /// <summary>« Quitter OptiGame » (même chemin que la zone de notification : garde des modifications, partie restaurée).</summary>
+    public System.Windows.Input.ICommand QuitCommand { get; }
+
+    /// <summary>Mesure automatique cochée sans PresentMon : elle ne se ferait pas (dit, plus ignoré en silence).</summary>
+    public bool ShowsPresentMonWarning => AutoMeasureFps && !Measures.HasPresentMon;
 
     // ---- Mises à jour ----
 
@@ -81,13 +104,16 @@ public sealed partial class SettingsViewModel : ObservableObject
     public bool DockEnabled
     {
         get => _settings.Get().DockEnabled;
-        set { _settings.Update(s => s.DockEnabled = value); OnPropertyChanged(); }
+        set { _settings.Update(s => s.DockEnabled = value); OnPropertyChanged(); OnPropertyChanged(nameof(DockAutoHideEnabled)); }
     }
+
+    /// <summary>Délai de masquage modifiable : dock affiché ET masquage automatique.</summary>
+    public bool DockAutoHideEnabled => DockEnabled && DockAutoHide;
 
     public bool DockAutoHide
     {
         get => _settings.Get().DockAutoHide;
-        set { _settings.Update(s => s.DockAutoHide = value); OnPropertyChanged(); }
+        set { _settings.Update(s => s.DockAutoHide = value); OnPropertyChanged(); OnPropertyChanged(nameof(DockAutoHideEnabled)); }
     }
 
     public double MinDockHideDelay => Core.Dock.DockLayout.MinHideDelay;
@@ -117,7 +143,7 @@ public sealed partial class SettingsViewModel : ObservableObject
     public bool AutoMeasureFps
     {
         get => _settings.Get().AutoMeasureFps;
-        set { _settings.Update(s => s.AutoMeasureFps = value); OnPropertyChanged(); }
+        set { _settings.Update(s => s.AutoMeasureFps = value); OnPropertyChanged(); OnPropertyChanged(nameof(ShowsPresentMonWarning)); }
     }
 
     public bool LightDuringGames
@@ -182,7 +208,32 @@ public sealed partial class SettingsViewModel : ObservableObject
     private bool _hasIgdbSecret;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasIgdbStatus))]
     private string _igdbStatus = "";
+
+    [ObservableProperty] private Controls.Severity _igdbStatusSeverity = Controls.Severity.Info;
+
+    public bool HasIgdbStatus => IgdbStatus.Length > 0;
+
+    /// <summary>Identifiants déjà enregistrés : le mode d'emploi est replié.</summary>
+    public bool IsIgdbConfigured => IgdbClientId.Length > 0 && HasIgdbSecret;
+
+    /// <summary>Le secret vient d'être enregistré : la vue vide le champ masqué (l'état affiché suit l'état réel).</summary>
+    public event EventHandler? SecretSaved;
+
+    /// <summary>« Copier » l'adresse de redirection à saisir dans la console Twitch.</summary>
+    [RelayCommand]
+    private static void CopyRedirectUrl()
+    {
+        try
+        {
+            System.Windows.Clipboard.SetText("http://localhost");
+        }
+        catch (System.Runtime.InteropServices.COMException)
+        {
+            // Presse-papiers occupé : l'adresse reste affichée à côté du bouton.
+        }
+    }
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(TestIgdbCommand))]
@@ -201,17 +252,23 @@ public sealed partial class SettingsViewModel : ObservableObject
         });
         IgdbClientSecret = "";
         HasIgdbSecret = _settings.Get().IgdbClientSecretProtected is not null;
+        SecretSaved?.Invoke(this, EventArgs.Empty);
+        OnPropertyChanged(nameof(IsIgdbConfigured));
         IgdbCredentialsChanged?.Invoke(this, EventArgs.Empty);
 
         IsTestingIgdb = true;
+        IgdbStatusSeverity = Controls.Severity.Info;
         IgdbStatus = "Test en cours…";
         try
         {
-            IgdbStatus = "✓ " + await _igdb.TestAsync();
+            var result = await _igdb.TestAsync();
+            IgdbStatusSeverity = Controls.Severity.Success;
+            IgdbStatus = result;
         }
         catch (Exception ex)
         {
-            IgdbStatus = "✗ " + ex.Message;
+            IgdbStatusSeverity = Controls.Severity.Error;
+            IgdbStatus = $"Connexion à IGDB impossible : {ex.Message}";
         }
         finally
         {
@@ -237,6 +294,8 @@ public sealed partial class SettingsViewModel : ObservableObject
         });
         IgdbClientId = "";
         HasIgdbSecret = false;
+        OnPropertyChanged(nameof(IsIgdbConfigured));
+        IgdbStatusSeverity = Controls.Severity.Success;
         IgdbStatus = "Identifiants supprimés.";
     }
 
@@ -258,19 +317,32 @@ public sealed partial class SettingsViewModel : ObservableObject
     [ObservableProperty]
     private bool _autoStartEnabled;
 
+    /// <summary>Lecture ou écriture de la tâche planifiée en cours (schtasks.exe, hors du thread de l'interface) : case grisée.</summary>
+    [ObservableProperty]
+    private bool _isAutoStartBusy = true;
+
     partial void OnAutoStartEnabledChanged(bool value)
     {
         if (_updating) return;
+        _ = ApplyAutoStartAsync(value);
+    }
+
+    private async Task ApplyAutoStartAsync(bool enable)
+    {
+        IsAutoStartBusy = true;
         try
         {
-            if (value) _autoStart.Enable(ExePath, App.MinimizedArgument);
-            else _autoStart.Disable();
+            await Task.Run(() =>
+            {
+                if (enable) _autoStart.Enable(ExePath, App.MinimizedArgument);
+                else _autoStart.Disable();
+            });
         }
         catch (Exception ex)
         {
             _dialogs.ShowError("Démarrage automatique non modifié", "La tâche planifiée « OptiGame » n'a pas pu être modifiée.", ex.Message);
         }
-        RefreshAutoStart();
+        await RefreshAutoStartAsync();
     }
 
     [RelayCommand]
@@ -304,9 +376,18 @@ public sealed partial class SettingsViewModel : ObservableObject
         foreach (var folder in _settings.Get().GameFolders) GameFolders.Add(folder);
     }
 
-    private void RefreshAutoStart() => SetAutoStartSilently(_autoStart.IsEnabled());
-
-    private async Task RefreshAutoStartAsync() => SetAutoStartSilently(await Task.Run(_autoStart.IsEnabled));
+    private async Task RefreshAutoStartAsync()
+    {
+        IsAutoStartBusy = true;
+        try
+        {
+            SetAutoStartSilently(await Task.Run(_autoStart.IsEnabled));
+        }
+        finally
+        {
+            IsAutoStartBusy = false;
+        }
+    }
 
     private void SetAutoStartSilently(bool enabled)
     {

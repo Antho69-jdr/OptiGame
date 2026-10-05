@@ -136,6 +136,9 @@ tests/OptiGame.Platform.Tests/  intégration sur le vrai registre, UNIQUEMENT so
 tools/OptiGame.DiagDump/        diagnostic en console (lecture seule), pour vérifier les lectures système
 ```
 
+Pages Mesures et Paramètres (refonte, étape 7) : mesures automatiques ajoutées à la liste dès AutoCapture.CaptureAdded ;
+PresentMon se règle dans Paramètres › Mesures (MeasuresViewModel.ChoosePresentMon) ; Paramètres en Controls/SettingRow.
+
 Données fictives pour tester l'UI : `$env:OPTIGAME_DATA_DIR='<dossier temporaire>'` redirige tout le dossier de
 données ; `DiagDump -- --import-capture <csv> <libellé> <date ISO>` y ajoute une capture (refusé sans la variable).
 `DiagDump -- --games [dossier…]` affiche la recherche des jeux installés.

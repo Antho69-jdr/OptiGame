@@ -48,6 +48,17 @@ public sealed class FrametimeChart : FrameworkElement
         set => SetValue(SecondaryProperty, value);
     }
 
+    /// <summary>Exposé aux lecteurs d'écran comme une image décrite (AutomationProperties.Name : résumé posé par la vue).</summary>
+    protected override System.Windows.Automation.Peers.AutomationPeer OnCreateAutomationPeer() => new ChartAutomationPeer(this);
+
+    private sealed class ChartAutomationPeer(FrametimeChart owner) : System.Windows.Automation.Peers.FrameworkElementAutomationPeer(owner)
+    {
+        protected override System.Windows.Automation.Peers.AutomationControlType GetAutomationControlTypeCore() =>
+            System.Windows.Automation.Peers.AutomationControlType.Image;
+
+        protected override string GetClassNameCore() => nameof(FrametimeChart);
+    }
+
     protected override void OnRender(DrawingContext dc)
     {
         // Fond transparent : le graphe prend la couleur de la carte qui le contient (hit-test conservé).
@@ -62,7 +73,7 @@ public sealed class FrametimeChart : FrameworkElement
             .ToList();
         if (series.Count == 0)
         {
-            Label(dc, "Aucune capture sélectionnée", new Point(plot.Left + 8, plot.Top + 8));
+            Label(dc, "Aucune mesure sélectionnée", new Point(plot.Left + 8, plot.Top + 8));
             return;
         }
 

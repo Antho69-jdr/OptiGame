@@ -58,6 +58,7 @@
             <conv:WidthToColumnsConverter x:Key="WidthToColumns" />
             <conv:LevelToBrushConverter x:Key="LevelToBrush" />
             <conv:DirtySuffixConverter x:Key="DirtySuffix" />
+            <conv:InverseBoolConverter x:Key="InverseBool" />
             <tb:TaskbarIcon x:Key="TrayIcon"
                             ToolTipText="{Binding Session.TrayToolTip}"
                             NoLeftClickDelay="True"

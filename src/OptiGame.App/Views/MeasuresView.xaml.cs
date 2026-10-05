@@ -36,6 +36,14 @@ public partial class MeasuresView : UserControl
         vm.UpdateSelection(CaptureList.SelectedItems.OfType<CaptureItemViewModel>().ToList());
     }
 
+    /// <summary>Suppr : supprimer les mesures sélectionnées (confirmation).</summary>
+    private void OnListKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+    {
+        if (e.Key != System.Windows.Input.Key.Delete || DataContext is not MeasuresViewModel vm) return;
+        if (vm.DeleteSelectedCommand.CanExecute(null)) vm.DeleteSelectedCommand.Execute(null);
+        e.Handled = true;
+    }
+
     private void SyncSelectionFromViewModel()
     {
         if (DataContext is not MeasuresViewModel vm) return;

@@ -802,6 +802,86 @@
         </Setter>
     </Style>
 
+    <!-- ===== Ligne de réglage (controls:SettingRow) : icône, titre, une phrase, contrôle à droite ; détails repliés ===== -->
+    <Style TargetType="controls:SettingRow">
+        <Setter Property="Focusable" Value="False" />
+        <Setter Property="IsTabStop" Value="False" />
+        <Setter Property="Margin" Value="0,0,0,4" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="controls:SettingRow">
+                    <Border x:Name="Root" Padding="16,12" Background="{StaticResource Brush.Card}" BorderBrush="{StaticResource Brush.Border}"
+                            BorderThickness="1" CornerRadius="{StaticResource Radius.Card}">
+                        <StackPanel>
+                            <DockPanel>
+                                <TextBlock x:Name="Icon" DockPanel.Dock="Left" Width="36" Margin="0,2,0,0" VerticalAlignment="Top" Style="{StaticResource Text.Icon}"
+                                           FontSize="{StaticResource IconSize.Large}" Foreground="{StaticResource Brush.TextSecondary}" Text="{TemplateBinding Glyph}" />
+                                <ContentPresenter DockPanel.Dock="Right" Margin="16,0,0,0" VerticalAlignment="Center" />
+                                <StackPanel VerticalAlignment="Center">
+                                    <TextBlock Style="{StaticResource Text.Body}" Text="{TemplateBinding Header}" />
+                                    <TextBlock x:Name="DescriptionText" Style="{StaticResource Text.Caption}" Text="{TemplateBinding Description}" />
+                                </StackPanel>
+                            </DockPanel>
+                            <Expander x:Name="DetailsExpander" Margin="32,6,0,0" Style="{StaticResource Expander.Disclosure}" Header="En savoir plus"
+                                      AutomationProperties.Name="{Binding Header, RelativeSource={RelativeSource TemplatedParent}, StringFormat='En savoir plus : {0}'}">
+                                <ContentPresenter Margin="0,4,0,0" Content="{TemplateBinding Details}" />
+                            </Expander>
+                        </StackPanel>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="Glyph" Value="{x:Null}">
+                            <Setter TargetName="Icon" Property="Visibility" Value="Collapsed" />
+                        </Trigger>
+                        <Trigger Property="Description" Value="{x:Null}">
+                            <Setter TargetName="DescriptionText" Property="Visibility" Value="Collapsed" />
+                        </Trigger>
+                        <Trigger Property="Details" Value="{x:Null}">
+                            <Setter TargetName="DetailsExpander" Property="Visibility" Value="Collapsed" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter TargetName="Root" Property="Opacity" Value="0.5" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- Titre de groupe de réglages (Général, Mes jeux, Dock…) -->
+    <Style x:Key="Text.SettingsGroup" TargetType="TextBlock" BasedOn="{StaticResource Text.SectionTitle}">
+        <Setter Property="Margin" Value="2,24,0,10" />
+    </Style>
+
+    <!-- ===== Ligne sélectionnable d'une liste (ItemContainerStyle) : sélection = fond + trait d'accent, jamais un aplat vert
+         (le texte secondaire resterait illisible dessus) ===== -->
+    <Style x:Key="ListItem.Selectable" TargetType="ListBoxItem">
+        <Setter Property="Foreground" Value="{StaticResource Brush.Text}" />
+        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+        <Setter Property="FocusVisualStyle" Value="{StaticResource Focus.RingInset}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ListBoxItem">
+                    <Grid Margin="0,1">
+                        <Border x:Name="Bg" Padding="12,6" CornerRadius="{StaticResource Radius.Control}" Background="Transparent">
+                            <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" />
+                        </Border>
+                        <Border x:Name="Indicator" Width="3" Height="18" HorizontalAlignment="Left" CornerRadius="2"
+                                Background="{StaticResource Brush.Selection}" Visibility="Collapsed" />
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Bg" Property="Background" Value="{StaticResource Brush.ControlHover}" />
+                        </Trigger>
+                        <Trigger Property="IsSelected" Value="True">
+                            <Setter TargetName="Bg" Property="Background" Value="{StaticResource Brush.Control}" />
+                            <Setter TargetName="Indicator" Property="Visibility" Value="Visible" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <!-- ===== Jaquette (controls:CoverTile) : 198 × 264 (ImageLoader.GridCoverWidth), titre et légende dessous ===== -->
     <Style TargetType="controls:CoverTile">
         <Setter Property="Margin" Value="0,0,20,24" />

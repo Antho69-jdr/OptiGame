@@ -103,7 +103,8 @@ un bord). Tous les styles maison le posent en `FocusVisualStyle` ; WPF ne l'affi
 Grilles de jaquettes : `ItemsControl` + `WrapPanel`, `KeyboardNavigation.TabNavigation="Once"` (Tab entre et sort de la
 grille, flèches d'une jaquette à l'autre).
 
-À venir dans la refonte (voir `docs/ui-ux-audit-2026-10-05.md`) : ligne de réglage façon Paramètres de Windows 11, menu « … ».
+| Ligne de réglage | `controls:SettingRow` (`Header`, `Description`, `Glyph`, contenu = contrôle, `Details` repliés) | façon Paramètres de Windows 11 ; le contrôle porte le nom accessible de la ligne |
+| Ligne de liste | `ListItem.Selectable` (ItemContainerStyle) | sélection = fond + trait d'accent, jamais un aplat vert |
 
 ## Coque (fenêtre principale)
 
@@ -160,6 +161,19 @@ grille, flèches d'une jaquette à l'autre).
   (atténués) pendant une recherche ; bilan après l'installeur officiel (« pilote à jour » ou « installation non constatée ») ;
   Windows Update : consigne en InfoBar avant la liste, cases verrouillées pendant une installation, « Installer les 2 pilotes
   cochés… ».
+
+## Mesures et Paramètres
+
+- **Mesures** : page défilante. « Nouvelle mesure » (jeu choisi, en cours présélectionné ; « Autre programme » replié, dit
+  prioritaire ; « Démarrer la mesure » ; statut en InfoBar typée + barre d'avancement). Liste compacte en deux lignes
+  (libellé, badges « Automatique » / « Peu fiable », jeu · date · optimisé ; FPS et 1 % low alignés à droite ;
+  `ListItem.Selectable` : jamais d'aplat vert), Suppr et menu « Supprimer… » ; les mesures automatiques arrivent sans
+  redémarrer. Comparaison en tableau à en-têtes (colonnes partagées), écart = flèche + valeur + mot (« mieux », « moins
+  bien », « stable ») + couleur, « Inverser ». Graphe de 260 de haut, légende dans sa carte, nom accessible = résumé.
+- **Paramètres** : groupes Général · Mes jeux · Dock · Mesures · Mises à jour et à propos · Données, une
+  `controls:SettingRow` par réglage (icône, titre, une phrase, contrôle à droite, « En savoir plus » replié) ; sous-réglages
+  grisés quand le parent est désactivé ; PresentMon réglé ici (avertissement si la mesure auto est cochée sans lui) ;
+  « Ouvrir le journal », « Quitter OptiGame… ». Tâche planifiée lue et écrite hors du thread de l'interface.
 
 ## Dialogues
 

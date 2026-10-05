@@ -87,6 +87,12 @@ internal static class PageSnapshots
                     await WaitUntil(() => drivers is DriversViewModel { IsSearching: false }, 90_000);
                 }),
                 ("4-mesures", async () => { main.Navigate(main.Measures); await Settle(1500); }),
+                ("4b-mesures-comparaison", async () =>
+                {
+                    main.Navigate(main.Measures);
+                    main.Measures.UpdateSelection(main.Measures.Captures.Take(2).ToList());
+                    await Settle(1500);
+                }),
                 ("5-parametres", async () => { main.Navigate(main.Settings); await Settle(1500); }),
             };
             // Coque avec alertes et badges d'exemple (rien n'est écrit : alertes en mémoire, compteurs remis ensuite par l'analyse).
