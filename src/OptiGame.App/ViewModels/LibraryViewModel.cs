@@ -16,6 +16,7 @@ using OptiGame.Core.Playtime;
 using OptiGame.Core.Profiles;
 using OptiGame.Core.Sessions;
 using OptiGame.Core.Settings;
+using OptiGame.Core.Text;
 using OptiGame.Platform.Artwork;
 using OptiGame.Platform.Library;
 using OptiGame.Platform.Processes;
@@ -582,7 +583,9 @@ public sealed partial class LibraryViewModel : ObservableObject
         catch (Exception ex) when (ex is LaunchException or System.ComponentModel.Win32Exception or InvalidOperationException or ArgumentException)
         {
             _log.Error($"Installation de « {game.Name} » impossible", ex);
-            _dialogs.ShowError($"Impossible de demander l'installation au lanceur.\n\n{ex.Message}");
+            _dialogs.ShowError("Installation impossible",
+                ex is LaunchException ? ex.Message : $"Le lanceur n'a pas pu ouvrir l'installation de « {game.Name} ». Vérifiez qu'il est installé, puis réessayez.",
+                ex.Message);
         }
     }
 
@@ -659,24 +662,27 @@ public sealed partial class LibraryViewModel : ObservableObject
     {
         if (_store.Find(id) is not { } profile) return;
         if (OpenGame is { Editor.IsDirty: true } page && page.Id == id &&
-            !_dialogs.Confirm("Des modifications de ce jeu ne sont pas enregistrées : le lancement utilisera les réglages enregistrés. Continuer ?"))
+            !_dialogs.Confirm("Jouer sans enregistrer ?",
+                "Vos dernières modifications de ce jeu ne sont pas enregistrées : la partie utilisera les réglages enregistrés.",
+                "Jouer sans enregistrer"))
         {
             return;
         }
         if (_sessions.Current?.Profile.Id == id)
         {
-            _dialogs.ShowInfo($"{profile.Name} est déjà en cours.");
+            _dialogs.ShowInfo($"{profile.Name} est déjà en cours", "La partie est déjà lancée : basculez sur la fenêtre du jeu.");
             return;
         }
 
         switch (GameInstallation.Of(profile.ExePath, File.Exists, Directory.Exists))
         {
             case InstallState.Uninstalled:
-                _dialogs.ShowInfo($"{profile.Name} n'est plus installé : son fichier .exe est introuvable.\n\n{profile.ExePath}\n\n" +
-                                  "Réinstallez-le depuis son lanceur, ou retirez-le de « Mes jeux ».");
+                _dialogs.ShowInfo($"{profile.Name} n'est plus installé",
+                    $"Son fichier .exe est introuvable :\n{profile.ExePath}\n\nRéinstallez-le depuis son lanceur, ou retirez-le de Mes jeux.");
                 return;
             case InstallState.DriveUnavailable:
-                _dialogs.ShowInfo($"Le disque de {profile.Name} ({GameInstallation.RootOf(profile.ExePath)}) n'est pas disponible. Branchez-le, puis réessayez.");
+                _dialogs.ShowInfo("Disque absent",
+                    $"Le disque de {profile.Name} ({GameInstallation.RootOf(profile.ExePath)}) n'est pas disponible. Branchez-le, puis réessayez.");
                 return;
         }
 
@@ -688,7 +694,9 @@ public sealed partial class LibraryViewModel : ObservableObject
         catch (Exception ex) when (ex is LaunchException or System.ComponentModel.Win32Exception or InvalidOperationException)
         {
             _log.Error($"Lancement de « {profile.Name} » impossible", ex);
-            _dialogs.ShowError($"Impossible de lancer {profile.Name}.\n\n{ex.Message}");
+            _dialogs.ShowError($"Impossible de lancer {profile.Name}",
+                ex is LaunchException ? ex.Message : "Le jeu ou son lanceur n'a pas pu être ouvert. Vérifiez qu'il est bien installé, puis réessayez.",
+                ex.Message);
         }
     }
 
@@ -732,7 +740,7 @@ public sealed partial class LibraryViewModel : ObservableObject
         }
         catch (ProfileValidationException ex)
         {
-            _dialogs.ShowError(ex.Message);
+            _dialogs.ShowError("Jeu non ajouté", ex.Message);
             return;
         }
         ReloadCards();
@@ -755,7 +763,7 @@ public sealed partial class LibraryViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            _dialogs.ShowError("La recherche des jeux a échoué.\n\n" + ex.Message);
+            _dialogs.ShowError("Détection impossible", "OptiGame n'a pas pu parcourir vos bibliothèques et vos dossiers de jeux.", ex.Message);
             return;
         }
         finally
@@ -764,7 +772,18 @@ public sealed partial class LibraryViewModel : ObservableObject
         }
 
         var existing = _store.GetAll();
-        var selection = _dialogs.PickInstalledGames(games, path => existing.Any(p => p.Matches(path)), folders);
+        bool HasProfile(string path) => existing.Any(p => p.Matches(path));
+        // Rien de nouveau : pas de liste vide à fermer, un message dit pourquoi.
+        if (!games.Any(g => !g.Candidates.Any(c => HasProfile(c.Path))))
+        {
+            _dialogs.ShowInfo(games.Count == 0 ? "Aucun jeu détecté" : "Aucun nouveau jeu",
+                (games.Count == 0
+                    ? "Aucun jeu installé n'a été trouvé dans Steam, Epic Games, GOG ni dans vos dossiers de jeux."
+                    : games.Count == 1 ? "Le jeu détecté est déjà dans Mes jeux." : $"Les {games.Count} jeux détectés sont déjà dans Mes jeux.") +
+                "\n\nUn jeu installé ailleurs s'ajoute avec « Ajouter un jeu » (son fichier .exe), ou en ajoutant son dossier dans Paramètres.");
+            return;
+        }
+        var selection = _dialogs.PickInstalledGames(games, HasProfile, folders);
         var errors = new List<string>();
         foreach (var (game, exe) in selection)
         {
@@ -789,7 +808,11 @@ public sealed partial class LibraryViewModel : ObservableObject
 
         ReloadCards();
         _ = FetchMissingArtworkAsync();
-        if (errors.Count > 0) _dialogs.ShowError("Certains jeux n'ont pas été ajoutés :\n\n" + string.Join("\n", errors));
+        if (errors.Count > 0)
+        {
+            _dialogs.ShowError($"{FrenchText.Count(errors.Count, "jeu n'a", "jeux n'ont")} pas été {FrenchText.Agree(errors.Count, "ajouté", "ajoutés")}",
+                string.Join("\n", errors.Select(e => $"• {e}")));
+        }
     }
 
     // ---- Page du jeu ----
@@ -880,14 +903,15 @@ public sealed partial class LibraryViewModel : ObservableObject
         catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException or ArgumentException)
         {
             _log.Error($"Ouverture de la page Steam {appId} impossible", ex);
-            _dialogs.ShowError($"Impossible d'ouvrir la page Steam du jeu.\n\n{ex.Message}");
+            _dialogs.ShowError("Page Steam inaccessible", "Ni Steam ni le navigateur n'ont pu ouvrir la page du jeu.", ex.Message);
         }
     }
 
     private void CloseGamePage()
     {
         if (OpenGame is { Editor.IsDirty: true } &&
-            !_dialogs.Confirm("Les modifications de ce jeu ne sont pas enregistrées. Les abandonner ?"))
+            !_dialogs.Confirm("Abandonner les modifications ?",
+                "Vos modifications de ce jeu ne sont pas enregistrées : elles seront perdues.", "Abandonner les modifications", isDestructive: true))
         {
             return;
         }
@@ -902,7 +926,7 @@ public sealed partial class LibraryViewModel : ObservableObject
         }
         catch (ProfileValidationException ex)
         {
-            _dialogs.ShowError("Le profil n'a pas été enregistré :\n\n" + ex.Message);
+            _dialogs.ShowError("Réglages non enregistrés", ex.Message);
             return Task.CompletedTask;
         }
         ReloadCards();
@@ -919,11 +943,13 @@ public sealed partial class LibraryViewModel : ObservableObject
         if (_store.Find(id) is not { } profile) return;
         if (_sessions.Current?.Profile.Id == id)
         {
-            _dialogs.ShowInfo($"{profile.Name} est en cours : vous pourrez le retirer de vos jeux une fois la partie terminée.");
+            _dialogs.ShowInfo($"{profile.Name} est en cours", "Vous pourrez le retirer de Mes jeux une fois la partie terminée.");
             return;
         }
-        if (!_dialogs.Confirm($"Retirer « {profile.Name} » de vos jeux ?\n\nSeul son profil OptiGame est supprimé : le jeu reste installé et " +
-                              "aucun réglage de Windows n'est modifié. Vous pourrez le rajouter plus tard." + KeptChangesText([id])))
+        if (!_dialogs.Confirm($"Retirer {profile.Name} de Mes jeux ?",
+                "Seuls ses réglages OptiGame sont supprimés : le jeu reste installé et aucun réglage de Windows n'est modifié. " +
+                "Vous pourrez le rajouter plus tard." + KeptChangesText([id]),
+                "Retirer le jeu", isDestructive: true))
         {
             return;
         }
@@ -944,8 +970,7 @@ public sealed partial class LibraryViewModel : ObservableObject
         if (kept.Count == 0) return "";
         return $"\n\nCes réglages faits pour {(ids.Count == 1 ? "ce jeu" : "ces jeux")} restent en place :\n" +
                string.Join("\n", kept.Select(c => "• " + c.Title)) +
-               "\nPour les annuler, faites-le depuis la page du jeu avant de le retirer, ou plus tard dans Diagnostic > Vue Avancé > " +
-               "« Corrections appliquées par OptiGame ».";
+               "\nPour les restaurer, faites-le depuis la fiche du jeu avant de le retirer, ou plus tard depuis la page Diagnostic.";
     }
 
     private async Task ChangeCoverAsync(Guid id)
@@ -953,7 +978,7 @@ public sealed partial class LibraryViewModel : ObservableObject
         if (_store.Find(id) is not { } profile) return;
         if (!_igdb.IsConfigured)
         {
-            _dialogs.ShowInfo("Pour choisir une jaquette, renseignez d'abord vos identifiants IGDB (Twitch) dans Paramètres.");
+            _dialogs.ShowInfo("Identifiants IGDB requis", "Pour choisir une jaquette, renseignez d'abord vos identifiants IGDB (Twitch) dans Paramètres.");
             return;
         }
 
@@ -1083,9 +1108,11 @@ public sealed partial class LibraryViewModel : ObservableObject
         var games = UninstalledProfiles.Where(c => c.Id != playing).ToList();
         if (games.Count == 0) return;
         var names = string.Join("\n", games.Select(c => "• " + c.Name));
-        if (!_dialogs.Confirm($"Retirer ces jeux de « Mes jeux » ?\n\n{names}\n\nLeur profil OptiGame est supprimé ; aucun réglage de Windows " +
-                              "n'est modifié. Ceux de vos bibliothèques Steam, Epic Games ou GOG resteront parmi les jeux non installés." +
-                              KeptChangesText(games.Select(c => c.Id).ToList())))
+        if (!_dialogs.Confirm(games.Count == 1 ? $"Retirer {games[0].Name} de Mes jeux ?" : $"Retirer ces {games.Count} jeux de Mes jeux ?",
+                $"{names}\n\nSeuls leurs réglages OptiGame sont supprimés ; aucun réglage de Windows n'est modifié. Ceux de vos " +
+                "bibliothèques Steam, Epic Games ou GOG resteront parmi les jeux non installés." +
+                KeptChangesText(games.Select(c => c.Id).ToList()),
+                games.Count == 1 ? "Retirer le jeu" : $"Retirer les {games.Count} jeux", isDestructive: true))
         {
             return;
         }

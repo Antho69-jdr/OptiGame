@@ -5,6 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 using OptiGame.App.Services;
 using OptiGame.Core.Diagnostics;
 using OptiGame.Core.State;
+using OptiGame.Core.Text;
 using OptiGame.Platform;
 
 namespace OptiGame.App.ViewModels;
@@ -83,7 +84,7 @@ public sealed partial class DiagnosticViewModel(
         if (_overview is not { } overview || !dialogs.ConfirmChanges(overview.Recommended)) return;
 
         IsBusy = true;
-        var failed = new List<string>();
+        var failed = new List<(string Title, string Error)>();
         try
         {
             foreach (var change in overview.Recommended)
@@ -94,7 +95,7 @@ public sealed partial class DiagnosticViewModel(
                 }
                 catch (Exception ex)
                 {
-                    failed.Add($"• {change.Title} : {ex.Message}");
+                    failed.Add((change.Title, ex.Message));
                 }
             }
         }
@@ -103,13 +104,20 @@ public sealed partial class DiagnosticViewModel(
             IsBusy = false;
         }
 
+        var applied = overview.Recommended.Count - failed.Count;
         if (failed.Count > 0)
         {
-            dialogs.ShowError("Certaines optimisations n'ont pas pu être appliquées (rien n'a été modifié pour elles) :\n" + string.Join("\n", failed));
+            dialogs.ShowError(
+                $"{FrenchText.Count(failed.Count, "optimisation n'a", "optimisations n'ont")} pas pu être {FrenchText.Agree(failed.Count, "appliquée", "appliquées")}",
+                string.Join("\n", failed.Select(f => $"• {f.Title}")) + "\n\nRien n'a été modifié pour " +
+                FrenchText.Agree(failed.Count, "elle", "elles") + "." +
+                (applied > 0 ? $" Les autres ({applied}) sont actives." : ""),
+                string.Join("\n", failed.Select(f => $"{f.Title} : {f.Error}")));
         }
         else if (overview.Recommended.Any(c => c.RequiresReboot))
         {
-            dialogs.ShowInfo("Optimisations appliquées. Redémarrez Windows pour que toutes soient prises en compte.");
+            dialogs.ShowInfo($"{FrenchText.Count(applied, "optimisation appliquée", "optimisations appliquées")}",
+                "Redémarrez Windows pour que toutes soient prises en compte.");
         }
         await RunAsync();
     }
@@ -121,23 +129,26 @@ public sealed partial class DiagnosticViewModel(
     private async Task DeactivateAllAsync()
     {
         if (_overview is not { } overview || overview.Applied.Count == 0) return;
-        if (!dialogs.Confirm("Désactiver les optimisations appliquées par le Diagnostic ?\n\n" +
-                             string.Join("\n", overview.Applied.Select(c => $"• {c.Title}")) +
-                             "\n\nLes réglages d'origine, sauvegardés avant chaque correction, seront restaurés. Les réglages propres à " +
-                             "chaque jeu (plafond de FPS, carte graphique) ne sont pas concernés." +
-                             (overview.Applied.Any(c => c.RequiresReboot) ? "\n\nUn redémarrage sera nécessaire pour certains." : "")))
+        var count = overview.Applied.Count;
+        if (!dialogs.Confirm(
+                count == 1 ? "Restaurer le réglage d'origine ?" : $"Restaurer les {count} réglages d'origine ?",
+                string.Join("\n", overview.Applied.Select(c => $"• {c.Title}")) +
+                "\n\nOptiGame rétablit les réglages sauvegardés avant ces optimisations. Les réglages propres à chaque jeu " +
+                "(plafond de FPS, carte graphique) ne sont pas concernés." +
+                (overview.Applied.Any(c => c.RequiresReboot) ? "\n\nRedémarrez ensuite Windows pour que tout soit pris en compte." : ""),
+                "Tout restaurer"))
         {
             return;
         }
 
         IsBusy = true;
-        var failed = new List<string>();
+        var failed = new List<(string Title, string Detail)>();
         try
         {
             foreach (var change in overview.Applied)
             {
                 var report = await Task.Run(() => fixes.Undo(change.Id));
-                failed.AddRange(report.Failed.Select(f => $"• {change.Title} ({f.Target}) : {f.Error}"));
+                failed.AddRange(report.Failed.Select(f => (change.Title, $"{f.Target} : {f.Error}")));
             }
         }
         finally
@@ -147,7 +158,11 @@ public sealed partial class DiagnosticViewModel(
 
         if (failed.Count > 0)
         {
-            dialogs.ShowError("La restauration a échoué pour :\n" + string.Join("\n", failed) + "\n\nCes corrections restent actives ; vous pourrez réessayer.");
+            var titles = failed.Select(f => f.Title).Distinct().ToList();
+            dialogs.ShowError("Restauration incomplète",
+                "Ces réglages n'ont pas pu être rétablis :\n" + string.Join("\n", titles.Select(t => $"• {t}")) +
+                "\n\nLeurs optimisations restent actives et listées : vous pourrez réessayer.",
+                string.Join("\n", failed.Select(f => $"{f.Title} — {f.Detail}")));
         }
         await RunAsync();
     }
@@ -251,7 +266,7 @@ public sealed partial class DiagnosticViewModel(
         }
         catch (Exception ex)
         {
-            dialogs.ShowError($"La correction « {fix.Change.Title} » n'a pas pu être appliquée ; rien n'a été modifié.\n\n{ex.Message}");
+            dialogs.ShowError("Optimisation non appliquée", $"« {fix.Change.Title} » n'a pas pu être appliquée : rien n'a été modifié.", ex.Message);
             return;
         }
         finally
@@ -261,7 +276,7 @@ public sealed partial class DiagnosticViewModel(
 
         if (fix.Change.RequiresReboot)
         {
-            dialogs.ShowInfo($"« {fix.Change.Title} » est enregistré. Redémarrez Windows pour qu'il soit pris en compte.");
+            dialogs.ShowInfo("Optimisation appliquée", $"« {fix.Change.Title} » sera prise en compte au prochain redémarrage de Windows.");
         }
         await RunAsync();
     }
@@ -286,17 +301,19 @@ public sealed partial class DiagnosticViewModel(
 
         if (!report.Success)
         {
-            dialogs.ShowError("La restauration a échoué pour :\n" +
-                string.Join("\n", report.Failed.Select(f => $"• {f.Target} : {f.Error}")) +
-                "\n\nLa correction reste listée ; vous pourrez réessayer.");
+            dialogs.ShowError("Restauration impossible",
+                $"Le réglage d'origine de « {change.Title} » n'a pas pu être rétabli. L'optimisation reste active et listée : vous pourrez réessayer.",
+                string.Join("\n", report.Failed.Select(f => $"{f.Target} : {f.Error}")));
         }
         else if (report.ModifiedExternally.Count > 0)
         {
-            dialogs.ShowInfo("Réglage restauré. Remarque : il avait été modifié entre-temps par autre chose qu'OptiGame.");
+            dialogs.ShowInfo("Réglage d'origine restauré",
+                "Il avait été modifié entre-temps par un autre programme qu'OptiGame : c'est la valeur sauvegardée avant l'optimisation qui est revenue." +
+                (change.RequiresReboot ? "\n\nRedémarrez Windows pour qu'elle soit prise en compte." : ""));
         }
         else if (change.RequiresReboot)
         {
-            dialogs.ShowInfo("Réglage d'origine restauré. Redémarrez Windows pour qu'il soit pris en compte.");
+            dialogs.ShowInfo("Réglage d'origine restauré", "Redémarrez Windows pour qu'il soit pris en compte.");
         }
 
         await RunAsync();

@@ -1,5 +1,6 @@
 using System.Windows;
 using OptiGame.Core.Drivers;
+using OptiGame.Core.Text;
 
 namespace OptiGame.App.Dialogs;
 
@@ -7,28 +8,30 @@ namespace OptiGame.App.Dialogs;
 public sealed record DriverInstallChoice(bool CreateRestorePoint);
 
 /// <summary>
-/// Confirmation avant l'installation d'un pilote : ce qui est installé, pourquoi, et le fait qu'OptiGame ne pourra pas
-/// l'annuler (exception au principe de réversibilité), avec le chemin du retour en arrière. Double confirmation :
-/// case « je comprends » obligatoire ; le bouton par défaut est « Annuler ».
+/// Confirmation avant l'installation d'un pilote : le fait qu'OptiGame ne pourra pas l'annuler (exception au principe de
+/// réversibilité) et le chemin du retour en arrière, en premier ; puis ce qui est installé et pourquoi, le point de
+/// restauration. Double confirmation : case « je comprends » obligatoire ; « Annuler » est le bouton par défaut et a le focus.
 /// </summary>
-public partial class DriverInstallDialog : Window
+public partial class DriverInstallDialog : DialogWindow
 {
     public DriverInstallDialog(DriverInstallPlan plan)
     {
         InitializeComponent();
 
-        TitleText.Text = plan.Title;
+        Layout.Heading = FrenchText.Typeset(plan.Title + " ?");
+        NotReversibleBar.Title = FrenchText.Typeset(plan.NotReversible);
+        NotReversibleBar.Message = FrenchText.Typeset(plan.Rollback);
         WhatText.Text = plan.What;
-        WhyText.Text = plan.Why;
-        NotReversibleText.Text = plan.NotReversible;
-        RollbackText.Text = plan.Rollback;
-        RebootText.Visibility = plan.MayRequireReboot ? Visibility.Visible : Visibility.Collapsed;
+        WhyText.Text = FrenchText.Typeset(plan.Why);
+        Requirements.RequiresReboot = plan.MayRequireReboot;
 
         var canRestore = plan.RestorePoint == RestorePointAvailability.Available;
-        RestorePointLabel.Text = DriverInstallPlans.RestorePointText(plan.RestorePoint);
-        RestorePointDisabledText.Text = DriverInstallPlans.RestorePointText(plan.RestorePoint);
+        var restoreText = FrenchText.Typeset(DriverInstallPlans.RestorePointText(plan.RestorePoint));
+        RestorePointLabel.Text = restoreText;
+        RestorePointDisabledText.Text = restoreText;
         RestorePointBox.Visibility = canRestore ? Visibility.Visible : Visibility.Collapsed;
         RestorePointDisabledText.Visibility = canRestore ? Visibility.Collapsed : Visibility.Visible;
+        InitialFocus = CancelButton;
     }
 
     public DriverInstallChoice? Choice { get; private set; }

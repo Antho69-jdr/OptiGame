@@ -533,6 +533,52 @@
         </Setter>
     </Style>
 
+    <!-- ===== Divulgation légère (« Détails techniques ») : chevron + texte secondaire, sans cadre ===== -->
+    <Style x:Key="Expander.Disclosure" TargetType="Expander">
+        <Setter Property="Foreground" Value="{StaticResource Brush.Text}" />
+        <!-- Nom du bouton = en-tête, sauf nom plus précis posé par la vue (« Détails techniques : … ») -->
+        <Setter Property="AutomationProperties.Name" Value="{Binding Header, RelativeSource={RelativeSource Self}}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Expander">
+                    <StackPanel>
+                        <ToggleButton HorizontalAlignment="Left" FocusVisualStyle="{StaticResource Focus.Ring}"
+                                      IsChecked="{Binding IsExpanded, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}"
+                                      AutomationProperties.Name="{TemplateBinding AutomationProperties.Name}">
+                            <ToggleButton.Template>
+                                <ControlTemplate TargetType="ToggleButton">
+                                    <Border x:Name="Bg" Padding="4,4,8,4" Background="Transparent" CornerRadius="{StaticResource Radius.Control}">
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock x:Name="Chevron" Margin="0,0,8,0" Style="{StaticResource Text.Icon}" FontSize="{StaticResource IconSize.Small}"
+                                                       Foreground="{StaticResource Brush.TextSecondary}" Text="&#xE76C;" />
+                                            <ContentPresenter x:Name="Label" TextElement.Foreground="{StaticResource Brush.TextSecondary}"
+                                                              Content="{Binding Header, RelativeSource={RelativeSource AncestorType=Expander}}" />
+                                        </StackPanel>
+                                    </Border>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter TargetName="Bg" Property="Background" Value="{StaticResource Brush.ControlHover}" />
+                                            <Setter TargetName="Label" Property="TextElement.Foreground" Value="{StaticResource Brush.Text}" />
+                                        </Trigger>
+                                        <Trigger Property="IsChecked" Value="True">
+                                            <Setter TargetName="Chevron" Property="Text" Value="&#xE70D;" />
+                                        </Trigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </ToggleButton.Template>
+                        </ToggleButton>
+                        <ContentPresenter x:Name="Body" Margin="24,4,0,0" Visibility="Collapsed" />
+                    </StackPanel>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsExpanded" Value="True">
+                            <Setter TargetName="Body" Property="Visibility" Value="Visible" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <!-- ===== Navigation latérale : RadioButton = un seul élément actif, trait d'accent = forme de la sélection ===== -->
     <Style x:Key="NavButton" TargetType="RadioButton">
         <Setter Property="Foreground" Value="{StaticResource Brush.TextSecondary}" />
@@ -599,6 +645,160 @@
     <Style x:Key="Badge.Overlay" TargetType="Border" BasedOn="{StaticResource Badge}">
         <Setter Property="Background" Value="{StaticResource Brush.ScrimStrong}" />
         <Setter Property="TextElement.Foreground" Value="{StaticResource Brush.Text}" />
+    </Style>
+
+    <!-- ===== Gabarit de dialogue : en-tête, corps défilant, pied de boutons (ordre visuel = ordre de tabulation) ===== -->
+    <Style TargetType="controls:DialogLayout">
+        <Setter Property="Focusable" Value="False" />
+        <Setter Property="IsTabStop" Value="False" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="controls:DialogLayout">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <DockPanel Margin="24,24,24,0">
+                            <TextBlock x:Name="Icon" DockPanel.Dock="Left" Margin="0,2,12,0" VerticalAlignment="Top" Style="{StaticResource Text.Icon}"
+                                       FontSize="{StaticResource IconSize.Large}" Visibility="Collapsed" />
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource Text.Title}" Text="{TemplateBinding Heading}"
+                                           AutomationProperties.HeadingLevel="Level1" />
+                                <TextBlock x:Name="DescriptionText" Margin="0,6,0,0" Style="{StaticResource Text.Secondary}"
+                                           Text="{TemplateBinding Description}" />
+                            </StackPanel>
+                        </DockPanel>
+                        <ScrollViewer x:Name="Body" Grid.Row="1" Focusable="False" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+                                      Padding="24,16,24,24">
+                            <ContentPresenter />
+                        </ScrollViewer>
+                        <Border Grid.Row="2" Padding="24,16" Background="{StaticResource Brush.Card}" BorderBrush="{StaticResource Brush.Border}"
+                                BorderThickness="0,1,0,0">
+                            <ContentPresenter Content="{TemplateBinding Footer}" HorizontalAlignment="Right" />
+                        </Border>
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <!-- Corps qui défile lui-même (liste) : hauteur imposée, pas de double défilement -->
+                        <Trigger Property="IsBodyScrollable" Value="False">
+                            <Setter TargetName="Body" Property="VerticalScrollBarVisibility" Value="Disabled" />
+                        </Trigger>
+                        <Trigger Property="Description" Value="{x:Null}">
+                            <Setter TargetName="DescriptionText" Property="Visibility" Value="Collapsed" />
+                        </Trigger>
+                        <Trigger Property="Description" Value="">
+                            <Setter TargetName="DescriptionText" Property="Visibility" Value="Collapsed" />
+                        </Trigger>
+                        <Trigger Property="Icon" Value="Info">
+                            <Setter TargetName="Icon" Property="Visibility" Value="Visible" />
+                            <Setter TargetName="Icon" Property="Text" Value="&#xE946;" />
+                            <Setter TargetName="Icon" Property="Foreground" Value="{StaticResource Brush.Info}" />
+                        </Trigger>
+                        <Trigger Property="Icon" Value="Success">
+                            <Setter TargetName="Icon" Property="Visibility" Value="Visible" />
+                            <Setter TargetName="Icon" Property="Text" Value="&#xE930;" />
+                            <Setter TargetName="Icon" Property="Foreground" Value="{StaticResource Brush.Ok}" />
+                        </Trigger>
+                        <Trigger Property="Icon" Value="Warning">
+                            <Setter TargetName="Icon" Property="Visibility" Value="Visible" />
+                            <Setter TargetName="Icon" Property="Text" Value="&#xE7BA;" />
+                            <Setter TargetName="Icon" Property="Foreground" Value="{StaticResource Brush.Warning}" />
+                        </Trigger>
+                        <Trigger Property="Icon" Value="Error">
+                            <Setter TargetName="Icon" Property="Visibility" Value="Visible" />
+                            <Setter TargetName="Icon" Property="Text" Value="&#xEA39;" />
+                            <Setter TargetName="Icon" Property="Foreground" Value="{StaticResource Brush.Danger}" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- Exigences d'une optimisation : bouclier « Droits administrateur », flèche « Redémarrage requis » (controls:RequirementBadges) -->
+    <Style TargetType="controls:RequirementBadges">
+        <Setter Property="Focusable" Value="False" />
+        <Setter Property="IsTabStop" Value="False" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="controls:RequirementBadges">
+                    <WrapPanel>
+                        <Border x:Name="Admin" Margin="0,0,6,4" Style="{StaticResource Badge.Neutral}" Visibility="Collapsed">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Margin="0,0,4,0" Style="{StaticResource Text.Icon}" FontSize="{StaticResource IconSize.Small}" Text="&#xEA18;" />
+                                <TextBlock Text="Droits administrateur" />
+                            </StackPanel>
+                        </Border>
+                        <Border x:Name="Reboot" Margin="0,0,6,4" Style="{StaticResource Badge.Neutral}" Visibility="Collapsed">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Margin="0,0,4,0" Style="{StaticResource Text.Icon}" FontSize="{StaticResource IconSize.Small}" Text="&#xE777;" />
+                                <TextBlock Text="Redémarrage requis" />
+                            </StackPanel>
+                        </Border>
+                    </WrapPanel>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="RequiresAdmin" Value="True">
+                            <Setter TargetName="Admin" Property="Visibility" Value="Visible" />
+                        </Trigger>
+                        <Trigger Property="RequiresReboot" Value="True">
+                            <Setter TargetName="Reboot" Property="Visibility" Value="Visible" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- Liste à cocher (sélecteurs) : la ligne entière est la case (clic, Espace), flèches pour se déplacer, nom = texte de la ligne.
+         ListBox en SelectionMode="Multiple" (SelectedItems = la sélection) ; éléments : CanSelect, AccessibleName (CheckList.Item). -->
+    <Style x:Key="CheckList" TargetType="ListBox">
+        <Setter Property="SelectionMode" Value="Multiple" />
+        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+        <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled" />
+        <Setter Property="Background" Value="{StaticResource Brush.Card}" />
+        <Setter Property="BorderBrush" Value="{StaticResource Brush.Border}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="Padding" Value="4" />
+    </Style>
+    <Style x:Key="CheckList.Item" TargetType="ListBoxItem">
+        <Setter Property="IsEnabled" Value="{Binding CanSelect}" />
+        <Setter Property="AutomationProperties.Name" Value="{Binding AccessibleName}" />
+        <Setter Property="FocusVisualStyle" Value="{StaticResource Focus.RingInset}" />
+        <Setter Property="Foreground" Value="{StaticResource Brush.Text}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ListBoxItem">
+                    <Border x:Name="Bg" Margin="0,1" Padding="10,8" CornerRadius="{StaticResource Radius.Control}" Background="Transparent">
+                        <DockPanel>
+                            <!-- Case dessinée : l'état vient de la ligne (pas de contrôle focalisable en double) -->
+                            <Border x:Name="Box" DockPanel.Dock="Left" Width="20" Height="20" Margin="0,1,12,0" VerticalAlignment="Top"
+                                    CornerRadius="{StaticResource Radius.Small}" BorderThickness="1"
+                                    BorderBrush="{StaticResource Brush.TextSecondary}" Background="Transparent">
+                                <TextBlock x:Name="Check" HorizontalAlignment="Center" VerticalAlignment="Center" Style="{StaticResource Text.Icon}"
+                                           FontSize="{StaticResource IconSize.Small}" Foreground="{StaticResource Brush.OnAccent}" Text="&#xE73E;"
+                                           Visibility="Collapsed" />
+                            </Border>
+                            <ContentPresenter />
+                        </DockPanel>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Bg" Property="Background" Value="{StaticResource Brush.ControlHover}" />
+                        </Trigger>
+                        <Trigger Property="IsSelected" Value="True">
+                            <Setter TargetName="Box" Property="Background" Value="{StaticResource Brush.Accent}" />
+                            <Setter TargetName="Box" Property="BorderBrush" Value="{StaticResource Brush.Accent}" />
+                            <Setter TargetName="Check" Property="Visibility" Value="Visible" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Foreground" Value="{StaticResource Brush.TextDisabled}" />
+                            <Setter TargetName="Box" Property="BorderBrush" Value="{StaticResource Brush.TextDisabled}" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
     </Style>
 
     <!-- ===== InfoBar (modèle WinUI) : gravité = fond + icône de forme + nom accessible ; annoncée aux lecteurs d'écran ===== -->

@@ -17,8 +17,9 @@ public sealed partial class TrayViewModel(SessionViewModel session, GameSessionM
     {
         if (sessions.Current is { } current)
         {
-            if (!dialogs.Confirm($"Une session de jeu est en cours ({current.Profile.Name}).\n\n" +
-                                 "Quitter OptiGame restaure maintenant les réglages d'origine. Continuer ?"))
+            if (!dialogs.Confirm("Quitter OptiGame pendant la partie ?",
+                    $"{current.Profile.Name} est en cours. En quittant, OptiGame arrête l'optimisation et restaure maintenant les réglages d'origine.",
+                    "Quitter et restaurer"))
             {
                 return;
             }

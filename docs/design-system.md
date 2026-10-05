@@ -93,8 +93,39 @@ un bord). Tous les styles maison le posent en `FocusVisualStyle` ; WPF ne l'affi
 | Navigation | `NavButton` | trait d'accent = sélection ; focus visible |
 | Logo | `Logo.Image` (tuile), `Logo.Mark` (symbole sur `Brush.Accent`) | vectoriel, géométries `Logo.Dial` / `Logo.Play` partagées |
 
-À venir dans la refonte (voir `docs/ui-ux-audit-2026-10-05.md`) : gabarit de dialogue thémé, ligne de réglage façon
-Paramètres de Windows 11, liste à cocher, bouton fractionné, menu « … », CoverTile unique.
+| Exigences | `controls:RequirementBadges` (`RequiresAdmin`, `RequiresReboot`) | « Droits administrateur » (bouclier), « Redémarrage requis » : seuls libellés autorisés |
+| Divulgation | `Expander.Disclosure` | chevron + texte secondaire (« Détails techniques ») ; `AutomationProperties.Name` plus précis si plusieurs dans une liste |
+| Liste à cocher | `CheckList` + `CheckList.Item` (ListBox `SelectionMode=Multiple`) | ligne entière = case (clic, Espace), flèches ; éléments : `CanSelect`, `AccessibleName` ; la sélection = `SelectedItems` ; bouton « Ajouter 3 jeux » inactif à 0 |
+
+À venir dans la refonte (voir `docs/ui-ux-audit-2026-10-05.md`) : ligne de réglage façon Paramètres de Windows 11, bouton
+fractionné, menu « … », CoverTile unique.
+
+## Dialogues
+
+Un seul langage : **aucune MessageBox Win32**, sauf le message bloquant d'`App.LoadStateFiles` (fichier d'état illisible),
+affiché avant l'injection de dépendances. Tous les dialogues dérivent de `Dialogs/DialogWindow` (thème, hors barre des
+tâches, centrés sur la fenêtre active, hauteur limitée à la zone de travail, `InitialFocus`) et utilisent
+`controls:DialogLayout` : en-tête (`Icon` None/Info/Success/Warning/Error, `Heading` = titre niveau 1, `Description`),
+corps défilant (`IsBodyScrollable=False` pour une liste qui défile seule), pied de boutons à droite. Ordre visuel = ordre de
+tabulation.
+
+API (`IDialogService`) :
+- `Confirm(heading, message, confirmLabel, isDestructive)` : titre = la question (« Retirer Portal 2 de Mes jeux ? »),
+  bouton = verbe de l'action (« Retirer le jeu », jamais « Oui »), `isDestructive` = bouton `DangerFilled` + icône
+  d'avertissement. « Annuler » est le bouton par défaut (Entrée, Échap) et reçoit le focus.
+- `ShowInfo(heading, message)` ; `ShowError(heading, message, details)` : titre = ce qui a échoué, message = conséquence
+  et suite en clair, `details` = message technique (exception) replié dans « Détails techniques », copiable ; toujours écrit
+  au journal.
+- `ConfirmUndo(change)` : « Restaurer le réglage d'origine ? » / « Restaurer l'original ».
+- Confirmations d'optimisation (`ConfirmChangeDialog`, `ConfirmChangesDialog`) : titre = l'optimisation, « Pourquoi »,
+  avertissement en InfoBar, exigences, où la restaurer (fiche du jeu pour `game.*`, page Diagnostic sinon), « Détails
+  techniques » repliés ; option avancée = case « J'ai lu l'avertissement… » obligatoire.
+- `DriverInstallDialog` : la non-réversibilité et le chemin du retour en arrière en PREMIER (InfoBar), case « Je comprends… »
+  obligatoire, point de restauration coché s'il est disponible.
+- Pas de dialogue vide : un sélecteur sans rien à proposer est remplacé par un `ShowInfo` qui dit pourquoi.
+
+Textes : `Core/Text/FrenchText` — `Count(n, "jeu", "jeux")` (vrai pluriel, 0 et 1 au singulier), `Agree`, `Typeset`
+(espaces insécables avant `: ; ? ! %` et dans les « », appliqué par les dialogues).
 
 ## Glossaire (un terme par concept)
 

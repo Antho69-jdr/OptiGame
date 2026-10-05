@@ -213,7 +213,7 @@ public sealed partial class UpdateService : ObservableObject
     {
         if (_sessions.Current is not null)
         {
-            _dialogs.ShowInfo("Une partie est en cours : vous pourrez installer la mise à jour une fois la partie terminée.");
+            _dialogs.ShowInfo("Partie en cours", "Vous pourrez installer la mise à jour une fois la partie terminée.");
             return;
         }
         if (Phase != UpdatePhase.Ready && !await DownloadAsync()) return;

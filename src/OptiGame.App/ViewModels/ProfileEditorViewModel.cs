@@ -165,7 +165,13 @@ public sealed partial class ProfileEditorViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            _dialogs.ShowError("Impossible de lister les programmes ouverts.\n\n" + ex.Message);
+            _dialogs.ShowError("Programmes ouverts illisibles", "OptiGame n'a pas pu lister les programmes ouverts. Saisissez le nom du programme (ex. chrome.exe).", ex.Message);
+            return;
+        }
+        if (running.Count == 0)
+        {
+            _dialogs.ShowInfo("Aucun programme à proposer",
+                "Aucun programme ouvert ne peut être fermé pendant les parties (les composants de Windows et les services ne sont jamais proposés).");
             return;
         }
 

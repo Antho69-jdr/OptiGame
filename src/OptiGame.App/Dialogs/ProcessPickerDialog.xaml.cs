@@ -1,20 +1,28 @@
 using System.Windows;
+using System.Windows.Controls;
 using OptiGame.Core.Abstractions;
+using OptiGame.Core.Text;
 
 namespace OptiGame.App.Dialogs;
 
-public partial class ProcessPickerDialog : Window
+/// <summary>Choix des programmes ouverts à fermer pendant les parties : liste à cocher accessible au clavier.</summary>
+public partial class ProcessPickerDialog : DialogWindow
 {
-    private readonly List<Item> _items;
-
     public ProcessPickerDialog(IReadOnlyList<RunningProgram> programs)
     {
         InitializeComponent();
-        _items = programs.Select(p => new Item(p)).ToList();
-        List.ItemsSource = _items;
+        List.ItemsSource = programs.Select(p => new Item(p)).ToList();
+        InitialFocus = List;
     }
 
-    public IReadOnlyList<string> SelectedExeNames => _items.Where(i => i.IsSelected).Select(i => i.ExeName).ToList();
+    public IReadOnlyList<string> SelectedExeNames => List.SelectedItems.OfType<Item>().Select(i => i.ExeName).ToList();
+
+    private void OnSelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        var count = List.SelectedItems.Count;
+        AddButton.Content = count == 0 ? "Ajouter" : $"Ajouter {FrenchText.Count(count, "programme", "programmes")}";
+        AddButton.IsEnabled = count > 0;
+    }
 
     private void OnOk(object sender, RoutedEventArgs e) => DialogResult = true;
 
@@ -24,9 +32,14 @@ public partial class ProcessPickerDialog : Window
 
         public string Path => program.Path;
 
-        public string Suffix =>
-            (program.Description is { } d ? $" — {d}" : "") + (program.InstanceCount > 1 ? $" ({program.InstanceCount} processus)" : "");
+        public bool CanSelect => true;
 
-        public bool IsSelected { get; set; }
+        public string Suffix =>
+            (program.Description is { } d ? $" — {d}" : "") +
+            (program.InstanceCount > 1 ? $" ({FrenchText.Count(program.InstanceCount, "processus", "processus")})" : "");
+
+        public string AccessibleName => ExeName + (program.Description is { } d ? $", {d}" : "");
+
+        public override string ToString() => AccessibleName;
     }
 }

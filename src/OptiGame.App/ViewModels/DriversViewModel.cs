@@ -210,14 +210,17 @@ public sealed partial class DriversViewModel(
         catch (InstallerRejectedException ex)
         {
             item.ProgressText = "Installeur refusé.";
-            dialogs.ShowError($"L'installeur a été refusé : il n'a pas été ouvert.\n\n{ex.Message}");
+            dialogs.ShowError("Installeur refusé",
+                "Le fichier téléchargé n'a pas passé la vérification de signature : il n'a pas été ouvert et rien n'a été installé.", ex.Message);
         }
         catch (Exception ex) when (ex is System.Net.Http.HttpRequestException or IOException or UnauthorizedAccessException or InvalidOperationException
                                        or System.ComponentModel.Win32Exception)
         {
             log.Error($"Installation impossible ({label})", ex);
             item.ProgressText = "Installation interrompue.";
-            dialogs.ShowError($"L'installation du {label} n'a pas abouti ; rien n'a été installé par OptiGame.\n\n{ex.Message}");
+            dialogs.ShowError("Installation interrompue",
+                $"L'installation du {label} n'a pas abouti : rien n'a été installé par OptiGame. Vérifiez la connexion à Internet, puis réessayez.",
+                ex.Message);
         }
         finally
         {
@@ -262,14 +265,15 @@ public sealed partial class DriversViewModel(
                 .Concat(report.Skipped.Select(s => $"• {s}"))
                 .ToList();
             log.Info("Installation Windows Update : " + string.Join(" ; ", lines) + (report.RebootRequired ? " (redémarrage requis)" : ""));
-            dialogs.ShowInfo((lines.Count == 0 ? "Aucun des pilotes choisis n'est encore proposé par Windows Update." : string.Join("\n", lines)) +
-                             (report.RebootRequired ? "\n\nRedémarrez Windows pour terminer l'installation." : ""));
+            dialogs.ShowInfo(report.RebootRequired ? "Installation terminée : redémarrage requis" : "Installation terminée",
+                (lines.Count == 0 ? "Aucun des pilotes choisis n'est encore proposé par Windows Update." : string.Join("\n", lines)) +
+                (report.RebootRequired ? "\n\nRedémarrez Windows pour terminer l'installation." : ""));
         }
         catch (Exception ex) when (ex is System.Runtime.InteropServices.COMException or InvalidOperationException or UnauthorizedAccessException
                                        or ArgumentException)
         {
             log.Error("Installation de pilotes Windows Update impossible", ex);
-            dialogs.ShowError($"Windows Update n'a pas pu installer les pilotes choisis.\n\n{ex.Message}");
+            dialogs.ShowError("Installation impossible", "Windows Update n'a pas pu installer les pilotes choisis : rien n'a été installé.", ex.Message);
         }
         finally
         {
@@ -307,7 +311,10 @@ public sealed partial class DriversViewModel(
         }
         log.Info($"Point de restauration « {description} » : {report.Message}");
         status(report.Message);
-        return report.Created || dialogs.Confirm($"{report.Message}\n\nContinuer l'installation sans nouveau point de restauration ?");
+        return report.Created || dialogs.Confirm("Point de restauration non créé",
+            $"{report.Message}\n\nVous pouvez installer quand même : le retour au pilote précédent restera possible depuis le " +
+            "Gestionnaire de périphériques (« Restaurer le pilote »).",
+            "Installer sans point de restauration", isDestructive: true);
     }
 
     [RelayCommand]

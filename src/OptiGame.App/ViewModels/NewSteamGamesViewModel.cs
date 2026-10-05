@@ -98,7 +98,7 @@ public sealed partial class NewSteamGamesViewModel : ObservableObject
         if (proposal?.Game is not { SteamAppId: { } appId } game) return;
         if (game.Candidates.FirstOrDefault() is not { } exe)
         {
-            _dialogs.ShowError($"Aucun exécutable trouvé pour {game.Name} dans {game.Folder}. Ajoutez-le avec « Ajouter un jeu ».");
+            _dialogs.ShowError($"{game.Name} n'a pas été ajouté", $"Aucun fichier .exe n'a été trouvé dans {game.Folder}. Ajoutez le jeu avec « Ajouter un jeu » en choisissant son fichier .exe.");
             return;
         }
 
@@ -109,7 +109,7 @@ public sealed partial class NewSteamGamesViewModel : ObservableObject
         }
         catch (ProfileValidationException ex)
         {
-            _dialogs.ShowError($"{game.Name} n'a pas été ajouté :\n\n{ex.Message}");
+            _dialogs.ShowError($"{game.Name} n'a pas été ajouté", ex.Message);
             return;
         }
         _log.Info($"Nouveau jeu Steam ajouté : {profile.Name} ({exe.Path}).");

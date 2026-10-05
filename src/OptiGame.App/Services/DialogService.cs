@@ -6,6 +6,7 @@ using OptiGame.Core.Abstractions;
 using OptiGame.Core.Artwork;
 using OptiGame.Core.Changes;
 using OptiGame.Core.Library;
+using OptiGame.Core.Logging;
 using OptiGame.Core.State;
 
 namespace OptiGame.App.Services;
@@ -18,17 +19,25 @@ public interface IDialogService
     /// <summary>Confirmation de plusieurs modifications en une fois (chacune listée).</summary>
     bool ConfirmChanges(IReadOnlyList<ReversibleChange> changes);
 
+    /// <summary>« Restaurer le réglage d'origine ? » pour une optimisation active ; vrai si l'utilisateur confirme.</summary>
     bool ConfirmUndo(ChangeRecord change);
 
     /// <summary>Confirmation d'une installation de pilote (non annulable par OptiGame) ; null si annulée.</summary>
     Dialogs.DriverInstallChoice? ConfirmDriverInstall(Core.Drivers.DriverInstallPlan plan);
 
-    /// <summary>Question oui/non ; « Non » par défaut.</summary>
-    bool Confirm(string message);
+    /// <summary>
+    /// Question : <paramref name="heading"/> = ce que l'on décide, <paramref name="confirmLabel"/> = verbe de l'action (jamais
+    /// « Oui »). « Annuler » est le choix par défaut (Entrée, Échap). Destructrice = bouton rouge et icône d'avertissement.
+    /// </summary>
+    bool Confirm(string heading, string message, string confirmLabel, bool isDestructive = false);
 
-    void ShowInfo(string message);
+    void ShowInfo(string heading, string message = "");
 
-    void ShowError(string message);
+    /// <summary>
+    /// Erreur : <paramref name="heading"/> = ce qui a échoué, <paramref name="message"/> = conséquence et suite (en clair),
+    /// <paramref name="details"/> = message technique (exception), replié et copiable. Toujours écrite au journal.
+    /// </summary>
+    void ShowError(string heading, string message, string? details = null);
 
     /// <summary>Sélection d'un exécutable de jeu ; null si annulé.</summary>
     string? PickExecutable(string? initialPath);
@@ -50,10 +59,8 @@ public interface IDialogService
     IgdbGame? PickIgdbGame(string initialQuery, Func<string, Task<IReadOnlyList<IgdbGame>>> search, Func<string, Task<string?>> loadThumbnail);
 }
 
-public sealed class DialogService : IDialogService
+public sealed class DialogService(FileLog log) : IDialogService
 {
-    private const string Caption = "OptiGame";
-
     public bool ConfirmChanges(IReadOnlyList<ReversibleChange> changes) =>
         ShowOwned(new Dialogs.ConfirmChangesDialog(changes)) == true;
 
@@ -67,15 +74,22 @@ public sealed class DialogService : IDialogService
     }
 
     public bool ConfirmUndo(ChangeRecord change) =>
-        Confirm($"Annuler « {change.Title} » ?\n\nLe réglage d'origine, sauvegardé avant la correction, sera restauré." +
-                (change.RequiresReboot ? "\n\nUn redémarrage sera nécessaire pour que ce soit pris en compte." : ""));
+        Confirm("Restaurer le réglage d'origine ?",
+            $"OptiGame rétablit le réglage sauvegardé avant l'optimisation « {change.Title} »." +
+            (change.RequiresReboot ? "\n\nRedémarrez ensuite Windows pour qu'il soit pris en compte." : ""),
+            "Restaurer l'original");
 
-    public bool Confirm(string message) =>
-        Show(message, MessageBoxButton.YesNo, MessageBoxImage.Question, MessageBoxResult.No) == MessageBoxResult.Yes;
+    public bool Confirm(string heading, string message, string confirmLabel, bool isDestructive = false) =>
+        ShowOwned(MessageDialog.Question(heading, message, confirmLabel, isDestructive)) == true;
 
-    public void ShowInfo(string message) => Show(message, MessageBoxButton.OK, MessageBoxImage.Information, MessageBoxResult.OK);
+    public void ShowInfo(string heading, string message = "") =>
+        ShowOwned(MessageDialog.Notice(Controls.DialogIcon.Info, heading, message, null));
 
-    public void ShowError(string message) => Show(message, MessageBoxButton.OK, MessageBoxImage.Error, MessageBoxResult.OK);
+    public void ShowError(string heading, string message, string? details = null)
+    {
+        log.Warn($"Erreur affichée : {heading} — {message}".Replace("\n", " ") + (details is null ? "" : $" [{details.Replace("\n", " ")}]"));
+        ShowOwned(MessageDialog.Notice(Controls.DialogIcon.Error, heading, message, details));
+    }
 
     public string? PickExecutable(string? initialPath) => PickProgram("Choisir l'exécutable du jeu", initialPath);
 
@@ -131,11 +145,6 @@ public sealed class DialogService : IDialogService
         }
         return dialog.ShowDialog();
     }
-
-    private static MessageBoxResult Show(string message, MessageBoxButton buttons, MessageBoxImage image, MessageBoxResult defaultResult) =>
-        ActiveWindow() is { } owner
-            ? MessageBox.Show(owner, message, Caption, buttons, image, defaultResult)
-            : MessageBox.Show(message, Caption, buttons, image, defaultResult);
 
     private static Window? ActiveWindow() =>
         Application.Current.Windows.OfType<Window>().FirstOrDefault(w => w.IsActive)

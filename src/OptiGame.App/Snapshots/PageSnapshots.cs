@@ -21,6 +21,7 @@ internal static class PageSnapshots
     public const string Argument = "--snapshot";
     private const string SizesArgument = "--sizes";
     private const string GameArgument = "--game";
+    private const string OnlyArgument = "--only";
 
     /// <summary>Tailles par défaut (DIP) : défaut actuel, minimum, zone de travail à 150 % d'un écran 1080p, grand écran.</summary>
     private static readonly Size[] DefaultSizes = [new(1240, 860), new(880, 600), new(1280, 680), new(1600, 1000)];
@@ -41,6 +42,9 @@ internal static class PageSnapshots
         try
         {
             var sizes = ParseSizes(ValueAfter(args, SizesArgument)) ?? DefaultSizes;
+            // --only 7,0 : seulement les captures dont le nom commence par l'un de ces préfixes (pages, dialogues, galerie).
+            var only = ValueAfter(args, OnlyArgument)?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            bool Wanted(string name) => only is null || only.Any(p => name.StartsWith(p, StringComparison.OrdinalIgnoreCase));
             var main = services.GetRequiredService<MainViewModel>();
             var library = services.GetRequiredService<LibraryViewModel>();
             var window = services.GetRequiredService<MainWindow>();
@@ -73,7 +77,7 @@ internal static class PageSnapshots
                 pages.Add(("6-fiche-du-jeu", async () => { main.Navigate(library); library.ShowGame(game.Id); await Settle(4000); }));
             }
 
-            foreach (var (name, open) in pages)
+            foreach (var (name, open) in pages.Where(p => Wanted(p.Name)))
             {
                 await open();
                 foreach (var size in sizes)
@@ -88,7 +92,26 @@ internal static class PageSnapshots
             }
             window.CloseForGame();
 
+            foreach (var (name, create) in DialogSnapshots.All().Where(d => Wanted(d.Name)))
+            {
+                var dialog = create();
+                dialog.WindowStartupLocation = WindowStartupLocation.Manual;
+                dialog.Left = -32000;
+                dialog.Top = -32000;
+                dialog.ShowActivated = false;
+                dialog.Show();
+                await Settle(800);
+                Save(dialog, Path.Combine(output, $"{name}.png"));
+                Log($"{name}.png");
+                dialog.Close();
+            }
+
             // Galerie : mise en page hors fenêtre (sa hauteur dépasse l'écran), sur le fond de la fenêtre.
+            if (!Wanted("0-galerie"))
+            {
+                Log("Terminé.");
+                return;
+            }
             var gallery = new ComponentGallery { Background = (Brush)Application.Current.FindResource("Brush.Window") };
             gallery.Measure(new Size(1000, double.PositiveInfinity));
             gallery.Arrange(new Rect(new Size(1000, gallery.DesiredSize.Height)));

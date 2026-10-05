@@ -1,42 +1,34 @@
-<Window x:Class="OptiGame.App.Dialogs.ConfirmChangeDialog"
-        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Confirmer la modification" Width="600" SizeToContent="Height" ResizeMode="NoResize"
-        WindowStartupLocation="CenterOwner" ShowInTaskbar="False"
-        Background="{StaticResource Brush.Window}" Foreground="{StaticResource Brush.Text}">
-    <StackPanel Margin="24">
-        <TextBlock x:Name="TitleText" Style="{StaticResource Text.SectionTitle}" FontSize="18" />
+<dialogs:DialogWindow x:Class="OptiGame.App.Dialogs.ConfirmChangeDialog"
+                      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                      xmlns:dialogs="clr-namespace:OptiGame.App.Dialogs"
+                      xmlns:controls="clr-namespace:OptiGame.App.Controls"
+                      Title="Confirmer l'optimisation" Width="580">
+    <controls:DialogLayout x:Name="Layout">
+        <StackPanel>
+            <TextBlock Style="{StaticResource Text.BodyStrong}" Text="Pourquoi" />
+            <TextBlock x:Name="WhyText" Margin="0,4,0,0" Style="{StaticResource Text.Body}" />
 
-        <TextBlock Style="{StaticResource Text.Label}" Text="Ce qui change" />
-        <Border Padding="12,8" CornerRadius="{StaticResource Radius.Control}" Background="{StaticResource Brush.Control}">
-            <TextBlock x:Name="WhatText" Style="{StaticResource Text.Mono}" Foreground="{StaticResource Brush.Text}" />
-        </Border>
+            <controls:InfoBar x:Name="WarningBar" Margin="0,16,0,0" Severity="Warning" Title="À savoir avant d'appliquer" />
 
-        <TextBlock Style="{StaticResource Text.Label}" Text="Pourquoi" />
-        <TextBlock x:Name="WhyText" Style="{StaticResource Text.Body}" />
+            <controls:RequirementBadges x:Name="Requirements" Margin="0,16,0,0" />
+            <TextBlock x:Name="UndoText" Margin="0,8,0,0" Style="{StaticResource Text.Secondary}" />
 
-        <Border x:Name="WarningPanel" Margin="0,16,0,0" Style="{StaticResource Banner}"
-                Background="{StaticResource Brush.WarningSoft}" BorderBrush="{StaticResource Brush.Warning}">
-            <DockPanel>
-                <TextBlock DockPanel.Dock="Left" Margin="0,0,10,0" Style="{StaticResource Text.Icon}" VerticalAlignment="Top"
-                           Foreground="{StaticResource Brush.Warning}" Text="&#xE7BA;" />
-                <TextBlock x:Name="WarningText" Style="{StaticResource Text.Body}" />
-            </DockPanel>
-        </Border>
+            <!-- Ce que l'optimisation écrit exactement (registre, réglage du pilote…) -->
+            <Expander Margin="0,16,0,0" Style="{StaticResource Expander.Disclosure}" Header="Détails techniques">
+                <TextBlock x:Name="WhatText" Margin="0,8,0,0" Style="{StaticResource Text.Mono}" />
+            </Expander>
 
-        <StackPanel Margin="0,16,0,0">
-            <TextBlock x:Name="AdminText" Style="{StaticResource Text.Secondary}" Text="• Nécessite les droits administrateur." />
-            <TextBlock x:Name="RebootText" Style="{StaticResource Text.Secondary}" Text="• Pris en compte après un redémarrage de Windows." />
-            <TextBlock Style="{StaticResource Text.Secondary}" Text="• L'état d'origine est sauvegardé avant la modification ; vous pourrez l'annuler depuis l'onglet Diagnostic." />
+            <!-- Option avancée : double confirmation -->
+            <CheckBox x:Name="AcknowledgeBox" Margin="0,20,0,0" Checked="OnAcknowledgeChanged" Unchecked="OnAcknowledgeChanged">
+                <TextBlock TextWrapping="Wrap" Text="J'ai lu l'avertissement et je comprends le compromis." />
+            </CheckBox>
         </StackPanel>
-
-        <CheckBox x:Name="AcknowledgeBox" Margin="0,16,0,0" Checked="OnAcknowledgeChanged" Unchecked="OnAcknowledgeChanged">
-            <TextBlock TextWrapping="Wrap" Text="J'ai lu l'avertissement et je comprends le compromis." />
-        </CheckBox>
-
-        <StackPanel Margin="0,24,0,0" Orientation="Horizontal" HorizontalAlignment="Right">
-            <Button x:Name="ApplyButton" Style="{StaticResource Button.Primary}" Content="Appliquer" Margin="0,0,8,0" Click="OnApply" />
-            <Button Style="{StaticResource Button.Secondary}" Content="Annuler" IsCancel="True" IsDefault="True" />
-        </StackPanel>
-    </StackPanel>
-</Window>
+        <controls:DialogLayout.Footer>
+            <StackPanel Orientation="Horizontal">
+                <Button x:Name="ApplyButton" Margin="0,0,8,0" Style="{StaticResource Button.Primary}" Content="Appliquer" Click="OnApply" />
+                <Button x:Name="CancelButton" Style="{StaticResource Button.Secondary}" Content="Annuler" IsCancel="True" IsDefault="True" />
+            </StackPanel>
+        </controls:DialogLayout.Footer>
+    </controls:DialogLayout>
+</dialogs:DialogWindow>

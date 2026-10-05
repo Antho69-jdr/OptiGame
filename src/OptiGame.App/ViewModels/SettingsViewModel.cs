@@ -224,6 +224,12 @@ public sealed partial class SettingsViewModel : ObservableObject
     [RelayCommand]
     private void ForgetIgdb()
     {
+        if (!_dialogs.Confirm("Supprimer les identifiants IGDB ?",
+                "Les jaquettes déjà téléchargées restent ; les nouveaux jeux n'en recevront plus jusqu'à ce que vous saisissiez de nouveaux identifiants.",
+                "Supprimer", isDestructive: true))
+        {
+            return;
+        }
         _settings.Update(s =>
         {
             s.IgdbClientId = null;
@@ -262,7 +268,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            _dialogs.ShowError(ex.Message);
+            _dialogs.ShowError("Démarrage automatique non modifié", "La tâche planifiée « OptiGame » n'a pas pu être modifiée.", ex.Message);
         }
         RefreshAutoStart();
     }

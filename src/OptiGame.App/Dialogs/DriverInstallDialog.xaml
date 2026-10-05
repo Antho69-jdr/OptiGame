@@ -1,50 +1,36 @@
-<Window x:Class="OptiGame.App.Dialogs.DriverInstallDialog"
-        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Confirmer l'installation" Width="640" SizeToContent="Height" ResizeMode="NoResize"
-        WindowStartupLocation="CenterOwner" ShowInTaskbar="False"
-        Background="{StaticResource Brush.Window}" Foreground="{StaticResource Brush.Text}">
-    <StackPanel Margin="24">
-        <TextBlock x:Name="TitleText" Style="{StaticResource Text.SectionTitle}" FontSize="18" />
+<dialogs:DialogWindow x:Class="OptiGame.App.Dialogs.DriverInstallDialog"
+                      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                      xmlns:dialogs="clr-namespace:OptiGame.App.Dialogs"
+                      xmlns:controls="clr-namespace:OptiGame.App.Controls"
+                      Title="Confirmer l'installation" Width="620">
+    <controls:DialogLayout x:Name="Layout">
+        <StackPanel>
+            <!-- Exception au principe de réversibilité : dite d'abord, clairement, avec le chemin du retour en arrière -->
+            <controls:InfoBar x:Name="NotReversibleBar" Severity="Warning" />
 
-        <TextBlock Style="{StaticResource Text.Label}" Text="Ce qui sera installé" />
-        <Border Padding="12,8" CornerRadius="{StaticResource Radius.Control}" Background="{StaticResource Brush.Control}">
-            <TextBlock x:Name="WhatText" Style="{StaticResource Text.Mono}" Foreground="{StaticResource Brush.Text}" TextWrapping="Wrap" />
-        </Border>
+            <TextBlock Margin="0,16,0,0" Style="{StaticResource Text.BodyStrong}" Text="Ce qui sera installé" />
+            <TextBlock x:Name="WhatText" Margin="0,4,0,0" Style="{StaticResource Text.Body}" />
 
-        <TextBlock Style="{StaticResource Text.Label}" Text="Pourquoi" />
-        <TextBlock x:Name="WhyText" Style="{StaticResource Text.Body}" TextWrapping="Wrap" />
+            <TextBlock Margin="0,16,0,0" Style="{StaticResource Text.BodyStrong}" Text="Pourquoi" />
+            <TextBlock x:Name="WhyText" Margin="0,4,0,0" Style="{StaticResource Text.Body}" />
 
-        <!-- Exception au principe de réversibilité : dite clairement, avec le chemin du retour en arrière -->
-        <Border Margin="0,16,0,0" Style="{StaticResource Banner}"
-                Background="{StaticResource Brush.WarningSoft}" BorderBrush="{StaticResource Brush.Warning}">
-            <DockPanel>
-                <TextBlock DockPanel.Dock="Left" Margin="0,0,10,0" Style="{StaticResource Text.Icon}" VerticalAlignment="Top"
-                           Foreground="{StaticResource Brush.Warning}" Text="&#xE7BA;" />
-                <StackPanel>
-                    <TextBlock x:Name="NotReversibleText" Style="{StaticResource Text.Body}" FontWeight="SemiBold" TextWrapping="Wrap" />
-                    <TextBlock x:Name="RollbackText" Margin="0,6,0,0" Style="{StaticResource Text.Body}" TextWrapping="Wrap" />
-                </StackPanel>
-            </DockPanel>
-        </Border>
+            <controls:RequirementBadges x:Name="Requirements" Margin="0,16,0,0" RequiresAdmin="True" />
 
-        <StackPanel Margin="0,16,0,0">
-            <TextBlock Style="{StaticResource Text.Secondary}" Text="• Nécessite les droits administrateur." />
-            <TextBlock x:Name="RebootText" Style="{StaticResource Text.Secondary}" Text="• Un redémarrage de Windows peut être demandé." />
+            <CheckBox x:Name="RestorePointBox" Margin="0,12,0,0" IsChecked="True">
+                <TextBlock x:Name="RestorePointLabel" TextWrapping="Wrap" />
+            </CheckBox>
+            <TextBlock x:Name="RestorePointDisabledText" Margin="0,12,0,0" Style="{StaticResource Text.Secondary}" />
+
+            <CheckBox x:Name="AcknowledgeBox" Margin="0,16,0,0" Checked="OnAcknowledgeChanged" Unchecked="OnAcknowledgeChanged">
+                <TextBlock TextWrapping="Wrap" Text="Je comprends qu'OptiGame ne pourra pas annuler cette installation." />
+            </CheckBox>
         </StackPanel>
-
-        <CheckBox x:Name="RestorePointBox" Margin="0,16,0,0" IsChecked="True">
-            <TextBlock x:Name="RestorePointLabel" TextWrapping="Wrap" />
-        </CheckBox>
-        <TextBlock x:Name="RestorePointDisabledText" Margin="0,16,0,0" Style="{StaticResource Text.Secondary}" TextWrapping="Wrap" />
-
-        <CheckBox x:Name="AcknowledgeBox" Margin="0,16,0,0" Checked="OnAcknowledgeChanged" Unchecked="OnAcknowledgeChanged">
-            <TextBlock TextWrapping="Wrap" Text="Je comprends qu'OptiGame ne pourra pas annuler cette installation." />
-        </CheckBox>
-
-        <StackPanel Margin="0,24,0,0" Orientation="Horizontal" HorizontalAlignment="Right">
-            <Button x:Name="InstallButton" Style="{StaticResource Button.Primary}" Content="Installer" Margin="0,0,8,0" IsEnabled="False" Click="OnInstall" />
-            <Button Style="{StaticResource Button.Secondary}" Content="Annuler" IsCancel="True" IsDefault="True" />
-        </StackPanel>
-    </StackPanel>
-</Window>
+        <controls:DialogLayout.Footer>
+            <StackPanel Orientation="Horizontal">
+                <Button x:Name="InstallButton" Margin="0,0,8,0" Style="{StaticResource Button.Primary}" Content="Installer" IsEnabled="False" Click="OnInstall" />
+                <Button x:Name="CancelButton" Style="{StaticResource Button.Secondary}" Content="Annuler" IsCancel="True" IsDefault="True" />
+            </StackPanel>
+        </controls:DialogLayout.Footer>
+    </controls:DialogLayout>
+</dialogs:DialogWindow>

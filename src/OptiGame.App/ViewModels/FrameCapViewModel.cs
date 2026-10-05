@@ -120,7 +120,7 @@ public sealed partial class FrameCapViewModel(GameProfile profile, FrameCapServi
         catch (Exception ex) when (ex is Platform.Gpu.NvidiaApiException or InvalidOperationException or ArgumentException or IOException)
         {
             log.Error($"Plafond de FPS de « {profile.Name} » non modifié", ex);
-            dialogs.ShowError($"Le pilote NVIDIA n'a pas accepté la modification.\n\n{ex.Message}");
+            dialogs.ShowError("Plafond de FPS non modifié", "Le pilote NVIDIA n'a pas accepté la modification : le réglage du pilote est inchangé.", ex.Message);
         }
         finally
         {

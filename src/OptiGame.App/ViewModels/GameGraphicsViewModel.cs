@@ -109,7 +109,8 @@ public sealed partial class GameGraphicsViewModel(GameProfile profile, GameGraph
                 var report = await Task.Run(() => service.Undo(profile.Id));
                 if (!report.Success)
                 {
-                    dialogs.ShowError("La valeur d'origine n'a pas pu être rétablie :\n" + string.Join("\n", report.Failed.Select(f => $"• {f.Target} : {f.Error}")));
+                    dialogs.ShowError("Restauration impossible", "Le réglage d'origine de la carte graphique n'a pas pu être rétabli : vous pourrez réessayer.",
+                        string.Join("\n", report.Failed.Select(f => $"{f.Target} : {f.Error}")));
                 }
             }
             else if (dialogs.ConfirmChange(change, isAdvanced: false))
@@ -121,7 +122,7 @@ public sealed partial class GameGraphicsViewModel(GameProfile profile, GameGraph
         catch (Exception ex) when (ex is UnauthorizedAccessException or System.Security.SecurityException or IOException or InvalidOperationException)
         {
             log.Error($"Réglages graphiques de « {profile.Name} » non appliqués", ex);
-            dialogs.ShowError($"Le réglage n'a pas pu être appliqué ; rien n'a été modifié.\n\n{ex.Message}");
+            dialogs.ShowError("Réglage non appliqué", "La carte graphique de ce jeu n'a pas pu être réglée : rien n'a été modifié.", ex.Message);
         }
         finally
         {

@@ -1,28 +1,27 @@
 using System.Windows;
 using OptiGame.Core.Changes;
+using OptiGame.Core.Text;
 
 namespace OptiGame.App.Dialogs;
 
 /// <summary>
-/// Confirmation de plusieurs modifications en une fois (vue « Simple » du Diagnostic) : chacune est listée avec ce qu'elle
-/// change et pourquoi, comme dans <see cref="ConfirmChangeDialog"/>. Le bouton par défaut est « Annuler ».
+/// Confirmation de plusieurs optimisations en une fois (bouton unique du Diagnostic) : chacune est listée avec pourquoi,
+/// ses exigences et ses détails techniques repliés, comme dans <see cref="ConfirmChangeDialog"/>. « Annuler » est le bouton
+/// par défaut et reçoit le focus.
 /// </summary>
-public partial class ConfirmChangesDialog : Window
+public partial class ConfirmChangesDialog : DialogWindow
 {
-    public sealed record Row(string Title, string What, string Why, string Badges);
+    public sealed record Row(string Title, string What, string Why, bool RequiresAdmin, bool RequiresReboot);
 
     public ConfirmChangesDialog(IReadOnlyList<ReversibleChange> changes)
     {
         InitializeComponent();
-        TitleText.Text = changes.Count == 1 ? "Appliquer 1 optimisation" : $"Appliquer {changes.Count} optimisations";
-        ApplyButton.Content = changes.Count == 1 ? "Appliquer" : $"Appliquer les {changes.Count}";
-        ChangesList.ItemsSource = changes.Select(c => new Row(c.Title, c.What, c.Why, string.Join(" · ", new[]
-        {
-            c.RequiresAdmin ? "admin" : null,
-            c.RequiresReboot ? "redémarrage" : null,
-        }.OfType<string>()))).ToList();
-        AdminText.Visibility = changes.Any(c => c.RequiresAdmin) ? Visibility.Visible : Visibility.Collapsed;
-        RebootText.Visibility = changes.Any(c => c.RequiresReboot) ? Visibility.Visible : Visibility.Collapsed;
+        Layout.Heading = changes.Count == 1 ? "Appliquer 1 optimisation ?" : $"Appliquer {changes.Count} optimisations ?";
+        ApplyButton.Content = changes.Count == 1 ? "Appliquer l'optimisation" : $"Appliquer les {changes.Count} optimisations";
+        ChangesList.ItemsSource = changes
+            .Select(c => new Row(FrenchText.Typeset(c.Title), c.What, FrenchText.Typeset(c.Why), c.RequiresAdmin, c.RequiresReboot))
+            .ToList();
+        InitialFocus = CancelButton;
     }
 
     private void OnApply(object sender, RoutedEventArgs e) => DialogResult = true;

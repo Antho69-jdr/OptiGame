@@ -9,12 +9,17 @@ namespace OptiGame.Core.Profiles;
 /// </summary>
 public static class GameChanges
 {
+    public const string Prefix = "game.";
+
+    /// <summary>Réglage propre à un jeu (géré depuis sa fiche), par opposition aux optimisations du Diagnostic (« fix. »).</summary>
+    public static bool IsGameChange(string changeId) => changeId.StartsWith(Prefix, StringComparison.Ordinal);
+
     /// <summary>Changements actifs propres à ce profil, dans l'ordre d'application.</summary>
     public static IReadOnlyList<ChangeRecord> Of(IEnumerable<ChangeRecord> active, Guid profileId)
     {
         var suffix = $".{profileId:N}";
         return active
-            .Where(c => c.Id.StartsWith("game.", StringComparison.Ordinal) && c.Id.EndsWith(suffix, StringComparison.Ordinal))
+            .Where(c => IsGameChange(c.Id) && c.Id.EndsWith(suffix, StringComparison.Ordinal))
             .ToList();
     }
 }

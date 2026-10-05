@@ -1,0 +1,28 @@
+<dialogs:DialogWindow x:Class="OptiGame.App.Dialogs.MessageDialog"
+                      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                      xmlns:dialogs="clr-namespace:OptiGame.App.Dialogs"
+                      xmlns:controls="clr-namespace:OptiGame.App.Controls"
+                      Title="OptiGame" Width="500">
+    <controls:DialogLayout x:Name="Layout">
+        <StackPanel>
+            <TextBlock x:Name="MessageText" Style="{StaticResource Text.Body}" />
+            <!-- Message technique (exception, code d'erreur) : replié, sélectionnable et copiable -->
+            <Expander x:Name="DetailsExpander" Margin="0,16,0,0" Style="{StaticResource Expander.Disclosure}" Header="Détails techniques" Visibility="Collapsed">
+                <StackPanel Margin="0,8,0,0">
+                    <TextBox x:Name="DetailsText" IsReadOnly="True" TextWrapping="Wrap" FontFamily="{StaticResource Font.Mono}"
+                             FontSize="{StaticResource FontSize.Caption}" MaxHeight="160" VerticalScrollBarVisibility="Auto"
+                             AutomationProperties.Name="Détails techniques" />
+                    <controls:IconButton Margin="0,8,0,0" HorizontalAlignment="Left" Style="{StaticResource Button.SecondarySmall}"
+                                         Glyph="&#xE8C8;" Label="Copier les détails" Click="OnCopyDetails" />
+                </StackPanel>
+            </Expander>
+        </StackPanel>
+        <controls:DialogLayout.Footer>
+            <StackPanel Orientation="Horizontal">
+                <Button x:Name="ConfirmButton" Margin="0,0,8,0" Style="{StaticResource Button.Primary}" Click="OnConfirm" />
+                <Button x:Name="CancelButton" Style="{StaticResource Button.Secondary}" Content="Annuler" IsCancel="True" IsDefault="True" />
+            </StackPanel>
+        </controls:DialogLayout.Footer>
+    </controls:DialogLayout>
+</dialogs:DialogWindow>

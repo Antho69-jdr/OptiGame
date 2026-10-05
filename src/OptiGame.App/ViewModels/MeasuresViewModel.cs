@@ -152,13 +152,18 @@ public sealed partial class MeasuresViewModel : ObservableObject
             File.Move(request.OutputCsv, kept, overwrite: true);
             CaptureStatus = "Capture non reconnue (fichier conservé).";
             _log.Error($"CSV PresentMon non reconnu, conservé dans {kept}", ex);
-            _dialogs.ShowError($"{ex.Message}\n\nLe fichier a été conservé pour analyse :\n{kept}");
+            _dialogs.ShowError("Mesure non reconnue",
+                $"PresentMon a produit un fichier qu'OptiGame ne sait pas lire. Il est conservé pour analyse :\n{kept}", ex.Message);
         }
         catch (Exception ex)
         {
             CaptureStatus = "Capture échouée.";
             _log.Error("Capture échouée", ex);
-            _dialogs.ShowError(ex.Message);
+            _dialogs.ShowError("Mesure échouée",
+                ex is FileNotFoundException
+                    ? "PresentMon est introuvable : choisissez de nouveau son emplacement, puis réessayez."
+                    : "La mesure n'a pas abouti. Vérifiez que le jeu tourne au premier plan, puis réessayez.",
+                ex.Message);
         }
         finally
         {
@@ -177,7 +182,11 @@ public sealed partial class MeasuresViewModel : ObservableObject
     {
         var selected = new[] { Before, After }.OfType<CaptureItemViewModel>().ToList();
         if (selected.Count == 0) return;
-        if (!_dialogs.Confirm($"Supprimer {(selected.Count == 1 ? "cette capture" : "ces 2 captures")} et leur fichier CSV ?")) return;
+        if (!_dialogs.Confirm(selected.Count == 1 ? "Supprimer cette mesure ?" : "Supprimer ces 2 mesures ?",
+                selected.Count == 1
+                    ? "Son résultat et son fichier CSV sont effacés définitivement."
+                    : "Leurs résultats et leurs fichiers CSV sont effacés définitivement.",
+                "Supprimer", isDestructive: true)) return;
         foreach (var item in selected) _store.Remove(item.Record.Id);
         RefreshCaptures();
     }
