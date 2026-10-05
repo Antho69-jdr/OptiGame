@@ -100,6 +100,6 @@ public class CoverTile : Button
         set => SetValue(ActionsProperty, value);
     }
 
-    /// <summary>Effets d'animation de Windows (Paramètres > Accessibilité) : sans eux, pas de zoom au survol.</summary>
-    public static bool AnimationsEnabled => SystemParameters.ClientAreaAnimation;
+    /// <summary>Zoom au survol seulement si les animations sont activées (Paramètres › Général, selon Windows par défaut).</summary>
+    public static bool AnimationsEnabled => Services.UiMotion.Enabled;
 }

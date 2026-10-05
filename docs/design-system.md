@@ -97,7 +97,7 @@ un bord). Tous les styles maison le posent en `FocusVisualStyle` ; WPF ne l'affi
 | Divulgation | `Expander.Disclosure` | chevron + texte secondaire (« Détails techniques ») ; `AutomationProperties.Name` plus précis si plusieurs dans une liste |
 | Liste à cocher | `CheckList` + `CheckList.Item` (ListBox `SelectionMode=Multiple`) | ligne entière = case (clic, Espace), flèches ; éléments : `CanSelect`, `AccessibleName` ; la sélection = `SelectedItems` ; bouton « Ajouter 3 jeux » inactif à 0 |
 
-| Jaquette | `controls:CoverTile` (`Image` lié avec IsAsync, `Initials`, `Title`, `Caption`, `CaptionGlyph`, `IsDimmed`, `TopLeft`, `TopRight`, `Actions`) | une seule pour installés et non installés ; bouton focalisable : Entrée = action principale, touche Menu = toutes les actions (menu contextuel complet) ; `Actions` = raccourcis souris hors tabulation (`Button.CoverPlay`, `Button.CoverRound`) ; voile sur l'image seulement ; zoom de survol seulement si les effets d'animation de Windows sont activés ; nom accessible = jeu + tout ce que disent les pastilles |
+| Jaquette | `controls:CoverTile` (`Image` lié avec IsAsync, `Initials`, `Title`, `Caption`, `CaptionGlyph`, `IsDimmed`, `TopLeft`, `TopRight`, `Actions`) | une seule pour installés et non installés ; bouton focalisable : Entrée = action principale, touche Menu = toutes les actions (menu contextuel complet) ; `Actions` = raccourcis souris hors tabulation (`Button.CoverPlay`, `Button.CoverRound`) ; voile sur l'image seulement ; zoom de survol seulement si les animations sont activées (`UiMotion`) ; nom accessible = jeu + tout ce que disent les pastilles |
 | Bouton à menu | Button + ContextMenu ouvert sous le bouton (« Ajouter des jeux ▾ ») | nom accessible + HelpText « Ouvre un menu » ; choix avec « … » |
 
 Grilles de jaquettes : `ItemsControl` + `WrapPanel`, `KeyboardNavigation.TabNavigation="Once"` (Tab entre et sort de la
@@ -182,13 +182,15 @@ grille, flèches d'une jaquette à l'autre).
 
 - Fenêtre sans focus (jamais au clavier) : chaque action a son équivalent dans la fenêtre — jouer depuis Mes jeux, ordre et
   retrait dans Paramètres › Dock › « Jeux du dock » (Monter / Descendre / Retirer, nom du jeu dans le nom accessible).
-- Jaquettes : arrondi proportionnel (14 px pour 64 px), plateau = arrondi + 6. États : « Lancement… » (voile `Brush.ScrimLight`
+- Jaquettes : arrondi FIXE de 14 px quelle que soit la taille (proportionnel essayé puis refusé le 2026-10-06), plateau 20 px. États : « Lancement… » (voile `Brush.ScrimLight`
   + barre indéterminée, 12 s au plus, clics ignorés) ; désinstallé ou disque absent = opacité 0,45 comme dans Mes jeux,
   état dans l'info-bulle et `AutomationProperties.ItemStatus`.
 - Dock vide : pastille lisible quelle que soit l'opacité du plateau (`Brush.Overlay`), cliquable vers Mes jeux.
 - Menus : clic droit jeu = **Jouer**, Ouvrir la fiche, Déplacer vers la gauche / droite (haut / bas), Retirer du dock ;
   clic droit plateau = **Ouvrir OptiGame**, Masquer automatiquement (case), Paramètres du dock…, Désactiver le dock… (confirmé).
-- Mouvement : glissement, ressort du grossissement et onde de clic seulement si les effets d'animation de Windows sont activés.
+- Mouvement : glissement, ressort du grossissement et onde de clic seulement si les animations sont activées : réglage
+  « Animations » (Paramètres › Général : Selon Windows par défaut / Toujours / Jamais ; `Core/Settings/Motion`, `App/Services/UiMotion`).
+  AtlasOS coupe les effets d'animation de Windows : l'utilisateur choisit « Toujours ».
   Un réglage du dock modifié le montre 2 s, puis il se range s'il se masque automatiquement.
 
 ## Dialogues

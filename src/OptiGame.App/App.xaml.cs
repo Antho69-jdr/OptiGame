@@ -56,6 +56,7 @@ public partial class App : Application
         }
 
         _services = ConfigureServices().BuildServiceProvider();
+        UiMotion.Attach(_services.GetRequiredService<AppSettingsStore>());
         var services = _services;
 
         // Filet de sécurité : une erreur dans l'interface (ex. le dock) ne doit pas arrêter OptiGame pendant une partie.

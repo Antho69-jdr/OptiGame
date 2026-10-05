@@ -95,8 +95,8 @@ public partial class DockWindow : Window
         };
     }
 
-    /// <summary>Effets d'animation de Windows (Paramètres > Accessibilité) : sans eux, le dock apparaît et se range sans glisser.</summary>
-    private static bool Animations => SystemParameters.ClientAreaAnimation;
+    /// <summary>Animations activées (Paramètres › Général, selon Windows par défaut) : sinon le dock apparaît sans glisser, sans ressort ni onde.</summary>
+    private static bool Animations => Services.UiMotion.Enabled;
 
     /// <summary>Masquage automatique : se range sauf si la souris est dessus, sur la bande du bord, ou dans un menu ouvert.</summary>
     private void HideIfIdle()
@@ -110,7 +110,7 @@ public partial class DockWindow : Window
     public static readonly DependencyProperty PlateCornerRadiusProperty =
         DependencyProperty.Register(nameof(PlateCornerRadius), typeof(CornerRadius), typeof(DockWindow), new PropertyMetadata(new CornerRadius(20)));
 
-    /// <summary>Arrondi des icônes, proportionnel à leur taille (14 px pour 64 px, comme avant).</summary>
+    /// <summary>Arrondi des icônes : 14 px quelle que soit leur taille (le plateau : 20 px), comme depuis l'origine du dock.</summary>
     public CornerRadius IconCornerRadius
     {
         get => (CornerRadius)GetValue(IconCornerRadiusProperty);
@@ -182,9 +182,6 @@ public partial class DockWindow : Window
         _hideTimer.Interval = TimeSpan.FromSeconds(DockLayout.HideDelay(settings.DockHideDelay));
         OgCell.Visibility = Divider.Visibility = settings.DockShowOptiGame ? Visibility.Visible : Visibility.Collapsed;
         (IconWidth, IconHeight) = DockLayout.IconSize(settings.DockIconSize, settings.DockIconShape);
-        var radius = Math.Round(Math.Min(IconWidth, IconHeight) * 14 / 64);
-        IconCornerRadius = new CornerRadius(radius);
-        PlateCornerRadius = new CornerRadius(radius + 6);
         var (background, border) = DockLayout.PlateAlpha(settings.DockOpacity);
         var plateColor = (Color)FindResource("Color.DockPlate");
         var highlight = (Color)FindResource("Color.Highlight");

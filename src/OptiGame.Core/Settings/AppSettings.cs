@@ -10,6 +10,29 @@ public enum DockEdge
     Right,
 }
 
+/// <summary>Animations de l'interface (grossissement et glissement du dock, onde au clic, zoom des jaquettes).</summary>
+public enum UiAnimations
+{
+    /// <summary>Selon « Effets d'animation » de Windows (Accessibilité) : coupées si Windows les coupe.</summary>
+    FollowWindows,
+
+    /// <summary>Toujours : par ex. AtlasOS coupe les effets de Windows, mais l'utilisateur veut ceux d'OptiGame.</summary>
+    Always,
+
+    Never,
+}
+
+/// <summary>Décision : animer ou non, d'après le réglage d'OptiGame et celui de Windows.</summary>
+public static class Motion
+{
+    public static bool IsEnabled(UiAnimations mode, bool windowsAnimations) => mode switch
+    {
+        UiAnimations.Always => true,
+        UiAnimations.Never => false,
+        _ => windowsAnimations,
+    };
+}
+
 public enum DockIconShape
 {
     /// <summary>Jaquette recadrée au carré.</summary>
@@ -90,6 +113,9 @@ public sealed class AppSettings
     /// </summary>
     public bool LightDuringGames { get; set; } = true;
 
+    /// <summary>Animations de l'interface : selon Windows par défaut (accessibilité).</summary>
+    public UiAnimations UiAnimations { get; set; } = UiAnimations.FollowWindows;
+
     /// <summary>Ancien choix de vue du Diagnostic (Simple / Avancé) : plus utilisé depuis la page unique (1.5), gardé pour relire les anciens fichiers.</summary>
     public bool DiagnosticAdvanced { get; set; }
 
@@ -127,6 +153,7 @@ public sealed class AppSettings
         SteamKnownAppIds = SteamKnownAppIds is null ? null : [.. SteamKnownAppIds],
         AutoMeasureFps = AutoMeasureFps,
         LightDuringGames = LightDuringGames,
+        UiAnimations = UiAnimations,
         DiagnosticAdvanced = DiagnosticAdvanced,
         LibraryShowUninstalled = LibraryShowUninstalled,
         UpdateMode = UpdateMode,

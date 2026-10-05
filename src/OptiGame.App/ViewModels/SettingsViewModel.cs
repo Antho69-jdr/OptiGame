@@ -154,6 +154,20 @@ public sealed partial class SettingsViewModel : ObservableObject
         set { _settings.Update(s => s.AutoMeasureFps = value); OnPropertyChanged(); OnPropertyChanged(nameof(ShowsPresentMonWarning)); }
     }
 
+    public IReadOnlyList<UiAnimationsOption> UiAnimationsOptions { get; } =
+    [
+        new(UiAnimations.FollowWindows, "Selon Windows"),
+        new(UiAnimations.Always, "Toujours"),
+        new(UiAnimations.Never, "Jamais"),
+    ];
+
+    /// <summary>Animations de l'interface (dock, onde au clic, zoom des jaquettes) : appliqué tout de suite (UiMotion).</summary>
+    public UiAnimationsOption SelectedUiAnimations
+    {
+        get => UiAnimationsOptions.FirstOrDefault(o => o.Value == _settings.Get().UiAnimations) ?? UiAnimationsOptions[0];
+        set { if (value is not null) { _settings.Update(s => s.UiAnimations = value.Value); OnPropertyChanged(); } }
+    }
+
     public bool LightDuringGames
     {
         get => _settings.Get().LightDuringGames;
@@ -468,3 +482,6 @@ public sealed record DockGameEntry(Guid Id, string Name, bool CanMoveUp, bool Ca
 
 /// <summary>Jeu du dock déplacé depuis les Paramètres (Delta -1 = monté, +1 = descendu).</summary>
 public sealed record DockGameMove(Guid Id, int Delta);
+
+/// <summary>Choix « Animations » de Paramètres › Général.</summary>
+public sealed record UiAnimationsOption(UiAnimations Value, string Label);

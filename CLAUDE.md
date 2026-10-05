@@ -133,7 +133,7 @@ src/OptiGame.App/        WPF : composition DI, tray, vues/viewmodels, dialogue d
                          Replacé SEULEMENT si un réglage du dock change (Core/Dock/DockAppearance : settings.json est réécrit
                          pour la place de la fenêtre, etc.), puis aperçu de 2 s ; replacé aussi sur WM_DISPLAYCHANGE / DPICHANGED /
                          SETTINGCHANGE(SPI_SETWORKAREA). Jamais Application.MainWindow (propriétaire des dialogues). Bande du bord
-                         quittée sans toucher le dock = il se range. « Effets d'animation » de Windows coupés : ni glissement, ni
+                         quittée sans toucher le dock = il se range. Animations coupées (réglage « Animations », selon Windows par défaut ; AtlasOS les coupe) : ni glissement, ni
                          ressort, ni onde. Jaquette : « Lancement… » (12 s ou début de partie, clics ignorés), grisée si désinstallé
                          / disque absent (GameInstallation, hors thread UI). Clic droit jeu : Jouer, fiche, Déplacer ←/→, Retirer ;
                          clic droit plateau : Ouvrir OptiGame, Masquer automatiquement, Paramètres du dock…, Désactiver… Ordre au
