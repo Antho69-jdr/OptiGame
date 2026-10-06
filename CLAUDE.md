@@ -145,7 +145,8 @@ tools/OptiGame.DiagDump/        diagnostic en console (lecture seule), pour vér
 ```
 
 Pages Mesures et Paramètres (refonte, étape 7) : mesures automatiques ajoutées à la liste dès AutoCapture.CaptureAdded ;
-PresentMon se règle dans Paramètres › Mesures (MeasuresViewModel.ChoosePresentMon) ; Paramètres en Controls/SettingRow.
+PresentMon se règle dans Paramètres › Mesures (MeasuresViewModel.ChoosePresentMon) ; Paramètres en onglets (SettingsTab,
+sélecteur `Segment` comme la fiche du jeu), une carte `SettingsCard` de Controls/SettingRow par onglet.
 
 Données fictives pour tester l'UI : `$env:OPTIGAME_DATA_DIR='<dossier temporaire>'` redirige tout le dossier de
 données ; `DiagDump -- --import-capture <csv> <libellé> <date ISO>` y ajoute une capture (refusé sans la variable).

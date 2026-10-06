@@ -115,6 +115,8 @@ public sealed partial class MainViewModel : ObservableObject
     {
         if (item is null) return;
         if (ReferenceEquals(CurrentPage, item.Page) && ReferenceEquals(item.Page, Library)) Library.ReturnToGrid();
+        // Pastille « mise à jour disponible » sur Paramètres : elle mène à l'onglet qui en parle.
+        if (ReferenceEquals(item, SettingsItem) && Updates.HasPackage) Settings.SelectedTab = SettingsTab.Updates;
     }
 
     /// <summary>Ctrl+1 … Ctrl+5 : pages dans l'ordre de la barre latérale (Paramètres en dernier).</summary>

@@ -13,284 +13,294 @@
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
     </UserControl.Resources>
-    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="32,24,32,32">
-        <StackPanel MaxWidth="900" HorizontalAlignment="Left">
+    <!-- En-tête fixe (titre + onglets, comme la fiche du jeu : flèches pour passer de l'un à l'autre), un groupe par onglet -->
+    <DockPanel>
+        <StackPanel DockPanel.Dock="Top" Margin="32,24,32,0">
             <TextBlock Style="{StaticResource Text.PageTitle}" Text="Paramètres" />
-
-            <!-- ===== Général ===== -->
-            <TextBlock Style="{StaticResource Text.SettingsGroup}" Text="Général" />
-            <Border Style="{StaticResource SettingsCard}">
-                <StackPanel Margin="{StaticResource Margin.SettingsCardContent}">
-                    <controls:SettingRow Glyph="&#xE770;" Header="Démarrer avec Windows"
-                                         Description="OptiGame s'ouvre dans la zone de notification à l'ouverture de session, pour détecter vos jeux.">
-                        <CheckBox IsChecked="{Binding AutoStartEnabled}" IsEnabled="{Binding IsAutoStartBusy, Converter={StaticResource InverseBool}}"
-                                  Content="Activé" AutomationProperties.Name="Démarrer avec Windows" />
-                        <controls:SettingRow.Details>
-                            <StackPanel>
-                                <TextBlock Style="{StaticResource Text.Caption}"
-                                           Text="Une tâche planifiée « OptiGame » lance l'appli avec les droits administrateur, sans invite UAC : c'est nécessaire pour détecter vos jeux sans ouvrir OptiGame, et pour restaurer les réglages dès l'ouverture de session si OptiGame s'était arrêté pendant une partie. Décocher supprime la tâche." />
-                                <TextBlock Margin="0,6,0,0" Style="{StaticResource Text.Caption}">
-                                    <Run Text="Programme lancé : " /><Run Text="{Binding ExePath, Mode=OneWay}" FontFamily="{StaticResource Font.Mono}" />
-                                </TextBlock>
-                            </StackPanel>
-                        </controls:SettingRow.Details>
-                    </controls:SettingRow>
-                    <controls:SettingRow Glyph="&#xE7FC;" Header="Alléger OptiGame pendant les parties"
-                                         Description="Fenêtre et dock fermés tant que vous jouez ; la fenêtre revient à la fin si elle était ouverte.">
-                        <CheckBox IsChecked="{Binding LightDuringGames}" Content="Activé" AutomationProperties.Name="Alléger OptiGame pendant les parties" />
-                        <controls:SettingRow.Details>
-                            <TextBlock Style="{StaticResource Text.Caption}"
-                                       Text="Leur mémoire est libérée tant que vous jouez. OptiGame continue depuis la zone de notification : réglages de partie appliqués puis restaurés, mesure automatique. Toujours, même décoché : jaquettes libérées, et le travail de fond (lecture des bibliothèques, jaquettes, notes) attend la fin de la partie." />
-                        </controls:SettingRow.Details>
-                    </controls:SettingRow>
-                    <controls:SettingRow Glyph="&#xE945;" Header="Animations"
-                                         Description="Grossissement et glissement du dock, onde au clic, zoom des jaquettes au survol.">
-                        <ComboBox Width="200" ItemsSource="{Binding UiAnimationsOptions}" SelectedItem="{Binding SelectedUiAnimations}" DisplayMemberPath="Label"
-                                  AutomationProperties.Name="Animations de l'interface" />
-                        <controls:SettingRow.Details>
-                            <TextBlock Style="{StaticResource Text.Caption}"
-                                       Text="« Selon Windows » suit « Effets d'animation » (Paramètres de Windows › Accessibilité › Effets visuels), que certaines versions modifiées de Windows (AtlasOS…) désactivent. « Toujours » anime OptiGame quel que soit ce réglage. Le zoom des jaquettes change au prochain affichage de Mes jeux." />
-                        </controls:SettingRow.Details>
-                    </controls:SettingRow>
-                </StackPanel>
+            <Border Margin="0,16,0,0" HorizontalAlignment="Left" Padding="3" CornerRadius="{StaticResource Radius.Control}"
+                    Background="{StaticResource Brush.Control}">
+                <WrapPanel>
+                    <RadioButton Style="{StaticResource Segment}" GroupName="SettingsTabs" IsChecked="{Binding IsGeneralTab}" Content="Général" />
+                    <RadioButton Style="{StaticResource Segment}" GroupName="SettingsTabs" IsChecked="{Binding IsGamesTab}" Content="Mes jeux" />
+                    <RadioButton Style="{StaticResource Segment}" GroupName="SettingsTabs" IsChecked="{Binding IsDockTab}" Content="Dock" />
+                    <RadioButton Style="{StaticResource Segment}" GroupName="SettingsTabs" IsChecked="{Binding IsMeasuresTab}" Content="Mesures" />
+                    <RadioButton Style="{StaticResource Segment}" GroupName="SettingsTabs" IsChecked="{Binding IsUpdatesTab}" Content="Mises à jour" />
+                    <RadioButton Style="{StaticResource Segment}" GroupName="SettingsTabs" IsChecked="{Binding IsDataTab}" Content="Données" />
+                </WrapPanel>
             </Border>
+        </StackPanel>
+        <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="32,16,32,32">
+            <StackPanel MaxWidth="900" HorizontalAlignment="Left">
 
-            <!-- ===== Mes jeux ===== -->
-            <TextBlock Style="{StaticResource Text.SettingsGroup}" Text="Mes jeux" />
-            <Border Style="{StaticResource SettingsCard}">
-                <StackPanel Margin="{StaticResource Margin.SettingsCardContent}">
-                    <controls:SettingRow Glyph="&#xE8B7;" Header="Dossiers de jeux"
-                                         Description="Utilisés par « Détecter les jeux installés… », en plus de Steam, Epic Games et GOG. Chaque sous-dossier est un jeu.">
-                        <Button Style="{StaticResource Button.Secondary}" Content="Ajouter un dossier…" Command="{Binding AddGameFolderCommand}" />
-                    </controls:SettingRow>
-                    <Border Style="{StaticResource SettingsCard.Content}">
-                        <ItemsControl ItemsSource="{Binding GameFolders}" Focusable="False" AutomationProperties.Name="Dossiers de jeux">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate>
-                                    <Border Style="{StaticResource SettingsCard.ListItem}">
-                                        <DockPanel>
-                                            <controls:IconButton DockPanel.Dock="Right" Style="{StaticResource Button.Icon}" Glyph="&#xE711;" IsLabelVisible="False"
-                                                                 Label="{Binding StringFormat='Retirer le dossier {0}'}" ToolTip="Retirer ce dossier"
-                                                                 Command="{Binding DataContext.RemoveGameFolderCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                                 CommandParameter="{Binding}" />
-                                            <TextBlock VerticalAlignment="Center" Style="{StaticResource Text.Body}" FontFamily="{StaticResource Font.Mono}" Text="{Binding}" />
-                                        </DockPanel>
-                                    </Border>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                    </Border>
-
-                    <!-- Jaquettes IGDB -->
-                    <controls:SettingRow Glyph="&#xEB9F;" Header="Jaquettes (IGDB)"
-                                         Description="Les jaquettes viennent d'IGDB (Twitch). Seul le nom de vos jeux est envoyé ; les images restent en cache sur ce PC.">
-                        <controls:IconButton Style="{StaticResource Button.Secondary}" Glyph="&#xE8A7;" Label="Ouvrir la console Twitch" Command="{Binding OpenTwitchConsoleCommand}" />
-                    </controls:SettingRow>
-                    <Border Style="{StaticResource SettingsCard.Content}">
-                        <StackPanel>
-                            <!-- Mode d'emploi : déplié tant que les identifiants ne sont pas enregistrés -->
-                            <Expander Style="{StaticResource Expander.Disclosure}" Header="Comment obtenir ces identifiants" IsExpanded="{Binding IsIgdbConfigured, Mode=OneTime, Converter={StaticResource InverseBool}}">
-                                <StackPanel Margin="0,4,0,8">
-                                    <TextBlock Style="{StaticResource Text.Secondary}" LineHeight="22">
-                                        <Run Text="Il faut une application développeur Twitch (gratuite, usage personnel) :" /><LineBreak />
-                                        <Run Text="1. Ouvrez la console Twitch et connectez-vous (la double authentification doit être activée sur le compte)." /><LineBreak />
-                                        <Run Text="2. « Register Your Application » : un nom (ex. OptiGame), l'adresse de redirection ci-dessous, catégorie Application Integration, type Confidential." /><LineBreak />
-                                        <Run Text="3. Dans la liste des applications, « Manage » : copiez le Client ID, puis « New Secret » juste en dessous, et collez-les ici." /><LineBreak />
-                                        <Run Text="Pas de bouton « New Secret » ? L'application est de type « Public » : passez-la en « Confidential », ou recréez-la avec ce type." />
+                <!-- ===== Général ===== -->
+                <Border Style="{StaticResource SettingsCard}" Visibility="{Binding IsGeneralTab, Converter={StaticResource BoolToVisibility}}">
+                    <StackPanel Margin="{StaticResource Margin.SettingsCardContent}">
+                        <controls:SettingRow Glyph="&#xE770;" Header="Démarrer avec Windows"
+                                             Description="OptiGame s'ouvre dans la zone de notification à l'ouverture de session, pour détecter vos jeux.">
+                            <CheckBox IsChecked="{Binding AutoStartEnabled}" IsEnabled="{Binding IsAutoStartBusy, Converter={StaticResource InverseBool}}"
+                                      Content="Activé" AutomationProperties.Name="Démarrer avec Windows" />
+                            <controls:SettingRow.Details>
+                                <StackPanel>
+                                    <TextBlock Style="{StaticResource Text.Caption}"
+                                               Text="Une tâche planifiée « OptiGame » lance l'appli avec les droits administrateur, sans invite UAC : c'est nécessaire pour détecter vos jeux sans ouvrir OptiGame, et pour restaurer les réglages dès l'ouverture de session si OptiGame s'était arrêté pendant une partie. Décocher supprime la tâche." />
+                                    <TextBlock Margin="0,6,0,0" Style="{StaticResource Text.Caption}">
+                                        <Run Text="Programme lancé : " /><Run Text="{Binding ExePath, Mode=OneWay}" FontFamily="{StaticResource Font.Mono}" />
                                     </TextBlock>
-                                    <StackPanel Margin="0,8,0,0" Orientation="Horizontal">
-                                        <TextBlock Margin="0,0,8,0" VerticalAlignment="Center" Style="{StaticResource Text.Mono}" Foreground="{StaticResource Brush.Text}" Text="http://localhost" />
-                                        <controls:IconButton Style="{StaticResource Button.SecondarySmall}" Glyph="&#xE8C8;" Label="Copier l'adresse" Command="{Binding CopyRedirectUrlCommand}" />
-                                    </StackPanel>
                                 </StackPanel>
-                            </Expander>
-                            <Label Margin="0,8,0,0" Style="{StaticResource Text.FieldLabel}" Content="_Client ID" Target="{Binding ElementName=ClientIdBox}" />
-                            <TextBox x:Name="ClientIdBox" Text="{Binding IgdbClientId, UpdateSourceTrigger=PropertyChanged}" FontFamily="{StaticResource Font.Mono}"
-                                     AutomationProperties.Name="Client ID" />
-                            <Label Margin="0,12,0,0" Style="{StaticResource Text.FieldLabel}" Content="Client _Secret" Target="{Binding ElementName=SecretBox}" />
-                            <PasswordBox x:Name="SecretBox" PasswordChanged="OnSecretChanged" AutomationProperties.Name="Client Secret" />
-                            <TextBlock Margin="0,6,0,0" Style="{StaticResource Text.Caption}"
-                                       Text="Un secret est enregistré (chiffré par Windows pour votre compte). Laissez le champ vide pour le garder."
-                                       Visibility="{Binding HasIgdbSecret, Converter={StaticResource BoolToVisibility}}" />
-                            <WrapPanel Margin="0,12,0,0">
-                                <Button Margin="0,0,8,0" Style="{StaticResource Button.Secondary}" Content="Enregistrer et tester" Command="{Binding TestIgdbCommand}" />
-                                <Button Style="{StaticResource Button.Danger}" Content="Supprimer les identifiants…" Command="{Binding ForgetIgdbCommand}" />
-                            </WrapPanel>
-                            <controls:InfoBar Margin="0,12,0,0" Severity="{Binding IgdbStatusSeverity}" Message="{Binding IgdbStatus}"
-                                              Visibility="{Binding HasIgdbStatus, Converter={StaticResource BoolToVisibility}}" />
-                        </StackPanel>
-                    </Border>
-                </StackPanel>
-            </Border>
-
-            <!-- ===== Dock ===== -->
-            <TextBlock Style="{StaticResource Text.SettingsGroup}" Text="Dock" />
-            <Border Style="{StaticResource SettingsCard}">
-                <StackPanel Margin="{StaticResource Margin.SettingsCardContent}">
-                    <controls:SettingRow Glyph="&#xE8A9;" Header="Afficher le dock des jeux épinglés"
-                                         Description="Clic pour jouer, clic droit pour les options, glisser pour réordonner. Masqué pendant les parties et le plein écran.">
-                        <CheckBox IsChecked="{Binding DockEnabled}" Content="Activé" AutomationProperties.Name="Afficher le dock des jeux épinglés" />
-                        <controls:SettingRow.Details>
-                            <TextBlock Style="{StaticResource Text.Caption}"
-                                       Text="Épinglez des jeux depuis Mes jeux (menu « … » de la fiche, ou clic droit sur une jaquette). OptiGame fonctionnant en administrateur, Windows interdit d'y glisser un fichier depuis l'Explorateur : l'ajout de jeux se fait depuis Mes jeux." />
-                        </controls:SettingRow.Details>
-                    </controls:SettingRow>
-                    <StackPanel IsEnabled="{Binding DockEnabled}">
-                        <controls:SettingRow IsSubSetting="True" Header="Position">
-                            <ComboBox Width="200" ItemsSource="{Binding DockEdgeOptions}" SelectedItem="{Binding SelectedDockEdge}" DisplayMemberPath="Label"
-                                      AutomationProperties.Name="Position du dock" />
+                            </controls:SettingRow.Details>
                         </controls:SettingRow>
-                        <controls:SettingRow IsSubSetting="True" Header="Format des icônes">
-                            <ComboBox Width="220" ItemsSource="{Binding DockShapeOptions}" SelectedItem="{Binding SelectedDockShape}" DisplayMemberPath="Label"
-                                      AutomationProperties.Name="Format des icônes du dock" />
+                        <controls:SettingRow Glyph="&#xE7FC;" Header="Alléger OptiGame pendant les parties"
+                                             Description="Fenêtre et dock fermés tant que vous jouez ; la fenêtre revient à la fin si elle était ouverte.">
+                            <CheckBox IsChecked="{Binding LightDuringGames}" Content="Activé" AutomationProperties.Name="Alléger OptiGame pendant les parties" />
+                            <controls:SettingRow.Details>
+                                <TextBlock Style="{StaticResource Text.Caption}"
+                                           Text="Leur mémoire est libérée tant que vous jouez. OptiGame continue depuis la zone de notification : réglages de partie appliqués puis restaurés, mesure automatique. Toujours, même décoché : jaquettes libérées, et le travail de fond (lecture des bibliothèques, jaquettes, notes) attend la fin de la partie." />
+                            </controls:SettingRow.Details>
                         </controls:SettingRow>
-                        <!-- Curseurs : l'enregistrement attend que le curseur soit immobile (pas une écriture disque par pixel) -->
-                        <controls:SettingRow IsSubSetting="True" Header="Taille des icônes" Description="{Binding Value, ElementName=SizeSlider, StringFormat='{}{0:0} px'}">
-                            <Slider x:Name="SizeSlider" Width="260" Minimum="{Binding MinDockIconSize, Mode=OneTime}" Maximum="{Binding MaxDockIconSize, Mode=OneTime}"
-                                    TickFrequency="4" IsSnapToTickEnabled="True" SmallChange="4" LargeChange="16"
-                                    Value="{Binding DockIconSize, Delay=250}" AutomationProperties.Name="Taille des icônes du dock" />
-                        </controls:SettingRow>
-                        <controls:SettingRow IsSubSetting="True" Header="Opacité du fond" Description="{Binding Value, ElementName=OpacitySlider, StringFormat='{}{0:0} %'}">
-                            <Slider x:Name="OpacitySlider" Width="260" Minimum="0" Maximum="100" TickFrequency="1" IsSnapToTickEnabled="True" SmallChange="1" LargeChange="10"
-                                    Value="{Binding DockOpacityPercent, Delay=250}" AutomationProperties.Name="Opacité du fond du dock" />
-                        </controls:SettingRow>
-                        <controls:SettingRow IsSubSetting="True" Header="Masquer automatiquement"
-                                             Description="Approchez la souris du bord de l'écran pour l'afficher. Sinon, il reste collé au bureau, derrière vos fenêtres.">
-                            <CheckBox IsChecked="{Binding DockAutoHide}" Content="Activé" AutomationProperties.Name="Masquer automatiquement le dock" />
-                        </controls:SettingRow>
-                        <controls:SettingRow IsSubSetting="True" Header="Se masque après"
-                                             Description="{Binding Value, ElementName=HideDelaySlider, StringFormat='{}{0:0.0} s', ConverterCulture=fr-FR}"
-                                             IsEnabled="{Binding DockAutoHideEnabled}">
-                            <Slider x:Name="HideDelaySlider" Width="260" Minimum="{Binding MinDockHideDelay, Mode=OneTime}" Maximum="{Binding MaxDockHideDelay, Mode=OneTime}"
-                                    TickFrequency="0.1" IsSnapToTickEnabled="True" SmallChange="0.1" LargeChange="0.5"
-                                    Value="{Binding DockHideDelay, Delay=250}" AutomationProperties.Name="Délai avant le masquage du dock" />
-                        </controls:SettingRow>
-                        <controls:SettingRow IsSubSetting="True" Header="Nom du jeu au survol">
-                            <CheckBox IsChecked="{Binding DockShowNames}" Content="Activé" AutomationProperties.Name="Afficher le nom du jeu au survol" />
-                        </controls:SettingRow>
-                        <controls:SettingRow IsSubSetting="True" Header="Raccourci vers OptiGame au bout du dock">
-                            <CheckBox IsChecked="{Binding DockShowOptiGame}" Content="Activé" AutomationProperties.Name="Raccourci vers OptiGame au bout du dock" />
+                        <controls:SettingRow Glyph="&#xE945;" Header="Animations"
+                                             Description="Grossissement et glissement du dock, onde au clic, zoom des jaquettes au survol.">
+                            <ComboBox Width="200" ItemsSource="{Binding UiAnimationsOptions}" SelectedItem="{Binding SelectedUiAnimations}" DisplayMemberPath="Label"
+                                      AutomationProperties.Name="Animations de l'interface" />
+                            <controls:SettingRow.Details>
+                                <TextBlock Style="{StaticResource Text.Caption}"
+                                           Text="« Selon Windows » suit « Effets d'animation » (Paramètres de Windows › Accessibilité › Effets visuels), que certaines versions modifiées de Windows (AtlasOS…) désactivent. « Toujours » anime OptiGame quel que soit ce réglage. Le zoom des jaquettes change au prochain affichage de Mes jeux." />
+                            </controls:SettingRow.Details>
                         </controls:SettingRow>
                     </StackPanel>
-                    <!-- Ordre du dock au clavier (le dock, sans focus, ne se réordonne qu'à la souris). Modifiable même dock désactivé. -->
-                    <controls:SettingRow Glyph="&#xE8FD;" Header="Jeux du dock"
-                                         Description="Dans l'ordre du dock : le premier est à gauche (ou en haut). Aussi par glisser-déposer dans le dock." />
-                    <Border Style="{StaticResource SettingsCard.Content}">
-                        <StackPanel>
-                            <TextBlock Style="{StaticResource Text.Caption}" Visibility="{Binding HasDockGames, Converter={StaticResource InverseBoolToVisibility}}"
-                                       Text="Aucun jeu épinglé. Épinglez-en depuis Mes jeux (menu « … » de la fiche, ou clic droit sur une jaquette)." />
-                            <ItemsControl x:Name="DockGamesList" ItemsSource="{Binding DockGames}" Focusable="False"
-                                          AutomationProperties.Name="Jeux du dock, dans l'ordre">
+                </Border>
+
+                <!-- ===== Mes jeux ===== -->
+                <Border Style="{StaticResource SettingsCard}" Visibility="{Binding IsGamesTab, Converter={StaticResource BoolToVisibility}}">
+                    <StackPanel Margin="{StaticResource Margin.SettingsCardContent}">
+                        <controls:SettingRow Glyph="&#xE8B7;" Header="Dossiers de jeux"
+                                             Description="Utilisés par « Détecter les jeux installés… », en plus de Steam, Epic Games et GOG. Chaque sous-dossier est un jeu.">
+                            <Button Style="{StaticResource Button.Secondary}" Content="Ajouter un dossier…" Command="{Binding AddGameFolderCommand}" />
+                        </controls:SettingRow>
+                        <Border Style="{StaticResource SettingsCard.Content}">
+                            <ItemsControl ItemsSource="{Binding GameFolders}" Focusable="False" AutomationProperties.Name="Dossiers de jeux">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
                                         <Border Style="{StaticResource SettingsCard.ListItem}">
                                             <DockPanel>
-                                                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
-                                                    <controls:IconButton x:Name="UpButton" Style="{StaticResource Button.Icon}" Glyph="&#xE70E;" IsLabelVisible="False"
-                                                                         Label="{Binding Name, StringFormat='Monter {0}'}" ToolTip="Monter" IsEnabled="{Binding CanMoveUp}"
-                                                                         Command="{Binding DataContext.MoveDockGameUpCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                                         CommandParameter="{Binding}" />
-                                                    <controls:IconButton x:Name="DownButton" Style="{StaticResource Button.Icon}" Glyph="&#xE70D;" IsLabelVisible="False"
-                                                                         Label="{Binding Name, StringFormat='Descendre {0}'}" ToolTip="Descendre" IsEnabled="{Binding CanMoveDown}"
-                                                                         Command="{Binding DataContext.MoveDockGameDownCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                                         CommandParameter="{Binding}" />
-                                                    <controls:IconButton Style="{StaticResource Button.Icon}" Glyph="&#xE711;" IsLabelVisible="False"
-                                                                         Label="{Binding Name, StringFormat='Retirer {0} du dock'}" ToolTip="Retirer du dock"
-                                                                         Command="{Binding DataContext.UnpinDockGameCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                                         CommandParameter="{Binding}" />
-                                                </StackPanel>
-                                                <TextBlock VerticalAlignment="Center" Style="{StaticResource Text.Body}" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap"
-                                                           Text="{Binding Name}" />
+                                                <controls:IconButton DockPanel.Dock="Right" Style="{StaticResource Button.Icon}" Glyph="&#xE711;" IsLabelVisible="False"
+                                                                     Label="{Binding StringFormat='Retirer le dossier {0}'}" ToolTip="Retirer ce dossier"
+                                                                     Command="{Binding DataContext.RemoveGameFolderCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                                     CommandParameter="{Binding}" />
+                                                <TextBlock VerticalAlignment="Center" Style="{StaticResource Text.Body}" FontFamily="{StaticResource Font.Mono}" Text="{Binding}" />
                                             </DockPanel>
                                         </Border>
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
+                        </Border>
+
+                        <!-- Jaquettes IGDB -->
+                        <controls:SettingRow Glyph="&#xEB9F;" Header="Jaquettes (IGDB)"
+                                             Description="Les jaquettes viennent d'IGDB (Twitch). Seul le nom de vos jeux est envoyé ; les images restent en cache sur ce PC.">
+                            <controls:IconButton Style="{StaticResource Button.Secondary}" Glyph="&#xE8A7;" Label="Ouvrir la console Twitch" Command="{Binding OpenTwitchConsoleCommand}" />
+                        </controls:SettingRow>
+                        <Border Style="{StaticResource SettingsCard.Content}">
+                            <StackPanel>
+                                <!-- Mode d'emploi : déplié tant que les identifiants ne sont pas enregistrés -->
+                                <Expander Style="{StaticResource Expander.Disclosure}" Header="Comment obtenir ces identifiants" IsExpanded="{Binding IsIgdbConfigured, Mode=OneTime, Converter={StaticResource InverseBool}}">
+                                    <StackPanel Margin="0,4,0,8">
+                                        <TextBlock Style="{StaticResource Text.Secondary}" LineHeight="22">
+                                            <Run Text="Il faut une application développeur Twitch (gratuite, usage personnel) :" /><LineBreak />
+                                            <Run Text="1. Ouvrez la console Twitch et connectez-vous (la double authentification doit être activée sur le compte)." /><LineBreak />
+                                            <Run Text="2. « Register Your Application » : un nom (ex. OptiGame), l'adresse de redirection ci-dessous, catégorie Application Integration, type Confidential." /><LineBreak />
+                                            <Run Text="3. Dans la liste des applications, « Manage » : copiez le Client ID, puis « New Secret » juste en dessous, et collez-les ici." /><LineBreak />
+                                            <Run Text="Pas de bouton « New Secret » ? L'application est de type « Public » : passez-la en « Confidential », ou recréez-la avec ce type." />
+                                        </TextBlock>
+                                        <StackPanel Margin="0,8,0,0" Orientation="Horizontal">
+                                            <TextBlock Margin="0,0,8,0" VerticalAlignment="Center" Style="{StaticResource Text.Mono}" Foreground="{StaticResource Brush.Text}" Text="http://localhost" />
+                                            <controls:IconButton Style="{StaticResource Button.SecondarySmall}" Glyph="&#xE8C8;" Label="Copier l'adresse" Command="{Binding CopyRedirectUrlCommand}" />
+                                        </StackPanel>
+                                    </StackPanel>
+                                </Expander>
+                                <Label Margin="0,8,0,0" Style="{StaticResource Text.FieldLabel}" Content="_Client ID" Target="{Binding ElementName=ClientIdBox}" />
+                                <TextBox x:Name="ClientIdBox" Text="{Binding IgdbClientId, UpdateSourceTrigger=PropertyChanged}" FontFamily="{StaticResource Font.Mono}"
+                                         AutomationProperties.Name="Client ID" />
+                                <Label Margin="0,12,0,0" Style="{StaticResource Text.FieldLabel}" Content="Client _Secret" Target="{Binding ElementName=SecretBox}" />
+                                <PasswordBox x:Name="SecretBox" PasswordChanged="OnSecretChanged" AutomationProperties.Name="Client Secret" />
+                                <TextBlock Margin="0,6,0,0" Style="{StaticResource Text.Caption}"
+                                           Text="Un secret est enregistré (chiffré par Windows pour votre compte). Laissez le champ vide pour le garder."
+                                           Visibility="{Binding HasIgdbSecret, Converter={StaticResource BoolToVisibility}}" />
+                                <WrapPanel Margin="0,12,0,0">
+                                    <Button Margin="0,0,8,0" Style="{StaticResource Button.Secondary}" Content="Enregistrer et tester" Command="{Binding TestIgdbCommand}" />
+                                    <Button Style="{StaticResource Button.Danger}" Content="Supprimer les identifiants…" Command="{Binding ForgetIgdbCommand}" />
+                                </WrapPanel>
+                                <controls:InfoBar Margin="0,12,0,0" Severity="{Binding IgdbStatusSeverity}" Message="{Binding IgdbStatus}"
+                                                  Visibility="{Binding HasIgdbStatus, Converter={StaticResource BoolToVisibility}}" />
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </Border>
+
+                <!-- ===== Dock ===== -->
+                <Border Style="{StaticResource SettingsCard}" Visibility="{Binding IsDockTab, Converter={StaticResource BoolToVisibility}}">
+                    <StackPanel Margin="{StaticResource Margin.SettingsCardContent}">
+                        <controls:SettingRow Glyph="&#xE8A9;" Header="Afficher le dock des jeux épinglés"
+                                             Description="Clic pour jouer, clic droit pour les options, glisser pour réordonner. Masqué pendant les parties et le plein écran.">
+                            <CheckBox IsChecked="{Binding DockEnabled}" Content="Activé" AutomationProperties.Name="Afficher le dock des jeux épinglés" />
+                            <controls:SettingRow.Details>
+                                <TextBlock Style="{StaticResource Text.Caption}"
+                                           Text="Épinglez des jeux depuis Mes jeux (menu « … » de la fiche, ou clic droit sur une jaquette). OptiGame fonctionnant en administrateur, Windows interdit d'y glisser un fichier depuis l'Explorateur : l'ajout de jeux se fait depuis Mes jeux." />
+                            </controls:SettingRow.Details>
+                        </controls:SettingRow>
+                        <StackPanel IsEnabled="{Binding DockEnabled}">
+                            <controls:SettingRow IsSubSetting="True" Header="Position">
+                                <ComboBox Width="200" ItemsSource="{Binding DockEdgeOptions}" SelectedItem="{Binding SelectedDockEdge}" DisplayMemberPath="Label"
+                                          AutomationProperties.Name="Position du dock" />
+                            </controls:SettingRow>
+                            <controls:SettingRow IsSubSetting="True" Header="Format des icônes">
+                                <ComboBox Width="220" ItemsSource="{Binding DockShapeOptions}" SelectedItem="{Binding SelectedDockShape}" DisplayMemberPath="Label"
+                                          AutomationProperties.Name="Format des icônes du dock" />
+                            </controls:SettingRow>
+                            <!-- Curseurs : l'enregistrement attend que le curseur soit immobile (pas une écriture disque par pixel) -->
+                            <controls:SettingRow IsSubSetting="True" Header="Taille des icônes" Description="{Binding Value, ElementName=SizeSlider, StringFormat='{}{0:0} px'}">
+                                <Slider x:Name="SizeSlider" Width="260" Minimum="{Binding MinDockIconSize, Mode=OneTime}" Maximum="{Binding MaxDockIconSize, Mode=OneTime}"
+                                        TickFrequency="4" IsSnapToTickEnabled="True" SmallChange="4" LargeChange="16"
+                                        Value="{Binding DockIconSize, Delay=250}" AutomationProperties.Name="Taille des icônes du dock" />
+                            </controls:SettingRow>
+                            <controls:SettingRow IsSubSetting="True" Header="Opacité du fond" Description="{Binding Value, ElementName=OpacitySlider, StringFormat='{}{0:0} %'}">
+                                <Slider x:Name="OpacitySlider" Width="260" Minimum="0" Maximum="100" TickFrequency="1" IsSnapToTickEnabled="True" SmallChange="1" LargeChange="10"
+                                        Value="{Binding DockOpacityPercent, Delay=250}" AutomationProperties.Name="Opacité du fond du dock" />
+                            </controls:SettingRow>
+                            <controls:SettingRow IsSubSetting="True" Header="Masquer automatiquement"
+                                                 Description="Approchez la souris du bord de l'écran pour l'afficher. Sinon, il reste collé au bureau, derrière vos fenêtres.">
+                                <CheckBox IsChecked="{Binding DockAutoHide}" Content="Activé" AutomationProperties.Name="Masquer automatiquement le dock" />
+                            </controls:SettingRow>
+                            <controls:SettingRow IsSubSetting="True" Header="Se masque après"
+                                                 Description="{Binding Value, ElementName=HideDelaySlider, StringFormat='{}{0:0.0} s', ConverterCulture=fr-FR}"
+                                                 IsEnabled="{Binding DockAutoHideEnabled}">
+                                <Slider x:Name="HideDelaySlider" Width="260" Minimum="{Binding MinDockHideDelay, Mode=OneTime}" Maximum="{Binding MaxDockHideDelay, Mode=OneTime}"
+                                        TickFrequency="0.1" IsSnapToTickEnabled="True" SmallChange="0.1" LargeChange="0.5"
+                                        Value="{Binding DockHideDelay, Delay=250}" AutomationProperties.Name="Délai avant le masquage du dock" />
+                            </controls:SettingRow>
+                            <controls:SettingRow IsSubSetting="True" Header="Nom du jeu au survol">
+                                <CheckBox IsChecked="{Binding DockShowNames}" Content="Activé" AutomationProperties.Name="Afficher le nom du jeu au survol" />
+                            </controls:SettingRow>
+                            <controls:SettingRow IsSubSetting="True" Header="Raccourci vers OptiGame au bout du dock">
+                                <CheckBox IsChecked="{Binding DockShowOptiGame}" Content="Activé" AutomationProperties.Name="Raccourci vers OptiGame au bout du dock" />
+                            </controls:SettingRow>
                         </StackPanel>
-                    </Border>
-                </StackPanel>
-            </Border>
+                        <!-- Ordre du dock au clavier (le dock, sans focus, ne se réordonne qu'à la souris). Modifiable même dock désactivé. -->
+                        <controls:SettingRow Glyph="&#xE8FD;" Header="Jeux du dock"
+                                             Description="Dans l'ordre du dock : le premier est à gauche (ou en haut). Aussi par glisser-déposer dans le dock." />
+                        <Border Style="{StaticResource SettingsCard.Content}">
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource Text.Caption}" Visibility="{Binding HasDockGames, Converter={StaticResource InverseBoolToVisibility}}"
+                                           Text="Aucun jeu épinglé. Épinglez-en depuis Mes jeux (menu « … » de la fiche, ou clic droit sur une jaquette)." />
+                                <ItemsControl x:Name="DockGamesList" ItemsSource="{Binding DockGames}" Focusable="False"
+                                              AutomationProperties.Name="Jeux du dock, dans l'ordre">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border Style="{StaticResource SettingsCard.ListItem}">
+                                                <DockPanel>
+                                                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                                                        <controls:IconButton x:Name="UpButton" Style="{StaticResource Button.Icon}" Glyph="&#xE70E;" IsLabelVisible="False"
+                                                                             Label="{Binding Name, StringFormat='Monter {0}'}" ToolTip="Monter" IsEnabled="{Binding CanMoveUp}"
+                                                                             Command="{Binding DataContext.MoveDockGameUpCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                                             CommandParameter="{Binding}" />
+                                                        <controls:IconButton x:Name="DownButton" Style="{StaticResource Button.Icon}" Glyph="&#xE70D;" IsLabelVisible="False"
+                                                                             Label="{Binding Name, StringFormat='Descendre {0}'}" ToolTip="Descendre" IsEnabled="{Binding CanMoveDown}"
+                                                                             Command="{Binding DataContext.MoveDockGameDownCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                                             CommandParameter="{Binding}" />
+                                                        <controls:IconButton Style="{StaticResource Button.Icon}" Glyph="&#xE711;" IsLabelVisible="False"
+                                                                             Label="{Binding Name, StringFormat='Retirer {0} du dock'}" ToolTip="Retirer du dock"
+                                                                             Command="{Binding DataContext.UnpinDockGameCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                                             CommandParameter="{Binding}" />
+                                                    </StackPanel>
+                                                    <TextBlock VerticalAlignment="Center" Style="{StaticResource Text.Body}" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap"
+                                                               Text="{Binding Name}" />
+                                                </DockPanel>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </Border>
 
-            <!-- ===== Mesures ===== -->
-            <TextBlock Style="{StaticResource Text.SettingsGroup}" Text="Mesures" />
-            <Border Style="{StaticResource SettingsCard}">
-                <StackPanel Margin="{StaticResource Margin.SettingsCardContent}">
-                    <controls:SettingRow Glyph="&#xE9D2;" Header="Mesurer automatiquement les FPS pendant les parties"
-                                         Description="1 minute après 4 minutes de jeu : la note mesurée des jeux, plus fiable que l'estimation.">
-                        <CheckBox IsChecked="{Binding AutoMeasureFps}" Content="Activé" AutomationProperties.Name="Mesurer automatiquement les FPS pendant les parties" />
-                        <controls:SettingRow.Details>
-                            <TextBlock Style="{StaticResource Text.Caption}"
-                                       Text="Une seule mesure par partie, avec PresentMon, une fois les menus et chargements passés. Les 5 dernières mesures de chaque jeu sont gardées (page Mesures)." />
-                        </controls:SettingRow.Details>
-                    </controls:SettingRow>
-                    <Border Style="{StaticResource SettingsCard.Content}" Visibility="{Binding ShowsPresentMonWarning, Converter={StaticResource BoolToVisibility}}">
-                        <controls:InfoBar Severity="Warning" Title="PresentMon est introuvable" Message="La mesure automatique ne peut pas se faire sans lui : indiquez-le ci-dessous." />
-                    </Border>
-                    <controls:SettingRow Glyph="&#xE7B8;" Header="PresentMon" Description="{Binding Measures.PresentMonPath, TargetNullValue='Introuvable : version console d''Intel (PresentMon-x.y.z-x64.exe).'}">
-                        <Button Style="{StaticResource Button.Secondary}" Content="Parcourir…" Command="{Binding Measures.ChoosePresentMonCommand}"
-                                AutomationProperties.Name="Choisir PresentMon…" />
-                    </controls:SettingRow>
-                </StackPanel>
-            </Border>
+                <!-- ===== Mesures ===== -->
+                <Border Style="{StaticResource SettingsCard}" Visibility="{Binding IsMeasuresTab, Converter={StaticResource BoolToVisibility}}">
+                    <StackPanel Margin="{StaticResource Margin.SettingsCardContent}">
+                        <controls:SettingRow Glyph="&#xE9D2;" Header="Mesurer automatiquement les FPS pendant les parties"
+                                             Description="1 minute après 4 minutes de jeu : la note mesurée des jeux, plus fiable que l'estimation.">
+                            <CheckBox IsChecked="{Binding AutoMeasureFps}" Content="Activé" AutomationProperties.Name="Mesurer automatiquement les FPS pendant les parties" />
+                            <controls:SettingRow.Details>
+                                <TextBlock Style="{StaticResource Text.Caption}"
+                                           Text="Une seule mesure par partie, avec PresentMon, une fois les menus et chargements passés. Les 5 dernières mesures de chaque jeu sont gardées (page Mesures)." />
+                            </controls:SettingRow.Details>
+                        </controls:SettingRow>
+                        <Border Style="{StaticResource SettingsCard.Content}" Visibility="{Binding ShowsPresentMonWarning, Converter={StaticResource BoolToVisibility}}">
+                            <controls:InfoBar Severity="Warning" Title="PresentMon est introuvable" Message="La mesure automatique ne peut pas se faire sans lui : indiquez-le ci-dessous." />
+                        </Border>
+                        <controls:SettingRow Glyph="&#xE7B8;" Header="PresentMon" Description="{Binding Measures.PresentMonPath, TargetNullValue='Introuvable : version console d''Intel (PresentMon-x.y.z-x64.exe).'}">
+                            <Button Style="{StaticResource Button.Secondary}" Content="Parcourir…" Command="{Binding Measures.ChoosePresentMonCommand}"
+                                    AutomationProperties.Name="Choisir PresentMon…" />
+                        </controls:SettingRow>
+                    </StackPanel>
+                </Border>
 
-            <!-- ===== Mises à jour et à propos ===== -->
-            <TextBlock Style="{StaticResource Text.SettingsGroup}" Text="Mises à jour et à propos" />
-            <Border Style="{StaticResource SettingsCard}">
-                <StackPanel Margin="{StaticResource Margin.SettingsCardContent}">
-                    <controls:SettingRow Glyph="&#xE896;" Header="Mises à jour d'OptiGame"
-                                         Description="{Binding Updates.CurrentText, StringFormat='Version installée : {0}'}">
-                        <ComboBox Width="300" ItemsSource="{Binding UpdateModeOptions}" SelectedItem="{Binding SelectedUpdateMode}" DisplayMemberPath="Label"
-                                  AutomationProperties.Name="Mises à jour d'OptiGame" />
-                        <controls:SettingRow.Details>
-                            <TextBlock Style="{StaticResource Text.Caption}"
-                                       Text="Recherche une fois par jour sur la page GitHub d'OptiGame. Installation automatique seulement quand aucun jeu ne tourne, que cette fenêtre est fermée et qu'aucune application n'est en plein écran : OptiGame redémarre en quelques secondes dans la zone de notification. L'installeur est vérifié (empreinte publiée par GitHub) avant d'être lancé ; une mise à jour ne change que les fichiers d'OptiGame, jamais un réglage de Windows." />
-                        </controls:SettingRow.Details>
-                    </controls:SettingRow>
-                    <Border Style="{StaticResource SettingsCard.Content}">
-                        <StackPanel>
-                            <TextBlock Style="{StaticResource Text.Body}" Text="{Binding Updates.StatusText}" AutomationProperties.LiveSetting="Polite" />
-                            <ProgressBar Margin="0,8,0,0" Height="4" Maximum="100" Value="{Binding Updates.DownloadPercent, Mode=OneWay}"
-                                         AutomationProperties.Name="Téléchargement de la mise à jour"
-                                         Visibility="{Binding Updates.IsDownloading, Converter={StaticResource BoolToVisibility}}" />
-                            <TextBlock Margin="0,6,0,0" Style="{StaticResource Text.Caption}"
-                                       Visibility="{Binding Updates.CanSelfUpdate, Converter={StaticResource InverseBoolToVisibility}}">
-                                <Run Text="Cette copie d'OptiGame ne s'installe pas de mise à jour elle-même : " /><Run Text="{Binding Updates.SelfUpdateBlocker, Mode=OneWay}" /><Run Text="." />
-                            </TextBlock>
-                            <WrapPanel Margin="0,12,0,0">
-                                <controls:IconButton Margin="0,0,8,0" Style="{StaticResource Button.Secondary}" Glyph="&#xE72C;" Label="Rechercher les mises à jour"
-                                                     Command="{Binding Updates.CheckNowCommand}" />
-                                <Button Margin="0,0,8,0" Style="{StaticResource Button.Primary}" Content="Installer maintenant" Command="{Binding Updates.InstallNowCommand}"
-                                        Visibility="{Binding Updates.HasPackage, Converter={StaticResource BoolToVisibility}}" />
-                                <Button Style="{StaticResource Button.Ghost}" Content="Voir les nouveautés" Command="{Binding Updates.OpenReleaseNotesCommand}"
-                                        Visibility="{Binding Updates.HasPackage, Converter={StaticResource BoolToVisibility}}" />
-                            </WrapPanel>
-                        </StackPanel>
-                    </Border>
-                    <controls:SettingRow Glyph="&#xE7E8;" Header="Quitter OptiGame"
-                                         Description="Ferme complètement OptiGame (sinon, il reste dans la zone de notification). Une partie en cours est restaurée d'abord.">
-                        <Button Style="{StaticResource Button.Secondary}" Content="Quitter OptiGame…" Command="{Binding QuitCommand}" />
-                    </controls:SettingRow>
-                </StackPanel>
-            </Border>
+                <!-- ===== Mises à jour et à propos ===== -->
+                <Border Style="{StaticResource SettingsCard}" Visibility="{Binding IsUpdatesTab, Converter={StaticResource BoolToVisibility}}">
+                    <StackPanel Margin="{StaticResource Margin.SettingsCardContent}">
+                        <controls:SettingRow Glyph="&#xE896;" Header="Mises à jour d'OptiGame"
+                                             Description="{Binding Updates.CurrentText, StringFormat='Version installée : {0}'}">
+                            <ComboBox Width="300" ItemsSource="{Binding UpdateModeOptions}" SelectedItem="{Binding SelectedUpdateMode}" DisplayMemberPath="Label"
+                                      AutomationProperties.Name="Mises à jour d'OptiGame" />
+                            <controls:SettingRow.Details>
+                                <TextBlock Style="{StaticResource Text.Caption}"
+                                           Text="Recherche une fois par jour sur la page GitHub d'OptiGame. Installation automatique seulement quand aucun jeu ne tourne, que cette fenêtre est fermée et qu'aucune application n'est en plein écran : OptiGame redémarre en quelques secondes dans la zone de notification. L'installeur est vérifié (empreinte publiée par GitHub) avant d'être lancé ; une mise à jour ne change que les fichiers d'OptiGame, jamais un réglage de Windows." />
+                            </controls:SettingRow.Details>
+                        </controls:SettingRow>
+                        <Border Style="{StaticResource SettingsCard.Content}">
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource Text.Body}" Text="{Binding Updates.StatusText}" AutomationProperties.LiveSetting="Polite" />
+                                <ProgressBar Margin="0,8,0,0" Height="4" Maximum="100" Value="{Binding Updates.DownloadPercent, Mode=OneWay}"
+                                             AutomationProperties.Name="Téléchargement de la mise à jour"
+                                             Visibility="{Binding Updates.IsDownloading, Converter={StaticResource BoolToVisibility}}" />
+                                <TextBlock Margin="0,6,0,0" Style="{StaticResource Text.Caption}"
+                                           Visibility="{Binding Updates.CanSelfUpdate, Converter={StaticResource InverseBoolToVisibility}}">
+                                    <Run Text="Cette copie d'OptiGame ne s'installe pas de mise à jour elle-même : " /><Run Text="{Binding Updates.SelfUpdateBlocker, Mode=OneWay}" /><Run Text="." />
+                                </TextBlock>
+                                <WrapPanel Margin="0,12,0,0">
+                                    <controls:IconButton Margin="0,0,8,0" Style="{StaticResource Button.Secondary}" Glyph="&#xE72C;" Label="Rechercher les mises à jour"
+                                                         Command="{Binding Updates.CheckNowCommand}" />
+                                    <Button Margin="0,0,8,0" Style="{StaticResource Button.Primary}" Content="Installer maintenant" Command="{Binding Updates.InstallNowCommand}"
+                                            Visibility="{Binding Updates.HasPackage, Converter={StaticResource BoolToVisibility}}" />
+                                    <Button Style="{StaticResource Button.Ghost}" Content="Voir les nouveautés" Command="{Binding Updates.OpenReleaseNotesCommand}"
+                                            Visibility="{Binding Updates.HasPackage, Converter={StaticResource BoolToVisibility}}" />
+                                </WrapPanel>
+                            </StackPanel>
+                        </Border>
+                        <controls:SettingRow Glyph="&#xE7E8;" Header="Quitter OptiGame"
+                                             Description="Ferme complètement OptiGame (sinon, il reste dans la zone de notification). Une partie en cours est restaurée d'abord.">
+                            <Button Style="{StaticResource Button.Secondary}" Content="Quitter OptiGame…" Command="{Binding QuitCommand}" />
+                        </controls:SettingRow>
+                    </StackPanel>
+                </Border>
 
-            <!-- ===== Données ===== -->
-            <TextBlock Style="{StaticResource Text.SettingsGroup}" Text="Données" />
-            <Border Style="{StaticResource SettingsCard}">
-                <StackPanel Margin="{StaticResource Margin.SettingsCardContent}">
-                    <controls:SettingRow Glyph="&#xE8B7;" Header="Dossier des données"
-                                         Description="Réglages des jeux, sauvegardes des réglages d'origine, jaquettes, mesures et journal.">
-                        <Button Style="{StaticResource Button.Secondary}" Content="Ouvrir le dossier" Command="{Binding OpenDataFolderCommand}" />
-                        <controls:SettingRow.Details>
-                            <TextBox Text="{Binding DataFolder, Mode=OneWay}" IsReadOnly="True" FontFamily="{StaticResource Font.Mono}"
-                                     AutomationProperties.Name="Chemin du dossier des données" />
-                        </controls:SettingRow.Details>
-                    </controls:SettingRow>
-                    <controls:SettingRow Glyph="&#xE9F9;" Header="Journal d'OptiGame"
-                                         Description="Tout ce qu'OptiGame fait et toutes ses erreurs, avec l'heure. Utile pour comprendre un problème.">
-                        <Button Style="{StaticResource Button.Secondary}" Content="Ouvrir le journal" Command="{Binding OpenLogCommand}" />
-                    </controls:SettingRow>
-                </StackPanel>
-            </Border>
-        </StackPanel>
-    </ScrollViewer>
+                <!-- ===== Données ===== -->
+                <Border Style="{StaticResource SettingsCard}" Visibility="{Binding IsDataTab, Converter={StaticResource BoolToVisibility}}">
+                    <StackPanel Margin="{StaticResource Margin.SettingsCardContent}">
+                        <controls:SettingRow Glyph="&#xE8B7;" Header="Dossier des données"
+                                             Description="Réglages des jeux, sauvegardes des réglages d'origine, jaquettes, mesures et journal.">
+                            <Button Style="{StaticResource Button.Secondary}" Content="Ouvrir le dossier" Command="{Binding OpenDataFolderCommand}" />
+                            <controls:SettingRow.Details>
+                                <TextBox Text="{Binding DataFolder, Mode=OneWay}" IsReadOnly="True" FontFamily="{StaticResource Font.Mono}"
+                                         AutomationProperties.Name="Chemin du dossier des données" />
+                            </controls:SettingRow.Details>
+                        </controls:SettingRow>
+                        <controls:SettingRow Glyph="&#xE9F9;" Header="Journal d'OptiGame"
+                                             Description="Tout ce qu'OptiGame fait et toutes ses erreurs, avec l'heure. Utile pour comprendre un problème.">
+                            <Button Style="{StaticResource Button.Secondary}" Content="Ouvrir le journal" Command="{Binding OpenLogCommand}" />
+                        </controls:SettingRow>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </ScrollViewer>
+    </DockPanel>
 </UserControl>

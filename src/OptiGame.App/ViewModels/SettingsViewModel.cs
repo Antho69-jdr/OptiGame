@@ -54,6 +54,48 @@ public sealed partial class SettingsViewModel : ObservableObject
         HasIgdbSecret = current.IgdbClientSecretProtected is not null;
     }
 
+    // ---- Onglets (sélecteur comme sur la fiche du jeu ; le dernier choisi est gardé tant qu'OptiGame tourne) ----
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsGeneralTab), nameof(IsGamesTab), nameof(IsDockTab), nameof(IsMeasuresTab), nameof(IsUpdatesTab), nameof(IsDataTab))]
+    private SettingsTab _selectedTab = SettingsTab.General;
+
+    public bool IsGeneralTab
+    {
+        get => SelectedTab == SettingsTab.General;
+        set { if (value) SelectedTab = SettingsTab.General; }
+    }
+
+    public bool IsGamesTab
+    {
+        get => SelectedTab == SettingsTab.Games;
+        set { if (value) SelectedTab = SettingsTab.Games; }
+    }
+
+    public bool IsDockTab
+    {
+        get => SelectedTab == SettingsTab.Dock;
+        set { if (value) SelectedTab = SettingsTab.Dock; }
+    }
+
+    public bool IsMeasuresTab
+    {
+        get => SelectedTab == SettingsTab.Measures;
+        set { if (value) SelectedTab = SettingsTab.Measures; }
+    }
+
+    public bool IsUpdatesTab
+    {
+        get => SelectedTab == SettingsTab.Updates;
+        set { if (value) SelectedTab = SettingsTab.Updates; }
+    }
+
+    public bool IsDataTab
+    {
+        get => SelectedTab == SettingsTab.Data;
+        set { if (value) SelectedTab = SettingsTab.Data; }
+    }
+
     /// <summary>PresentMon (chemin, « Parcourir… ») : réglé ici, utilisé par la page Mesures et la mesure automatique.</summary>
     public MeasuresViewModel Measures { get; }
 
@@ -485,3 +527,14 @@ public sealed record DockGameMove(Guid Id, int Delta);
 
 /// <summary>Choix « Animations » de Paramètres › Général.</summary>
 public sealed record UiAnimationsOption(UiAnimations Value, string Label);
+
+/// <summary>Onglets de Paramètres, dans l'ordre affiché.</summary>
+public enum SettingsTab
+{
+    General,
+    Games,
+    Dock,
+    Measures,
+    Updates,
+    Data,
+}

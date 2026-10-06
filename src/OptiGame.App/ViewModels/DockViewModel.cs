@@ -90,6 +90,7 @@ public sealed partial class DockViewModel : ObservableObject
     private void OpenSettings()
     {
         ((App)Application.Current).ShowMainWindow();
+        _settingsPage.SelectedTab = SettingsTab.Dock; // « Paramètres du dock… » : directement sur l'onglet Dock
         _navigation.Navigate(_settingsPage);
     }
 

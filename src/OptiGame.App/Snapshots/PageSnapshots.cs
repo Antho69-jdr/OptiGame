@@ -93,7 +93,12 @@ internal static class PageSnapshots
                     main.Measures.UpdateSelection(main.Measures.Captures.Take(2).ToList());
                     await Settle(1500);
                 }),
-                ("5-parametres", async () => { main.Navigate(main.Settings); await Settle(1500); }),
+                ("5-parametres", async () => { main.Settings.SelectedTab = SettingsTab.General; main.Navigate(main.Settings); await Settle(1500); }),
+                ("5b-parametres-mes-jeux", async () => { main.Settings.SelectedTab = SettingsTab.Games; await Settle(600); }),
+                ("5c-parametres-dock", async () => { main.Settings.SelectedTab = SettingsTab.Dock; await Settle(600); }),
+                ("5d-parametres-mesures", async () => { main.Settings.SelectedTab = SettingsTab.Measures; await Settle(600); }),
+                ("5e-parametres-mises-a-jour", async () => { main.Settings.SelectedTab = SettingsTab.Updates; await Settle(600); }),
+                ("5f-parametres-donnees", async () => { main.Settings.SelectedTab = SettingsTab.Data; await Settle(600); }),
             };
             // Coque avec alertes et badges d'exemple (rien n'est écrit : alertes en mémoire, compteurs remis ensuite par l'analyse).
             pages.Add(("8-coque-alertes", async () =>
