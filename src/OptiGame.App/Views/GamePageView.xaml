@@ -117,7 +117,7 @@
                                                      AutomationProperties.HelpText="Ouvre un menu : voir sur Steam, dock, jaquette, fond, retirer.">
                                     <controls:IconButton.ContextMenu>
                                         <ContextMenu>
-                                            <MenuItem Header="Voir sur Steam" Command="{Binding OpenStorePageCommand}"
+                                            <MenuItem Header="{Binding StorePageLabel}" Command="{Binding OpenStorePageCommand}"
                                                       Visibility="{Binding HasStorePage, Converter={StaticResource BoolToVisibility}}" />
                                             <MenuItem Command="{Binding TogglePinCommand}" Visibility="{Binding IsDockEnabled, Converter={StaticResource BoolToVisibility}}">
                                                 <MenuItem.Style>

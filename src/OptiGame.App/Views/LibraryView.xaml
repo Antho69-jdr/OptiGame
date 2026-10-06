@@ -341,7 +341,7 @@
                                                     </StackPanel>
                                                 </Button>
                                                 <Button Margin="0,6,0,0" Style="{StaticResource Button.Secondary}" HorizontalAlignment="Stretch" Focusable="False"
-                                                        Content="Voir sur Steam" Visibility="{Binding HasStorePage, Converter={StaticResource BoolToVisibility}}"
+                                                        Content="{Binding StorePageLabel}" Visibility="{Binding HasStorePage, Converter={StaticResource BoolToVisibility}}"
                                                         Command="{Binding DataContext.OpenOwnedStorePageCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                         CommandParameter="{Binding}" />
                                             </StackPanel>
@@ -351,7 +351,7 @@
                                                 <MenuItem FontWeight="SemiBold" Header="{Binding PlacementTarget.DataContext.InstallLabel, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
                                                           Command="{Binding InstallOwnedCommand}"
                                                           CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
-                                                <MenuItem Header="Voir sur Steam" Command="{Binding OpenOwnedStorePageCommand}"
+                                                <MenuItem Header="{Binding PlacementTarget.DataContext.StorePageLabel, RelativeSource={RelativeSource AncestorType=ContextMenu}}" Command="{Binding OpenOwnedStorePageCommand}"
                                                           CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
                                                           Visibility="{Binding PlacementTarget.DataContext.HasStorePage, RelativeSource={RelativeSource AncestorType=ContextMenu}, Converter={StaticResource BoolToVisibility}}" />
                                             </ContextMenu>

@@ -28,6 +28,7 @@ public sealed partial class LibraryViewModel : ObservableObject
 {
     private readonly ProfileStore _store;
     private readonly GameTagService _tags;
+    private readonly Platform.Library.StorePageResolver _storePages;
     private readonly IPowerSchemeProvider _power;
     private readonly IRunningProgramsProvider _programs;
     private readonly IDialogService _dialogs;
@@ -77,7 +78,7 @@ public sealed partial class LibraryViewModel : ObservableObject
         GameGraphicsService graphics, NewSteamGamesViewModel newGames, GameRatingService ratings, Platform.Measurement.AutoCapture autoCapture,
         FrameCapService frameCap, Platform.Library.StoreOwnedLibrary storeLibrary, Platform.Library.StoreCoverCache storeCovers,
         GameTimeGate gate, [FromKeyedServices(Platform.JournalKeys.Fixes)] Core.State.ChangeJournal fixes, UnsavedChangesGuard unsaved,
-        SessionViewModel session, GameTagService tags)
+        SessionViewModel session, GameTagService tags, Platform.Library.StorePageResolver storePages)
     {
         _session = session;
         unsaved.Register(ConfirmDiscard);
@@ -119,6 +120,7 @@ public sealed partial class LibraryViewModel : ObservableObject
         GamesView = CollectionViewSource.GetDefaultView(Games);
         GamesView.Filter = o => o is GameCardViewModel card && Matches(card.Name, card.Store, card.Genres, card.Kinds);
         _tags = tags;
+        _storePages = storePages;
         tags.Updated += (_, _) => ApplyTags(rebuildFilters: true); // genres IGDB arrivés en tâche de fond
         _selectedGenre = GenreOptions[0];
         _selectedKind = KindOptions[0];
@@ -691,9 +693,26 @@ public sealed partial class LibraryViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private void OpenOwnedStorePage(OwnedGameCardViewModel game)
+    private async Task OpenOwnedStorePageAsync(OwnedGameCardViewModel game)
     {
         if (game.Store == GameSource.Steam) OpenStorePage(game.Key);
+        else if (game.Product is { } product) await OpenProductPageAsync(product);
+    }
+
+    /// <summary>« Voir sur Epic Games / GOG » : page exacte si le magasin la donne, sinon recherche du titre ; navigateur, sans admin.</summary>
+    private async Task OpenProductPageAsync(Core.Library.StoreProduct product)
+    {
+        var url = await _storePages.UrlAsync(product);
+        try
+        {
+            _launcher.OpenStoreWebPage(url);
+        }
+        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException or ArgumentException)
+        {
+            _log.Error($"Page {product.Store} de « {product.Title} » non ouverte", ex);
+            _dialogs.ShowError($"Impossible de voir {product.Title} sur {Core.Library.StoreCatalogs.Label(product.Store)}",
+                "Le navigateur n'a pas pu ouvrir la page du magasin.", ex.Message);
+        }
     }
 
     /// <summary>Page du jeu ouverte ; null = grille.</summary>
@@ -973,6 +992,8 @@ public sealed partial class LibraryViewModel : ObservableObject
             back: CloseGamePage,
             changeCover: () => ChangeCoverAsync(id),
             changeBackground: () => ChangeBackgroundAsync(id),
+            storeProduct: Core.Library.StorePages.FromProfile(profile),
+            openProductPage: OpenProductPageAsync,
             measure: () =>
             {
                 _measures.SelectTarget(exeName);
@@ -1558,7 +1579,12 @@ public sealed partial class OwnedGameCardViewModel : ObservableObject
     public string AccessibleName => $"{Name}, non installé, {StoreLabel}" + (GenresText.Length > 0 ? $", {GenresText}" : "") +
                                     $". Entrée : {InstallLabel.ToLowerInvariant()}";
 
-    public bool HasStorePage => Store == GameSource.Steam;
+    /// <summary>Epic Games et GOG : produit du magasin (« Voir sur … »), lu dans la clé du jeu possédé.</summary>
+    public Core.Library.StoreProduct? Product => Core.Library.StorePages.FromOwned(Store, Key, Name);
+
+    public bool HasStorePage => Store == GameSource.Steam || Product is not null;
+
+    public string StorePageLabel => Store == GameSource.Steam ? "Voir sur Steam" : Core.Library.StorePages.Label(Store);
 }
 
 /// <summary>Choix d'un filtre de « Mes jeux » (valeur null = tous).</summary>

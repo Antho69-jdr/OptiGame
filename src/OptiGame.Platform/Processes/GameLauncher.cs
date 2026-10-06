@@ -37,6 +37,22 @@ public sealed class GameLauncher(FileLog log)
     }
 
     /// <summary>
+    /// Page d'un magasin (Epic Games, GOG) dans le navigateur de la session, sans droits administrateur. Seules les adresses https de
+    /// ces magasins sont ouvertes (jamais une adresse reçue d'ailleurs).
+    /// </summary>
+    public void OpenStoreWebPage(string url)
+    {
+        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri) || uri.Scheme != Uri.UriSchemeHttps
+            || uri.Host is not ("store.epicgames.com" or "www.gog.com"))
+        {
+            throw new ArgumentException($"Adresse de magasin refusée : {url}", nameof(url));
+        }
+        // explorer.exe transmet l'adresse au navigateur de la session, sans droits administrateur.
+        System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("explorer.exe", uri.AbsoluteUri) { UseShellExecute = true });
+        log.Info($"Page du magasin ouverte dans le navigateur : {uri.AbsoluteUri}");
+    }
+
+    /// <summary>
     /// Installation d'un jeu Steam possédé : le client Steam ouvre sa propre fenêtre (choix du disque, taille). Sans droits
     /// administrateur, comme le lancement. Lève <see cref="LaunchException"/> si Steam est introuvable.
     /// </summary>

@@ -240,6 +240,15 @@ if (args.Length >= 2 && args[0] == "--igdb-taxonomy")
     return;
 }
 
+// --store-page <epic|gog> <espace de noms ou id produit> <titre> : adresse que « Voir sur Epic Games / GOG » ouvrirait (rien n'est ouvert).
+if (args.Length == 4 && args[0] == "--store-page")
+{
+    var store = args[1] == "epic" ? OptiGame.Core.Library.GameSource.Epic : OptiGame.Core.Library.GameSource.Gog;
+    var resolver = new OptiGame.Platform.Library.StorePageResolver(services.GetRequiredService<OptiGame.Core.Logging.FileLog>());
+    Console.WriteLine(await resolver.UrlAsync(new OptiGame.Core.Library.StoreProduct(store, args[2], args[3])));
+    return;
+}
+
 // --galaxy-meta : « originalMeta » de quelques jeux GOG dans la base de GOG Galaxy (lue sur une copie, jamais en place) : quels
 // champs (genres, thèmes, modes de jeu…) Galaxy fournit vraiment.
 if (args.Length == 1 && args[0] == "--galaxy-meta")
@@ -261,9 +270,8 @@ if (args.Length == 1 && args[0] == "--galaxy-meta")
         using var command = connection.CreateCommand();
         command.CommandText =
             """
-            select releaseKey, value from GamePieces
-            where gamePieceTypeId = (select id from GamePieceTypes where type = 'originalMeta') and releaseKey like 'gog!_%' escape '!'
-            limit 4
+            select gp.releaseKey || ' [' || t.type || ']', substr(gp.value, 1, 300) from GamePieces gp join GamePieceTypes t on t.id = gp.gamePieceTypeId
+            where gp.releaseKey in (select releaseKey from GamePieces where releaseKey like 'gog!_%' escape '!' limit 1)
             """;
         using var reader = command.ExecuteReader();
         while (reader.Read()) Console.WriteLine($"{reader.GetString(0)} : {reader.GetString(1)}");

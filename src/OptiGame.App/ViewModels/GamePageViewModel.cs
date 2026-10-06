@@ -37,7 +37,9 @@ public sealed partial class GamePageViewModel(
     GameTab initialTab,
     Action<GameTab> rememberTab,
     System.Windows.Input.ICommand endSession,
-    Func<bool> isDockEnabled) : ObservableObject
+    Func<bool> isDockEnabled,
+    Core.Library.StoreProduct? storeProduct,
+    Func<Core.Library.StoreProduct, Task> openProductPage) : ObservableObject
 {
     // ---- Onglets (le dernier choisi est gardé d'une fiche à l'autre) ----
 
@@ -154,15 +156,19 @@ public sealed partial class GamePageViewModel(
 
     /// <summary>Appid Steam, retrouvé en arrière-plan à l'ouverture de la page ; null pour un jeu hors Steam.</summary>
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HasStorePage))]
+    [NotifyPropertyChangedFor(nameof(HasStorePage), nameof(StorePageLabel))]
     private string? _steamAppId;
 
-    public bool HasStorePage => SteamAppId is not null;
+    /// <summary>Page du jeu dans son magasin : Steam (appid), sinon Epic Games ou GOG (profil créé depuis leur lanceur).</summary>
+    public bool HasStorePage => SteamAppId is not null || storeProduct is not null;
+
+    public string StorePageLabel => SteamAppId is null && storeProduct is { } product ? Core.Library.StorePages.Label(product.Store) : "Voir sur Steam";
 
     [RelayCommand]
-    private void OpenStorePage()
+    private async Task OpenStorePageAsync()
     {
         if (SteamAppId is { } appId) openStorePage(appId);
+        else if (storeProduct is { } product) await openProductPage(product);
     }
 
     [ObservableProperty]

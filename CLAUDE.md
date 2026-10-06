@@ -182,6 +182,11 @@ Sessions de jeu (Platform/Processes) :
   `DiagDump -- --launch-plan` montre ce qui serait lancé pour chaque profil, sans rien lancer.
 - « Page Steam » (page du jeu) : `Core/Launching/SteamStorePage`, `"steam.exe" -- "steam://store/<appid>"` via
   `UnelevatedLauncher` (même forme que HKCR\steam\shell\open\command), navigateur si Steam est absent.
+- « Voir sur Epic Games / GOG » (fiche d'un profil créé depuis leur lanceur, jaquettes non installées) : `Core/Library/StorePages`
+  + `Platform/Library/StorePageResolver`, vérifié le 2026-10-06 (`DiagDump -- --store-page`). Le catalogue Epic n'a PAS l'adresse
+  de page : `store-content.ak.epicgames.com/api/content/productmapping` (espace de noms → page, 231 jeux sur 348) ; GOG :
+  `api.gog.com/products/<id>` → `links.product_card` (www.gog.com seulement). Sinon : recherche du titre sur le magasin.
+  Ouvert dans le navigateur par explorer.exe (`GameLauncher.OpenStoreWebPage` : https store.epicgames.com / www.gog.com seuls).
 
 Règle de dépendance : `App → Platform → Core`. La logique de décision (statut d'un check, restauration)
 vit dans Core ; Platform ne fait que lire/écrire le système.
