@@ -1035,6 +1035,7 @@ public sealed partial class LibraryViewModel : ObservableObject
             endSession: _session.EndNowCommand,
             isDockEnabled: () => IsDockEnabled);
         RefreshPagePlaytime(OpenGame);
+        _ = LoadInGameSettingsAsync(OpenGame, profile.ExePath);
         _ = LoadPageImagesAsync(OpenGame, profile);
         _ = LoadSteamAppIdAsync(OpenGame, profile);
         _ = OpenGame.Graphics.LoadAsync();
@@ -1391,6 +1392,12 @@ public sealed partial class LibraryViewModel : ObservableObject
     /// Fond de la fiche : celui choisi par l'utilisateur, sinon la bannière que Steam garde sur le PC (faite pour servir de fond),
     /// sinon la première illustration IGDB (parfois un simple logo : Portal 2).
     /// </summary>
+    /// <summary>Réglages lus dans les fichiers du jeu (lecture seule), hors du thread UI.</summary>
+    private static async Task LoadInGameSettingsAsync(GamePageViewModel page, string exePath)
+    {
+        page.InGame = await Task.Run(() => Platform.InGame.InGameSettingsReader.Read(exePath));
+    }
+
     private async Task LoadPageImagesAsync(GamePageViewModel page, GameProfile profile)
     {
         page.CoverPath = await _artwork.GetAsync(profile.CoverImageId, Igdb.CoverSize);

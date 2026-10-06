@@ -135,8 +135,10 @@ public static class GameRatings
     /// <param name="Preset">Réglage conseillé pour ≈ 60 FPS (ce que visent les configurations requises) : la note en découle.</param>
     /// <param name="PresetAtTarget">Réglage conseillé pour profiter de l'écran (<paramref name="TargetFps"/> FPS), celui qui est affiché ; = Preset à 60 Hz.</param>
     /// <param name="Advice">Conseil de résolution / upscaling (null = rien de particulier).</param>
+    /// <param name="PresetWithUpscaling">Réglage pour la même cible avec l'upscaling en mode Qualité (affiché s'il est déjà activé dans le jeu).</param>
     public sealed record Estimate(int Score, GraphicsPreset Preset, bool BelowMinimum, IReadOnlyList<string> Details, string Source = "Steam",
-        string? SourceUrl = null, GraphicsPreset? PresetAtTarget = null, int TargetFps = 60, string? Advice = null);
+        string? SourceUrl = null, GraphicsPreset? PresetAtTarget = null, int TargetFps = 60, string? Advice = null,
+        GraphicsPreset? PresetWithUpscaling = null);
 
     /// <summary>
     /// FPS visés pour un écran : sa fréquence, entre 30 et 120 (au-delà, les FPS comptent moins que la stabilité). Même cible
@@ -243,9 +245,10 @@ public static class GameRatings
         // Résolution : sur un écran LCD, une résolution plus basse que celle de l'écran rend l'image floue. L'upscaling du jeu
         // (mode Qualité : image calculée aux 2/3, puis agrandie) garde une image nette pour bien plus de FPS.
         string? advice = null;
+        GraphicsPreset? withUpscaling = below ? null : WithMemory(PresetFor(Effective(QualityRenderScale) / rec / demand, false));
         if (!below && presetAtTarget <= GraphicsPreset.Medium && pc.Height >= 1080)
         {
-            var upscaled = WithMemory(PresetFor(Effective(QualityRenderScale) / rec / demand, false));
+            var upscaled = withUpscaling!.Value;
             if (upscaled > presetAtTarget)
             {
                 advice = $"Avec l'upscaling du jeu ({Upscalers(pc)}) en mode Qualité, l'image est calculée en ≈ " +
@@ -258,7 +261,8 @@ public static class GameRatings
             advice = $"Grande marge : en Ultra, préférez l'anticrénelage natif ({NativeAntiAliasing(pc)}) à l'upscaling, pour une image plus nette.";
         }
 
-        return new Estimate((int)Math.Round(score), preset, below, details, requirements.Source, requirements.SourceUrl, presetAtTarget, target, advice);
+        return new Estimate((int)Math.Round(score), preset, below, details, requirements.Source, requirements.SourceUrl, presetAtTarget, target, advice,
+            withUpscaling);
     }
 
     /// <summary>
@@ -297,12 +301,16 @@ public static class GameRatings
         : load.CpuWait >= 0.15 || Math.Abs(averageFps - refreshHz) <= 0.03 * refreshHz ? Bottleneck.FrameCap
         : Bottleneck.Cpu;
 
-    /// <summary>Note affichée : la mesure si elle existe (conseil à partir du réglage indiqué), sinon l'estimation.</summary>
-    public static GameRating? Combine(Estimate? estimate, Measurement? measured)
+    /// <summary>
+    /// Note affichée : la mesure si elle existe (conseil à partir du réglage indiqué ou lu dans le jeu), sinon l'estimation.
+    /// <paramref name="game"/> = réglages lus dans les fichiers du jeu : ils précisent les conseils (V-Sync, limite de FPS,
+    /// upscaling déjà activé).
+    /// </summary>
+    public static GameRating? Combine(Estimate? estimate, Measurement? measured, InGame.InGameSettings? game = null)
     {
         if (measured is not null)
         {
-            var (step, advice) = Advise(measured);
+            var (step, advice) = Advise(measured, game);
             GraphicsPreset? preset = null;
             if (measured.Preset is { } played)
             {
@@ -310,14 +318,20 @@ public static class GameRatings
                 if (target > (int)GraphicsPreset.Ultra)
                 {
                     preset = GraphicsPreset.Ultra;
-                    advice = "Déjà en Ultra, et il reste de la marge : si l'upscaling est activé, passez à l'anticrénelage natif " +
-                             $"({NativeAntiAliasing(measured.Pc)}) pour une image plus nette.";
+                    advice = game?.Upscaler is { } active
+                        ? $"Déjà en Ultra, et il reste de la marge : remplacez {active} par l'anticrénelage natif ({NativeAntiAliasing(measured.Pc)}) " +
+                          "pour une image plus nette."
+                        : game is not null ? "Déjà en Ultra, et il reste de la marge : rien à changer."
+                        : "Déjà en Ultra, et il reste de la marge : si l'upscaling est activé, passez à l'anticrénelage natif " +
+                          $"({NativeAntiAliasing(measured.Pc)}) pour une image plus nette.";
                 }
                 else if (target < (int)GraphicsPreset.Low)
                 {
                     preset = GraphicsPreset.Low;
-                    advice = $"Déjà en Bas : activez l'upscaling du jeu ({Upscalers(measured.Pc)}) en mode Équilibré ou Performance. Baisser la " +
-                             "résolution du jeu sous celle de l'écran n'est qu'un dernier recours : l'image devient floue.";
+                    advice = (game?.Upscaler is { } active
+                                 ? $"Déjà en Bas avec {active} : passez l'upscaling en mode Performance. "
+                                 : $"Déjà en Bas : activez l'upscaling du jeu ({Upscalers(measured.Pc)}) en mode Équilibré ou Performance. ") +
+                             "Baisser la résolution du jeu sous celle de l'écran n'est qu'un dernier recours : l'image devient floue.";
                 }
                 else
                 {
@@ -335,7 +349,7 @@ public static class GameRatings
             details.Add(measured.Bottleneck switch
             {
                 Bottleneck.Gpu => $"Limité par la carte graphique (occupée {gpu} % du temps).",
-                Bottleneck.FrameCap => $"Limité par un plafond de FPS (limiteur du jeu ou V-Sync) ; carte graphique occupée {gpu} % du temps.",
+                Bottleneck.FrameCap => $"Limité par un plafond de FPS ({CapCause(game)}) ; carte graphique occupée {gpu} % du temps.",
                 Bottleneck.Cpu => $"Limité par le processeur ; carte graphique occupée {gpu} % du temps seulement.",
                 _ => "Charge de la carte graphique inconnue pour ces mesures.",
             });
@@ -354,7 +368,7 @@ public static class GameRatings
             if (measured.Preset is { } during)
             {
                 details.Add(measured.PresetAssumed
-                    ? $"Réglage pendant les mesures supposé : {Label(during)} (celui que vous avez indiqué)."
+                    ? $"Réglage pendant les mesures supposé : {Label(during)} (votre réglage actuel)."
                     : $"Réglage du jeu pendant les mesures : {Label(during)}.");
                 if (measured.CurrentPreset is { } current && current != during)
                 {
@@ -363,42 +377,67 @@ public static class GameRatings
             }
             else
             {
-                details.Add("Indiquez le réglage utilisé dans le jeu pour obtenir un réglage conseillé (OptiGame ne peut pas le lire).");
+                details.Add(game is not null
+                    ? "Indiquez le réglage utilisé dans le jeu pour obtenir un réglage conseillé (OptiGame lit l'écran de ce jeu, pas sa qualité)."
+                    : "Indiquez le réglage utilisé dans le jeu pour obtenir un réglage conseillé (OptiGame ne sait pas le lire pour ce jeu).");
             }
+            if (game is not null) details.Add($"Réglages lus dans le jeu : {game.Summary()}.");
             if (estimate is not null) details.AddRange(estimate.Details);
             return new GameRating(measured.Score, RatingSource.Measured, preset, false, headline, advice, details, estimate?.Source, estimate?.SourceUrl);
         }
 
         if (estimate is null) return null;
-        return new GameRating(estimate.Score, RatingSource.Estimated, estimate.PresetAtTarget ?? estimate.Preset, estimate.BelowMinimum,
+        var shown = estimate.PresetAtTarget ?? estimate.Preset;
+        var estimateAdvice = estimate.Advice;
+        if (game?.Upscaler is { } upscaler && estimate.PresetWithUpscaling is { } withUpscaling)
+        {
+            shown = withUpscaling;
+            estimateAdvice = $"Upscaling déjà activé dans le jeu ({upscaler}) : réglage conseillé {Label(withUpscaling)}.";
+        }
+        var estimateDetails = game is null ? estimate.Details : [.. estimate.Details, $"Réglages lus dans le jeu : {game.Summary()}."];
+        return new GameRating(estimate.Score, RatingSource.Estimated, shown, estimate.BelowMinimum,
             estimate.BelowMinimum ? "Sous la configuration minimale"
                 : estimate.Score >= 85 ? "Large marge" : estimate.Score >= 70 ? "Bonne marge" : estimate.Score >= 50 ? "Marge suffisante" : "Juste",
-            (estimate.Advice is { } hint ? hint + " " : "") + "Une partie mesurée remplacera cette estimation.",
-            estimate.Details, estimate.Source, estimate.SourceUrl);
+            (estimateAdvice is { } hint ? hint + " " : "") + "Une partie mesurée remplacera cette estimation.",
+            estimateDetails, estimate.Source, estimate.SourceUrl);
     }
 
+    /// <summary>Ce qui plafonne les FPS d'après les réglages lus dans le jeu, sinon les deux causes possibles.</summary>
+    private static string CapCause(InGame.InGameSettings? game) =>
+        game?.VSync == true ? "V-Sync activée dans le jeu"
+        : game?.FrameLimit is > 0 and var limit ? $"limite de {limit} FPS dans le jeu"
+        : "limiteur du jeu ou V-Sync";
+
     /// <summary>Conseil d'après la mesure : cran à monter (+1), garder (0) ou baisser (−1), et son explication.</summary>
-    private static (int Step, string Advice) Advise(Measurement m)
+    private static (int Step, string Advice) Advise(Measurement m, InGame.InGameSettings? game)
     {
         var gpu = Percent(m.Load?.GpuBusy);
         var gpuIdle = m.Load is { GpuBusy: < 0.7 };
-        var upscaling = $"l'upscaling du jeu ({Upscalers(m.Pc)}) en mode Qualité";
+        // Upscaling déjà activé (lu dans le jeu) : un mode plus rapide plutôt que « activez l'upscaling ».
+        var (activate, toActivate) = game?.Upscaler is { } active
+            ? ($"passez l'upscaling ({active}) à un mode plus rapide (Équilibré, puis Performance)",
+               $"passer l'upscaling ({active}) à un mode plus rapide")
+            : ($"activez l'upscaling du jeu ({Upscalers(m.Pc)}) en mode Qualité", $"activer l'upscaling du jeu ({Upscalers(m.Pc)}) en mode Qualité");
+        var uncap = game?.VSync == true ? "désactivez la V-Sync du jeu"
+            : game?.FrameLimit is > 0 and var limit ? $"relevez la limite de {limit} FPS du jeu"
+            : "relevez la limite de FPS du jeu ou désactivez la V-Sync";
+        var cause = CapCause(game);
         return m.Bottleneck switch
         {
             Bottleneck.Gpu when m.HasHeadroom => (1, "Vos FPS dépassent nettement la fréquence de l'écran : vous pouvez monter les réglages d'un cran."),
             Bottleneck.Gpu when m.Score < 50 => (-1,
-                $"La carte graphique tourne à fond ({gpu} % du temps) : baissez les réglages d'un cran pour gagner des FPS, ou activez {upscaling} " +
+                $"La carte graphique tourne à fond ({gpu} % du temps) : baissez les réglages d'un cran pour gagner des FPS, ou {activate} " +
                 "(plus net que de baisser la résolution du jeu sous celle de l'écran)."),
             Bottleneck.Gpu when m.Score < 70 => (0,
-                $"La carte graphique tourne à fond ({gpu} % du temps) : baisser les réglages d'un cran ou activer {upscaling} rendrait le jeu plus fluide."),
+                $"La carte graphique tourne à fond ({gpu} % du temps) : baisser les réglages d'un cran ou {toActivate} rendrait le jeu plus fluide."),
             Bottleneck.Gpu => (0, "La carte graphique est pleinement utilisée et le jeu est fluide : réglages adaptés."),
 
             Bottleneck.FrameCap when m.Score < 70 => (0,
                 $"FPS plafonnés vers {m.AverageFps:0} alors que l'écran va à {m.RefreshHz} Hz, et la carte graphique n'est occupée que {gpu} % du temps : " +
-                "relevez la limite de FPS du jeu ou désactivez la V-Sync."),
+                $"{uncap}."),
             Bottleneck.FrameCap when gpuIdle => (1,
-                $"FPS plafonnés (limiteur du jeu ou V-Sync) et carte graphique occupée {gpu} % du temps seulement : vous pouvez monter les réglages d'un cran."),
-            Bottleneck.FrameCap => (0, $"FPS plafonnés (limiteur du jeu ou V-Sync), carte graphique occupée {gpu} % du temps : réglages adaptés."),
+                $"FPS plafonnés ({cause}) et carte graphique occupée {gpu} % du temps seulement : vous pouvez monter les réglages d'un cran."),
+            Bottleneck.FrameCap => (0, $"FPS plafonnés ({cause}), carte graphique occupée {gpu} % du temps : réglages adaptés."),
 
             Bottleneck.Cpu when m.Score < 70 => (0,
                 $"Le processeur limite les FPS (carte graphique occupée {gpu} % du temps seulement) : baisser les graphismes, la résolution " +

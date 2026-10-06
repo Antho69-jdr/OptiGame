@@ -290,8 +290,8 @@ public sealed partial class MeasuresViewModel : ObservableObject
                             Path.GetFileName(session.Profile.ExePath).Equals(request.ProcessName, StringComparison.OrdinalIgnoreCase)
             ? session.Profile.Name
             : null;
-        var preset = _profiles.GetAll()
-            .FirstOrDefault(p => Path.GetFileName(p.ExePath).Equals(request.ProcessName, StringComparison.OrdinalIgnoreCase))?.GraphicsPreset;
+        var preset = Platform.InGame.InGameSettingsReader.PresetForCapture(_profiles.GetAll()
+            .FirstOrDefault(p => Path.GetFileName(p.ExePath).Equals(request.ProcessName, StringComparison.OrdinalIgnoreCase)));
         return Platform.Measurement.CaptureReader.Build(request, label, csvName, capturedAt, presentMonOutput, activeProfile, preset: preset);
     }
 

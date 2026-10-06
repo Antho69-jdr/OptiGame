@@ -98,26 +98,64 @@ public sealed partial class GamePageViewModel(
 
     public string PresetText => Rating?.Preset is not { } preset ? ""
         : $"Réglage conseillé : {Core.Rating.GameRatings.Label(preset)}" +
-          (Rating.Source == Core.Rating.RatingSource.Measured && preset == PlayedPreset.Value ? ", celui que vous utilisez" : "");
+          (Rating.Source == Core.Rating.RatingSource.Measured && preset == (PlayedPreset.Value ?? InGame?.Preset) ? ", celui que vous utilisez" : "");
 
-    /// <summary>Choix du réglage utilisé dans le jeu (OptiGame ne peut pas le lire dans les fichiers du jeu).</summary>
-    public IReadOnlyList<PlayedPresetOption> PlayedPresetOptions => AllPlayedPresets;
+    /// <summary>
+    /// Réglages lus dans les fichiers du jeu (Unreal Engine, Unity ; lecture seule, hors du thread UI) ; null = rien de lisible.
+    /// La qualité lue sert de réglage « Automatique ».
+    /// </summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(PresetCaption), nameof(PresetText))]
+    private Core.InGame.InGameSettings? _inGame;
+
+    partial void OnInGameChanged(Core.InGame.InGameSettings? value)
+    {
+        // Libellé « Automatique » mis à jour : la liste d'abord, puis le choix courant resélectionné sans être réenregistré.
+        OnPropertyChanged(nameof(PlayedPresetOptions));
+        _restoringPreset = true;
+        PlayedPreset = PlayedPresetOptions.First(o => o.Value == PlayedPreset?.Value);
+        _restoringPreset = false;
+    }
+
+    private bool _restoringPreset;
+
+    /// <summary>Choix du réglage utilisé dans le jeu ; « Automatique » = celui lu dans le jeu, s'il est lisible.</summary>
+    public IReadOnlyList<PlayedPresetOption> PlayedPresetOptions =>
+    [
+        new(null, InGame?.Preset is { } read ? $"Automatique : {Core.Rating.GameRatings.Label(read)}" : "Non indiqué"),
+        .. AllPlayedPresets,
+    ];
 
     private static readonly IReadOnlyList<PlayedPresetOption> AllPlayedPresets =
     [
-        new(null, "Non indiqué"),
         new(Core.Rating.GraphicsPreset.Low, "Bas"),
         new(Core.Rating.GraphicsPreset.Medium, "Moyen"),
         new(Core.Rating.GraphicsPreset.High, "Élevé"),
         new(Core.Rating.GraphicsPreset.Ultra, "Ultra"),
     ];
 
+    /// <summary>Sous le choix du réglage : ce qui a été lu dans le jeu, ou pourquoi il faut l'indiquer.</summary>
+    public string PresetCaption => InGame switch
+    {
+        { Preset: not null } read => read.Description(DateTime.Now) +
+            " « Automatique » suit ce fichier ; choisissez un réglage seulement si le jeu nomme ses niveaux autrement.",
+        { } read => read.Description(DateTime.Now) + (PlayedPreset?.Value is null
+            ? " La qualité de ce jeu n'est pas lisible : indiquez votre réglage pour un conseil précis."
+            : " La qualité de ce jeu n'est pas lisible : c'est le réglage choisi ci-dessus qui sert."),
+        null => "OptiGame ne sait pas lire les réglages de ce jeu : indiquez le vôtre pour un conseil précis. Gardé tout de suite, et noté avec chaque mesure.",
+    };
+
     /// <summary>Réglage utilisé dans le jeu ; enregistré dans le profil, puis la note est recalculée.</summary>
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(PresetText))]
-    private PlayedPresetOption _playedPreset = AllPlayedPresets.First(o => o.Value == profile.GraphicsPreset);
+    [NotifyPropertyChangedFor(nameof(PresetText), nameof(PresetCaption))]
+    private PlayedPresetOption _playedPreset = profile.GraphicsPreset is { } chosen
+        ? AllPlayedPresets.First(o => o.Value == chosen)
+        : new PlayedPresetOption(null, "Non indiqué");
 
-    partial void OnPlayedPresetChanged(PlayedPresetOption value) => setPlayedPreset(value.Value);
+    partial void OnPlayedPresetChanged(PlayedPresetOption value)
+    {
+        if (!_restoringPreset && value is not null) setPlayedPreset(value.Value); // null : la liste vient d'être remplacée
+    }
 
     public string RatingHeadline => Rating?.Headline ?? "";
 

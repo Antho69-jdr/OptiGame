@@ -146,6 +146,22 @@ if (args.Length == 1 && args[0] == "--steam-playtime")
     return;
 }
 
+// --ingame-settings : réglages lus dans les fichiers de chaque jeu (Unreal Engine, Unity), lecture seule.
+if (args.Length == 1 && args[0] == "--ingame-settings")
+{
+    var profiles = new OptiGame.Core.Profiles.ProfileStore(
+        new JsonStateStore<OptiGame.Core.Profiles.ProfilesDocument>(AppPaths.Default.Profiles));
+    foreach (var profile in profiles.GetAll())
+    {
+        var settings = OptiGame.Platform.InGame.InGameSettingsReader.Read(profile.ExePath);
+        Console.WriteLine(settings is null
+            ? $"{profile.Name} : rien de lisible (autre moteur, ou jeu jamais lancé)"
+            : $"{profile.Name} : {settings.Description(DateTime.Now)}\n    {settings.SourcePath}" +
+              (settings.PresetDetail is { } detail ? $"\n    {detail}" : ""));
+    }
+    return;
+}
+
 // --steam-owned : jeux Steam possédés d'après les caches du client (appinfo.vdf + packageinfo.vdf), lecture seule.
 if (args.Length == 1 && args[0] == "--steam-owned")
 {

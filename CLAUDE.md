@@ -317,8 +317,20 @@ vit dans Core ; Platform ne fait que lire/écrire le système.
   - Mesure : `Platform/Measurement/AutoCapture` = 1 capture PresentMon de 60 s après 4 min de partie, session ETW
     `OptiGame_AutoCapture` (jamais celle de la page Mesures), 5 dernières gardées par jeu, désactivable (Paramètres).
     Note = fluidité (60 % FPS moyens + 40 % 1 % low) / min(fréquence de l'écran, 120 Hz), médiane des 5 dernières captures.
-  - Réglages du jeu ILLISIBLES par OptiGame : l'utilisateur indique le sien (`GameProfile.GraphicsPreset`, modifié seulement
-    par `ProfileStore.SetGraphicsPreset`), copié dans chaque capture ; non indiqué = conseil relatif, sans réglage conseillé.
+  - Réglage du jeu : choisi par l'utilisateur (`GameProfile.GraphicsPreset`, modifié seulement par
+    `ProfileStore.SetGraphicsPreset`), sinon « Automatique » = lu dans le jeu (ci-dessous), copié dans chaque capture
+    (`InGameSettingsReader.PresetForCapture`) ; aucun = conseil relatif, sans réglage conseillé.
+  - Réglages LUS dans les fichiers du jeu, lecture seule (`Core/InGame/InGameSettings`, `Platform/InGame/InGameSettingsReader`,
+    `DiagDump -- --ingame-settings`), vérifiés le 2026-10-06 : Unreal Engine 4/5 = `%LocalAppData%\<projet>\Saved\Config\
+    <Windows|WindowsClient|WindowsNoEditor>\GameUserSettings.ini` (projet = dossier au-dessus de Binaries\Win64 : PUBG TslGame,
+    ARC Raiders PioneerGame) ; qualité = médiane des `sg.*` (hors ResolutionQuality = échelle de rendu, et LandscapeQuality,
+    fixé par le jeu) en niveaux DU MOTEUR (0 Bas … 3-4 Ultra : PUBG les nomme Très bas … Ultra, d'où le choix manuel possible),
+    ResolutionSizeX/Y, FullscreenMode, bUseVSync, FrameRateLimit (> 500 = sans limite), upscaling si ResolutionScalingMethod /
+    UpscalingMethod + <méthode>Mode / QualityOption. Unity = écran SEULEMENT (`<exe>_Data\app.info` → HKCU\Software\<éditeur>\
+    <jeu>, « Screenmanager … _h<hash> ») : UnityGraphicsQuality NON lu (Void Crew : 1 alors qu'il est en Ultra ; ses vrais
+    réglages sont dans son propre Settings.json). Overwatch, Scrap Mechanic, Star Citizen, Portal 2 : rien de lisible. Les
+    conseils s'en servent : cause du plafond (V-Sync / limite lue), upscaling déjà actif (mode plus rapide plutôt
+    qu'« activez »), estimation avec upscaling si déjà activé.
   - Limitation (`GameRatings.Classify`) d'après `FrameLoad` (Σ GPUBusy / Σ FrameTime, Σ CPUWait / Σ FrameTime, colonnes
     vérifiées sur de vrais CSV 2.6.0) : GPU ≥ 85 % = carte graphique ; sinon attente ≥ 15 % ou FPS ≈ fréquence = plafond ;
     sinon processeur. Réel : Overwatch plafonné 76 %/43 %, en V-Sync 82 %/64 % ; Void Crew 98 %/2 %. Captures antérieures :

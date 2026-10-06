@@ -73,8 +73,8 @@ public sealed class AutoCapture(GameSessionManager sessions, CaptureStore store,
         {
             var gpu = SampleGpuAsync(session.Profile.Name, cancellation); // mêmes 60 s que PresentMon
             var output = await runner.RunAsync(request, cancellation);
-            // Réglage relu à la fin de la mesure : l'utilisateur a pu l'indiquer pendant la partie.
-            var preset = profiles.Find(session.Profile.Id)?.GraphicsPreset;
+            // Réglage relu à la fin de la mesure : l'utilisateur a pu l'indiquer pendant la partie ; sinon celui lu dans le jeu.
+            var preset = InGame.InGameSettingsReader.PresetForCapture(profiles.Find(session.Profile.Id));
             var record = CaptureReader.Build(request, "Automatique", csvName, now.AddSeconds(DelaySeconds), output, session.Profile.Name, automatic: true, preset);
             record.GpuHealth = await gpu;
             store.Add(record);

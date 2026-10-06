@@ -1,8 +1,10 @@
 using OptiGame.Core.Abstractions;
+using OptiGame.Core.InGame;
 using OptiGame.Core.Logging;
 using OptiGame.Core.Measurement;
 using OptiGame.Core.Profiles;
 using OptiGame.Core.Rating;
+using OptiGame.Platform.InGame;
 using OptiGame.Platform.Library;
 
 namespace OptiGame.App.Services;
@@ -69,8 +71,13 @@ public sealed class GameRatingService(
             .OrderByDescending(c => c.CapturedAt)
             .Select(c => new GameRatings.MeasuredCapture(c.Stats, c.Load ?? LoadOf(c), c.Preset, c.GpuHealth))
             .ToList();
-        return GameRatings.Combine(estimate, GameRatings.MeasureFrom(measured, pc.RefreshHz, profile.GraphicsPreset, pc));
+        // Réglage du jeu : celui indiqué par l'utilisateur, sinon celui lu dans les fichiers du jeu (Unreal Engine).
+        var game = InGameSettingsReader.Read(profile.ExePath);
+        return GameRatings.Combine(estimate, GameRatings.MeasureFrom(measured, pc.RefreshHz, PlayedPreset(profile, game), pc), game);
     }
+
+    /// <summary>Réglage du jeu à retenir : celui choisi dans OptiGame, sinon celui lu dans le jeu.</summary>
+    public static GraphicsPreset? PlayedPreset(GameProfile profile, InGameSettings? game) => profile.GraphicsPreset ?? game?.Preset;
 
     private readonly HashSet<Guid> _loadTried = [];
 
