@@ -15,14 +15,20 @@ on:
       - 'scripts/build-installer.ps1'
       - '.github/workflows/installer.yml'
       - 'Directory.Build.props'
+      - '.signpath/**'
+      - 'LICENSE'
 
 permissions:
   contents: write
+  actions: read   # SignPath lit la tâche et télécharge les fichiers envoyés
 
 jobs:
   installer:
     runs-on: windows-latest
-    timeout-minutes: 30
+    # Jusqu'à 2 × 30 min d'attente des approbations de signature (tag).
+    timeout-minutes: 100
+    env:
+      SIGN: ${{ startsWith(github.ref, 'refs/tags/v') && vars.SIGNPATH_ORGANIZATION_ID != '' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -58,8 +64,90 @@ jobs:
           choco upgrade innosetup -y --no-progress
           if ($LASTEXITCODE -ne 0) { throw "Inno Setup : code $LASTEXITCODE" }
 
+      - name: Publication de l'appli
+        run: ./scripts/build-installer.ps1 -Step Publish
+
+      # Signature par SignPath Foundation (README, « Signature du code ») : pour un tag seulement, une fois le projet SignPath
+      # prêt (variables du dépôt SIGNPATH_ORGANIZATION_ID, SIGNPATH_PROJECT_SLUG, SIGNPATH_SIGNING_POLICY_SLUG ; secret
+      # SIGNPATH_API_TOKEN). Configurations de fichiers : .signpath/artifact-configurations. Chaque demande attend
+      # l'approbation manuelle dans SignPath (30 min max) : d'abord les fichiers d'OptiGame, puis l'installeur qui les contient.
+      - name: Fichiers d'OptiGame à signer
+        if: env.SIGN == 'true'
+        run: |
+          New-Item -ItemType Directory -Force artifacts/to-sign/app | Out-Null
+          foreach ($f in 'OptiGame.exe', 'OptiGame.dll', 'OptiGame.Core.dll', 'OptiGame.Platform.dll') {
+            Copy-Item "artifacts/publish/$f" artifacts/to-sign/app/
+          }
+
+      - name: Envoi des fichiers d'OptiGame
+        id: unsigned-app
+        if: env.SIGN == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: OptiGame-app-non-signe
+          path: artifacts/to-sign/app/*
+          if-no-files-found: error
+
+      - name: Signature des fichiers d'OptiGame (SignPath)
+        if: env.SIGN == 'true'
+        uses: signpath/github-action-submit-signing-request@v3
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: ${{ vars.SIGNPATH_PROJECT_SLUG }}
+          signing-policy-slug: ${{ vars.SIGNPATH_SIGNING_POLICY_SLUG }}
+          artifact-configuration-slug: application
+          github-artifact-id: ${{ steps.unsigned-app.outputs.artifact-id }}
+          wait-for-completion: true
+          wait-for-completion-timeout-in-seconds: '1800'
+          output-artifact-directory: artifacts/signed/app
+
+      - name: Fichiers d'OptiGame signés
+        if: env.SIGN == 'true'
+        run: |
+          foreach ($f in 'OptiGame.exe', 'OptiGame.dll', 'OptiGame.Core.dll', 'OptiGame.Platform.dll') {
+            $signed = "artifacts/signed/app/$f"
+            $s = Get-AuthenticodeSignature $signed
+            if ($s.Status -ne 'Valid') { throw "$f : signature non valide ($($s.Status))." }
+            "$f : signé par $($s.SignerCertificate.Subject)"
+            Copy-Item $signed "artifacts/publish/$f" -Force
+          }
+
       - name: Fabrication de l'installeur
-        run: ./scripts/build-installer.ps1
+        run: ./scripts/build-installer.ps1 -Step Package
+
+      - name: Envoi de l'installeur
+        id: unsigned-installer
+        if: env.SIGN == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: OptiGame-Setup-non-signe
+          path: artifacts/installer/OptiGame-Setup-*.exe
+          if-no-files-found: error
+
+      - name: Signature de l'installeur (SignPath)
+        if: env.SIGN == 'true'
+        uses: signpath/github-action-submit-signing-request@v3
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: ${{ vars.SIGNPATH_PROJECT_SLUG }}
+          signing-policy-slug: ${{ vars.SIGNPATH_SIGNING_POLICY_SLUG }}
+          artifact-configuration-slug: installer
+          github-artifact-id: ${{ steps.unsigned-installer.outputs.artifact-id }}
+          wait-for-completion: true
+          wait-for-completion-timeout-in-seconds: '1800'
+          output-artifact-directory: artifacts/signed/installer
+
+      - name: Installeur signé
+        if: env.SIGN == 'true'
+        run: |
+          $signed = Get-ChildItem artifacts/signed/installer/OptiGame-Setup-*.exe | Select-Object -First 1
+          if (-not $signed) { throw 'Installeur signé introuvable.' }
+          $s = Get-AuthenticodeSignature $signed.FullName
+          if ($s.Status -ne 'Valid') { throw "Installeur : signature non valide ($($s.Status))." }
+          "Installeur signé par $($s.SignerCertificate.Subject)"
+          Copy-Item $signed.FullName (Join-Path artifacts/installer $signed.Name) -Force
 
       - name: Installation silencieuse
         run: |
@@ -67,8 +155,12 @@ jobs:
           $p = Start-Process $setup.FullName -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/LOG=install.log' -Wait -PassThru
           if ($p.ExitCode -ne 0) { Get-Content install.log; throw "Installation : code $($p.ExitCode)" }
           $app = Join-Path $env:ProgramFiles 'OptiGame'
-          foreach ($f in 'OptiGame.exe', 'tools\PresentMon-2.6.0-x64.exe', 'THIRD-PARTY-NOTICES.txt', 'unins000.exe') {
+          foreach ($f in 'OptiGame.exe', 'tools\PresentMon-2.6.0-x64.exe', 'THIRD-PARTY-NOTICES.txt', 'LICENSE.txt', 'unins000.exe') {
             if (-not (Test-Path (Join-Path $app $f))) { throw "Absent après l'installation : $f" }
+          }
+          if ($env:SIGN -eq 'true') {
+            $s = Get-AuthenticodeSignature (Join-Path $app 'OptiGame.exe')
+            if ($s.Status -ne 'Valid') { throw "OptiGame.exe installé : signature non valide ($($s.Status))." }
           }
           (Get-Item (Join-Path $app 'OptiGame.exe')).VersionInfo | Format-List ProductName, ProductVersion, FileVersion
           # Lue par OptiGame pour savoir s'il est la copie installée (seule à se mettre à jour elle-même).
@@ -140,4 +232,9 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           $setup = (Get-ChildItem artifacts/installer/OptiGame-Setup-*.exe | Select-Object -First 1).FullName
-          gh release create $env:GITHUB_REF_NAME $setup --draft --title "OptiGame $env:GITHUB_REF_NAME" --notes "Installeur Windows 10 et 11 (x64). Non signé : Windows SmartScreen peut afficher un avertissement (« Informations complémentaires » puis « Exécuter quand même »). Déjà installé (1.2.0 ou plus récent) ? OptiGame se met à jour tout seul."
+          $signing = if ($env:SIGN -eq 'true') {
+            'Signé par SignPath Foundation (signature gratuite pour les logiciels libres). Tant que la réputation de la signature se construit, Windows SmartScreen peut encore afficher un avertissement (« Informations complémentaires » puis « Exécuter quand même »).'
+          } else {
+            'Non signé : Windows SmartScreen peut afficher un avertissement (« Informations complémentaires » puis « Exécuter quand même »).'
+          }
+          gh release create $env:GITHUB_REF_NAME $setup --draft --title "OptiGame $env:GITHUB_REF_NAME" --notes "Installeur Windows 10 et 11 (x64). $signing Déjà installé (1.2.0 ou plus récent) ? OptiGame se met à jour tout seul."

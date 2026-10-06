@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Configuration « application » de SignPath (à recopier dans le projet SignPath) : fichiers d'OptiGame publiés par
+     scripts\build-installer.ps1 -Step Publish, envoyés par .github/workflows/installer.yml dans une archive. Seuls NOS
+     binaires : .NET (Microsoft), PresentMon (Intel) et les bibliothèques NuGet gardent la signature de leur éditeur. -->
+<artifact-configuration xmlns="http://signpath.io/artifact-configuration/v1">
+  <zip-file>
+    <pe-file-set product-name="OptiGame">
+      <include path="OptiGame.exe" />
+      <include path="OptiGame.dll" />
+      <include path="OptiGame.Core.dll" />
+      <include path="OptiGame.Platform.dll" />
+      <for-each>
+        <authenticode-sign />
+      </for-each>
+    </pe-file-set>
+  </zip-file>
+</artifact-configuration>

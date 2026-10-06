@@ -6,8 +6,13 @@
 #
 # Prérequis : SDK .NET 10 et Inno Setup 6.7 ou plus récent (winget install --id JRSoftware.InnoSetup -e).
 # Usage (depuis la racine du dépôt) : .\scripts\build-installer.ps1      (version lue dans Directory.Build.props)
+# -Step Publish : étapes 1 et 2 seulement ; -Step Package : étape 3 seulement, sur artifacts\publish déjà prêt. La CI signe
+# (SignPath) les fichiers d'OptiGame entre les deux, puis l'installeur.
 
-param([string]$Version)
+param(
+    [string]$Version,
+    [ValidateSet('All', 'Publish', 'Package')][string]$Step = 'All'
+)
 
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'   # téléchargements bien plus rapides sans barre de progression
@@ -24,35 +29,42 @@ $publish = Join-Path $artifacts 'publish'
 $installer = Join-Path $artifacts 'installer'
 $cache = Join-Path $artifacts 'cache'
 
-# 1. Publication autonome.
-Write-Host "OptiGame $Version : publication autonome (win-x64)..." -ForegroundColor Cyan
-if (Test-Path $publish) { Remove-Item $publish -Recurse -Force }
-dotnet publish (Join-Path $root 'src\OptiGame.App\OptiGame.App.csproj') -c Release -r win-x64 --self-contained true `
-    -p:PublishReadyToRun=true -p:DebugType=None -p:DebugSymbols=false "-p:Version=$Version" -o $publish
-if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+if ($Step -ne 'Package') {
+    # 1. Publication autonome.
+    Write-Host "OptiGame $Version : publication autonome (win-x64)..." -ForegroundColor Cyan
+    if (Test-Path $publish) { Remove-Item $publish -Recurse -Force }
+    dotnet publish (Join-Path $root 'src\OptiGame.App\OptiGame.App.csproj') -c Release -r win-x64 --self-contained true `
+        -p:PublishReadyToRun=true -p:DebugType=None -p:DebugSymbols=false "-p:Version=$Version" -o $publish
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-# 2. PresentMon : seule cette version, à cette empreinte, signée par Intel, entre dans l'installeur.
-$pmVersion = '2.6.0'
-$pmSha256 = 'B2A706BC6AD475749E3B7E3409263AA1E6906D45BDCF993F6DBC0F660188F1AF'
-$pmName = "PresentMon-$pmVersion-x64.exe"
-New-Item -ItemType Directory -Force $cache | Out-Null
-$pmCached = Join-Path $cache $pmName
-if (-not (Test-Path $pmCached) -or (Get-FileHash $pmCached -Algorithm SHA256).Hash -ne $pmSha256) {
-    Write-Host "Téléchargement de $pmName (github.com/GameTechDev/PresentMon)..." -ForegroundColor Cyan
-    Invoke-WebRequest "https://github.com/GameTechDev/PresentMon/releases/download/v$pmVersion/$pmName" -OutFile $pmCached -UseBasicParsing
+    # 2. PresentMon : seule cette version, à cette empreinte, signée par Intel, entre dans l'installeur.
+    $pmVersion = '2.6.0'
+    $pmSha256 = 'B2A706BC6AD475749E3B7E3409263AA1E6906D45BDCF993F6DBC0F660188F1AF'
+    $pmName = "PresentMon-$pmVersion-x64.exe"
+    New-Item -ItemType Directory -Force $cache | Out-Null
+    $pmCached = Join-Path $cache $pmName
+    if (-not (Test-Path $pmCached) -or (Get-FileHash $pmCached -Algorithm SHA256).Hash -ne $pmSha256) {
+        Write-Host "Téléchargement de $pmName (github.com/GameTechDev/PresentMon)..." -ForegroundColor Cyan
+        Invoke-WebRequest "https://github.com/GameTechDev/PresentMon/releases/download/v$pmVersion/$pmName" -OutFile $pmCached -UseBasicParsing
+    }
+    $hash = (Get-FileHash $pmCached -Algorithm SHA256).Hash
+    if ($hash -ne $pmSha256) {
+        Remove-Item $pmCached -Force
+        throw "PresentMon : empreinte inattendue ($hash), fichier refusé."
+    }
+    $signature = Get-AuthenticodeSignature $pmCached
+    if ($signature.Status -ne 'Valid' -or $signature.SignerCertificate.Subject -notmatch 'O=Intel Corporation') {
+        throw "PresentMon : signature Intel non valide ($($signature.Status)), fichier refusé."
+    }
+    $tools = Join-Path $publish 'tools'
+    New-Item -ItemType Directory -Force $tools | Out-Null
+    Copy-Item $pmCached (Join-Path $tools $pmName)
 }
-$hash = (Get-FileHash $pmCached -Algorithm SHA256).Hash
-if ($hash -ne $pmSha256) {
-    Remove-Item $pmCached -Force
-    throw "PresentMon : empreinte inattendue ($hash), fichier refusé."
+if ($Step -eq 'Publish') {
+    Write-Host "Publication prête : $publish" -ForegroundColor Green
+    exit 0
 }
-$signature = Get-AuthenticodeSignature $pmCached
-if ($signature.Status -ne 'Valid' -or $signature.SignerCertificate.Subject -notmatch 'O=Intel Corporation') {
-    throw "PresentMon : signature Intel non valide ($($signature.Status)), fichier refusé."
-}
-$tools = Join-Path $publish 'tools'
-New-Item -ItemType Directory -Force $tools | Out-Null
-Copy-Item $pmCached (Join-Path $tools $pmName)
+if (-not (Test-Path (Join-Path $publish 'OptiGame.exe'))) { throw "Publication absente ($publish) : lancez d'abord -Step Publish." }
 
 # 3. Inno Setup.
 $iscc = @(
