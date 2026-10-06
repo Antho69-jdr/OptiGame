@@ -240,8 +240,9 @@
                         </Border>
 
                         <!-- Temps de jeu, mesures, disque : deux colonnes, une seule en fenêtre étroite -->
-                        <UniformGrid Columns="{Binding ActualWidth, ElementName=OverviewTab, Converter={StaticResource WidthToColumns}, ConverterParameter=720}">
-                            <Border Margin="0,0,8,16" Style="{StaticResource Card}">
+                        <!-- Sous la note : 3 cartes côte à côte si la place le permet (2, puis 1 en fenêtre étroite) ; marge droite négative = cartes alignées sur la note -->
+                        <UniformGrid Margin="0,0,-16,0" Columns="{Binding ActualWidth, ElementName=OverviewTab, Converter={StaticResource WidthToColumns}, ConverterParameter='720,880'}">
+                            <Border Margin="0,0,16,16" Style="{StaticResource Card}">
                                 <StackPanel>
                                     <TextBlock Style="{StaticResource Text.SectionTitle}" Text="Temps de jeu" />
                                     <TextBlock Margin="0,8,0,0" Style="{StaticResource Text.Stat}" Text="{Binding PlaytimeTotal}" />
@@ -258,7 +259,7 @@
                                     </ItemsControl>
                                 </StackPanel>
                             </Border>
-                            <Border Margin="8,0,0,16" Style="{StaticResource Card}">
+                            <Border Margin="0,0,16,16" Style="{StaticResource Card}">
                                 <StackPanel>
                                     <TextBlock Style="{StaticResource Text.SectionTitle}" Text="Mesures" />
                                     <TextBlock Margin="0,8,0,0" Style="{StaticResource Text.Secondary}" Text="{Binding MeasuresSummary}" />
@@ -282,7 +283,7 @@
                                     </ItemsControl>
                                 </StackPanel>
                             </Border>
-                            <Border Margin="0,0,8,16" Style="{StaticResource Card}">
+                            <Border Margin="0,0,16,16" Style="{StaticResource Card}">
                                 <StackPanel>
                                     <TextBlock Style="{StaticResource Text.SectionTitle}" Text="Disque du jeu" />
                                     <TextBlock Margin="0,8,0,0" Style="{StaticResource Text.Secondary}" Text="Lecture du disque…"

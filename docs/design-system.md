@@ -137,8 +137,8 @@ grille, flèches d'une jaquette à l'autre).
   locale, sinon illustration IGDB.
 - Trois onglets (`Segment`, flèches pour passer de l'un à l'autre), le dernier choisi est gardé :
   - **Vue d'ensemble** : note (chiffre + mot + « Note mesurée / estimée », « Calcul de la note… » tant qu'elle n'est pas
-    calculée), « Mon réglage dans le jeu » (gardé tout de suite), puis temps de jeu, mesures et disque en cartes (2 colonnes,
-    1 sous 720 de large ; `WidthToColumnsConverter`).
+    calculée), « Mon réglage dans le jeu » (gardé tout de suite), puis temps de jeu, mesures et disque en cartes (3 colonnes
+    dès 880 de large, 2 dès 720, sinon 1 ; `WidthToColumnsConverter` « 720,880 » ; alignées sur la carte de la note).
   - **Optimisation** : « Réglages de partie » (case « Optimiser ce jeu pendant les parties », réglages grisés sinon,
     avertissements en ligne, « Ce qui se passera » toujours visible) → barre **Enregistrer** ; « Réglages permanents (Windows
     et pilote) » → **Appliquer…** confirmé et **Restaurer l'original…**, état relu, jamais stocké.
