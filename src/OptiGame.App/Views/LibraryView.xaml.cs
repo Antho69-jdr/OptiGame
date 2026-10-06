@@ -15,6 +15,8 @@ public partial class LibraryView : UserControl
         Unloaded += (_, _) => Attach(null);
     }
 
+    private System.Windows.Window? _window;
+
     private void Attach(LibraryViewModel? library)
     {
         if (_library is not null)
@@ -22,12 +24,29 @@ public partial class LibraryView : UserControl
             _library.UninstalledListReset -= OnUninstalledListReset;
             _library.SearchFocusRequested -= OnSearchFocusRequested;
         }
+        if (_window is not null) _window.Activated -= OnWindowActivated;
         _library = library;
+        _window = library is null ? null : System.Windows.Window.GetWindow(this);
         if (_library is not null)
         {
             _library.UninstalledListReset += OnUninstalledListReset;
             _library.SearchFocusRequested += OnSearchFocusRequested;
+            _ = _library.Launchers.RefreshAsync(); // lanceurs ouverts ou fermés entre-temps
         }
+        if (_window is not null) _window.Activated += OnWindowActivated;
+    }
+
+    /// <summary>Retour sur la fenêtre (un lanceur a pu être ouvert ou fermé ailleurs) : état des lanceurs relu, sans boucle.</summary>
+    private void OnWindowActivated(object? sender, EventArgs e) => _ = _library?.Launchers.RefreshAsync();
+
+    /// <summary>Bouton d'un lanceur : menu Ouvrir / Fermer… sous le bouton (clic, Entrée ou Espace).</summary>
+    private void OnLauncherClick(object sender, System.Windows.RoutedEventArgs e)
+    {
+        if (sender is not Button { ContextMenu: { } menu } button) return;
+        menu.DataContext = button.DataContext;
+        menu.PlacementTarget = button;
+        menu.Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom;
+        menu.IsOpen = true;
     }
 
     /// <summary>Ctrl+F : curseur dans la recherche, texte sélectionné (une frappe le remplace).</summary>

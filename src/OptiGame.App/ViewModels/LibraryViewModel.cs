@@ -29,6 +29,10 @@ public sealed partial class LibraryViewModel : ObservableObject
     private readonly ProfileStore _store;
     private readonly GameTagService _tags;
     private readonly Platform.Library.StorePageResolver _storePages;
+
+    /// <summary>Barre « Lanceurs » de l'en-tête (Steam, Epic Games, GOG Galaxy : ouvrir, fermer).</summary>
+    public LaunchersViewModel Launchers { get; }
+
     private readonly IPowerSchemeProvider _power;
     private readonly IRunningProgramsProvider _programs;
     private readonly IDialogService _dialogs;
@@ -78,7 +82,7 @@ public sealed partial class LibraryViewModel : ObservableObject
         GameGraphicsService graphics, NewSteamGamesViewModel newGames, GameRatingService ratings, Platform.Measurement.AutoCapture autoCapture,
         FrameCapService frameCap, Platform.Library.StoreOwnedLibrary storeLibrary, Platform.Library.StoreCoverCache storeCovers,
         GameTimeGate gate, [FromKeyedServices(Platform.JournalKeys.Fixes)] Core.State.ChangeJournal fixes, UnsavedChangesGuard unsaved,
-        SessionViewModel session, GameTagService tags, Platform.Library.StorePageResolver storePages)
+        SessionViewModel session, GameTagService tags, Platform.Library.StorePageResolver storePages, LaunchersViewModel launchers)
     {
         _session = session;
         unsaved.Register(ConfirmDiscard);
@@ -121,6 +125,7 @@ public sealed partial class LibraryViewModel : ObservableObject
         GamesView.Filter = o => o is GameCardViewModel card && Matches(card.Name, card.Store, card.Genres, card.Kinds);
         _tags = tags;
         _storePages = storePages;
+        Launchers = launchers;
         tags.Updated += (_, _) => ApplyTags(rebuildFilters: true); // genres IGDB arrivés en tâche de fond
         _selectedGenre = GenreOptions[0];
         _selectedKind = KindOptions[0];
@@ -706,7 +711,17 @@ public sealed partial class LibraryViewModel : ObservableObject
     /// <summary>« Voir sur Epic Games / GOG » : page exacte si le magasin la donne, sinon recherche du titre ; navigateur, sans admin.</summary>
     private async Task OpenProductPageAsync(Core.Library.StoreProduct product)
     {
-        var url = await _storePages.UrlAsync(product);
+        // Dans le lanceur d'abord (Epic : recherche du jeu dans sa boutique ; GOG : page du jeu dans Galaxy), navigateur en recours.
+        var url = product.Store == GameSource.Gog ? await _storePages.UrlAsync(product) : null;
+        try
+        {
+            if (_launcher.OpenStorePageInLauncher(product, url ?? "")) return;
+        }
+        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException or LaunchException)
+        {
+            _log.Warn($"Page {product.Store} de « {product.Title} » non ouverte dans le lanceur ({ex.Message}) : navigateur.");
+        }
+        url ??= await _storePages.UrlAsync(product);
         try
         {
             _launcher.OpenStoreWebPage(url);

@@ -102,6 +102,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<Library.GameRequirementsClient>();
         services.AddSingleton<Library.StoreOwnedLibrary>();
         services.AddSingleton<Library.StorePageResolver>();
+        services.AddSingleton<Processes.LauncherControl>();
         services.AddSingleton<Library.StoreCoverCache>();
         services.AddSingleton<Drivers.NvidiaDriverClient>();
         services.AddSingleton<Drivers.WindowsUpdateDriverSearch>();

@@ -24,6 +24,20 @@
             </DataTemplate.Triggers>
         </DataTemplate>
 
+        <!-- Icône d'un lanceur dans la barre « Lanceurs » (icône de son exe ; initiale si elle est illisible) -->
+        <DataTemplate x:Key="LauncherIcon">
+            <Grid>
+                <TextBlock x:Name="Initial" HorizontalAlignment="Center" VerticalAlignment="Center" Style="{StaticResource Text.BodyStrong}"
+                           Text="{Binding}" Visibility="Collapsed" />
+                <Image x:Name="Icon" Width="20" Height="20" RenderOptions.BitmapScalingMode="HighQuality" Source="{Binding Converter={StaticResource StoreIcon}}" />
+            </Grid>
+            <DataTemplate.Triggers>
+                <DataTrigger Binding="{Binding Converter={StaticResource StoreIcon}}" Value="{x:Null}">
+                    <Setter TargetName="Initial" Property="Visibility" Value="Visible" />
+                </DataTrigger>
+            </DataTemplate.Triggers>
+        </DataTemplate>
+
         <!-- Pastille de note : chiffre coloré par niveau (le chiffre porte le sens, la couleur le double) -->
         <Style x:Key="RatingText" TargetType="TextBlock">
             <Setter Property="Foreground" Value="{StaticResource Brush.Ok}" />
@@ -54,6 +68,36 @@
             <!-- En-tête : titre et nombre de jeux ; à droite, actualiser et le menu d'ajout (une seule action principale) -->
             <DockPanel DockPanel.Dock="Top" Margin="0,0,0,16">
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Top">
+                    <!-- Lanceurs installés : icône, point vert s'il est ouvert ; clic = menu Ouvrir / Fermer… -->
+                    <ItemsControl Margin="0,0,12,0" VerticalAlignment="Center" ItemsSource="{Binding Launchers.Items}" Focusable="False"
+                                  AutomationProperties.Name="Lanceurs" Visibility="{Binding Launchers.HasLaunchers, Converter={StaticResource BoolToVisibility}}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel Orientation="Horizontal" />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="{x:Type vm:LauncherItemViewModel}">
+                                <Button Margin="0,0,4,0" Style="{StaticResource Button.Icon}" Click="OnLauncherClick" IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBool}}"
+                                        ToolTip="{Binding AccessibleName}" AutomationProperties.Name="{Binding AccessibleName}">
+                                    <Grid Width="22" Height="22">
+                                        <ContentControl Content="{Binding Store}" ContentTemplate="{StaticResource LauncherIcon}" Focusable="False" IsTabStop="False" />
+                                        <!-- Ouvert : point vert (le nom accessible le dit aussi) -->
+                                        <Ellipse Width="8" Height="8" HorizontalAlignment="Right" VerticalAlignment="Bottom" Fill="{StaticResource Brush.Ok}"
+                                                 Stroke="{StaticResource Brush.Window}" StrokeThickness="1.5"
+                                                 Visibility="{Binding IsRunning, Converter={StaticResource BoolToVisibility}}" />
+                                    </Grid>
+                                    <Button.ContextMenu>
+                                        <ContextMenu>
+                                            <MenuItem FontWeight="SemiBold" Header="{Binding OpenLabel}" Command="{Binding OpenCommand}" />
+                                            <MenuItem Header="{Binding Name, StringFormat='Fermer {0}…'}" Command="{Binding CloseCommand}"
+                                                      Visibility="{Binding IsRunning, Converter={StaticResource BoolToVisibility}}" />
+                                        </ContextMenu>
+                                    </Button.ContextMenu>
+                                </Button>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
                     <controls:IconButton Margin="0,0,8,0" Style="{StaticResource Button.Icon}" Glyph="&#xE72C;" IsLabelVisible="False"
                                          Label="Actualiser (F5)" Command="{Binding RefreshLibraryCommand}"
                                          AutomationProperties.HelpText="Revérifie vos jeux sur le disque et relit vos bibliothèques Steam, Epic Games et GOG." />

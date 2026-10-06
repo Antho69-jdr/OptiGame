@@ -58,6 +58,16 @@ public sealed class StorePagesTests
     }
 
     [Fact]
+    public void Launcher_addresses()
+    {
+        Assert.Equal("com.epicgames.launcher://store/browse?q=Caravan%20SandWitch", StorePages.EpicLauncherSearchUri("Caravan SandWitch"));
+        Assert.Equal("goggalaxy://openStoreUrl/embed.gog.com/game/vambrace_cold_soul", StorePages.GalaxyStoreUri("https://www.gog.com/game/vambrace_cold_soul"));
+        Assert.Equal("goggalaxy://openStoreUrl/embed.gog.com/game/vambrace_cold_soul", StorePages.GalaxyStoreUri("https://www.gog.com/fr/game/vambrace_cold_soul"));
+        Assert.Null(StorePages.GalaxyStoreUri("https://www.gog.com/fr/games?query=Vambrace"));
+        Assert.Null(StorePages.GalaxyStoreUri("https://evil.example/game/x"));
+    }
+
+    [Fact]
     public void Search_is_the_fallback()
     {
         Assert.Equal("https://store.epicgames.com/fr/browse?q=Caravan%20SandWitch&sortBy=relevancy&sortDir=DESC",

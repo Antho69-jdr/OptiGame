@@ -182,6 +182,17 @@ Sessions de jeu (Platform/Processes) :
   `DiagDump -- --launch-plan` montre ce qui serait lancé pour chaque profil, sans rien lancer.
 - « Page Steam » (page du jeu) : `Core/Launching/SteamStorePage`, `"steam.exe" -- "steam://store/<appid>"` via
   `UnelevatedLauncher` (même forme que HKCR\steam\shell\open\command), navigateur si Steam est absent.
+- « Voir sur … » DANS le lanceur d'abord (`GameLauncher.OpenStorePageInLauncher`), navigateur en recours. Vérifié par captures
+  le 2026-10-06 : Epic = `com.epicgames.launcher://store/browse?q=<titre>` (le jeu en 1er résultat ; les pages produit
+  `store/p/…`, `store/fr/p/…`, `store/product/…/home` donnent TOUTES « Page introuvable », même Fortnite), envoyé comme
+  l'installation (lanceur fermé : démarré seul, adresse 8 s après sa fenêtre) ; GOG = `GalaxyClient.exe /urlProtocol=
+  "goggalaxy://openStoreUrl/embed.gog.com/game/<page>"` (commande « openStoreUrl » de l'ExternalUrlHandler de GalaxyClient.exe).
+- Barre « Lanceurs » (en-tête de Mes jeux ; `ViewModels/LaunchersViewModel`, `Platform/Processes/LauncherControl`,
+  `Core/Library/LauncherApps`) : icône par lanceur installé, point vert s'il est ouvert, menu Ouvrir / Afficher / Fermer…
+  (confirmé, refusé pendant une partie). État relu à l'affichage de Mes jeux et au retour sur la fenêtre, jamais en boucle.
+  Fermer : Steam = `steam.exe -shutdown` ; Epic et Galaxy n'ont PAS de commande pour quitter (chaînes de leurs exe cherchées) →
+  arrêt de leurs processus de la session, dans leur dossier (Epic : `Epic Games\Launcher` seulement, jamais Epic Online
+  Services qui sert aux jeux ; Galaxy : son dossier, le service GalaxyCommunication est hors session).
 - « Voir sur Epic Games / GOG » (fiche d'un profil créé depuis leur lanceur, jaquettes non installées) : `Core/Library/StorePages`
   + `Platform/Library/StorePageResolver`, vérifié le 2026-10-06 (`DiagDump -- --store-page`). Le catalogue Epic n'a PAS l'adresse
   de page : `store-content.ak.epicgames.com/api/content/productmapping` (espace de noms → page, 231 jeux sur 348) ; GOG :

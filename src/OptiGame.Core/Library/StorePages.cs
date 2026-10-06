@@ -72,6 +72,27 @@ public static partial class StorePages
 
     public static string Label(GameSource store) => store == GameSource.Epic ? "Voir sur Epic Games" : "Voir sur GOG";
 
+    /// <summary>
+    /// Recherche du jeu dans la boutique du lanceur Epic (vérifié par capture le 2026-10-06 : le jeu en premier résultat).
+    /// Les pages produit (« store/p/… », « store/fr/p/… », « store/product/…/home ») y donnent TOUTES « Page introuvable »,
+    /// même pour Fortnite : la recherche est la seule voie qui marche dans le lanceur.
+    /// </summary>
+    public static string EpicLauncherSearchUri(string title) => $"com.epicgames.launcher://store/browse?q={Uri.EscapeDataString(title)}";
+
+    /// <summary>
+    /// Page du jeu dans la boutique de GOG Galaxy, d'après sa page web (product_card) : commande « openStoreUrl » de Galaxy
+    /// (ExternalUrlHandler de GalaxyClient.exe), vérifiée par capture le 2026-10-06 avec embed.gog.com/game/&lt;page&gt;.
+    /// Null si l'adresse n'est pas une page de jeu de www.gog.com.
+    /// </summary>
+    public static string? GalaxyStoreUri(string productCardUrl) =>
+        Uri.TryCreate(productCardUrl, UriKind.Absolute, out var uri) && uri.Host == "www.gog.com"
+        && GogGamePath().Match(uri.AbsolutePath) is { Success: true } match
+            ? $"goggalaxy://openStoreUrl/embed.gog.com/game/{match.Groups[1].Value}"
+            : null;
+
+    [GeneratedRegex(@"^/(?:[a-z]{2}(?:-[a-z]{2})?/)?game/([a-z0-9_\-]{1,128})/?$", RegexOptions.IgnoreCase)]
+    private static partial Regex GogGamePath();
+
     private static bool IsDigits(string text) => text.Length is > 0 and <= 20 && text.All(char.IsAsciiDigit);
 
     private static bool IsId(string text) => text.Length is > 0 and <= 64 && text.All(char.IsAsciiLetterOrDigit);

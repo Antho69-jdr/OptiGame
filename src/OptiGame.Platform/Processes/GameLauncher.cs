@@ -98,18 +98,9 @@ public sealed class GameLauncher(FileLog log)
                 var parts = key.Split(':');
                 if (parts.Length != 3) throw new LaunchException($"Jeu Epic invalide : « {key} ».");
                 var install = StoreLaunchers.EpicUri(parts[0], parts[1], parts[2], "install");
-                if (Process.GetProcessesByName("EpicGamesLauncher").Length > 0)
-                {
-                    UnelevatedLauncher.Launch(epic, $"\"{epic}\" {StoreLaunchers.Quoted(install)}");
-                    log.Info($"Installation demandée à Epic Games Launcher : {install}");
-                    return $"Epic Games Launcher ouvre l'installation de « {name} ».";
-                }
-                // Lanceur fermé : démarré AVEC la demande, il reste caché et la perd (constaté le 2026-10-06 : aucune fenêtre en 60 s) ;
-                // démarré seul, sa fenêtre s'ouvre en ≈ 6 s. On le démarre donc seul, puis la demande suit quand il est prêt.
-                UnelevatedLauncher.Launch(epic, $"\"{epic}\"");
-                log.Info($"Epic Games Launcher fermé : démarré, l'installation suivra ({install}).");
-                _ = SendWhenEpicIsReadyAsync(epic, install);
-                return $"Epic Games Launcher démarre : l'installation de « {name} » s'ouvrira dès qu'il sera prêt (quelques secondes).";
+                return SendToEpic(epic, install)
+                    ? $"Epic Games Launcher ouvre l'installation de « {name} »."
+                    : $"Epic Games Launcher démarre : l'installation de « {name} » s'ouvrira dès qu'il sera prêt (quelques secondes).";
 
             case GameSource.Gog:
                 var galaxy = StoreLibraries.ProtocolExe("goggalaxy") ?? throw new LaunchException("GOG Galaxy est introuvable sur ce PC.");
@@ -124,10 +115,50 @@ public sealed class GameLauncher(FileLog log)
     }
 
     /// <summary>
-    /// Epic Games Launcher démarré seul : on attend sa fenêtre (60 s au plus, il se connecte et se met
-    /// parfois à jour), puis quelques secondes, et la demande d'installation est envoyée à l'instance prête.
+    /// « Voir sur … » DANS le lanceur : Epic = recherche du jeu dans sa boutique (ses pages produit y sont introuvables), GOG =
+    /// page du jeu dans la boutique de Galaxy. Faux si le lanceur est absent ou l'adresse inutilisable : l'appelant ouvre alors le
+    /// navigateur.
     /// </summary>
-    private async Task SendWhenEpicIsReadyAsync(string epic, string install)
+    public bool OpenStorePageInLauncher(StoreProduct product, string webUrl)
+    {
+        switch (product.Store)
+        {
+            case GameSource.Epic when StoreLibraries.ProtocolExe("com.epicgames.launcher") is { } epic:
+                SendToEpic(epic, StorePages.EpicLauncherSearchUri(product.Title));
+                return true;
+            case GameSource.Gog when StoreLibraries.ProtocolExe("goggalaxy") is { } galaxy && StorePages.GalaxyStoreUri(webUrl) is { } page:
+                UnelevatedLauncher.Launch(galaxy, $"\"{galaxy}\" /urlProtocol=\"{page}\"");
+                log.Info($"Page du jeu ouverte dans GOG Galaxy : {page}");
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    /// <summary>
+    /// Adresse transmise au lanceur Epic. Fermé, il démarre AVEC une adresse en restant caché et la perd (constaté le 2026-10-06 :
+    /// aucune fenêtre en 60 s) ; démarré seul, sa fenêtre s'ouvre en ≈ 6 s : il est démarré seul, l'adresse suit quand il est prêt.
+    /// Vrai si le lanceur tournait déjà (l'adresse est traitée tout de suite).
+    /// </summary>
+    private bool SendToEpic(string epic, string uri)
+    {
+        if (Process.GetProcessesByName("EpicGamesLauncher").Length > 0)
+        {
+            UnelevatedLauncher.Launch(epic, $"\"{epic}\" {StoreLaunchers.Quoted(uri)}");
+            log.Info($"Adresse transmise à Epic Games Launcher : {uri}");
+            return true;
+        }
+        UnelevatedLauncher.Launch(epic, $"\"{epic}\"");
+        log.Info($"Epic Games Launcher fermé : démarré, l'adresse suivra ({uri}).");
+        _ = SendWhenEpicIsReadyAsync(epic, uri);
+        return false;
+    }
+
+    /// <summary>
+    /// Epic Games Launcher démarré seul : on attend sa fenêtre (60 s au plus, il se connecte et se met
+    /// parfois à jour), puis quelques secondes, et l'adresse (installation, boutique) est envoyée à l'instance prête.
+    /// </summary>
+    private async Task SendWhenEpicIsReadyAsync(string epic, string uri)
     {
         try
         {
@@ -137,12 +168,12 @@ public sealed class GameLauncher(FileLog log)
                 await Task.Delay(1000);
             }
             await Task.Delay(TimeSpan.FromSeconds(8)); // fenêtre affichée avant la fin du chargement de la boutique
-            UnelevatedLauncher.Launch(epic, $"\"{epic}\" {StoreLaunchers.Quoted(install)}");
-            log.Info($"Installation demandée à Epic Games Launcher, maintenant prêt : {install}");
+            UnelevatedLauncher.Launch(epic, $"\"{epic}\" {StoreLaunchers.Quoted(uri)}");
+            log.Info($"Adresse transmise à Epic Games Launcher, maintenant prêt : {uri}");
         }
         catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException or LaunchException)
         {
-            log.Warn($"Installation non transmise à Epic Games Launcher : {ex.Message}");
+            log.Warn($"Adresse non transmise à Epic Games Launcher : {ex.Message}");
         }
 
         static bool HasWindow(Process process)

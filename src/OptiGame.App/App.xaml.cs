@@ -436,6 +436,7 @@ public partial class App : Application
         services.AddSingleton<GameRatingService>();
         services.AddSingleton<NewSteamGamesViewModel>();
         services.AddSingleton<GameTagService>();
+        services.AddSingleton<LaunchersViewModel>();
         services.AddSingleton<LibraryViewModel>();
         services.AddSingleton<SettingsViewModel>();
         services.AddSingleton<MeasuresViewModel>();
