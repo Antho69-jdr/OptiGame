@@ -54,6 +54,9 @@ public static partial class AppReleases
     public static IReadOnlyList<string> SilentInstallArguments(bool showWindowAfter, string logFile) =>
         ["/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART", showWindowAfter ? "/RELAUNCH=window" : "/RELAUNCH=minimized", $"/LOG={logFile}"];
 
+    /// <summary>Politique de confidentialité (PRIVACY.md du dépôt, adresse fixe citée par le README et les notes de version).</summary>
+    public static readonly Uri PrivacyPolicy = new($"https://github.com/{Owner}/{Repository}/blob/main/PRIVACY.md");
+
     /// <summary>Page GitHub d'une version (nouveautés).</summary>
     public static Uri PageFor(Version version) => new($"https://github.com/{Owner}/{Repository}/releases/tag/v{version.ToString(3)}");
 

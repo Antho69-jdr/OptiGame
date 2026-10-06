@@ -3,6 +3,7 @@ using OptiGame.Core.Launching;
 using OptiGame.Core.Library;
 using OptiGame.Core.Logging;
 using OptiGame.Core.Profiles;
+using OptiGame.Core.Updates;
 using OptiGame.Platform.Library;
 
 namespace OptiGame.Platform.Processes;
@@ -72,6 +73,18 @@ public sealed class GameLauncher(FileLog log)
         }
         OpenInBrowser(uri.AbsoluteUri);
         log.Info($"Page du magasin ouverte dans le navigateur : {uri.AbsoluteUri}");
+    }
+
+    /// <summary>Page du projet OptiGame sur GitHub (politique de confidentialité…), dans le navigateur par défaut.</summary>
+    public void OpenProjectPage(Uri page)
+    {
+        if (page.Scheme != Uri.UriSchemeHttps || page.Host != "github.com"
+            || !page.AbsolutePath.StartsWith($"/{AppReleases.Owner}/{AppReleases.Repository}/", StringComparison.Ordinal))
+        {
+            throw new ArgumentException($"Adresse refusée : {page}", nameof(page));
+        }
+        OpenInBrowser(page.AbsoluteUri);
+        log.Info($"Page du projet ouverte dans le navigateur : {page.AbsoluteUri}");
     }
 
     /// <summary>

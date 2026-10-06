@@ -311,6 +311,14 @@
                                              Description="Tout ce qu'OptiGame fait et toutes ses erreurs, avec l'heure. Utile pour comprendre un problème.">
                             <Button Style="{StaticResource Button.Secondary}" Content="Ouvrir le journal" Command="{Binding OpenLogCommand}" />
                         </controls:SettingRow>
+                        <controls:SettingRow Glyph="&#xE72E;" Header="Confidentialité"
+                                             Description="OptiGame ne collecte aucune donnée : pas de compte, pas de statistiques. Vos réglages restent sur ce PC.">
+                            <Button Style="{StaticResource Button.Secondary}" Content="Politique de confidentialité" Command="{Binding OpenPrivacyPolicyCommand}" />
+                            <controls:SettingRow.Details>
+                                <TextBlock Style="{StaticResource Text.Caption}"
+                                           Text="Pour fonctionner, OptiGame interroge quelques services (mises à jour sur GitHub, configuration requise des jeux sur Steam et PCGamingWiki, jaquettes, pilotes…) : la politique de confidentialité dit lesquels, quand, et ce qui leur est envoyé." />
+                            </controls:SettingRow.Details>
+                        </controls:SettingRow>
                     </StackPanel>
                 </Border>
             </StackPanel>

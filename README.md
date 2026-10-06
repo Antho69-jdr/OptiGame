@@ -21,11 +21,17 @@ Windows 10 (1809) ou Windows 11, 64 bits. OptiGame se met ensuite à jour tout s
 Free code signing provided by [SignPath.io](https://about.signpath.io/), certificate by
 [SignPath Foundation](https://signpath.org/).
 
-Signature gratuite fournie par SignPath.io, certificat de la SignPath Foundation. Sont signés : `OptiGame.exe`, les
-bibliothèques d'OptiGame (`OptiGame.dll`, `OptiGame.Core.dll`, `OptiGame.Platform.dll`) et l'installeur. Ils sont fabriqués
-par la [CI GitHub Actions](.github/workflows/installer.yml) de ce dépôt, sur les machines de GitHub, à partir du code publié
-ici ; chaque signature est approuvée à la main. Les programmes tiers inclus gardent la signature de leur éditeur (PresentMon :
-Intel ; .NET : Microsoft).
+OptiGame utilise SignPath Foundation pour signer son code (signature gratuite pour les logiciels libres). Sont signés :
+`OptiGame.exe`, les bibliothèques d'OptiGame (`OptiGame.dll`, `OptiGame.Core.dll`, `OptiGame.Platform.dll`) et l'installeur.
+Ils sont fabriqués par la [CI GitHub Actions](.github/workflows/installer.yml) de ce dépôt, sur les machines de GitHub, à
+partir du code publié ici, et chaque signature est approuvée à la main. Les programmes tiers inclus gardent la signature de
+leur éditeur (PresentMon : Intel ; .NET : Microsoft) ; le désinstalleur (Inno Setup) n'est pas signé. La page de chaque
+version indique si son installeur est signé : la signature est en cours de mise en place, les versions jusqu'à la 1.8.0 ne
+le sont pas.
+
+OptiGame uses SignPath Foundation for code signing. Signed files: `OptiGame.exe`, OptiGame's own libraries and the
+installer, built from this repository by GitHub Actions on GitHub-hosted runners; every signing request is approved
+manually. Releases up to 1.8.0 are not signed yet.
 
 Rôles / Team roles :
 
@@ -35,25 +41,11 @@ Rôles / Team roles :
 ## Confidentialité / Privacy policy
 
 OptiGame ne collecte aucune donnée : pas de compte, pas de statistiques d'utilisation, pas de publicité. Vos profils,
-mesures et réglages restent sur votre PC (`%LocalAppData%\OptiGame`).
+mesures et réglages restent sur votre PC. Pour certaines fonctions (mises à jour, configuration requise des jeux, jaquettes,
+pilotes), il interroge quelques services, sans leur envoyer d'information personnelle : la
+[politique de confidentialité](PRIVACY.md) dit lesquels, quand, et ce qui leur est envoyé.
 
-This program will not transfer any information to other networked systems unless specifically requested by the user or
-the person installing or operating it, except for the connections listed below, which can be turned off or are only made
-when the corresponding feature is used.
-
-OptiGame se connecte seulement aux services suivants, sans jamais envoyer d'information personnelle :
-
-| Service | Quand | Ce qui est envoyé |
-|---|---|---|
-| GitHub (`api.github.com`, `github.com`) | recherche de mise à jour : 2 min après le démarrage puis toutes les 24 h (désactivable dans Paramètres › Mises à jour) | la version d'OptiGame |
-| Magasin Steam (`store.steampowered.com`) | estimation de la note d'un jeu Steam | le numéro du jeu sur Steam |
-| PCGamingWiki (`www.pcgamingwiki.com`) | estimation de la note d'un jeu hors Steam | le nom du jeu |
-| IGDB / Twitch (`api.igdb.com`, `id.twitch.tv`) | jaquettes et genres, **seulement** si vous avez saisi vos identifiants IGDB | le nom des jeux |
-| Images Epic Games / GOG (`cdn1.epicgames.com`, `images.gog.com`) | jaquettes des jeux possédés non installés | l'adresse de l'image |
-| Epic Games / GOG (`store-content.ak.epicgames.com`, `api.gog.com`) | bouton « Voir sur … » | l'identifiant du jeu dans le magasin |
-| NVIDIA, AMD, Windows Update | page « Pilotes » | le modèle de carte graphique ou de chipset |
-
-Vos identifiants IGDB sont chiffrés sur votre PC (DPAPI) et ne servent qu'à IGDB.
+OptiGame does not collect any data. See the [privacy policy](PRIVACY.md) for the few services it contacts and what is sent.
 
 ## Licence
 

@@ -6,7 +6,9 @@ using OptiGame.App.Services;
 using OptiGame.Core;
 using OptiGame.Core.Profiles;
 using OptiGame.Core.Settings;
+using OptiGame.Core.Updates;
 using OptiGame.Platform.Artwork;
+using OptiGame.Platform.Processes;
 using OptiGame.Platform.Startup;
 
 namespace OptiGame.App.ViewModels;
@@ -18,6 +20,7 @@ namespace OptiGame.App.ViewModels;
 public sealed partial class SettingsViewModel : ObservableObject
 {
     private readonly AutoStartService _autoStart;
+    private readonly GameLauncher _launcher;
     private readonly IDialogService _dialogs;
     private readonly AppSettingsStore _settings;
     private bool _updating;
@@ -26,8 +29,10 @@ public sealed partial class SettingsViewModel : ObservableObject
     private readonly ProfileStore _profiles;
 
     public SettingsViewModel(AutoStartService autoStart, IDialogService dialogs, AppPaths paths, AppSettingsStore settings, IgdbClient igdb,
-        UpdateService updates, MeasuresViewModel measures, ShellAlerts alerts, TrayViewModel tray, ProfileStore profiles)
+        UpdateService updates, MeasuresViewModel measures, ShellAlerts alerts, TrayViewModel tray, ProfileStore profiles,
+        GameLauncher launcher)
     {
+        _launcher = launcher;
         Updates = updates;
         Measures = measures;
         OpenLogCommand = alerts.OpenLogCommand;
@@ -502,6 +507,9 @@ public sealed partial class SettingsViewModel : ObservableObject
         _settings.Update(s => s.GameFolders.RemoveAll(f => f.Equals(folder, StringComparison.OrdinalIgnoreCase)));
         RefreshGameFolders();
     }
+
+    [RelayCommand]
+    private void OpenPrivacyPolicy() => _launcher.OpenProjectPage(AppReleases.PrivacyPolicy);
 
     [RelayCommand]
     private void OpenDataFolder()

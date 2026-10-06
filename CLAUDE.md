@@ -427,9 +427,13 @@ vit dans Core ; Platform ne fait que lire/écrire le système.
   2026-10-05 ; la session cloud ne le peut pas (erreur 403), l'utilisateur le fait alors. L'utilisateur publie le brouillon
   créé par la CI.
 - Signature : SignPath Foundation (gratuit, logiciels libres), choisie par l'utilisateur le 2026-10-06 ; code sous licence MIT
-  (`LICENSE`, installé en LICENSE.txt), politique de signature et de confidentialité dans `README.md` (exigées par
-  signpath.org/terms : mention « Free code signing provided by SignPath.io, certificate by SignPath Foundation », rôles,
-  liste EXACTE des connexions réseau — à tenir à jour si OptiGame contacte un nouveau service). Signés : OptiGame.exe,
+  (`LICENSE`, installé en LICENSE.txt), politique de signature dans `README.md` et de confidentialité dans `PRIVACY.md`
+  (exigées par signpath.org/terms : mention « Free code signing provided by SignPath.io, certificate by SignPath Foundation »,
+  rôles ; `PRIVACY.md` = liste EXACTE des connexions réseau, à tenir à jour si OptiGame contacte un nouveau service ; adresse
+  fixe `AppReleases.PrivacyPolicy`, ouverte par Paramètres › Données › « Politique de confidentialité » et citée dans les
+  notes de chaque version, qui disent aussi si l'installeur est signé). OptiGame ne collecte AUCUNE donnée (vérifié le
+  2026-10-06 : 9 clients HTTP, aucune télémétrie). Désinstalleur : thème sombre et fond #0E1014 hérités (WizardBackColor,
+  mesuré sur capture). Signés : OptiGame.exe,
   OptiGame.dll, OptiGame.Core.dll, OptiGame.Platform.dll, puis l'installeur (`.signpath/artifact-configurations/*.xml`, à
   recopier dans SignPath). JAMAIS les binaires d'autrui : le désinstalleur d'Inno Setup reste non signé (et ISCC refuse un
   SignTool qui ne signe pas : « the file does not have a digital signature »). CI : `build-installer.ps1 -Step Publish`,
