@@ -1,3 +1,4 @@
+using OptiGame.Core.Abstractions;
 using OptiGame.Core.Measurement;
 using OptiGame.Core.Rating;
 
@@ -202,8 +203,64 @@ public sealed class GameRatingTests
         Assert.Contains(rating.Details, d => d.StartsWith("Indiquez le réglage"));
 
         var onlyEstimate = GameRatings.Combine(estimate, null)!;
-        Assert.Equal((RatingSource.Estimated, GraphicsPreset.High, 77, "Bonne marge"), (onlyEstimate.Source, onlyEstimate.Preset, onlyEstimate.Score, onlyEstimate.Headline));
+        Assert.Equal((RatingSource.Estimated, GraphicsPreset.Medium, 77, "Bonne marge"), (onlyEstimate.Source, onlyEstimate.Preset, onlyEstimate.Score, onlyEstimate.Headline));
         Assert.Null(GameRatings.Combine(null, null));
+    }
+
+    [Fact]
+    public void High_refresh_screen_gets_its_own_setting_but_the_score_stays_at_60_fps()
+    {
+        // PUBG sur la machine de dev (165 Hz → 120 FPS visés) : Élevé à 60 FPS, Moyen pour approcher 120 FPS (réglage affiché).
+        var estimate = GameRatings.EstimateFrom(Dev, Requirements("578080"))!;
+        Assert.Equal((GraphicsPreset.High, 77, GraphicsPreset.Medium, 120), (estimate.Preset, estimate.Score, estimate.PresetAtTarget, estimate.TargetFps));
+        Assert.Contains(estimate.Details, d => d.StartsWith("Écran 165 Hz : réglage conseillé Moyen"));
+
+        // Écran 60 Hz : un seul réglage, pas de ligne sur la fréquence.
+        var sixty = GameRatings.EstimateFrom(Dev with { RefreshHz = 60 }, Requirements("578080"))!;
+        Assert.Equal((GraphicsPreset.High, GraphicsPreset.High, 60), (sixty.Preset, sixty.PresetAtTarget, sixty.TargetFps));
+        Assert.DoesNotContain(sixty.Details, d => d.StartsWith("Écran"));
+    }
+
+    [Fact]
+    public void Suggests_upscaling_rather_than_a_lower_resolution()
+    {
+        // Void Crew (recommandé GTX 1080) en 3440×1440 à 165 Hz : Bas pour 120 FPS, Moyen avec l'upscaling en mode Qualité.
+        var estimate = GameRatings.EstimateFrom(Dev, Requirements("1063420"))!;
+        Assert.Equal(GraphicsPreset.Low, estimate.PresetAtTarget);
+        Assert.NotNull(estimate.Advice);
+        Assert.Contains("DLSS, FSR ou XeSS", estimate.Advice);
+        Assert.Contains("2293×960", estimate.Advice);
+        Assert.Contains("réglage conseillé Moyen", estimate.Advice);
+        Assert.StartsWith(estimate.Advice, GameRatings.Combine(estimate, null)!.Advice);
+
+        // Carte AMD : pas de DLSS.
+        var amd = Dev with { Gpu = GpuPerformance.Identify("AMD Radeon RX 6700 XT") };
+        Assert.Contains("FSR ou XeSS", GameRatings.EstimateFrom(amd, Requirements("1063420"))!.Advice);
+
+        // Large marge (Overwatch en 1080p à 60 Hz) : anticrénelage natif plutôt qu'upscaling.
+        var overwatch = GameRatings.EstimateFrom(Dev with { Width = 1920, Height = 1080, RefreshHz = 60 }, Requirements("2357570"))!;
+        Assert.Contains("DLAA", overwatch.Advice);
+    }
+
+    [Fact]
+    public void Measured_advice_names_the_upscalers_of_the_card()
+    {
+        var gpuBound = GameRatings.Combine(null, GameRatings.MeasureFrom([Capture(55, 35, load: VoidCrewGpuBound, preset: GraphicsPreset.High)], 165, pc: Dev))!;
+        Assert.Contains("DLSS, FSR ou XeSS", gpuBound.Advice);
+        Assert.Contains(gpuBound.Details, d => d.Contains("écran 3440×1440 à 165 Hz"));
+
+        var cpu = GameRatings.Combine(null, GameRatings.MeasureFrom([Capture(60, 40, load: new FrameLoad(0.55, 0.02), preset: GraphicsPreset.High)], 165, pc: Dev))!;
+        Assert.Contains("l'upscaling changera peu", cpu.Advice);
+    }
+
+    [Fact]
+    public void The_gaming_screen_is_the_primary_one()
+    {
+        DisplayInfo Screen(string name, int hz, bool primary = false) => new(name, "", 1920, 1080, hz, hz, primary);
+
+        Assert.Equal("principal", GameRatings.GamingDisplay([Screen("rapide", 165), Screen("principal", 60, primary: true)])!.DeviceName);
+        Assert.Equal("rapide", GameRatings.GamingDisplay([Screen("lent", 60), Screen("rapide", 165)])!.DeviceName); // aucun principal annoncé
+        Assert.Null(GameRatings.GamingDisplay([]));
     }
 
     [Fact]

@@ -21,20 +21,32 @@ public sealed class GameRatingService(
 {
     private PcSpecs? _pc;
 
-    /// <summary>Le PC : carte graphique reconnue, mémoire, et écran de jeu (celui à la plus haute fréquence). Hors du thread UI.</summary>
+    /// <summary>
+    /// Le PC : carte graphique reconnue et mémoire (WMI, lues une fois), écran de jeu = l'écran principal (relu à chaque fois :
+    /// résolution ou fréquence changées depuis le démarrage). Hors du thread UI.
+    /// </summary>
     public PcSpecs Pc()
     {
-        if (_pc is not null) return _pc;
-        var adapters = gpus.GetAdapters().Where(g => g.IsPhysical).ToList();
-        var identified = adapters.Select(a => (Adapter: a, Match: GpuPerformance.Identify(a.Name))).Where(x => x.Match is not null)
-            .OrderByDescending(x => x.Match!.Index).FirstOrDefault();
-        var memoryGb = (int)Math.Round(memory.GetMemoryInfo().Modules.Sum(m => (double)m.CapacityBytes) / (1024d * 1024 * 1024));
-        var screen = displays.GetDisplays().OrderByDescending(d => d.CurrentHz).ThenByDescending(d => d.Width * d.Height).FirstOrDefault();
-        _pc = new PcSpecs(identified.Adapter?.Name ?? adapters.FirstOrDefault()?.Name ?? "?", identified.Match, memoryGb,
-            screen?.Width ?? 1920, screen?.Height ?? 1080, screen?.CurrentHz ?? 60);
-        log.Info($"Note des jeux : PC = {_pc.GpuName} (indice {_pc.Gpu?.Index.ToString() ?? "inconnu"}), {memoryGb} Go, écran {_pc.Width}×{_pc.Height} à {_pc.RefreshHz} Hz.");
-        return _pc;
+        if (_pc is null)
+        {
+            var adapters = gpus.GetAdapters().Where(g => g.IsPhysical).ToList();
+            var identified = adapters.Select(a => (Adapter: a, Match: GpuPerformance.Identify(a.Name))).Where(x => x.Match is not null)
+                .OrderByDescending(x => x.Match!.Index).FirstOrDefault();
+            var memoryGb = (int)Math.Round(memory.GetMemoryInfo().Modules.Sum(m => (double)m.CapacityBytes) / (1024d * 1024 * 1024));
+            _pc = new PcSpecs(identified.Adapter?.Name ?? adapters.FirstOrDefault()?.Name ?? "?", identified.Match, memoryGb, 0, 0, 0);
+        }
+        var screen = GameRatings.GamingDisplay(displays.GetDisplays());
+        var pc = _pc with { Width = screen?.Width ?? 1920, Height = screen?.Height ?? 1080, RefreshHz = screen?.CurrentHz ?? 60 };
+        if (pc != _logged)
+        {
+            _logged = pc;
+            log.Info($"Note des jeux : PC = {pc.GpuName} (indice {pc.Gpu?.Index.ToString() ?? "inconnu"}), {pc.MemoryGb} Go, écran principal " +
+                     $"{pc.Width}×{pc.Height} à {pc.RefreshHz} Hz.");
+        }
+        return pc;
     }
+
+    private PcSpecs? _logged;
 
     /// <summary>Note d'un jeu (null si ni configuration requise reconnue ni mesure). Réseau, WMI et fichiers : hors du thread UI.</summary>
     public async Task<GameRating?> RateAsync(GameProfile profile, IReadOnlyList<GameLibraryScanner.SteamApp> steamApps)
@@ -57,7 +69,7 @@ public sealed class GameRatingService(
             .OrderByDescending(c => c.CapturedAt)
             .Select(c => new GameRatings.MeasuredCapture(c.Stats, c.Load ?? LoadOf(c), c.Preset, c.GpuHealth))
             .ToList();
-        return GameRatings.Combine(estimate, GameRatings.MeasureFrom(measured, pc.RefreshHz, profile.GraphicsPreset));
+        return GameRatings.Combine(estimate, GameRatings.MeasureFrom(measured, pc.RefreshHz, profile.GraphicsPreset, pc));
     }
 
     private readonly HashSet<Guid> _loadTried = [];

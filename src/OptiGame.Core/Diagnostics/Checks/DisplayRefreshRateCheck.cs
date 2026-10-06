@@ -23,7 +23,8 @@ public sealed class DisplayRefreshRateCheck(IDisplayInfoProvider displays) : IDi
         var fixes = new List<DiagnosticFix>();
         foreach (var d in all)
         {
-            details.Add($"{Label(d)} : {d.Width}×{d.Height} à {d.CurrentHz} Hz (max. {d.MaxHzAtCurrentResolution} Hz à cette résolution)");
+            details.Add($"{Label(d)}{(d.IsPrimary ? " (écran principal)" : "")} : {d.Width}×{d.Height} à {d.CurrentHz} Hz " +
+                        $"(max. {d.MaxHzAtCurrentResolution} Hz à cette résolution)");
 
             if (d.CurrentHz < d.MaxHzAtCurrentResolution)
             {

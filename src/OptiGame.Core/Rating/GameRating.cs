@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Net;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using OptiGame.Core.Abstractions;
 using OptiGame.Core.Measurement;
 using OptiGame.Core.Text;
 
@@ -110,7 +111,9 @@ public static partial class SteamRequirements
 /// <list type="bullet">
 /// <item>ESTIMATION (avant d'avoir mesuré) : carte graphique du PC comparée aux cartes minimum et recommandée (indices de
 /// <see cref="GpuPerformance"/>, même fabricant de préférence, la plus faible citée). Les configurations requises visent le
-/// 1080p : l'indice du PC est ramené en équivalent 1080p (pixels^0,7). Recommandée atteinte = « Élevé ».</item>
+/// 1080p : l'indice du PC est ramené en équivalent 1080p (pixels^0,7). Recommandée atteinte = « Élevé ». Elles visent ≈ 60 FPS :
+/// la note reste à 60 FPS, et le réglage pour la fréquence de l'écran (<see cref="TargetFps"/>) est donné à part, avec le gain de
+/// l'upscaling en mode Qualité quand il fait monter d'un cran (plutôt que baisser la résolution : image floue sur un LCD).</item>
 /// <item>MESURE (PresentMon) : fluidité = 60 % FPS moyens + 40 % 1 % low, rapportée à min(fréquence de l'écran, 120 Hz) ;
 /// médiane des 5 dernières captures fiables (de préférence celles faites au réglage actuel du jeu). OptiGame ne peut pas lire
 /// les réglages d'un jeu : le conseil part du réglage INDIQUÉ par l'utilisateur, et s'appuie sur ce qui limite les FPS
@@ -129,8 +132,42 @@ public static class GameRatings
 
     private const double FullHdPixels = 1920 * 1080;
 
+    /// <param name="Preset">Réglage conseillé pour ≈ 60 FPS (ce que visent les configurations requises) : la note en découle.</param>
+    /// <param name="PresetAtTarget">Réglage conseillé pour profiter de l'écran (<paramref name="TargetFps"/> FPS), celui qui est affiché ; = Preset à 60 Hz.</param>
+    /// <param name="Advice">Conseil de résolution / upscaling (null = rien de particulier).</param>
     public sealed record Estimate(int Score, GraphicsPreset Preset, bool BelowMinimum, IReadOnlyList<string> Details, string Source = "Steam",
-        string? SourceUrl = null);
+        string? SourceUrl = null, GraphicsPreset? PresetAtTarget = null, int TargetFps = 60, string? Advice = null);
+
+    /// <summary>
+    /// FPS visés pour un écran : sa fréquence, entre 30 et 120 (au-delà, les FPS comptent moins que la stabilité). Même cible
+    /// pour la note mesurée.
+    /// </summary>
+    public static int TargetFps(int refreshHz) => Math.Clamp(refreshHz, 30, 120);
+
+    /// <summary>
+    /// Écran de jeu : l'écran principal de Windows (celui où les jeux s'ouvrent en plein écran par défaut), sinon celui à la
+    /// plus haute fréquence.
+    /// </summary>
+    public static DisplayInfo? GamingDisplay(IReadOnlyList<DisplayInfo> displays) =>
+        displays.FirstOrDefault(d => d.IsPrimary)
+        ?? displays.OrderByDescending(d => d.CurrentHz).ThenByDescending(d => d.Width * d.Height).FirstOrDefault();
+
+    /// <summary>Upscalings que la carte peut utiliser : DLSS seulement sur les GeForce RTX ; FSR et XeSS sur toutes.</summary>
+    public static string Upscalers(PcSpecs? pc) =>
+        pc?.Gpu is { Vendor: "NVIDIA" } gpu && gpu.Model.StartsWith("RTX", StringComparison.Ordinal) ? "DLSS, FSR ou XeSS"
+        : pc?.Gpu is { Vendor: "Intel" } ? "XeSS ou FSR"
+        : pc?.Gpu is null ? "DLSS, FSR ou XeSS"
+        : "FSR ou XeSS";
+
+    /// <summary>Anticrénelage « natif » (image calculée en pleine résolution, sans agrandissement) : DLAA sur RTX.</summary>
+    private static string NativeAntiAliasing(PcSpecs? pc) =>
+        Upscalers(pc).StartsWith("DLSS", StringComparison.Ordinal) ? "DLAA, FSR Native AA" : "FSR Native AA, XeSS Native AA";
+
+    /// <summary>Upscaling en mode Qualité : image calculée aux 2/3 de la résolution (largeur et hauteur), puis agrandie.</summary>
+    private const double QualityRenderScale = 2.0 / 3.0;
+
+    private static GraphicsPreset PresetFor(double ratio, bool below) =>
+        below || ratio < 0.6 ? GraphicsPreset.Low : ratio < 1.0 ? GraphicsPreset.Medium : ratio < 1.6 ? GraphicsPreset.High : GraphicsPreset.Ultra;
 
     /// <summary>Une capture du jeu : statistiques, charge (null = inconnue) et réglage indiqué à ce moment-là.</summary>
     public sealed record MeasuredCapture(FrameStats Stats, FrameLoad? Load, GraphicsPreset? Preset, Gpu.GpuHealth? GpuHealth = null);
@@ -140,7 +177,7 @@ public static class GameRatings
     /// <param name="CurrentPreset">Réglage indiqué actuellement (peut différer de celui des mesures).</param>
     public sealed record Measurement(int Score, int Captures, double AverageFps, double OnePercentLowFps, bool HasHeadroom, int RefreshHz,
         GraphicsPreset? Preset = null, bool PresetAssumed = false, GraphicsPreset? CurrentPreset = null, FrameLoad? Load = null,
-        Bottleneck? Bottleneck = null, Gpu.GpuHealth? GpuHealth = null);
+        Bottleneck? Bottleneck = null, Gpu.GpuHealth? GpuHealth = null, PcSpecs? Pc = null);
 
     public static Estimate? EstimateFrom(PcSpecs pc, SystemRequirements requirements)
     {
@@ -151,12 +188,12 @@ public static class GameRatings
 
         double rec = recGpu?.Index ?? minGpu!.Index * 1.8;
         double min = minGpu?.Index ?? rec * 0.5;
-        var pixels = Math.Max(0.5, pc.Width * (double)pc.Height / FullHdPixels);
-        var effective = gpu.Index / Math.Pow(pixels, 0.7);
+        double Effective(double renderScale) => gpu.Index / Math.Pow(Math.Max(0.5, pc.Width * renderScale * pc.Height * renderScale / FullHdPixels), 0.7);
+        var effective = Effective(1);
         var ratio = effective / rec;
 
         var below = effective < min;
-        var preset = below || ratio < 0.6 ? GraphicsPreset.Low : ratio < 1.0 ? GraphicsPreset.Medium : ratio < 1.6 ? GraphicsPreset.High : GraphicsPreset.Ultra;
+        var preset = PresetFor(ratio, below);
         double score = below ? 15 + 20 * Clamp(effective / min)
             : ratio < 0.6 ? 35 + 15 * Clamp((effective - min) / Math.Max(1, 0.6 * rec - min))
             : ratio < 1.0 ? 50 + 20 * (ratio - 0.6) / 0.4
@@ -171,35 +208,72 @@ public static class GameRatings
         if (minGpu is not null) details.Add($"Minimum : {minGpu.Model} (indice {minGpu.Index}).");
 
         // Mémoire vive : sous le minimum = injouable ; sous le recommandé = pas au-delà de « Moyen ».
-        if (requirements.Minimum?.MemoryGb is { } minMemory && pc.MemoryGb < minMemory)
+        var memoryBelowMinimum = requirements.Minimum?.MemoryGb is { } minMemory && pc.MemoryGb < minMemory;
+        var memoryBelowRecommended = requirements.Recommended?.MemoryGb is { } recMemory && pc.MemoryGb < recMemory;
+        GraphicsPreset WithMemory(GraphicsPreset p) =>
+            memoryBelowMinimum ? GraphicsPreset.Low : memoryBelowRecommended && p > GraphicsPreset.Medium ? GraphicsPreset.Medium : p;
+        if (memoryBelowMinimum)
         {
             below = true;
-            preset = GraphicsPreset.Low;
             score = Math.Min(score, 30);
         }
-        else if (requirements.Recommended?.MemoryGb is { } recMemory && pc.MemoryGb < recMemory && preset > GraphicsPreset.Medium)
+        else if (memoryBelowRecommended && preset > GraphicsPreset.Medium)
         {
-            preset = GraphicsPreset.Medium;
             score = Math.Min(score, 69);
         }
+        preset = WithMemory(preset);
         var memoryNeeds = requirements.Recommended?.MemoryGb ?? requirements.Minimum?.MemoryGb;
         details.Add($"Mémoire vive : {pc.MemoryGb} Go" + (memoryNeeds is { } needed ? $" (le jeu demande {needed} Go)." : "."));
 
-        return new Estimate((int)Math.Round(score), preset, below, details, requirements.Source, requirements.SourceUrl);
+        // Fréquence de l'écran : les configurations requises visent ≈ 60 FPS ; pour profiter d'un écran plus rapide, il faut
+        // à peu près autant de puissance en plus que de FPS en plus (jeu limité par la carte graphique). La note reste celle à
+        // 60 FPS : les configurations requises sont souvent prudentes (machine de dev, 2026-10-06 : Void Crew estimé « Moyen »,
+        // mesuré en Ultra à 95-153 FPS), une exigence de plus rendrait l'estimation encore plus pessimiste.
+        var target = TargetFps(pc.RefreshHz);
+        var demand = Math.Max(1, target / 60.0);
+        var presetAtTarget = WithMemory(PresetFor(ratio / demand, below));
+        if (target > 60)
+        {
+            details.Add(presetAtTarget == preset
+                ? $"Écran {pc.RefreshHz} Hz : le même réglage devrait aussi permettre d'approcher {target} FPS."
+                : $"Écran {pc.RefreshHz} Hz : réglage conseillé {Label(presetAtTarget)} pour approcher {target} FPS ; {Label(preset)} suffit pour " +
+                  "≈ 60 FPS, ce que visent en général les configurations requises (la note est calculée à 60 FPS).");
+        }
+
+        // Résolution : sur un écran LCD, une résolution plus basse que celle de l'écran rend l'image floue. L'upscaling du jeu
+        // (mode Qualité : image calculée aux 2/3, puis agrandie) garde une image nette pour bien plus de FPS.
+        string? advice = null;
+        if (!below && presetAtTarget <= GraphicsPreset.Medium && pc.Height >= 1080)
+        {
+            var upscaled = WithMemory(PresetFor(Effective(QualityRenderScale) / rec / demand, false));
+            if (upscaled > presetAtTarget)
+            {
+                advice = $"Avec l'upscaling du jeu ({Upscalers(pc)}) en mode Qualité, l'image est calculée en ≈ " +
+                         $"{(int)(pc.Width * QualityRenderScale)}×{(int)(pc.Height * QualityRenderScale)} puis agrandie : réglage conseillé " +
+                         $"{Label(upscaled)}, plus net que de baisser la résolution du jeu sous celle de l'écran.";
+            }
+        }
+        else if (presetAtTarget == GraphicsPreset.Ultra && ratio / demand >= 2.2)
+        {
+            advice = $"Grande marge : en Ultra, préférez l'anticrénelage natif ({NativeAntiAliasing(pc)}) à l'upscaling, pour une image plus nette.";
+        }
+
+        return new Estimate((int)Math.Round(score), preset, below, details, requirements.Source, requirements.SourceUrl, presetAtTarget, target, advice);
     }
 
     /// <summary>
     /// Note mesurée : médiane des 5 dernières captures fiables, de préférence celles faites au réglage indiqué actuellement
     /// (une capture sans réglage enregistré est supposée faite à ce réglage) ; null s'il n'y en a aucune.
     /// </summary>
-    public static Measurement? MeasureFrom(IReadOnlyList<MeasuredCapture> capturesNewestFirst, int refreshHz, GraphicsPreset? currentPreset = null)
+    public static Measurement? MeasureFrom(IReadOnlyList<MeasuredCapture> capturesNewestFirst, int refreshHz, GraphicsPreset? currentPreset = null,
+        PcSpecs? pc = null)
     {
         var reliable = capturesNewestFirst.Where(c => c.Stats.IsReliable).ToList();
         if (reliable.Count == 0) return null;
         var atCurrent = currentPreset is null ? [] : reliable.Where(c => c.Preset is null || c.Preset == currentPreset).ToList();
         var chosen = (atCurrent.Count > 0 ? atCurrent : reliable).Take(5).ToList();
 
-        var target = Math.Clamp(refreshHz, 30, 120);
+        var target = TargetFps(refreshHz);
         int ScoreOf(FrameStats s) => (int)Math.Round(100 * Math.Pow(Math.Min(1, (0.6 * s.AverageFps + 0.4 * s.OnePercentLowFps) / target), 0.7));
         var median = chosen.OrderBy(c => ScoreOf(c.Stats)).ToList()[chosen.Count / 2];
         var stats = median.Stats;
@@ -208,7 +282,8 @@ public static class GameRatings
         return new Measurement(ScoreOf(stats), chosen.Count, stats.AverageFps, stats.OnePercentLowFps, headroom, refreshHz,
             preset, median.Preset is null && preset is not null, currentPreset, median.Load,
             median.Load is { } load ? Classify(load, stats.AverageFps, refreshHz) : null,
-            chosen.Select(c => c.GpuHealth).FirstOrDefault(g => g is not null)); // relevés de la mesure la plus récente
+            chosen.Select(c => c.GpuHealth).FirstOrDefault(g => g is not null), // relevés de la mesure la plus récente
+            pc);
     }
 
     /// <summary>
@@ -235,12 +310,14 @@ public static class GameRatings
                 if (target > (int)GraphicsPreset.Ultra)
                 {
                     preset = GraphicsPreset.Ultra;
-                    advice = "Déjà en Ultra, et il reste de la marge : rien à changer.";
+                    advice = "Déjà en Ultra, et il reste de la marge : si l'upscaling est activé, passez à l'anticrénelage natif " +
+                             $"({NativeAntiAliasing(measured.Pc)}) pour une image plus nette.";
                 }
                 else if (target < (int)GraphicsPreset.Low)
                 {
                     preset = GraphicsPreset.Low;
-                    advice = "Déjà en Bas : baissez la résolution, ou activez l'upscaling (DLSS, FSR, XeSS) si le jeu le propose.";
+                    advice = $"Déjà en Bas : activez l'upscaling du jeu ({Upscalers(measured.Pc)}) en mode Équilibré ou Performance. Baisser la " +
+                             "résolution du jeu sous celle de l'écran n'est qu'un dernier recours : l'image devient floue.";
                 }
                 else
                 {
@@ -251,7 +328,8 @@ public static class GameRatings
             var headline = measured.Score >= 85 ? "Très fluide" : measured.Score >= 70 ? "Fluide" : measured.Score >= 50 ? "Correct" : "Peu fluide";
             var details = new List<string>
             {
-                $"Mesuré sur {FrenchText.Count(measured.Captures, "mesure", "mesures")} : {measured.AverageFps:0} FPS moyens, 1 % low {measured.OnePercentLowFps:0} FPS (écran {measured.RefreshHz} Hz).",
+                $"Mesuré sur {FrenchText.Count(measured.Captures, "mesure", "mesures")} : {measured.AverageFps:0} FPS moyens, 1 % low {measured.OnePercentLowFps:0} FPS " +
+                (measured.Pc is { } screen ? $"(écran {screen.Width}×{screen.Height} à {measured.RefreshHz} Hz)." : $"(écran {measured.RefreshHz} Hz)."),
             };
             var gpu = Percent(measured.Load?.GpuBusy);
             details.Add(measured.Bottleneck switch
@@ -292,10 +370,11 @@ public static class GameRatings
         }
 
         if (estimate is null) return null;
-        return new GameRating(estimate.Score, RatingSource.Estimated, estimate.Preset, estimate.BelowMinimum,
+        return new GameRating(estimate.Score, RatingSource.Estimated, estimate.PresetAtTarget ?? estimate.Preset, estimate.BelowMinimum,
             estimate.BelowMinimum ? "Sous la configuration minimale"
                 : estimate.Score >= 85 ? "Large marge" : estimate.Score >= 70 ? "Bonne marge" : estimate.Score >= 50 ? "Marge suffisante" : "Juste",
-            "Une partie mesurée remplacera cette estimation.", estimate.Details, estimate.Source, estimate.SourceUrl);
+            (estimate.Advice is { } hint ? hint + " " : "") + "Une partie mesurée remplacera cette estimation.",
+            estimate.Details, estimate.Source, estimate.SourceUrl);
     }
 
     /// <summary>Conseil d'après la mesure : cran à monter (+1), garder (0) ou baisser (−1), et son explication.</summary>
@@ -303,11 +382,15 @@ public static class GameRatings
     {
         var gpu = Percent(m.Load?.GpuBusy);
         var gpuIdle = m.Load is { GpuBusy: < 0.7 };
+        var upscaling = $"l'upscaling du jeu ({Upscalers(m.Pc)}) en mode Qualité";
         return m.Bottleneck switch
         {
             Bottleneck.Gpu when m.HasHeadroom => (1, "Vos FPS dépassent nettement la fréquence de l'écran : vous pouvez monter les réglages d'un cran."),
-            Bottleneck.Gpu when m.Score < 50 => (-1, $"La carte graphique tourne à fond ({gpu} % du temps) : baissez les réglages d'un cran pour gagner des FPS."),
-            Bottleneck.Gpu when m.Score < 70 => (0, $"La carte graphique tourne à fond ({gpu} % du temps) : baisser les réglages d'un cran rendrait le jeu plus fluide."),
+            Bottleneck.Gpu when m.Score < 50 => (-1,
+                $"La carte graphique tourne à fond ({gpu} % du temps) : baissez les réglages d'un cran pour gagner des FPS, ou activez {upscaling} " +
+                "(plus net que de baisser la résolution du jeu sous celle de l'écran)."),
+            Bottleneck.Gpu when m.Score < 70 => (0,
+                $"La carte graphique tourne à fond ({gpu} % du temps) : baisser les réglages d'un cran ou activer {upscaling} rendrait le jeu plus fluide."),
             Bottleneck.Gpu => (0, "La carte graphique est pleinement utilisée et le jeu est fluide : réglages adaptés."),
 
             Bottleneck.FrameCap when m.Score < 70 => (0,
@@ -318,7 +401,8 @@ public static class GameRatings
             Bottleneck.FrameCap => (0, $"FPS plafonnés (limiteur du jeu ou V-Sync), carte graphique occupée {gpu} % du temps : réglages adaptés."),
 
             Bottleneck.Cpu when m.Score < 70 => (0,
-                $"Le processeur limite les FPS (carte graphique occupée {gpu} % du temps seulement) : baisser les graphismes changera peu. " +
+                $"Le processeur limite les FPS (carte graphique occupée {gpu} % du temps seulement) : baisser les graphismes, la résolution " +
+                "ou activer l'upscaling changera peu. " +
                 "Réduisez plutôt ce qui charge le processeur (distance d'affichage, foule, physique) et fermez les programmes en arrière-plan."),
             Bottleneck.Cpu when gpuIdle => (1, $"La carte graphique attend le processeur (occupée {gpu} % du temps) : monter les graphismes d'un cran coûtera peu de FPS."),
             Bottleneck.Cpu => (0, "Réglages adaptés à votre PC."),

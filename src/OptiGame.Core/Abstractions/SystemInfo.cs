@@ -9,7 +9,8 @@ public sealed record DisplayInfo(
     int Width,
     int Height,
     int CurrentHz,
-    int MaxHzAtCurrentResolution);
+    int MaxHzAtCurrentResolution,
+    bool IsPrimary = false);
 
 public interface IDisplayInfoProvider
 {

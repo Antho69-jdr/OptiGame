@@ -42,7 +42,8 @@ public sealed class DisplayService : IDisplayInfoProvider, ISettingAccessor
                 current.dmPelsWidth,
                 current.dmPelsHeight,
                 current.dmDisplayFrequency,
-                Math.Max(atCurrentRes, current.dmDisplayFrequency)));
+                Math.Max(atCurrentRes, current.dmDisplayFrequency),
+                (adapter.StateFlags & DisplayDevicePrimaryDevice) != 0));
         }
         return result;
     }

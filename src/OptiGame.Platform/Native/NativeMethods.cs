@@ -8,6 +8,7 @@ internal static class NativeMethods
 
     public const int EnumCurrentSettings = -1;
     public const int DisplayDeviceAttachedToDesktop = 0x1;
+    public const int DisplayDevicePrimaryDevice = 0x4;
     public const int DmInterlaced = 0x2;
     public const int DmPelsWidth = 0x80000;
     public const int DmPelsHeight = 0x100000;

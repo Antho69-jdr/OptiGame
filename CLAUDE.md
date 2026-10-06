@@ -300,7 +300,13 @@ vit dans Core ; Platform ne fait que lire/écrire le système.
   - Estimation : configuration requise de Steam (`store.steampowered.com/api/appdetails?appids=<id>&filters=basic&l=english`,
     `pc_requirements.minimum/recommended` en HTML, lignes « Graphics: » et « Memory: » ; 4 vraies réponses dans les tests),
     gardée 30 jours dans `requirements.json`. Cartes comparées par `GpuPerformance` (indices APPROXIMATIFS, GTX 1060 = 100,
-    affichés comme estimation), résolution ramenée au 1080p (pixels^0,7). Recommandé atteint = « Élevé ».
+    affichés comme estimation), résolution ramenée au 1080p (pixels^0,7). Recommandé atteint = « Élevé ». Écran = l'écran
+    PRINCIPAL de Windows (`GameRatings.GamingDisplay`, DISPLAY_DEVICE_PRIMARY_DEVICE, vérifié : DISPLAY6 3440×1440 165 Hz), relu
+    à chaque note. Fréquence : la NOTE reste calculée à 60 FPS (ce que visent les configurations requises, souvent prudentes :
+    Void Crew estimé « Moyen », mesuré en Ultra à 95-153 FPS le 2026-10-06) ; le réglage AFFICHÉ est celui pour
+    `TargetFps` = fréquence bornée à 30-120 (puissance demandée × cible/60). Upscaling (DLSS seulement sur RTX, sinon FSR /
+    XeSS) en mode Qualité (2/3 par axe) conseillé s'il fait gagner un cran, jamais une résolution sous celle de l'écran
+    (flou) ; grande marge = anticrénelage natif (DLAA…).
   - Hors Steam (ou cartes citées par Steam inconnues) : PCGamingWiki (`Core/Rating/PcGamingWiki`, API MediaWiki :
     `opensearch` puis `parse&prop=wikitext`, bloc `{{System requirements}}` `|OSfamily = Windows`, champs minGPU/minGPU2…/
     recGPU…/minRAM/recRAM ; 6 jeux vérifiés le 2026-10-02, échantillons dans les tests). Titre IDENTIQUE au nom du profil
