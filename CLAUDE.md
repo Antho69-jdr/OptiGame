@@ -407,6 +407,13 @@ vit dans Core ; Platform ne fait que lire/écrire le système.
   avec message. Désinstallation : tâche planifiée « OptiGame » et `{app}\updates` supprimés, `%LocalAppData%\OptiGame` GARDÉ,
   rappel que les corrections restent (à annuler avant).
   Lancement après installation au nom de l'utilisateur d'origine (`runasoriginaluser`), pas du compte admin qui a validé.
+- Apparence (Inno Setup 6.7 MINIMUM, `#error` sinon ; la CI fait `choco upgrade innosetup` : ISCC.exe n'a pas de numéro de
+  version lisible) : `WizardStyle=modern dark includetitlebar`, fond `#0E1014` (Color.Window), page d'accueil affichée,
+  textes d'accueil / de fin réécrits (`[Messages]`). Images `installer/images/*.png` VERSIONNÉES, générées par
+  `scripts\installer-images.ps1` (WPF, logo et couleurs de Theme.xaml) aux 7 tailles d'Inno Setup (100 → 250 %).
+  Essai à l'écran : copie du .iss avec `PrivilegesRequired=lowest`, AUTRE AppId, AUTRE nom de processus dans [Code] et sans
+  [UninstallRun] — sinon l'essai se prend pour une mise à jour et FERME l'OptiGame en cours (arrivé le 2026-10-06), et sa
+  désinstallation supprimerait la tâche planifiée « OptiGame ».
 - PresentMon 2.6.0 fourni dans `tools\` à côté de l'exe (`PresentMonRunner` cherche d'abord `%LocalAppData%\OptiGame\tools`,
   puis celui de l'appli) : SHA-256 B2A706BC…88F1AF épinglé + signature « O=Intel Corporation » vérifiée
   (Get-AuthenticodeSignature) ; licence MIT dans `installer/THIRD-PARTY-NOTICES.txt` (installé avec l'appli).
@@ -458,6 +465,6 @@ dotnet test OptiGame.slnx
 # Captures PNG de chaque page (refonte UI : avant / après) → artifacts\ui-snapshots\<Label>\ ; mode caché « --snapshot »
 # (App/Snapshots/PageSnapshots), données copiées dans %TEMP%\OptiGame-ui\data, sans élévation, hors écran, rien ne démarre.
 .\scripts\ui-snapshots.ps1 -Label avant [-Sizes 880x600,1240x860] [-Game "Portal"] [-Reseed]
-.\scripts\build-installer.ps1                # installeur (Inno Setup 6 : winget install --id JRSoftware.InnoSetup -e)
+.\scripts\build-installer.ps1                # installeur (Inno Setup 6.7+ : winget install --id JRSoftware.InnoSetup -e)
 dotnet run --project tools/OptiGame.DiagDump   # diagnostic lecture seule en console, sans élévation
 ```

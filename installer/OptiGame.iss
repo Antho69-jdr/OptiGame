@@ -2,6 +2,11 @@
 ; autonome (.NET inclus : rien à installer sur la machine) dans artifacts\publish et y ajoute PresentMon (tools\).
 ; Compilation à la main : ISCC.exe /DAppVersion=1.0.0 /DPublishDir=<dossier publié> installer\OptiGame.iss
 
+; Apparence (style sombre, images PNG, couleur de fond) : Inno Setup 6.7 ou plus récent.
+#if Ver < EncodeVer(6, 7, 0)
+  #error Inno Setup 6.7 ou plus récent est requis (winget upgrade --id JRSoftware.InnoSetup -e)
+#endif
+
 #ifndef AppVersion
   #define AppVersion "0.0.0"
 #endif
@@ -37,7 +42,15 @@ UninstallDisplayIcon={app}\OptiGame.exe
 UninstallDisplayName=OptiGame
 Compression=lzma2/max
 SolidCompression=yes
-WizardStyle=modern
+; Identité d'OptiGame : thème sombre, couleurs de Themes/Theme.xaml (Color.Window), images de scripts\installer-images.ps1
+; (une par échelle d'affichage, de 100 % à 250 % : l'installeur prend la plus proche).
+WizardStyle=modern dark includetitlebar
+WizardBackColor=#0E1014
+WizardImageFile=images\wizard-202.png,images\wizard-269.png,images\wizard-336.png,images\wizard-403.png,images\wizard-430.png,images\wizard-498.png,images\wizard-534.png
+WizardSmallImageFile=images\small-58.png,images\small-77.png,images\small-97.png,images\small-116.png,images\small-124.png,images\small-143.png,images\small-159.png
+WizardSmallImageBackColor=#0E1014
+; Page d'accueil affichée (masquée par défaut depuis Inno Setup 6) : elle porte le grand panneau, comme la page de fin.
+DisableWelcomePage=no
 ; Fichiers encore utilisés après la fermeture propre (voir [Code]) : proposer de fermer les programmes concernés.
 CloseApplications=yes
 RestartApplications=no
@@ -47,6 +60,10 @@ ShowLanguageDialog=no
 Name: "french"; MessagesFile: "compiler:Languages\French.isl"
 
 [Messages]
+; OptiGame est fermé par l'installeur lui-même (voir [Code]) : inutile de demander de fermer « toutes les applications ».
+french.WelcomeLabel2=Cet assistant va installer [name/ver] sur votre ordinateur.%n%nOptiGame prépare votre PC pour vos parties : diagnostic, réglages appliqués au lancement d'un jeu puis rétablis à sa fermeture, mesure des FPS avant / après.%n%nToute modification est réversible, et rien n'est appliqué sans votre accord.%n%nSi OptiGame est ouvert, il sera fermé pour être mis à jour (une partie en cours est d'abord restaurée).
+french.FinishedLabel=[name] est installé. Vous le retrouverez dans le menu Démarrer.
+french.FinishedLabelNoIcons=[name] est installé. Vous le retrouverez dans le menu Démarrer.
 french.ConfirmUninstall=Désinstaller %1 ?%n%nLes corrections appliquées par OptiGame (diagnostic, plafonds de FPS du pilote NVIDIA…) restent en place : pour les annuler, faites-le depuis OptiGame avant de continuer.%n%nVos profils, mesures et réglages sont gardés dans %%LocalAppData%%\OptiGame.
 
 [Tasks]

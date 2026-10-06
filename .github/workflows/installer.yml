@@ -52,7 +52,11 @@ jobs:
 
       - name: Inno Setup
         run: |
-          if (-not (Test-Path "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe")) { choco install innosetup -y --no-progress }
+          # 6.7 ou plus récent (thème sombre, images PNG, couleur de fond) : l'image du runner peut en fournir une plus ancienne,
+          # d'où « upgrade » (installe aussi s'il est absent). ISCC.exe ne porte pas de numéro de version : c'est
+          # installer/OptiGame.iss qui refuse de compiler avec une version trop ancienne.
+          choco upgrade innosetup -y --no-progress
+          if ($LASTEXITCODE -ne 0) { throw "Inno Setup : code $LASTEXITCODE" }
 
       - name: Fabrication de l'installeur
         run: ./scripts/build-installer.ps1

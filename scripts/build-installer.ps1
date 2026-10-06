@@ -4,7 +4,7 @@
 # 2. PresentMon (mesure des FPS) ajouté dans tools\ : version épinglée, empreinte SHA-256 et signature Intel vérifiées.
 # 3. Inno Setup compile installer\OptiGame.iss.
 #
-# Prérequis : SDK .NET 10 et Inno Setup 6 (winget install --id JRSoftware.InnoSetup -e).
+# Prérequis : SDK .NET 10 et Inno Setup 6.7 ou plus récent (winget install --id JRSoftware.InnoSetup -e).
 # Usage (depuis la racine du dépôt) : .\scripts\build-installer.ps1      (version lue dans Directory.Build.props)
 
 param([string]$Version)
