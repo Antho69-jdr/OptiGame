@@ -215,6 +215,67 @@ if (args.Length == 1 && args[0] == "--store-owned")
     return;
 }
 
+// --igdb-taxonomy <nom>… : genres et types IGDB (requête multiple, 10 noms max), tels que Mes jeux les filtrera ; OPTIGAME_RAW=1 :
+// réponse brute de la requête multiple. Seuls les noms
+// sont envoyés ; identifiants IGDB de Paramètres.
+if (args.Length >= 2 && args[0] == "--igdb-taxonomy")
+{
+    var names = args.Skip(1).Take(OptiGame.Core.Artwork.Igdb.MaxQueriesPerMultiQuery).ToList();
+    // Identifiants lus (jamais écrits) dans le vrai settings.json de l'appli.
+    var realSettings = new OptiGame.Core.Settings.AppSettingsStore(new OptiGame.Core.State.JsonStateStore<OptiGame.Core.Settings.AppSettings>(
+        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "OptiGame", "settings.json")));
+    var igdb = new OptiGame.Platform.Artwork.IgdbClient(realSettings, services.GetRequiredService<OptiGame.Core.Logging.FileLog>());
+    if (Environment.GetEnvironmentVariable("OPTIGAME_RAW") == "1")
+    {
+        Console.WriteLine(await igdb.MultiQueryAsync(OptiGame.Core.Artwork.Igdb.TaxonomyMultiQuery(names)));
+        return;
+    }
+    var tags = await igdb.TaxonomyAsync(names);
+    for (var i = 0; i < names.Count; i++)
+    {
+        Console.WriteLine(tags[i] is { } t
+            ? $"{names[i]} : genres [{string.Join(", ", t.Genres)}] · types [{string.Join(", ", t.Kinds.Select(OptiGame.Core.Library.SteamTaxonomy.Label))}]"
+            : $"{names[i]} : introuvable sous ce nom");
+    }
+    return;
+}
+
+// --galaxy-meta : « originalMeta » de quelques jeux GOG dans la base de GOG Galaxy (lue sur une copie, jamais en place) : quels
+// champs (genres, thèmes, modes de jeu…) Galaxy fournit vraiment.
+if (args.Length == 1 && args[0] == "--galaxy-meta")
+{
+    var copy = Path.Combine(Path.GetTempPath(), "OptiGame-galaxy-meta");
+    Directory.CreateDirectory(copy);
+    try
+    {
+        foreach (var suffix in new[] { "", "-wal", "-shm" })
+        {
+            var source = OptiGame.Platform.Library.StoreOwnedLibrary.GalaxyDatabasePath + suffix;
+            if (!File.Exists(source)) continue;
+            using var input = new FileStream(source, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+            using var output = File.Create(Path.Combine(copy, "galaxy-2.0.db" + suffix));
+            input.CopyTo(output);
+        }
+        using var connection = new Microsoft.Data.Sqlite.SqliteConnection($"Data Source={Path.Combine(copy, "galaxy-2.0.db")};Pooling=False");
+        connection.Open();
+        using var command = connection.CreateCommand();
+        command.CommandText =
+            """
+            select releaseKey, value from GamePieces
+            where gamePieceTypeId = (select id from GamePieceTypes where type = 'originalMeta') and releaseKey like 'gog!_%' escape '!'
+            limit 4
+            """;
+        using var reader = command.ExecuteReader();
+        while (reader.Read()) Console.WriteLine($"{reader.GetString(0)} : {reader.GetString(1)}");
+    }
+    finally
+    {
+        Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
+        Directory.Delete(copy, recursive: true);
+    }
+    return;
+}
+
 // --memory : coût en mémoire de chaque lecture lourde de « Mes jeux », mesurée seule (lecture seule), puis des jaquettes
 // décodées comme dans la section « non installés » (même code : ImageLoader de l'appli, lié à cet outil).
 if (args.Length == 1 && args[0] == "--memory")

@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text.Json;
+using OptiGame.Core.Library;
 
 namespace OptiGame.Core.Artwork;
 
@@ -106,6 +107,90 @@ public static class Igdb
         }
         return backgrounds;
     }
+
+    /// <summary>Requêtes multiples (/v4/multiquery) : jusqu'à 10 requêtes par appel (documentation IGDB).</summary>
+    public const string MultiQueryEndpoint = "https://api.igdb.com/v4/multiquery";
+
+    public const int MaxQueriesPerMultiQuery = 10;
+
+    // total_rating_count : parmi plusieurs jeux du même nom (« Hades »), le plus connu est le bon.
+    private const string TaxonomyFields = "name,total_rating_count,genres.name,themes.name,game_modes.name,player_perspectives.name";
+
+    /// <summary>Nom tel qu'IGDB l'écrit : sans ™ ® © (« The Sims™ 3 » → « The Sims 3 »).</summary>
+    public static string CleanName(string name) =>
+        string.Join(' ', name.Replace("™", " ").Replace("®", " ").Replace("©", " ").Split(' ', StringSplitOptions.RemoveEmptyEntries));
+
+    /// <summary>
+    /// Genres, thèmes, modes et points de vue de jusqu'à 10 jeux, par NOM EXACT sans tenir compte de la casse (requête « i » =
+    /// names[i]). Vérifié le 2026-10-06 : « search » ne renvoie RIEN dans une requête multiple (« [] »), « where name ~ » oui.
+    /// </summary>
+    public static string TaxonomyMultiQuery(IReadOnlyList<string> names)
+    {
+        if (names.Count is 0 or > MaxQueriesPerMultiQuery) throw new ArgumentException($"1 à {MaxQueriesPerMultiQuery} noms par requête.", nameof(names));
+        return string.Concat(names.Select((name, i) =>
+            $"query games \"{i.ToString(CultureInfo.InvariantCulture)}\" {{ fields {TaxonomyFields}; where name ~ \"{Escape(CleanName(name))}\"; limit 5; }};\n"));
+    }
+
+    /// <summary>Recherche d'UN jeu par son nom (/games), pour ceux que le nom exact n'a pas trouvés (édition, sous-titre…).</summary>
+    public static string TaxonomySearchQuery(string name) => $"search \"{Escape(CleanName(name))}\"; fields {TaxonomyFields}; limit 5;";
+
+    /// <summary>Réponse de TaxonomyMultiQuery → genres et types de chaque nom demandé, ou null (voir <see cref="BestTaxonomyMatch"/>).</summary>
+    public static IReadOnlyList<GameTags?> ParseTaxonomyMultiQuery(string json, IReadOnlyList<string> names)
+    {
+        using var document = JsonDocument.Parse(json);
+        if (document.RootElement.ValueKind != JsonValueKind.Array)
+        {
+            throw new FormatException("Réponse IGDB inattendue : un tableau de résultats était attendu.");
+        }
+        var tags = new GameTags?[names.Count];
+        foreach (var query in document.RootElement.EnumerateArray())
+        {
+            if (query.TryGetProperty("name", out var label) && int.TryParse(label.GetString(), NumberStyles.None, CultureInfo.InvariantCulture, out var index)
+                && index >= 0 && index < names.Count && query.TryGetProperty("result", out var results) && results.ValueKind == JsonValueKind.Array)
+            {
+                tags[index] = BestTaxonomyMatch(results, names[index]);
+            }
+        }
+        return tags;
+    }
+
+    /// <summary>Réponse de TaxonomySearchQuery (tableau de jeux) → genres et types, ou null.</summary>
+    public static GameTags? ParseTaxonomySearch(string json, string name)
+    {
+        using var document = JsonDocument.Parse(json);
+        if (document.RootElement.ValueKind != JsonValueKind.Array)
+        {
+            throw new FormatException("Réponse IGDB inattendue : un tableau de jeux était attendu.");
+        }
+        return BestTaxonomyMatch(document.RootElement, name);
+    }
+
+    /// <summary>
+    /// Jeu retenu parmi les résultats : même nom hors ponctuation et casse, sinon un nom qui commence par lui (« Control » →
+    /// « Control Ultimate Edition »). Sinon null : un autre jeu donnerait de faux genres.
+    /// </summary>
+    private static GameTags? BestTaxonomyMatch(JsonElement results, string name)
+    {
+        var wanted = Normalize(CleanName(name));
+        var games = results.EnumerateArray()
+            .Where(g => g.ValueKind == JsonValueKind.Object && g.TryGetProperty("name", out var n) && n.ValueKind == JsonValueKind.String)
+            .Select(g => (Game: g, Key: Normalize(g.GetProperty("name").GetString()!), Votes: g.TryGetProperty("total_rating_count", out var v) && v.TryGetInt32(out var c) ? c : 0))
+            .OrderByDescending(g => g.Votes)
+            .ToList();
+        var match = games.Where(g => g.Key == wanted).Select(g => (JsonElement?)g.Game).FirstOrDefault()
+                    ?? games.Where(g => wanted.Length >= 4 && g.Key.StartsWith(wanted, StringComparison.Ordinal)).Select(g => (JsonElement?)g.Game).FirstOrDefault();
+        return match is { } game ? Tags(game) : null;
+    }
+
+    private static GameTags Tags(JsonElement game)
+    {
+        IEnumerable<string> Names(string property) =>
+            game.TryGetProperty(property, out var values) && values.ValueKind == JsonValueKind.Array
+                ? values.EnumerateArray().Select(v => v.ValueKind == JsonValueKind.Object && v.TryGetProperty("name", out var n) ? n.GetString() : null).OfType<string>().ToList()
+                : [];
+        return GameTaxonomy.FromIgdb(Names("genres"), Names("themes"), Names("game_modes"), Names("player_perspectives"));
+    }
+
     public static string Normalize(string name) =>
         new(name.Where(char.IsLetterOrDigit).Select(c => char.ToLower(c, CultureInfo.InvariantCulture)).ToArray());
 

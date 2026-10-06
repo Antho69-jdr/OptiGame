@@ -79,6 +79,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<Measurement.AutoCapture>();
         services.AddSingleton<Artwork.IgdbClient>();
         services.AddSingleton<Artwork.ArtworkCache>();
+        services.AddSingleton<Library.GameTagCache>();
 
         services.AddKeyedSingleton(JournalKeys.Fixes, (sp, _) => new ChangeJournal(
             new JsonStateStore<JournalDocument>(paths.FixesJournal), sp.GetRequiredService<SettingAccessors>(), sp.GetRequiredService<TimeProvider>()));

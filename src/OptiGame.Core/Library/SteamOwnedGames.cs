@@ -47,7 +47,7 @@ public static class SteamTaxonomy
 {
     private static readonly Dictionary<int, string> GenreNames = new()
     {
-        [1] = "Action", [2] = "Stratégie", [3] = "RPG", [4] = "Occasionnel", [9] = "Course automobile", [18] = "Sport",
+        [1] = "Action", [2] = "Stratégie", [3] = "RPG", [4] = "Occasionnel", [9] = "Course", [18] = "Sport",
         [23] = "Indépendant", [25] = "Aventure", [28] = "Simulation", [29] = "Massivement multijoueur", [37] = "Free-to-play",
         [70] = "Accès anticipé",
     };

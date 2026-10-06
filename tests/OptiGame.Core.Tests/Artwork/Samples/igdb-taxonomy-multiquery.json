@@ -1,0 +1,155 @@
+[
+  {
+    "name": "0",
+    "result": [
+      {
+        "id": 72,
+        "game_modes": [
+          {
+            "id": 1,
+            "name": "Single player"
+          },
+          {
+            "id": 2,
+            "name": "Multiplayer"
+          },
+          {
+            "id": 3,
+            "name": "Co-operative"
+          },
+          {
+            "id": 4,
+            "name": "Split screen"
+          }
+        ],
+        "genres": [
+          {
+            "id": 8,
+            "name": "Platform"
+          },
+          {
+            "id": 9,
+            "name": "Puzzle"
+          },
+          {
+            "id": 31,
+            "name": "Adventure"
+          }
+        ],
+        "name": "Portal 2",
+        "player_perspectives": [
+          {
+            "id": 1,
+            "name": "First person"
+          }
+        ],
+        "themes": [
+          {
+            "id": 1,
+            "name": "Action"
+          },
+          {
+            "id": 18,
+            "name": "Science fiction"
+          },
+          {
+            "id": 27,
+            "name": "Comedy"
+          }
+        ],
+        "total_rating_count": 4506
+      }
+    ]
+  },
+  {
+    "name": "1",
+    "result": [
+      {
+        "id": 80529,
+        "game_modes": [
+          {
+            "id": 1,
+            "name": "Single player"
+          }
+        ],
+        "genres": [
+          {
+            "id": 5,
+            "name": "Shooter"
+          }
+        ],
+        "name": "Hades",
+        "player_perspectives": [
+          {
+            "id": 1,
+            "name": "First person"
+          }
+        ],
+        "themes": [
+          {
+            "id": 1,
+            "name": "Action"
+          },
+          {
+            "id": 18,
+            "name": "Science fiction"
+          }
+        ],
+        "total_rating_count": 0
+      },
+      {
+        "id": 113112,
+        "game_modes": [
+          {
+            "id": 1,
+            "name": "Single player"
+          }
+        ],
+        "genres": [
+          {
+            "id": 12,
+            "name": "Role-playing (RPG)"
+          },
+          {
+            "id": 25,
+            "name": "Hack and slash/Beat \u0027em up"
+          },
+          {
+            "id": 31,
+            "name": "Adventure"
+          },
+          {
+            "id": 32,
+            "name": "Indie"
+          }
+        ],
+        "name": "Hades",
+        "player_perspectives": [
+          {
+            "id": 3,
+            "name": "Bird view / Isometric"
+          }
+        ],
+        "themes": [
+          {
+            "id": 1,
+            "name": "Action"
+          },
+          {
+            "id": 17,
+            "name": "Fantasy"
+          },
+          {
+            "id": 31,
+            "name": "Drama"
+          }
+        ],
+        "total_rating_count": 1780
+      }
+    ]
+  },
+  {
+    "name": "2",
+    "result": []
+  }
+]

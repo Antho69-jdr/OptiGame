@@ -62,26 +62,19 @@ public static class StoreCatalogs
         return games.DistinctBy(g => (g.Store, NameKey(g.Name))).ToList();
     }
 
-    /// <summary>Genres de GOG Galaxy (anglais, plus fins) regroupés dans les genres du magasin Steam, pour un filtre commun.</summary>
-    private static readonly Dictionary<string, string[]> GalaxyGenreMap = new(StringComparer.OrdinalIgnoreCase)
-    {
-        ["Adventure"] = ["Aventure"], ["Point-and-click"] = ["Aventure"], ["Visual Novel"] = ["Aventure"],
-        ["Indie"] = ["Indépendant"], ["Role-playing (RPG)"] = ["RPG"], ["Simulator"] = ["Simulation"],
-        ["Strategy"] = ["Stratégie"], ["Turn-based strategy (TBS)"] = ["Stratégie"], ["Real Time Strategy (RTS)"] = ["Stratégie"],
-        ["Tactical"] = ["Stratégie"], ["Card & Board Game"] = ["Stratégie"],
-        ["Shooter"] = ["Action"], ["Fighting"] = ["Action"], ["Hack and slash/Beat 'em up"] = ["Action"], ["Platform"] = ["Action"],
-        ["MOBA"] = ["Action", "Stratégie"],
-        ["Arcade"] = ["Occasionnel"], ["Puzzle"] = ["Occasionnel"], ["Quiz/Trivia"] = ["Occasionnel"], ["Music"] = ["Occasionnel"],
-        ["Sport"] = ["Sport"], ["Racing"] = ["Course automobile"],
-    };
-
+    /// <summary>
+    /// Genres et thèmes de GOG Galaxy (noms d'IGDB, en anglais : « genres » et « themes » de originalMeta, relevés le 2026-10-06)
+    /// ramenés au vocabulaire commun des filtres (<see cref="GameTaxonomy"/>).
+    /// </summary>
     private static List<string> GalaxyGenres(string? metaJson)
     {
         if (metaJson is null) return [];
         using var document = JsonDocument.Parse(metaJson);
-        return document.RootElement.TryGetProperty("genres", out var genres) && genres.ValueKind == JsonValueKind.Array
-            ? genres.EnumerateArray().SelectMany(g => GalaxyGenreMap.GetValueOrDefault(g.GetString() ?? "") ?? []).Distinct().ToList()
-            : [];
+        IEnumerable<string> Names(string property) =>
+            document.RootElement.TryGetProperty(property, out var values) && values.ValueKind == JsonValueKind.Array
+                ? values.EnumerateArray().Select(v => v.GetString()).OfType<string>().ToList()
+                : [];
+        return GameTaxonomy.FromIgdb(Names("genres"), Names("themes"), [], []).Genres.ToList();
     }
 
     /// <summary>Magasin d'un profil, déduit de son lancement (pour le filtre « Plateforme » des jeux installés).</summary>

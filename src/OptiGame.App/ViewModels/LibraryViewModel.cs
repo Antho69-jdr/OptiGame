@@ -27,6 +27,7 @@ namespace OptiGame.App.ViewModels;
 public sealed partial class LibraryViewModel : ObservableObject
 {
     private readonly ProfileStore _store;
+    private readonly GameTagService _tags;
     private readonly IPowerSchemeProvider _power;
     private readonly IRunningProgramsProvider _programs;
     private readonly IDialogService _dialogs;
@@ -76,7 +77,7 @@ public sealed partial class LibraryViewModel : ObservableObject
         GameGraphicsService graphics, NewSteamGamesViewModel newGames, GameRatingService ratings, Platform.Measurement.AutoCapture autoCapture,
         FrameCapService frameCap, Platform.Library.StoreOwnedLibrary storeLibrary, Platform.Library.StoreCoverCache storeCovers,
         GameTimeGate gate, [FromKeyedServices(Platform.JournalKeys.Fixes)] Core.State.ChangeJournal fixes, UnsavedChangesGuard unsaved,
-        SessionViewModel session)
+        SessionViewModel session, GameTagService tags)
     {
         _session = session;
         unsaved.Register(ConfirmDiscard);
@@ -117,6 +118,8 @@ public sealed partial class LibraryViewModel : ObservableObject
 
         GamesView = CollectionViewSource.GetDefaultView(Games);
         GamesView.Filter = o => o is GameCardViewModel card && Matches(card.Name, card.Store, card.Genres, card.Kinds);
+        _tags = tags;
+        tags.Updated += (_, _) => ApplyTags(rebuildFilters: true); // genres IGDB arrivés en tâche de fond
         _selectedGenre = GenreOptions[0];
         _selectedKind = KindOptions[0];
         _selectedStore = StoreOptions[0];
@@ -263,7 +266,11 @@ public sealed partial class LibraryViewModel : ObservableObject
     [ObservableProperty]
     private GenreOption _selectedGenre;
 
-    partial void OnSelectedGenreChanged(GenreOption value) => RefreshFilters();
+    partial void OnSelectedGenreChanged(GenreOption value)
+    {
+        RefreshFilters();
+        OnPropertyChanged(nameof(ShowsTagsHint));
+    }
 
     public IReadOnlyList<KindOption> KindOptions { get; } =
     [
@@ -274,7 +281,11 @@ public sealed partial class LibraryViewModel : ObservableObject
     [ObservableProperty]
     private KindOption _selectedKind;
 
-    partial void OnSelectedKindChanged(KindOption value) => RefreshFilters();
+    partial void OnSelectedKindChanged(KindOption value)
+    {
+        RefreshFilters();
+        OnPropertyChanged(nameof(ShowsTagsHint));
+    }
 
     public IReadOnlyList<StoreOption> StoreOptions { get; } =
     [
@@ -544,15 +555,54 @@ public sealed partial class LibraryViewModel : ObservableObject
         {
             var steamApp = profileApps.TryGetValue(card.Id, out var appId) ? appId : (uint?)null;
             card.Store = _store.Find(card.Id) is { } profile ? Core.Library.StoreCatalogs.StoreOf(profile, steamApp is not null) : null;
-            if (steamApp is { } id && snapshot?.Games.TryGetValue(id, out var game) == true)
-            {
-                card.Genres = game.Genres.Select(Core.Library.SteamTaxonomy.Genre).OfType<string>().ToList();
-                card.Kinds = Core.Library.SteamTaxonomy.Kinds(game.Categories);
-            }
+            card.StoreTags = steamApp is { } id && snapshot?.Games.TryGetValue(id, out var game) == true
+                ? new Core.Library.GameTags(game.Genres.Select(Core.Library.SteamTaxonomy.Genre).OfType<string>().ToList(), Core.Library.SteamTaxonomy.Kinds(game.Categories))
+                : Core.Library.GameTags.Empty;
         }
         UninstalledGames.Clear();
         foreach (var card in uninstalled) UninstalledGames.Add(card);
+        ApplyTags(rebuildFilters: false);
+        // Genres IGDB des jeux qui n'en ont pas encore (tous magasins), en tâche de fond : ApplyTags à leur arrivée.
+        _tags.Request(Games.Select(c => c.Name).Concat(UninstalledGames.Select(c => c.Name)));
 
+        RebuildGenreOptions();
+
+        OnPropertyChanged(nameof(HasUninstalled));
+        OnPropertyChanged(nameof(IsUninstalledSectionVisible));
+        OnPropertyChanged(nameof(UninstalledToggleText));
+        NotifyCounts();
+        ApplyFilters(keepShownCount: true);
+        if (ShowUninstalled) _ = FetchStoreCoversAsync();
+    }
+
+    /// <summary>
+    /// Genres et types de chaque carte = ceux de son magasin (Steam, GOG Galaxy) + ceux d'IGDB (cache taxonomy.json) : un même
+    /// vocabulaire pour tous les magasins (Core/Library/GameTaxonomy).
+    /// </summary>
+    private void ApplyTags(bool rebuildFilters)
+    {
+        foreach (var card in Games)
+        {
+            var tags = card.StoreTags.With(_tags.Find(card.Name));
+            (card.Genres, card.Kinds) = (tags.Genres, tags.Kinds);
+        }
+        foreach (var card in UninstalledGames) card.ApplyTags(_tags.Find(card.Name));
+        OnPropertyChanged(nameof(ShowsTagsHint));
+        if (!rebuildFilters) return;
+        RebuildGenreOptions();
+        ApplyFilters(keepShownCount: true);
+    }
+
+    /// <summary>
+    /// Filtre par genre ou type sans identifiants IGDB alors que des jeux n'ont ni genre ni type (Epic, jeux ajoutés à la main) :
+    /// dit pourquoi ils n'apparaissent pas.
+    /// </summary>
+    public bool ShowsTagsHint =>
+        (SelectedGenre?.Name is not null || SelectedKind?.Kind is not null) && !_tags.IsAvailable &&
+        (Games.Any(c => c.Genres.Count == 0 && c.Kinds.Count == 0) || UninstalledGames.Any(c => c.Genres.Count == 0 && c.Kinds.Count == 0));
+
+    private void RebuildGenreOptions()
+    {
         var selected = SelectedGenre?.Name;
         var genres = Games.SelectMany(c => c.Genres).Concat(UninstalledGames.SelectMany(c => c.Genres))
             .Distinct()
@@ -572,13 +622,6 @@ public sealed partial class LibraryViewModel : ObservableObject
         {
             _rebuildingFilterOptions = false;
         }
-
-        OnPropertyChanged(nameof(HasUninstalled));
-        OnPropertyChanged(nameof(IsUninstalledSectionVisible));
-        OnPropertyChanged(nameof(UninstalledToggleText));
-        NotifyCounts();
-        ApplyFilters(keepShownCount: true);
-        if (ShowUninstalled) _ = FetchStoreCoversAsync();
     }
 
     private bool _fetchingStoreCovers;
@@ -1422,7 +1465,10 @@ public sealed partial class GameCardViewModel(GameProfile profile, bool isPlayin
     /// <summary>Clé de tri « Récemment joués » (0 = jamais joué, en fin de liste).</summary>
     public long LastPlayedTicks => Playtime.LastPlayed?.UtcTicks ?? 0;
 
-    /// <summary>Genres et types Steam (vides pour un jeu hors Steam, ou tant que la bibliothèque Steam n'est pas lue).</summary>
+    /// <summary>Genres et types de son magasin (Steam) ; ceux d'IGDB s'y ajoutent (LibraryViewModel.ApplyTags).</summary>
+    public Core.Library.GameTags StoreTags { get; set; } = Core.Library.GameTags.Empty;
+
+    /// <summary>Genres et types affichés et filtrés : magasin + IGDB (vides tant que rien n'est connu).</summary>
     public IReadOnlyList<string> Genres { get; set; } = [];
 
     /// <summary>Magasin du jeu (filtre « Plateforme ») ; null = inconnu (jeu ajouté à la main).</summary>
@@ -1443,13 +1489,27 @@ public sealed partial class OwnedGameCardViewModel : ObservableObject
         Store = store;
         Key = key;
         Name = name;
+        _storeTags = new Core.Library.GameTags(genres, kinds);
         Genres = genres;
         Kinds = kinds;
         _coverPath = coverPath;
         CoverUrl = coverUrl;
         Initials = string.Concat(name.Split(' ', StringSplitOptions.RemoveEmptyEntries).Where(w => char.IsLetterOrDigit(w[0]))
             .Take(2).Select(w => char.ToUpperInvariant(w[0])));
-        GenresText = string.Join(" · ", genres.Take(2));
+    }
+
+    /// <summary>Genres et types du magasin (Steam, GOG Galaxy) ; ceux d'IGDB s'y ajoutent.</summary>
+    private readonly Core.Library.GameTags _storeTags;
+
+    /// <summary>Genres IGDB arrivés (ou null) : genres affichés et filtrés = magasin + IGDB.</summary>
+    public void ApplyTags(Core.Library.GameTags? igdb)
+    {
+        var tags = _storeTags.With(igdb);
+        if (tags.Genres.SequenceEqual(Genres) && tags.Kinds.SetEquals(Kinds)) return;
+        (Genres, Kinds) = (tags.Genres, tags.Kinds);
+        OnPropertyChanged(nameof(GenresText));
+        OnPropertyChanged(nameof(CaptionText));
+        OnPropertyChanged(nameof(AccessibleName));
     }
 
     public static OwnedGameCardViewModel FromSteam(Core.Library.OwnedSteamGame game, string? coverPath) =>
@@ -1467,9 +1527,9 @@ public sealed partial class OwnedGameCardViewModel : ObservableObject
 
     public string Name { get; }
 
-    public IReadOnlyList<string> Genres { get; }
+    public IReadOnlyList<string> Genres { get; private set; }
 
-    public IReadOnlySet<Core.Library.GameKind> Kinds { get; }
+    public IReadOnlySet<Core.Library.GameKind> Kinds { get; private set; }
 
     public string? CoverUrl { get; }
 
@@ -1485,7 +1545,7 @@ public sealed partial class OwnedGameCardViewModel : ObservableObject
 
     public string Initials { get; }
 
-    public string GenresText { get; }
+    public string GenresText => string.Join(" · ", Genres.Take(2));
 
     public string StoreLabel => Core.Library.StoreCatalogs.Label(Store);
 

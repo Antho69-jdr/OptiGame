@@ -4,6 +4,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using OptiGame.Core.Artwork;
+using OptiGame.Core.Library;
 using OptiGame.Core.Logging;
 using OptiGame.Core.Settings;
 using OptiGame.Core.Text;
@@ -63,6 +64,21 @@ public sealed class IgdbClient(AppSettingsStore settings, FileLog log)
         return Igdb.ParseGames(json);
     }
 
+    /// <summary>Réponse brute d'une requête multiple (DiagDump : vérifier le format sur une vraie réponse).</summary>
+    public Task<string> MultiQueryAsync(string body, CancellationToken cancellation = default) => PostAsync(Igdb.MultiQueryEndpoint, body, cancellation);
+
+    /// <summary>Genres et types de jusqu'à 10 jeux par appel (seuls leurs noms sont envoyés) ; null = jeu introuvable sous ce nom.</summary>
+    public async Task<IReadOnlyList<GameTags?>> TaxonomyAsync(IReadOnlyList<string> names, CancellationToken cancellation = default)
+    {
+        // Nom exact pour tous (une requête), puis recherche individuelle pour ceux qu'il n'a pas trouvés.
+        var tags = Igdb.ParseTaxonomyMultiQuery(await PostAsync(Igdb.MultiQueryEndpoint, Igdb.TaxonomyMultiQuery(names), cancellation), names).ToArray();
+        for (var i = 0; i < names.Count; i++)
+        {
+            if (tags[i] is null) tags[i] = Igdb.ParseTaxonomySearch(await PostGamesAsync(Igdb.TaxonomySearchQuery(names[i]), cancellation), names[i]);
+        }
+        return tags;
+    }
+
     /// <summary>Illustrations et captures d'écran d'un jeu IGDB (fonds proposés pour sa fiche).</summary>
     public async Task<IReadOnlyList<IgdbBackground>> BackgroundsAsync(long gameId, CancellationToken cancellation = default) =>
         Igdb.ParseBackgrounds(await PostGamesAsync(Igdb.BackgroundsQuery(gameId), cancellation));
@@ -75,7 +91,9 @@ public sealed class IgdbClient(AppSettingsStore settings, FileLog log)
         return $"Connexion réussie : {FrenchText.Count(results.Count, "résultat", "résultats")} pour « Overwatch ».";
     }
 
-    private async Task<string> PostGamesAsync(string body, CancellationToken cancellation)
+    private Task<string> PostGamesAsync(string body, CancellationToken cancellation) => PostAsync(Igdb.GamesEndpoint, body, cancellation);
+
+    private async Task<string> PostAsync(string endpoint, string body, CancellationToken cancellation)
     {
         await _gate.WaitAsync(cancellation);
         try
@@ -85,7 +103,7 @@ public sealed class IgdbClient(AppSettingsStore settings, FileLog log)
                 var (clientId, token) = await GetTokenAsync(cancellation);
                 await ThrottleAsync(cancellation);
 
-                using var request = new HttpRequestMessage(HttpMethod.Post, Igdb.GamesEndpoint)
+                using var request = new HttpRequestMessage(HttpMethod.Post, endpoint)
                 {
                     Content = new StringContent(body, Encoding.UTF8, "text/plain"),
                 };
@@ -102,7 +120,7 @@ public sealed class IgdbClient(AppSettingsStore settings, FileLog log)
                 }
                 if (!response.IsSuccessStatusCode)
                 {
-                    log.Error($"IGDB /games : HTTP {(int)response.StatusCode} — {Excerpt(content)}");
+                    log.Error($"IGDB {new Uri(endpoint).AbsolutePath} : HTTP {(int)response.StatusCode} — {Excerpt(content)}");
                     throw new HttpRequestException($"IGDB a répondu {(int)response.StatusCode} {response.ReasonPhrase}.");
                 }
                 return content;

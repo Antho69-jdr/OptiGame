@@ -101,7 +101,7 @@
                 <ComboBox Width="170" Margin="0,0,8,8" ItemsSource="{Binding StoreOptions}" SelectedItem="{Binding SelectedStore}" DisplayMemberPath="Label"
                           AutomationProperties.Name="Filtrer par magasin" />
                 <ComboBox Width="170" Margin="0,0,8,8" ItemsSource="{Binding GenreOptions}" SelectedItem="{Binding SelectedGenre}" DisplayMemberPath="Label"
-                          AutomationProperties.Name="Filtrer par genre" AutomationProperties.HelpText="Genres du magasin Steam ; les jeux hors Steam n'en ont pas." />
+                          AutomationProperties.Name="Filtrer par genre" AutomationProperties.HelpText="Genres des magasins (Steam, GOG) et d'IGDB, pour tous les jeux." />
                 <ComboBox Width="170" Margin="0,0,8,8" ItemsSource="{Binding KindOptions}" SelectedItem="{Binding SelectedKind}" DisplayMemberPath="Label"
                           AutomationProperties.Name="Filtrer par type" />
                 <Button Margin="0,0,12,8" Style="{StaticResource Button.Ghost}" Content="Effacer les filtres" Command="{Binding ClearFiltersCommand}"
@@ -116,6 +116,10 @@
                               IsClosable="True" CloseCommand="{Binding DismissLaunchStatusCommand}"
                               Visibility="{Binding HasLaunchStatus, Converter={StaticResource BoolToVisibility}}" />
             <TextBlock DockPanel.Dock="Top" Margin="0,0,0,8" Style="{StaticResource QuietStatus}" Text="{Binding ArtworkStatus}" />
+            <!-- Filtre par genre / type sans IGDB : les jeux sans genre connu (Epic, ajoutés à la main) n'y apparaissent pas -->
+            <TextBlock DockPanel.Dock="Top" Margin="0,0,0,8" Style="{StaticResource Text.Caption}"
+                       Visibility="{Binding ShowsTagsHint, Converter={StaticResource BoolToVisibility}}"
+                       Text="Les jeux Epic Games, GOG ou ajoutés à la main n'ont de genre et de type qu'avec IGDB : renseignez vos identifiants dans Paramètres › Mes jeux pour qu'ils apparaissent dans ce filtre." />
 
             <!-- Jeux désinstallés : signalés, retirés seulement après confirmation -->
             <controls:InfoBar DockPanel.Dock="Top" Margin="0,0,0,12" Severity="Warning" Title="{Binding UninstalledProfilesText}"

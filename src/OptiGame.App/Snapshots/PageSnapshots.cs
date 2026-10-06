@@ -71,6 +71,19 @@ internal static class PageSnapshots
                     await Settle(2500);
                 }),
                 ("1d-mes-jeux-filtres-effaces", async () => { library.ClearFiltersCommand.Execute(null); await Settle(800); }),
+                // Genres IGDB (requêtes réelles si les identifiants sont copiés, cache dans le dossier de test) : Epic + « Tir ».
+                ("1e-mes-jeux-genre-epic", async () =>
+                {
+                    main.Navigate(library);
+                    var tags = services.GetRequiredService<GameTagService>();
+                    await Settle(3000);
+                    await WaitUntil(() => !tags.IsBusy, 300_000);
+                    library.ShowUninstalled = true;
+                    library.SelectedStore = library.StoreOptions.First(o => o.Store == Core.Library.GameSource.Epic);
+                    library.SelectedGenre = library.GenreOptions.FirstOrDefault(o => o.Name == "Tir") ?? library.GenreOptions[0];
+                    Log($"Genres proposés : {string.Join(", ", library.GenreOptions.Skip(1).Select(o => o.Name))}");
+                    await Settle(2500);
+                }),
                 ("2-diagnostic", async () => { main.Navigate(main.Diagnostic); await WaitUntil(() => !main.Diagnostic.IsBusy && main.Diagnostic.HasResults, 60_000); }),
                 // Diagnostic avec des résultats d'exemple (à corriger, non vérifié, facultatif) : présentés seulement, rien n'est appliqué.
                 ("2b-diagnostic-exemple", async () =>

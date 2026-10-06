@@ -270,6 +270,14 @@ vit dans Core ; Platform ne fait que lire/écrire le système.
   FileSystemWatcher sur `steamapps\appmanifest_*.acf` de chaque bibliothèque, 3 s après la dernière écriture ; proposé si
   `StateFlags` a le bit 4 (entièrement installé ; 1026 = téléchargement en cours), sans profil et absent de
   `settings.SteamKnownAppIds` (null = premier passage : l'existant est mémorisé, pas proposé). Ajouté ou ignoré = mémorisé.
+- Genres et types de Mes jeux, TOUS magasins (`Core/Library/GameTaxonomy` = vocabulaire français commun, `GameTags`) : genres et
+  catégories du magasin Steam, genres + thèmes de GOG Galaxy (`originalMeta` = noms IGDB, relevé le 2026-10-06 :
+  `DiagDump -- --galaxy-meta`), complétés pour tous par IGDB (`App/Services/GameTagService`, `Platform/Library/GameTagCache` =
+  taxonomy.json par nom normalisé, introuvable = nouvel essai après 30 jours ; seulement avec identifiants IGDB, jamais pendant
+  une partie). IGDB vérifié en vrai le 2026-10-06 (`DiagDump -- --igdb-taxonomy <noms>`, échantillon dans les tests) :
+  `search` ne renvoie RIEN dans /v4/multiquery (« [] ») → requête multiple par nom exact `where name ~ "…"` (10 par appel), puis
+  `search` individuel sur /games pour les autres ; homonymes (« Hades ») départagés par `total_rating_count`. Machine de dev :
+  575 jeux sur 619 trouvés en ≈ 4 min (une seule fois), 46 genres. Sans IGDB : texte d'aide sous les filtres (`ShowsTagsHint`).
 - Note des jeux (`Core/Rating`, `App/Services/GameRatingService`, pastille des jaquettes + carte « Note sur ce PC ») :
   - Estimation : configuration requise de Steam (`store.steampowered.com/api/appdetails?appids=<id>&filters=basic&l=english`,
     `pc_requirements.minimum/recommended` en HTML, lignes « Graphics: » et « Memory: » ; 4 vraies réponses dans les tests),

@@ -46,10 +46,20 @@ public sealed class StoreCatalogsTests
 
         Assert.Equal(["The Witcher: Enhanced Edition", "Intravenous"], games.Select(g => g.Name));
         Assert.All(games, g => Assert.Equal(GameSource.Gog, g.Store));
-        Assert.Equal(["Indépendant", "Action", "Stratégie"], games[1].Genres); // Indie, Shooter → Action, Tactical → Stratégie
+        Assert.Equal(["Indépendant", "Tir", "Stratégie", "Tactique"], games[1].Genres); // Indie, Shooter, Tactical (+ son parent)
         Assert.EndsWith("_glx_vertical_cover.jpg?namespace=gamesdb", games[0].CoverUrl); // .webp → .jpg (servi par GOG)
         Assert.Equal("goggalaxy://openGameView/gog_1207658924", StoreLaunchers.GalaxyGameViewUri(games[0].Key));
         Assert.Throws<ArgumentException>(() => StoreLaunchers.GalaxyGameViewUri("uplay_0d2ae42d"));
+    }
+
+    [Fact]
+    public void Galaxy_themes_enrich_the_genres()
+    {
+        // originalMeta réelle de Styx: Shards of Darkness (gog_2090261953), relevée dans galaxy-2.0.db le 2026-10-06.
+        var styx = new GalaxyRow("gog_2090261953", false, true, """{"title":"Styx: Shards of Darkness"}""", null,
+            """{"criticsScore":70.7143,"developers":["Cyanide Studio"],"genres":["Role-playing (RPG)","Adventure"],"publishers":["Focus Entertainment"],"releaseDate":1489449600,"themes":["Action","Fantasy","Stealth"]}""");
+
+        Assert.Equal(["RPG", "Aventure", "Action", "Fantasy", "Infiltration"], Assert.Single(StoreCatalogs.FromGalaxy([styx])).Genres);
     }
 
     [Theory]
