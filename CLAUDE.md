@@ -186,7 +186,9 @@ Sessions de jeu (Platform/Processes) :
   + `Platform/Library/StorePageResolver`, vérifié le 2026-10-06 (`DiagDump -- --store-page`). Le catalogue Epic n'a PAS l'adresse
   de page : `store-content.ak.epicgames.com/api/content/productmapping` (espace de noms → page, 231 jeux sur 348) ; GOG :
   `api.gog.com/products/<id>` → `links.product_card` (www.gog.com seulement). Sinon : recherche du titre sur le magasin.
-  Ouvert dans le navigateur par explorer.exe (`GameLauncher.OpenStoreWebPage` : https store.epicgames.com / www.gog.com seuls).
+  Ouvert par le navigateur PAR DÉFAUT, sans admin (`Core/Launching/BrowserCommand` : commande de UserChoice https, Firefox =
+  `-osint -url "%1"`) — jamais explorer.exe, qui ouvre « Documents » pour une adresse avec « ? » et « & » (`OpenStoreWebPage` :
+  https store.epicgames.com / www.gog.com seuls).
 
 Règle de dépendance : `App → Platform → Core`. La logique de décision (statut d'un check, restauration)
 vit dans Core ; Platform ne fait que lire/écrire le système.
@@ -339,8 +341,8 @@ vit dans Core ; Platform ne fait que lire/écrire le système.
   Jaquettes : CDN `cdn1.epicgames.com` (`?h=528&w=396&resize=1`, ~11 Ko) et `images.gog.com` (.webp → .jpg), téléchargées
   une fois dans `covers\stores` quand la section est affichée, par lots de 4 pris dans l'ordre de la grille filtrée (le filtre
   choisi passe en premier). Installer : Epic = adresse des raccourcis avec `action=install` SANS `silent=true` (avec, rien ne
-  s'affichait), et lanceur fermé = il ignore la demande reçue au démarrage → renvoyée quand sa fenêtre existe (60 s max,
-  `GameLauncher.ResendWhenEpicIsReadyAsync`, à confirmer en vrai) ; GOG =
+  s'affichait) ; lanceur fermé = démarré AVEC la demande il reste caché et la perd → démarré SEUL (fenêtre en ≈ 6 s), puis la
+  demande quand sa fenêtre existe (`GameLauncher.SendWhenEpicIsReadyAsync`, 60 s max) ; GOG =
   `GalaxyClient.exe /urlProtocol="goggalaxy://openGameView/gog_<id>"` — ces deux actions ne sont PAS vérifiées en vrai par
   l'agent (test utilisateur). Machine de dev : 347 Epic, 13 GOG.
 - Jeux désinstallés (« Mes jeux » : bouton « Actualiser », pastilles « Désinstallé » / « Disque absent », bandeau ;
