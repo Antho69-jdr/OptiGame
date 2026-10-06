@@ -43,6 +43,7 @@ public sealed class GameSessionManagerTests : IDisposable
     private readonly TempDirectory _dir = new();
     private readonly FakeAccessor _power = new(KnownSettings.PowerSchemeKind);
     private readonly FakeAccessor _process = new(KnownSettings.ProcessKind);
+    private readonly FakeAccessor _visual = new(KnownSettings.VisualEffectKind);
     private readonly FakeProcessControl _control = new();
     private readonly ProfileStore _profiles;
 
@@ -59,7 +60,7 @@ public sealed class GameSessionManagerTests : IDisposable
     /// <summary>Nouvelle instance sur les mêmes fichiers = redémarrage d'OptiGame.</summary>
     private GameSessionManager NewManager()
     {
-        var accessors = new SettingAccessors([_power, _process]);
+        var accessors = new SettingAccessors([_power, _process, _visual]);
         var journal = new ChangeJournal(new JsonStateStore<JournalDocument>(_dir.File("session.json")), accessors);
         var schemes = new FakePowerSchemes(Atlas,
             new PowerScheme(Atlas, "Atlas Power Scheme"), new PowerScheme(PowerSchemes.HighPerformance, "Haute performance"));
@@ -103,6 +104,39 @@ public sealed class GameSessionManagerTests : IDisposable
         Assert.Equal(["iCUE.exe"], _control.Closed);
         Assert.Equal(GamePriority.High, _control.Priorities[GamePid]);
         Assert.Equal(GamePid, manager.Current?.ProcessId);
+    }
+
+    [Fact]
+    public void Visual_effects_are_cut_during_the_game_and_restored_after()
+    {
+        SaveProfile(p => p.ReduceVisualEffects = true);
+        _visual.Set(KnownSettings.ClientAreaAnimation, SettingValue.DWord(1));
+        _visual.Set(KnownSettings.WindowAnimation, SettingValue.DWord(1)); // transparence : jamais réglée (valeur absente)
+        var manager = NewManager();
+
+        var report = manager.OnProcessStarted(GamePid, GameExe);
+
+        Assert.Empty(report!.Warnings);
+        Assert.Equal(SettingValue.DWord(0), _visual.Read(KnownSettings.ClientAreaAnimation));
+        Assert.Equal(SettingValue.DWord(0), _visual.Read(KnownSettings.WindowAnimation));
+        Assert.Equal(SettingValue.DWord(0), _visual.Read(KnownSettings.Transparency));
+
+        manager.OnProcessExited(GamePid);
+
+        Assert.Equal(SettingValue.DWord(1), _visual.Read(KnownSettings.ClientAreaAnimation));
+        Assert.Equal(SettingValue.DWord(1), _visual.Read(KnownSettings.WindowAnimation));
+        Assert.True(_visual.Read(KnownSettings.Transparency).IsAbsent); // restaurée par suppression
+    }
+
+    [Fact]
+    public void Visual_effects_are_left_alone_unless_asked()
+    {
+        SaveProfile();
+        _visual.Set(KnownSettings.ClientAreaAnimation, SettingValue.DWord(1));
+        NewManager().OnProcessStarted(GamePid, GameExe);
+
+        Assert.Equal(SettingValue.DWord(1), _visual.Read(KnownSettings.ClientAreaAnimation));
+        Assert.DoesNotContain(SessionPlan.Describe(new GameProfile { Name = "x", ExePath = GameExe }, []), l => l.Contains("transparence"));
     }
 
     [Fact]

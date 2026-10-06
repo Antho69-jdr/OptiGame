@@ -214,6 +214,10 @@ public sealed partial class DiagnosticViewModel(
             case DiagnosticLinkTarget.Drivers:
                 navigation.Navigate(drivers);
                 break;
+            case DiagnosticLinkTarget.WindowsNotificationSettings:
+                // explorer.exe transmet l'adresse à l'application Paramètres de la session (comme pour les graphismes de Windows).
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("explorer.exe", "ms-settings:notifications") { UseShellExecute = true });
+                break;
         }
     }
 

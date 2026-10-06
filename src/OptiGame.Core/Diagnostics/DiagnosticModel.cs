@@ -45,6 +45,9 @@ public sealed record DiagnosticResult
 public enum DiagnosticLinkTarget
 {
     Drivers,
+
+    /// <summary>Paramètres de Windows › Système › Notifications (ms-settings:notifications).</summary>
+    WindowsNotificationSettings,
 }
 
 /// <summary>Lien vers une autre page d'OptiGame ; n'applique rien.</summary>

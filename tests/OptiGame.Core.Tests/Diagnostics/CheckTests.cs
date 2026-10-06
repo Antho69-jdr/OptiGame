@@ -418,4 +418,15 @@ public sealed class CheckTests
 
         Assert.Equal(DiagnosticStatus.Error, result.Status);
     }
+
+    [Fact]
+    public void Game_notifications_are_explained_never_read_nor_changed()
+    {
+        var result = new GameNotificationsCheck().Run();
+
+        Assert.Equal(DiagnosticStatus.Info, result.Status); // format non documenté : jamais « OK » ni « À corriger »
+        Assert.Empty(result.Fixes);
+        Assert.Equal(DiagnosticLinkTarget.WindowsNotificationSettings, result.Link?.Target);
+        Assert.Contains("Lors de l'utilisation d'un jeu", result.Explanation);
+    }
 }

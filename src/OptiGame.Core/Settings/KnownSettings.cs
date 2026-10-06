@@ -73,6 +73,20 @@ public static class KnownSettings
     /// s'il ne tourne pas. Écrire Absent le ferme ; écrire une ligne de commande le relance (non élevé) s'il ne tourne pas.
     /// </summary>
     public static SettingTarget RunningProcess(string exeName) => new(ProcessKind, exeName.ToLowerInvariant());
+
+    public const string VisualEffectKind = "visual-effect";
+
+    /// <summary>« Animer les contrôles et éléments de Windows » (SPI_GET/SETCLIENTAREAANIMATION), DWord 1/0.</summary>
+    public static readonly SettingTarget ClientAreaAnimation = new(VisualEffectKind, "client-area-animation");
+
+    /// <summary>« Animer les fenêtres lors de la réduction et de l'agrandissement » (SPI_GET/SETANIMATION), DWord 1/0.</summary>
+    public static readonly SettingTarget WindowAnimation = new(VisualEffectKind, "window-animation");
+
+    /// <summary>
+    /// « Effets de transparence » : HKCU\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize\EnableTransparency (DWord ;
+    /// absente = valeur par défaut de Windows), appliquée par la diffusion de WM_SETTINGCHANGE « ImmersiveColorSet ».
+    /// </summary>
+    public static readonly SettingTarget Transparency = new(VisualEffectKind, "transparency");
 }
 
 public static class PowerSchemes

@@ -47,6 +47,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<ISettingAccessor>(sp => sp.GetRequiredService<PowerSchemeService>());
         services.AddSingleton<IPowerSchemeProvider>(sp => sp.GetRequiredService<PowerSchemeService>());
         services.AddSingleton<ISettingAccessor, PowerSettingAccessor>();
+        services.AddSingleton<ISettingAccessor, Settings.VisualEffectsAccessor>();
         services.AddSingleton<ISettingAccessor, Gpu.NvidiaProfileSettingAccessor>();
         services.AddSingleton<Gpu.NvidiaSmiProvider>();
         services.AddSingleton<INvidiaInfoProvider>(sp => sp.GetRequiredService<Gpu.NvidiaSmiProvider>());
@@ -118,6 +119,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IDiagnosticCheck, MemoryChannelCheck>();
         services.AddSingleton<IDiagnosticCheck, GpuDriverAgeCheck>();
         services.AddSingleton<IDiagnosticCheck, PowerPlanCheck>();
+        services.AddSingleton<IDiagnosticCheck, GameNotificationsCheck>();
         services.AddSingleton<IDiagnosticCheck, CpuBoostCheck>();
         services.AddSingleton<IDiagnosticCheck, ResizableBarCheck>();
         services.AddSingleton<IDiagnosticCheck, WindowedGamesCheck>();
