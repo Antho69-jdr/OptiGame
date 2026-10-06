@@ -97,7 +97,7 @@ public sealed class GameLauncher(FileLog log)
                 var epic = StoreLibraries.ProtocolExe("com.epicgames.launcher") ?? throw new LaunchException("Epic Games Launcher est introuvable sur ce PC.");
                 var parts = key.Split(':');
                 if (parts.Length != 3) throw new LaunchException($"Jeu Epic invalide : « {key} ».");
-                var install = StoreLaunchers.EpicUri(parts[0], parts[1], parts[2], "install", silent: false);
+                var install = StoreLaunchers.EpicUri(parts[0], parts[1], parts[2], "install");
                 if (Process.GetProcessesByName("EpicGamesLauncher").Length > 0)
                 {
                     UnelevatedLauncher.Launch(epic, $"\"{epic}\" {StoreLaunchers.Quoted(install)}");
@@ -136,7 +136,7 @@ public sealed class GameLauncher(FileLog log)
             {
                 await Task.Delay(1000);
             }
-            await Task.Delay(TimeSpan.FromSeconds(4));
+            await Task.Delay(TimeSpan.FromSeconds(8)); // fenêtre affichée avant la fin du chargement de la boutique
             UnelevatedLauncher.Launch(epic, $"\"{epic}\" {StoreLaunchers.Quoted(install)}");
             log.Info($"Installation demandée à Epic Games Launcher, maintenant prêt : {install}");
         }

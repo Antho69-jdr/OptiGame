@@ -340,9 +340,10 @@ vit dans Core ; Platform ne fait que lire/écrire le système.
   regroupés dans les genres Steam en français.
   Jaquettes : CDN `cdn1.epicgames.com` (`?h=528&w=396&resize=1`, ~11 Ko) et `images.gog.com` (.webp → .jpg), téléchargées
   une fois dans `covers\stores` quand la section est affichée, par lots de 4 pris dans l'ordre de la grille filtrée (le filtre
-  choisi passe en premier). Installer : Epic = adresse des raccourcis avec `action=install` SANS `silent=true` (avec, rien ne
-  s'affichait) ; lanceur fermé = démarré AVEC la demande il reste caché et la perd → démarré SEUL (fenêtre en ≈ 6 s), puis la
-  demande quand sa fenêtre existe (`GameLauncher.SendWhenEpicIsReadyAsync`, 60 s max) ; GOG =
+  choisi passe en premier). Installer : Epic = adresse des raccourcis avec `action=install&silent=true` (vérifié le 2026-10-06
+  par capture du lanceur ouvert : SANS silent il n'affiche que sa boutique, AVEC « Choisir l'emplacement de l'installation ») ;
+  lanceur fermé = démarré AVEC la demande il reste caché et la perd → démarré SEUL (fenêtre en ≈ 6 s), puis la demande 8 s après
+  l'apparition de sa fenêtre (`GameLauncher.SendWhenEpicIsReadyAsync`, 60 s max) ; GOG =
   `GalaxyClient.exe /urlProtocol="goggalaxy://openGameView/gog_<id>"` — ces deux actions ne sont PAS vérifiées en vrai par
   l'agent (test utilisateur). Machine de dev : 347 Epic, 13 GOG.
 - Jeux désinstallés (« Mes jeux » : bouton « Actualiser », pastilles « Désinstallé » / « Disque absent », bandeau ;

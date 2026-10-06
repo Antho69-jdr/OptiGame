@@ -36,11 +36,11 @@ public static partial class StoreLaunchers
     }
 
     /// <summary>
-    /// Adresse du lanceur Epic pour un jeu. « silent=true » (raccourcis des jeux) lance sans afficher le lanceur : jamais pour
-    /// l'installation, qui doit ouvrir sa fenêtre (avec, rien ne s'affichait quand le lanceur était fermé — 2026-10-06).
+    /// Adresse du lanceur Epic pour un jeu, « silent=true » compris, AUSSI pour l'installation : vérifié le 2026-10-06 (capture de la
+    /// fenêtre du lanceur), sans lui le lanceur n'affiche que sa boutique ; avec, « Choisir l'emplacement de l'installation ».
     /// </summary>
-    public static string EpicUri(string catalogNamespace, string catalogItemId, string appName, string action, bool silent = true) =>
-        $"com.epicgames.launcher://apps/{Id(catalogNamespace)}%3A{Id(catalogItemId)}%3A{Id(appName)}?action={action}" + (silent ? "&silent=true" : "");
+    public static string EpicUri(string catalogNamespace, string catalogItemId, string appName, string action) =>
+        $"com.epicgames.launcher://apps/{Id(catalogNamespace)}%3A{Id(catalogItemId)}%3A{Id(appName)}?action={action}&silent=true";
 
     public static string GogRunArguments(string gameId, string installPath) =>
         IsDigits(gameId) && !installPath.Contains('"')

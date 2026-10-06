@@ -34,8 +34,8 @@ public sealed class StoreLaunchersTests
             StoreLaunchers.GogRunArguments("1443606025", @"C:\Program Files\GOG Galaxy\Games\WARHAMMER 40K Rites of War\"));
 
         Assert.Throws<ArgumentException>(() => StoreLaunchers.EpicUri("ns", "item?x=1", "app", "launch"));
-        // Installation : la fenêtre du lanceur doit s'ouvrir (pas de silent=true).
-        Assert.Equal("com.epicgames.launcher://apps/ns%3Aitem%3Aapp?action=install", StoreLaunchers.EpicUri("ns", "item", "app", "install", silent: false));
+        // Installation : même forme, silent=true compris (sans lui, le lanceur n'affiche que sa boutique).
+        Assert.Equal("com.epicgames.launcher://apps/ns%3Aitem%3Aapp?action=install&silent=true", StoreLaunchers.EpicUri("ns", "item", "app", "install"));
     }
 
     [Theory]
