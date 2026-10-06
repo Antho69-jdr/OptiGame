@@ -110,7 +110,7 @@ public partial class DockWindow : Window
     public static readonly DependencyProperty PlateCornerRadiusProperty =
         DependencyProperty.Register(nameof(PlateCornerRadius), typeof(CornerRadius), typeof(DockWindow), new PropertyMetadata(new CornerRadius(20)));
 
-    /// <summary>Arrondi des icônes : 14 px quelle que soit leur taille (le plateau : 20 px), comme depuis l'origine du dock.</summary>
+    /// <summary>Arrondi des icônes : réglage DockCornerRadius (14 px par défaut, quelle que soit leur taille) ; plateau 6 px de plus.</summary>
     public CornerRadius IconCornerRadius
     {
         get => (CornerRadius)GetValue(IconCornerRadiusProperty);
@@ -182,6 +182,8 @@ public partial class DockWindow : Window
         _hideTimer.Interval = TimeSpan.FromSeconds(DockLayout.HideDelay(settings.DockHideDelay));
         OgCell.Visibility = Divider.Visibility = settings.DockShowOptiGame ? Visibility.Visible : Visibility.Collapsed;
         (IconWidth, IconHeight) = DockLayout.IconSize(settings.DockIconSize, settings.DockIconShape);
+        var radius = DockLayout.CornerRadius(settings.DockCornerRadius);
+        (IconCornerRadius, PlateCornerRadius) = (new CornerRadius(radius), new CornerRadius(radius + 6)); // plateau : 6 px de plus (14 → 20)
         var (background, border) = DockLayout.PlateAlpha(settings.DockOpacity);
         var plateColor = (Color)FindResource("Color.DockPlate");
         var highlight = (Color)FindResource("Color.Highlight");

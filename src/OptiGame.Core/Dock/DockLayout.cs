@@ -26,6 +26,12 @@ public static class DockLayout
     /// <summary>Délai de masquage automatique en secondes, ramené dans les bornes (0,7 s si la valeur est illisible).</summary>
     public static double HideDelay(double seconds) => double.IsFinite(seconds) ? Math.Clamp(seconds, MinHideDelay, MaxHideDelay) : 0.7;
 
+    public const int DefaultCornerRadius = 14;
+    public const int MaxCornerRadius = 40;
+
+    /// <summary>Arrondi des icônes ramené entre 0 (coins droits) et 40 px ; le plateau garde 6 px de plus.</summary>
+    public static int CornerRadius(int radius) => Math.Clamp(radius, 0, MaxCornerRadius);
+
     /// <summary>
     /// Alpha (0-255) du fond et de la bordure du plateau. Jamais 0 : sur une fenêtre transparente, Windows fait
     /// traverser les clics aux pixels d'alpha nul ; le dock perdrait la souris entre deux icônes et se replierait.

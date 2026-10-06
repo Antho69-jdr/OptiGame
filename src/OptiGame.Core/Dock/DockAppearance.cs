@@ -15,8 +15,9 @@ public sealed record DockAppearance(
     bool AutoHide,
     double HideDelay,
     bool ShowOptiGame,
-    bool ShowNames)
+    bool ShowNames,
+    int CornerRadius)
 {
     public static DockAppearance From(AppSettings s) =>
-        new(s.DockEnabled, s.DockEdge, s.DockIconSize, s.DockIconShape, s.DockOpacity, s.DockAutoHide, s.DockHideDelay, s.DockShowOptiGame, s.DockShowNames);
+        new(s.DockEnabled, s.DockEdge, s.DockIconSize, s.DockIconShape, s.DockOpacity, s.DockAutoHide, s.DockHideDelay, s.DockShowOptiGame, s.DockShowNames, s.DockCornerRadius);
 }

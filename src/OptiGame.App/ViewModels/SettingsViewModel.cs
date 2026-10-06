@@ -308,6 +308,21 @@ public sealed partial class SettingsViewModel : ObservableObject
         }
     }
 
+    public int MaxDockCornerRadius => Core.Dock.DockLayout.MaxCornerRadius;
+
+    /// <summary>Arrondi des icônes du dock, en pixels (curseur ; enregistré une fois immobile, le dock se montre 2 s).</summary>
+    public int DockCornerRadius
+    {
+        get => _settings.Get().DockCornerRadius;
+        set
+        {
+            var radius = Core.Dock.DockLayout.CornerRadius(value);
+            if (radius == _settings.Get().DockCornerRadius) return;
+            _settings.Update(s => s.DockCornerRadius = radius);
+            OnPropertyChanged();
+        }
+    }
+
     /// <summary>Opacité du fond du dock, en pourcents (0 à 100).</summary>
     public int DockOpacityPercent
     {

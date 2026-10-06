@@ -184,7 +184,8 @@ grille, flèches d'une jaquette à l'autre).
 
 - Fenêtre sans focus (jamais au clavier) : chaque action a son équivalent dans la fenêtre — jouer depuis Mes jeux, ordre et
   retrait dans Paramètres › Dock › « Jeux du dock » (Monter / Descendre / Retirer, nom du jeu dans le nom accessible).
-- Jaquettes : arrondi FIXE de 14 px quelle que soit la taille (proportionnel essayé puis refusé le 2026-10-06), plateau 20 px. États : « Lancement… » (voile `Brush.ScrimLight`
+- Jaquettes : arrondi de 14 px quelle que soit la taille (proportionnel essayé puis refusé le 2026-10-06), RÉGLABLE de 0 à 40 px
+  (Paramètres › Dock › Arrondi des icônes, `DockCornerRadius`) ; plateau = arrondi + 6. États : « Lancement… » (voile `Brush.ScrimLight`
   + barre indéterminée, 12 s au plus, clics ignorés) ; désinstallé ou disque absent = opacité 0,45 comme dans Mes jeux,
   état dans l'info-bulle et `AutomationProperties.ItemStatus`.
 - Dock vide : pastille lisible quelle que soit l'opacité du plateau (`Brush.Overlay`), cliquable vers Mes jeux.

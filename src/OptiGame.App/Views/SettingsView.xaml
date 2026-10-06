@@ -169,7 +169,13 @@
                                         TickFrequency="4" IsSnapToTickEnabled="True" SmallChange="4" LargeChange="16"
                                         Value="{Binding DockIconSize, Delay=250}" AutomationProperties.Name="Taille des icônes du dock" />
                             </controls:SettingRow>
-                            <controls:SettingRow IsSubSetting="True" Header="Opacité du fond" Description="{Binding Value, ElementName=OpacitySlider, StringFormat='{}{0:0} %'}">
+                            <controls:SettingRow IsSubSetting="True" Header="Arrondi des icônes"
+                                             Description="{Binding Value, ElementName=DockRadiusSlider, StringFormat='{}{0:0} px (14 px par défaut)'}">
+                            <Slider x:Name="DockRadiusSlider" Width="260" Minimum="0" Maximum="{Binding MaxDockCornerRadius, Mode=OneTime}"
+                                    TickFrequency="1" IsSnapToTickEnabled="True" SmallChange="1" LargeChange="4"
+                                    Value="{Binding DockCornerRadius, Delay=250}" AutomationProperties.Name="Arrondi des icônes du dock, en pixels" />
+                        </controls:SettingRow>
+                        <controls:SettingRow IsSubSetting="True" Header="Opacité du fond" Description="{Binding Value, ElementName=OpacitySlider, StringFormat='{}{0:0} %'}">
                                 <Slider x:Name="OpacitySlider" Width="260" Minimum="0" Maximum="100" TickFrequency="1" IsSnapToTickEnabled="True" SmallChange="1" LargeChange="10"
                                         Value="{Binding DockOpacityPercent, Delay=250}" AutomationProperties.Name="Opacité du fond du dock" />
                             </controls:SettingRow>

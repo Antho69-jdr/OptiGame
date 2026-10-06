@@ -58,6 +58,24 @@ public sealed class DockLayoutTests
         Assert.Equal(0.9, settings.DockOpacity);
     }
 
+    [Theory]
+    [InlineData(14, 14)]
+    [InlineData(0, 0)]
+    [InlineData(-5, 0)]
+    [InlineData(99, 40)]
+    public void Corner_radius_is_clamped(int input, int expected) => Assert.Equal(expected, DockLayout.CornerRadius(input));
+
+    [Fact]
+    public void Corner_radius_defaults_to_14_and_moves_the_dock()
+    {
+        var settings = new AppSettings();
+        Assert.Equal(14, settings.DockCornerRadius);
+        var before = DockAppearance.From(settings);
+        settings.DockCornerRadius = 24;
+        Assert.Equal(24, settings.Clone().DockCornerRadius);
+        Assert.NotEqual(before, DockAppearance.From(settings)); // réglage du dock : il se replace et se montre
+    }
+
     [Fact]
     public void Dock_appearance_ignores_unrelated_settings()
     {
