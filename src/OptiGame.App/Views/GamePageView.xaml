@@ -78,11 +78,11 @@
 
                     <DockPanel Margin="32,56,32,24">
                         <Grid DockPanel.Dock="Left" Width="135" Height="180" Margin="0,0,24,0" VerticalAlignment="Bottom">
-                            <Border CornerRadius="{StaticResource Radius.Cover}" Background="{StaticResource Brush.CoverPlaceholder}">
+                            <Border CornerRadius="{DynamicResource Radius.Cover}" Background="{StaticResource Brush.CoverPlaceholder}">
                                 <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" Style="{StaticResource Text.PageTitle}"
                                            Foreground="{StaticResource Brush.TextMuted}" Text="{Binding Initials}" />
                             </Border>
-                            <Border CornerRadius="{StaticResource Radius.Cover}" BorderBrush="{StaticResource Brush.OverlayBorder}" BorderThickness="1"
+                            <Border CornerRadius="{DynamicResource Radius.Cover}" BorderBrush="{StaticResource Brush.OverlayBorder}" BorderThickness="1"
                                     Visibility="{Binding HasCover, Converter={StaticResource BoolToVisibility}}">
                                 <Border.Background>
                                     <ImageBrush Stretch="UniformToFill" ImageSource="{Binding CoverImage, IsAsync=True}" />

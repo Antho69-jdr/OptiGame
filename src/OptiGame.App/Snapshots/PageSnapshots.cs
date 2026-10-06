@@ -94,11 +94,11 @@ internal static class PageSnapshots
                     await Settle(1500);
                 }),
                 ("5-parametres", async () => { main.Settings.SelectedTab = SettingsTab.General; main.Navigate(main.Settings); await Settle(1500); }),
-                ("5b-parametres-mes-jeux", async () => { main.Settings.SelectedTab = SettingsTab.Games; await Settle(600); }),
-                ("5c-parametres-dock", async () => { main.Settings.SelectedTab = SettingsTab.Dock; await Settle(600); }),
-                ("5d-parametres-mesures", async () => { main.Settings.SelectedTab = SettingsTab.Measures; await Settle(600); }),
-                ("5e-parametres-mises-a-jour", async () => { main.Settings.SelectedTab = SettingsTab.Updates; await Settle(600); }),
-                ("5f-parametres-donnees", async () => { main.Settings.SelectedTab = SettingsTab.Data; await Settle(600); }),
+                ("5b-parametres-mes-jeux", async () => { main.Settings.SelectedTab = SettingsTab.Games; main.Navigate(main.Settings); await Settle(800); }),
+                ("5c-parametres-dock", async () => { main.Settings.SelectedTab = SettingsTab.Dock; main.Navigate(main.Settings); await Settle(800); }),
+                ("5d-parametres-mesures", async () => { main.Settings.SelectedTab = SettingsTab.Measures; main.Navigate(main.Settings); await Settle(800); }),
+                ("5e-parametres-mises-a-jour", async () => { main.Settings.SelectedTab = SettingsTab.Updates; main.Navigate(main.Settings); await Settle(800); }),
+                ("5f-parametres-donnees", async () => { main.Settings.SelectedTab = SettingsTab.Data; main.Navigate(main.Settings); await Settle(800); }),
             };
             // Coque avec alertes et badges d'exemple (rien n'est écrit : alertes en mémoire, compteurs remis ensuite par l'analyse).
             pages.Add(("8-coque-alertes", async () =>

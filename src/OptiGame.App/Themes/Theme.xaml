@@ -935,18 +935,18 @@
                             <Grid.RenderTransform>
                                 <ScaleTransform x:Name="Scale" ScaleX="1" ScaleY="1" />
                             </Grid.RenderTransform>
-                            <Border CornerRadius="{StaticResource Radius.Cover}" Background="{StaticResource Brush.CoverPlaceholder}">
+                            <Border CornerRadius="{DynamicResource Radius.Cover}" Background="{StaticResource Brush.CoverPlaceholder}">
                                 <!-- Initiales seulement sans image (sinon elles transparaîtraient sous une jaquette atténuée) -->
                                 <TextBlock x:Name="InitialsText" HorizontalAlignment="Center" VerticalAlignment="Center" FontFamily="{StaticResource Font.Display}"
                                            FontSize="{StaticResource FontSize.Hero}" FontWeight="SemiBold" Foreground="{StaticResource Brush.TextMuted}"
                                            Text="{TemplateBinding Initials}" Visibility="Collapsed" />
                             </Border>
-                            <Border x:Name="ImageLayer" CornerRadius="{StaticResource Radius.Cover}">
+                            <Border x:Name="ImageLayer" CornerRadius="{DynamicResource Radius.Cover}">
                                 <Border.Background>
                                     <ImageBrush Stretch="UniformToFill" ImageSource="{Binding Image, RelativeSource={RelativeSource TemplatedParent}}" />
                                 </Border.Background>
                             </Border>
-                            <Border x:Name="Outline" CornerRadius="{StaticResource Radius.Cover}" BorderThickness="1"
+                            <Border x:Name="Outline" CornerRadius="{DynamicResource Radius.Cover}" BorderThickness="1"
                                     BorderBrush="{StaticResource Brush.OverlayBorder}" />
                             <ContentPresenter Margin="8" HorizontalAlignment="Left" VerticalAlignment="Top" Content="{TemplateBinding TopLeft}" />
                             <ContentPresenter Margin="8" HorizontalAlignment="Right" VerticalAlignment="Top" Content="{TemplateBinding TopRight}" />

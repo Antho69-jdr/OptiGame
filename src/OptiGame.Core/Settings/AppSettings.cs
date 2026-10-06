@@ -22,6 +22,16 @@ public enum UiAnimations
     Never,
 }
 
+/// <summary>Aspect des jaquettes réglable par l'utilisateur.</summary>
+public static class CoverStyle
+{
+    public const int DefaultRadius = 8;
+    public const int MaxRadius = 24;
+
+    /// <summary>Arrondi ramené entre 0 (coins droits) et 24 px.</summary>
+    public static int Radius(int radius) => Math.Clamp(radius, 0, MaxRadius);
+}
+
 /// <summary>Décision : animer ou non, d'après le réglage d'OptiGame et celui de Windows.</summary>
 public static class Motion
 {
@@ -116,6 +126,9 @@ public sealed class AppSettings
     /// <summary>Animations de l'interface : selon Windows par défaut (accessibilité).</summary>
     public UiAnimations UiAnimations { get; set; } = UiAnimations.FollowWindows;
 
+    /// <summary>Arrondi des coins des jaquettes de Mes jeux et de la fiche, en pixels (CoverStyle.Radius le borne).</summary>
+    public int CoverCornerRadius { get; set; } = CoverStyle.DefaultRadius;
+
     /// <summary>Ancien choix de vue du Diagnostic (Simple / Avancé) : plus utilisé depuis la page unique (1.5), gardé pour relire les anciens fichiers.</summary>
     public bool DiagnosticAdvanced { get; set; }
 
@@ -154,6 +167,7 @@ public sealed class AppSettings
         AutoMeasureFps = AutoMeasureFps,
         LightDuringGames = LightDuringGames,
         UiAnimations = UiAnimations,
+        CoverCornerRadius = CoverCornerRadius,
         DiagnosticAdvanced = DiagnosticAdvanced,
         LibraryShowUninstalled = LibraryShowUninstalled,
         UpdateMode = UpdateMode,

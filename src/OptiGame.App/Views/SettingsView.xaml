@@ -72,6 +72,13 @@
                 <!-- ===== Mes jeux ===== -->
                 <Border Style="{StaticResource SettingsCard}" Visibility="{Binding IsGamesTab, Converter={StaticResource BoolToVisibility}}">
                     <StackPanel Margin="{StaticResource Margin.SettingsCardContent}">
+                        <!-- Curseur : enregistré une fois immobile ; les jaquettes suivent tout de suite (ressource dynamique) -->
+                        <controls:SettingRow Glyph="&#xE7A8;" Header="Arrondi des jaquettes"
+                                             Description="{Binding Value, ElementName=CoverRadiusSlider, StringFormat='{}{0:0} px (8 px par défaut). Jaquettes de Mes jeux et de la fiche du jeu.'}">
+                            <Slider x:Name="CoverRadiusSlider" Width="260" Minimum="0" Maximum="{Binding MaxCoverCornerRadius, Mode=OneTime}"
+                                    TickFrequency="1" IsSnapToTickEnabled="True" SmallChange="1" LargeChange="4"
+                                    Value="{Binding CoverCornerRadius, Delay=250}" AutomationProperties.Name="Arrondi des jaquettes, en pixels" />
+                        </controls:SettingRow>
                         <controls:SettingRow Glyph="&#xE8B7;" Header="Dossiers de jeux"
                                              Description="Utilisés par « Détecter les jeux installés… », en plus de Steam, Epic Games et GOG. Chaque sous-dossier est un jeu.">
                             <Button Style="{StaticResource Button.Secondary}" Content="Ajouter un dossier…" Command="{Binding AddGameFolderCommand}" />

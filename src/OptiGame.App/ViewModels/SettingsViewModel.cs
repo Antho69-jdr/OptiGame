@@ -196,6 +196,21 @@ public sealed partial class SettingsViewModel : ObservableObject
         set { _settings.Update(s => s.AutoMeasureFps = value); OnPropertyChanged(); OnPropertyChanged(nameof(ShowsPresentMonWarning)); }
     }
 
+    public int MaxCoverCornerRadius => CoverStyle.MaxRadius;
+
+    /// <summary>Arrondi des jaquettes, en pixels (curseur ; enregistré une fois le curseur immobile, visible tout de suite).</summary>
+    public int CoverCornerRadius
+    {
+        get => _settings.Get().CoverCornerRadius;
+        set
+        {
+            var radius = CoverStyle.Radius(value);
+            if (radius == _settings.Get().CoverCornerRadius) return;
+            _settings.Update(s => s.CoverCornerRadius = radius);
+            OnPropertyChanged();
+        }
+    }
+
     public IReadOnlyList<UiAnimationsOption> UiAnimationsOptions { get; } =
     [
         new(UiAnimations.FollowWindows, "Selon Windows"),
