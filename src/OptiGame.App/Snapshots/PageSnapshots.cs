@@ -71,6 +71,48 @@ internal static class PageSnapshots
                     await Settle(2500);
                 }),
                 ("1d-mes-jeux-filtres-effaces", async () => { library.ClearFiltersCommand.Execute(null); await Settle(800); }),
+                // Contrôle des liaisons : chaque bouton visible de chaque page doit avoir sa commande (une liaison en erreur laisse le
+                // bouton sans effet, et son clic retombe sur son parent — la jaquette lançait l'installation, constaté le 2026-10-06).
+                ("1z-liaisons-des-boutons", async () =>
+                {
+                    static IEnumerable<DependencyObject> Tree(DependencyObject root)
+                    {
+                        for (var i = 0; i < VisualTreeHelper.GetChildrenCount(root); i++)
+                        {
+                            var child = VisualTreeHelper.GetChild(root, i);
+                            yield return child;
+                            foreach (var d in Tree(child)) yield return d;
+                        }
+                    }
+                    var pages = new (string Name, object Page)[]
+                    {
+                        ("Mes jeux", library), ("Diagnostic", main.Diagnostic), ("Pilotes", main.NavItems[2].Page), ("Mesures", main.NavItems[3].Page),
+                        ("Paramètres", main.Settings),
+                    };
+                    library.ShowUninstalled = true;
+                    var broken = 0;
+                    foreach (var (name, page) in pages)
+                    {
+                        main.Navigate(page);
+                        await Settle(3000);
+                        // Actions de survol des jaquettes affichées, pour que leurs liaisons se fassent.
+                        foreach (var tile in Tree(window).OfType<Controls.CoverTile>().Take(6).ToList())
+                        {
+                            if (tile.Template.FindName("Actions", tile) is UIElement actions) actions.Visibility = Visibility.Visible;
+                        }
+                        await Settle(800);
+                        var buttons = Tree(window).OfType<System.Windows.Controls.Primitives.ButtonBase>().ToList();
+                        foreach (var b in buttons)
+                        {
+                            var binding = System.Windows.Data.BindingOperations.GetBindingExpression(b, System.Windows.Controls.Primitives.ButtonBase.CommandProperty);
+                            if (binding is null || binding.Status == System.Windows.Data.BindingStatus.Active) continue;
+                            broken++;
+                            Log($"{name} : bouton « {b.Content ?? (b as Controls.IconButton)?.Label} » ({b.DataContext?.GetType().Name}) : liaison {binding.Status} ({binding.ParentBinding.Path?.Path})");
+                        }
+                        Log($"{name} : {buttons.Count} boutons contrôlés");
+                    }
+                    Log(broken == 0 ? "Liaisons : toutes actives." : $"Liaisons : {broken} en erreur.");
+                }),
                 // Genres IGDB (requêtes réelles si les identifiants sont copiés, cache dans le dossier de test) : Epic + « Tir ».
                 ("1e-mes-jeux-genre-epic", async () =>
                 {

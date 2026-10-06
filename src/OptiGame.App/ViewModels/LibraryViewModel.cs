@@ -562,7 +562,11 @@ public sealed partial class LibraryViewModel : ObservableObject
                 : Core.Library.GameTags.Empty;
         }
         UninstalledGames.Clear();
-        foreach (var card in uninstalled) UninstalledGames.Add(card);
+        foreach (var card in uninstalled)
+        {
+            card.Owner = this;
+            UninstalledGames.Add(card);
+        }
         ApplyTags(rebuildFilters: false);
         // Genres IGDB des jeux qui n'en ont pas encore (tous magasins), en tâche de fond : ApplyTags à leur arrivée.
         _tags.Request(Games.Select(c => c.Name).Concat(UninstalledGames.Select(c => c.Name)));
@@ -1341,6 +1345,7 @@ public sealed partial class LibraryViewModel : ObservableObject
         {
             var card = new GameCardViewModel(profile, playing == profile.Id)
             {
+                Owner = this,
                 CoverPath = _artwork.TryGetCached(profile.CoverImageId, Igdb.CoverSize),
                 Playtime = PlaytimeOf(profile.Id, _time.GetLocalNow()),
                 InstallState = installStates.GetValueOrDefault(profile.Id, InstallState.Installed),
@@ -1394,6 +1399,13 @@ public sealed partial class LibraryViewModel : ObservableObject
 /// <summary>Jaquette de la grille.</summary>
 public sealed partial class GameCardViewModel(GameProfile profile, bool isPlaying) : ObservableObject
 {
+
+    /// <summary>
+    /// Page Mes jeux : les boutons de survol de la jaquette s'y lient (« Owner.PlayCardCommand »). Une liaison RelativeSource vers
+    /// le UserControl ÉCHOUE pour ces boutons (créés dans CoverTile.Actions, hors de l'arbre visuel : PathError, jamais retentée ;
+    /// constaté le 2026-10-06, les boutons n'avaient aucune commande et le clic retombait sur la jaquette).
+    /// </summary>
+    public LibraryViewModel? Owner { get; set; }
     public Guid Id { get; } = profile.Id;
 
     public string Name { get; } = profile.Name;
@@ -1511,6 +1523,13 @@ public sealed partial class GameCardViewModel(GameProfile profile, bool isPlayin
 /// </summary>
 public sealed partial class OwnedGameCardViewModel : ObservableObject
 {
+
+    /// <summary>
+    /// Page Mes jeux : les boutons de survol de la jaquette s'y lient (« Owner.PlayCardCommand »). Une liaison RelativeSource vers
+    /// le UserControl ÉCHOUE pour ces boutons (créés dans CoverTile.Actions, hors de l'arbre visuel : PathError, jamais retentée ;
+    /// constaté le 2026-10-06, les boutons n'avaient aucune commande et le clic retombait sur la jaquette).
+    /// </summary>
+    public LibraryViewModel? Owner { get; set; }
     private OwnedGameCardViewModel(GameSource store, string key, string name, IReadOnlyList<string> genres,
         IReadOnlySet<Core.Library.GameKind> kinds, string? coverPath, string? coverUrl)
     {

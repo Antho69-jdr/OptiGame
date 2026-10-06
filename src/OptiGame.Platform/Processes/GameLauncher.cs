@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using OptiGame.Core.Launching;
 using OptiGame.Core.Library;
 using OptiGame.Core.Logging;
@@ -75,10 +76,14 @@ public sealed class GameLauncher(FileLog log)
                 var epic = StoreLibraries.ProtocolExe("com.epicgames.launcher") ?? throw new LaunchException("Epic Games Launcher est introuvable sur ce PC.");
                 var parts = key.Split(':');
                 if (parts.Length != 3) throw new LaunchException($"Jeu Epic invalide : « {key} ».");
-                var install = StoreLaunchers.EpicUri(parts[0], parts[1], parts[2], "install");
+                var install = StoreLaunchers.EpicUri(parts[0], parts[1], parts[2], "install", silent: false);
+                var wasRunning = Process.GetProcessesByName("EpicGamesLauncher").Length > 0;
                 UnelevatedLauncher.Launch(epic, $"\"{epic}\" {StoreLaunchers.Quoted(install)}");
-                log.Info($"Installation demandée à Epic Games Launcher : {install}");
-                return $"Epic Games Launcher ouvre l'installation de « {name} ».";
+                log.Info($"Installation demandée à Epic Games Launcher{(wasRunning ? "" : " (fermé : il démarre)")} : {install}");
+                if (wasRunning) return $"Epic Games Launcher ouvre l'installation de « {name} ».";
+                // Lanceur fermé : il démarre, mais ignore la demande reçue au démarrage. Elle est renvoyée quand sa fenêtre est prête.
+                _ = ResendWhenEpicIsReadyAsync(epic, install);
+                return $"Epic Games Launcher démarre : l'installation de « {name} » s'ouvrira dès qu'il sera prêt (quelques secondes).";
 
             case GameSource.Gog:
                 var galaxy = StoreLibraries.ProtocolExe("goggalaxy") ?? throw new LaunchException("GOG Galaxy est introuvable sur ce PC.");
@@ -89,6 +94,44 @@ public sealed class GameLauncher(FileLog log)
 
             default:
                 throw new LaunchException($"Installation non prise en charge pour ce magasin ({store}).");
+        }
+    }
+
+    /// <summary>
+    /// Epic Games Launcher démarré par une demande d'installation : on attend sa fenêtre (60 s au plus, il se connecte et se met
+    /// parfois à jour), puis quelques secondes, et la demande est renvoyée une fois à l'instance prête.
+    /// </summary>
+    private async Task ResendWhenEpicIsReadyAsync(string epic, string install)
+    {
+        try
+        {
+            var deadline = DateTime.UtcNow.AddSeconds(60);
+            while (DateTime.UtcNow < deadline && !Process.GetProcessesByName("EpicGamesLauncher").Any(HasWindow))
+            {
+                await Task.Delay(1000);
+            }
+            await Task.Delay(TimeSpan.FromSeconds(4));
+            UnelevatedLauncher.Launch(epic, $"\"{epic}\" {StoreLaunchers.Quoted(install)}");
+            log.Info($"Installation renvoyée à Epic Games Launcher, maintenant prêt : {install}");
+        }
+        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException or LaunchException)
+        {
+            log.Warn($"Installation non renvoyée à Epic Games Launcher : {ex.Message}");
+        }
+
+        static bool HasWindow(Process process)
+        {
+            using (process)
+            {
+                try
+                {
+                    return process.MainWindowHandle != IntPtr.Zero;
+                }
+                catch (InvalidOperationException)
+                {
+                    return false; // processus terminé entre-temps
+                }
+            }
         }
     }
 

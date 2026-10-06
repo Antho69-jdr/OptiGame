@@ -254,13 +254,13 @@
                                             <!-- Boutons à icône : nom accessible = action + jeu (l'icône seule serait lue comme un caractère) -->
                                             <Button DockPanel.Dock="Right" Style="{StaticResource Button.CoverPlay}" ToolTip="Jouer"
                                                     AutomationProperties.Name="{Binding Name, StringFormat='Jouer à {0}'}"
-                                                    Command="{Binding DataContext.PlayCardCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                    Command="{Binding Owner.PlayCardCommand}"
                                                     CommandParameter="{Binding}" />
                                             <StackPanel VerticalAlignment="Bottom" Orientation="Horizontal">
                                                 <Button Margin="0,0,6,0" Content="&#xE718;"
-                                                        Command="{Binding DataContext.TogglePinCardCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                        Command="{Binding Owner.TogglePinCardCommand}"
                                                         CommandParameter="{Binding}"
-                                                        Visibility="{Binding DataContext.IsDockEnabled, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BoolToVisibility}}">
+                                                        Visibility="{Binding Owner.IsDockEnabled, Converter={StaticResource BoolToVisibility}}">
                                                     <Button.Style>
                                                         <Style TargetType="Button" BasedOn="{StaticResource Button.CoverRound}">
                                                             <Setter Property="ToolTip" Value="Épingler au dock" />
@@ -277,7 +277,7 @@
                                                 </Button>
                                                 <Button Style="{StaticResource Button.CoverRound}" Content="&#xE74D;" ToolTip="Retirer de Mes jeux…"
                                                         AutomationProperties.Name="{Binding Name, StringFormat='Retirer {0} de Mes jeux…'}"
-                                                        Command="{Binding DataContext.RemoveCardCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                        Command="{Binding Owner.RemoveCardCommand}"
                                                         CommandParameter="{Binding}"
                                                         Visibility="{Binding IsPlaying, Converter={StaticResource InverseBoolToVisibility}}" />
                                             </StackPanel>
@@ -352,7 +352,7 @@
                                         <controls:CoverTile.Actions>
                                             <StackPanel>
                                                 <Button Style="{StaticResource Button.Primary}" HorizontalAlignment="Stretch" Focusable="False"
-                                                        Command="{Binding DataContext.InstallOwnedCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                        Command="{Binding Owner.InstallOwnedCommand}"
                                                         CommandParameter="{Binding}">
                                                     <StackPanel Orientation="Horizontal">
                                                         <TextBlock Style="{StaticResource Text.Icon}" FontSize="{StaticResource IconSize.Small}" Text="&#xE896;" />
@@ -361,7 +361,7 @@
                                                 </Button>
                                                 <Button Margin="0,6,0,0" Style="{StaticResource Button.Secondary}" HorizontalAlignment="Stretch" Focusable="False"
                                                         Content="{Binding StorePageLabel}" Visibility="{Binding HasStorePage, Converter={StaticResource BoolToVisibility}}"
-                                                        Command="{Binding DataContext.OpenOwnedStorePageCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                        Command="{Binding Owner.OpenOwnedStorePageCommand}"
                                                         CommandParameter="{Binding}" />
                                             </StackPanel>
                                         </controls:CoverTile.Actions>

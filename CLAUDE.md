@@ -338,7 +338,9 @@ vit dans Core ; Platform ne fait que lire/écrire le système.
   regroupés dans les genres Steam en français.
   Jaquettes : CDN `cdn1.epicgames.com` (`?h=528&w=396&resize=1`, ~11 Ko) et `images.gog.com` (.webp → .jpg), téléchargées
   une fois dans `covers\stores` quand la section est affichée, par lots de 4 pris dans l'ordre de la grille filtrée (le filtre
-  choisi passe en premier). Installer : Epic = adresse des raccourcis avec `action=install` ; GOG =
+  choisi passe en premier). Installer : Epic = adresse des raccourcis avec `action=install` SANS `silent=true` (avec, rien ne
+  s'affichait), et lanceur fermé = il ignore la demande reçue au démarrage → renvoyée quand sa fenêtre existe (60 s max,
+  `GameLauncher.ResendWhenEpicIsReadyAsync`, à confirmer en vrai) ; GOG =
   `GalaxyClient.exe /urlProtocol="goggalaxy://openGameView/gog_<id>"` — ces deux actions ne sont PAS vérifiées en vrai par
   l'agent (test utilisateur). Machine de dev : 347 Epic, 13 GOG.
 - Jeux désinstallés (« Mes jeux » : bouton « Actualiser », pastilles « Désinstallé » / « Disque absent », bandeau ;
@@ -358,6 +360,11 @@ vit dans Core ; Platform ne fait que lire/écrire le système.
   HWND_BOTTOM, elle passerait sous le bureau, invisible. RocketDock fait de même. « Afficher le bureau » (Win+D) fait
   passer le bureau devant : tant qu'aucune application ne le recouvre (`Core/Dock/DesktopRules`, fenêtres « cloaked »
   ignorées : 9 sur la machine de dev), le dock passe au premier plan (méthode de Rainmeter), puis se recolle.
+- WPF : un élément placé dans une propriété `object` d'un contrôle (`CoverTile.Actions`, affiché par un ContentPresenter du
+  gabarit) n'est PAS dans l'arbre quand ses liaisons s'évaluent : `RelativeSource AncestorType=UserControl` y finit en PathError,
+  jamais retentée → bouton SANS commande, et son clic retombe sur le parent (la jaquette lançait l'installation au lieu de
+  « Voir sur … », constaté le 2026-10-06). Lier par le DataContext (cartes : `Owner.XxxCommand`). Contrôle : ui-snapshots
+  `-Only 1z` (toutes les liaisons de commande des pages, « Liaisons : toutes actives »).
 - WPF gèle les Freezable (ScaleTransform, brushes…) déclarés dans un DataTemplate : pour les animer, donner à
   chaque élément sa propre instance (cf. `DockWindow.SetScale`). Toute erreur d'interface passe par
   `DispatcherUnhandledException` (journalisée, l'appli continue).
