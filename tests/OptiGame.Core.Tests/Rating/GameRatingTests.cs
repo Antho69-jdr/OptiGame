@@ -254,6 +254,18 @@ public sealed class GameRatingTests
     }
 
     [Fact]
+    public void Cpu_bound_advice_names_the_busy_programs_of_the_measure()
+    {
+        BackgroundProgram[] busy = [new("chrome.exe", null, 12.5, 23)];
+        var capture = new GameRatings.MeasuredCapture(Stats(60, 40), new FrameLoad(0.55, 0.02), GraphicsPreset.High, null, busy);
+
+        var rating = GameRatings.Combine(null, GameRatings.MeasureFrom([capture], 165, pc: Dev))!;
+
+        Assert.Contains("chrome.exe 12,5 % (23 processus) (onglet Optimisation)", rating.Advice);
+        Assert.Contains(rating.Details, d => d.StartsWith("Programmes qui ont pris du processeur pendant la dernière mesure : chrome.exe"));
+    }
+
+    [Fact]
     public void The_gaming_screen_is_the_primary_one()
     {
         DisplayInfo Screen(string name, int hz, bool primary = false) => new(name, "", 1920, 1080, hz, hz, primary);

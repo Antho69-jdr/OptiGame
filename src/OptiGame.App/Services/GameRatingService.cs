@@ -69,7 +69,7 @@ public sealed class GameRatingService(
         var measured = captures.GetAll()
             .Where(c => c.ProcessName.Equals(exe, StringComparison.OrdinalIgnoreCase))
             .OrderByDescending(c => c.CapturedAt)
-            .Select(c => new GameRatings.MeasuredCapture(c.Stats, c.Load ?? LoadOf(c), c.Preset, c.GpuHealth))
+            .Select(c => new GameRatings.MeasuredCapture(c.Stats, c.Load ?? LoadOf(c), c.Preset, c.GpuHealth, c.Background))
             .ToList();
         // Réglage du jeu : celui indiqué par l'utilisateur, sinon celui lu dans les fichiers du jeu (Unreal Engine).
         var game = InGameSettingsReader.Read(profile.ExePath);

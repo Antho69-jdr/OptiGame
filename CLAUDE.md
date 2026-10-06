@@ -317,6 +317,13 @@ vit dans Core ; Platform ne fait que lire/écrire le système.
   - Mesure : `Platform/Measurement/AutoCapture` = 1 capture PresentMon de 60 s après 4 min de partie, session ETW
     `OptiGame_AutoCapture` (jamais celle de la page Mesures), 5 dernières gardées par jeu, désactivable (Paramètres).
     Note = fluidité (60 % FPS moyens + 40 % 1 % low) / min(fréquence de l'écran, 120 Hz), médiane des 5 dernières captures.
+  - Programmes gourmands (`Core/Measurement/BackgroundLoad`, `Platform/Measurement/ProcessCpuSampler`, `DiagDump -- --background
+    [s]`) : DEUX relevés du temps processeur des processus de la session (début et fin des 60 s de la mesure auto), rien
+    entre ; % du processeur ENTIER (tous les threads), processus d'un même exe additionnés, ≥ 2 %, 5 au plus ; écartés le jeu,
+    les composants de Windows, ProfileValidator.ProtectedProcesses, PresentMon, nvidia-smi. Vérifié le 2026-10-06 : une boucle
+    sur un cœur = 8,3 % sur 12 threads. `CaptureRecord.Background` ; onglet Optimisation (sous « Programmes à fermer ») :
+    « Fermer pendant les parties » ajoute l'exe à l'éditeur (puis « Enregistrer ») ; cités dans le conseil si le processeur
+    limite.
   - Réglage du jeu : choisi par l'utilisateur (`GameProfile.GraphicsPreset`, modifié seulement par
     `ProfileStore.SetGraphicsPreset`), sinon « Automatique » = lu dans le jeu (ci-dessous), copié dans chaque capture
     (`InGameSettingsReader.PresetForCapture`) ; aucun = conseil relatif, sans réglage conseillé.

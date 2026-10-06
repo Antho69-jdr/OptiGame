@@ -68,6 +68,9 @@ public sealed class CaptureRecord
 
     /// <summary>État de la carte graphique NVIDIA pendant une mesure automatique (température, bridage) ; null = non relevé.</summary>
     public OptiGame.Core.Gpu.GpuHealth? GpuHealth { get; set; }
+
+    /// <summary>Programmes qui ont pris du processeur pendant une mesure automatique (<see cref="BackgroundLoad"/>) ; null = non relevé.</summary>
+    public List<BackgroundProgram>? Background { get; set; }
 }
 
 public sealed class CapturesDocument

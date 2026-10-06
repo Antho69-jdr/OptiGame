@@ -25,7 +25,11 @@ public sealed partial class ProfileEditorViewModel : ObservableObject
     {
         _describeLaunch = describeLaunch;
         _original = profile;
-        ProcessesToClose.CollectionChanged += (_, _) => OnPropertyChanged(nameof(HasProcessesToClose));
+        ProcessesToClose.CollectionChanged += (_, _) =>
+        {
+            OnPropertyChanged(nameof(HasProcessesToClose));
+            foreach (var busy in BusyPrograms) busy.IsListed = IsListed(busy.ExeName);
+        };
         _schemes = schemes;
         _programs = programs;
         _dialogs = dialogs;
@@ -227,9 +231,36 @@ public sealed partial class ProfileEditorViewModel : ObservableObject
         LaunchArguments = string.IsNullOrWhiteSpace(LaunchArguments) ? null : LaunchArguments.Trim(),
     };
 
+    /// <summary>
+    /// Programmes qui ont pris du processeur pendant la dernière mesure automatique du jeu (relevé de deux instants, voir
+    /// <see cref="Core.Measurement.BackgroundLoad"/>) : chacun s'ajoute aux programmes à fermer d'un clic (puis « Enregistrer »).
+    /// </summary>
+    public ObservableCollection<BusyProgramViewModel> BusyPrograms { get; } = [];
+
+    public bool HasBusyPrograms => BusyPrograms.Count > 0;
+
+    [ObservableProperty] private string _busyProgramsHeader = "";
+
+    public void ShowBusyPrograms(DateTimeOffset measuredAt, IReadOnlyList<Core.Measurement.BackgroundProgram> programs)
+    {
+        BusyPrograms.Clear();
+        foreach (var program in programs)
+        {
+            BusyPrograms.Add(new BusyProgramViewModel(program.ExeName,
+                $"{program.CpuPercent.ToString("0.#", Core.Text.FrenchText.French)}{Core.Text.FrenchText.NoBreakSpace}% du processeur" +
+                (program.Instances > 1 ? $" ({program.Instances} processus)" : ""),
+                IsListed(program.ExeName), () => AddIfMissing(program.ExeName)));
+        }
+        BusyProgramsHeader = $"Pendant votre partie {Core.Text.FrenchText.When(measuredAt.ToLocalTime().DateTime, DateTime.Now)} (mesure de 60 s), " +
+                             "ces programmes ont pris du processeur au jeu :";
+        OnPropertyChanged(nameof(HasBusyPrograms));
+    }
+
+    private bool IsListed(string exeName) => ProcessesToClose.Any(p => p.ExeName.Equals(exeName, StringComparison.OrdinalIgnoreCase));
+
     private void AddIfMissing(string exeName)
     {
-        if (ProcessesToClose.Any(p => p.ExeName.Equals(exeName, StringComparison.OrdinalIgnoreCase))) return;
+        if (IsListed(exeName)) return;
         AddProcessRow(exeName, relaunch: true);
         Touch();
     }
@@ -293,4 +324,23 @@ public sealed partial class ProcessRowViewModel(string exeName, bool relaunch, A
 
     [RelayCommand]
     private void Remove() => remove(this);
+}
+
+/// <summary>Programme gourmand mesuré pendant une partie, proposé à la fermeture.</summary>
+public sealed partial class BusyProgramViewModel(string exeName, string usage, bool isListed, Action add) : ObservableObject
+{
+    public string ExeName { get; } = exeName;
+
+    /// <summary>« 12,5 % du processeur (23 processus) ».</summary>
+    public string Usage { get; } = usage;
+
+    /// <summary>Déjà dans les programmes à fermer : le bouton laisse la place à « Déjà fermé pendant les parties ».</summary>
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(AddCommand))]
+    private bool _isListed = isListed;
+
+    [RelayCommand(CanExecute = nameof(CanAdd))]
+    private void Add() => add();
+
+    private bool CanAdd() => !IsListed;
 }

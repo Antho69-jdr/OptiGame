@@ -380,6 +380,33 @@
                                             </TextBlock>
                                         </Grid>
                                     </DockPanel>
+
+                                    <!-- Programmes gourmands mesurés pendant la dernière mesure automatique -->
+                                    <Border Margin="0,12,0,0" Padding="14,10" CornerRadius="{StaticResource Radius.Control}"
+                                            Background="{StaticResource Brush.InfoSoft}"
+                                            Visibility="{Binding HasBusyPrograms, Converter={StaticResource BoolToVisibility}}">
+                                        <StackPanel>
+                                            <TextBlock Style="{StaticResource Text.Body}" Text="{Binding BusyProgramsHeader}" TextWrapping="Wrap" />
+                                            <ItemsControl Margin="0,6,0,0" ItemsSource="{Binding BusyPrograms}" Focusable="False">
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate DataType="{x:Type vm:BusyProgramViewModel}">
+                                                        <DockPanel Margin="0,4,0,0">
+                                                            <Button DockPanel.Dock="Right" Style="{StaticResource Button.Secondary}" Content="Fermer pendant les parties"
+                                                                    Command="{Binding AddCommand}"
+                                                                    AutomationProperties.Name="{Binding ExeName, StringFormat='Fermer {0} pendant les parties'}"
+                                                                    Visibility="{Binding IsListed, Converter={StaticResource InverseBoolToVisibility}}" />
+                                                            <TextBlock DockPanel.Dock="Right" VerticalAlignment="Center" Style="{StaticResource Text.Secondary}"
+                                                                       Text="Fermé pendant les parties"
+                                                                       Visibility="{Binding IsListed, Converter={StaticResource BoolToVisibility}}" />
+                                                            <TextBlock VerticalAlignment="Center" Style="{StaticResource Text.Body}" TextWrapping="Wrap">
+                                                                <Run FontFamily="{StaticResource Font.Mono}" Text="{Binding ExeName, Mode=OneWay}" /><Run Text=" — " /><Run Text="{Binding Usage, Mode=OneWay}" />
+                                                            </TextBlock>
+                                                        </DockPanel>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                        </StackPanel>
+                                    </Border>
                                 </StackPanel>
 
                                 <!-- Ce qui se passera (toujours visible, généré par le moteur des parties) -->

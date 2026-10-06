@@ -146,6 +146,24 @@ if (args.Length == 1 && args[0] == "--steam-playtime")
     return;
 }
 
+// --background [secondes] : programmes qui prennent du processeur, comme pendant la mesure automatique (deux relevés, lecture seule).
+if (args.Length >= 1 && args[0] == "--background")
+{
+    var seconds = args.Length > 1 && int.TryParse(args[1], out var s) ? s : 10;
+    var before = OptiGame.Platform.Measurement.ProcessCpuSampler.Snapshot();
+    var watch = System.Diagnostics.Stopwatch.StartNew();
+    Console.WriteLine($"{before.Count} processus dans la session ; second relevé dans {seconds} s…");
+    Thread.Sleep(TimeSpan.FromSeconds(seconds));
+    var after = OptiGame.Platform.Measurement.ProcessCpuSampler.Snapshot();
+    var busy = OptiGame.Core.Measurement.BackgroundLoad.Summarize(before, after, watch.Elapsed, Environment.ProcessorCount, "",
+        OptiGame.Platform.Measurement.ProcessCpuSampler.IsWindowsComponent);
+    Console.WriteLine(busy.Count == 0
+        ? $"Aucun programme au-dessus de {OptiGame.Core.Measurement.BackgroundLoad.MinimumPercent} % du processeur ({Environment.ProcessorCount} threads)."
+        : $"Programmes gourmands ({Environment.ProcessorCount} threads) : {OptiGame.Core.Measurement.BackgroundLoad.Describe(busy)}");
+    foreach (var p in busy) Console.WriteLine($"  {p.ExeName} : {p.CpuPercent} % — {p.Path}");
+    return;
+}
+
 // --ingame-settings : réglages lus dans les fichiers de chaque jeu (Unreal Engine, Unity), lecture seule.
 if (args.Length == 1 && args[0] == "--ingame-settings")
 {

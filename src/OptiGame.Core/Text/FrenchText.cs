@@ -45,7 +45,8 @@ public static class FrenchText
         return builder.ToString();
     }
 
-    private static readonly CultureInfo French = CultureInfo.GetCultureInfo("fr-FR");
+    /// <summary>Culture des nombres et dates affichés (« 12,5 »), quelle que soit la langue de Windows.</summary>
+    public static readonly CultureInfo French = CultureInfo.GetCultureInfo("fr-FR");
 
     /// <summary>Le format de date de toute l'interface : « 22 sept. 2026 » (mois abrégé à la française).</summary>
     public static string Date(DateOnly date) => date.ToString("d MMM yyyy", French);

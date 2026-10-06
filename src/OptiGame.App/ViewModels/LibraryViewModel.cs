@@ -1004,11 +1004,13 @@ public sealed partial class LibraryViewModel : ObservableObject
 
         var editor = new ProfileEditorViewModel(profile, Schemes, _programs, _dialogs, SaveProfileAsync, p => RemoveGame(p.Id), () => OpenPage(id), DescribeLaunch);
         var exeName = Path.GetFileName(profile.ExePath);
-        var captures = _captures.GetAll()
-            .Where(c => c.ProcessName.Equals(exeName, StringComparison.OrdinalIgnoreCase))
-            .Take(8)
-            .Select(c => new CaptureItemViewModel(c, _time, false))
-            .ToList();
+        var gameCaptures = _captures.GetAll().Where(c => c.ProcessName.Equals(exeName, StringComparison.OrdinalIgnoreCase)).ToList();
+        var captures = gameCaptures.Take(8).Select(c => new CaptureItemViewModel(c, _time, false)).ToList();
+        // Programmes gourmands : ceux de la dernière mesure automatique qui les a relevés (toujours du plus récent au plus ancien).
+        if (gameCaptures.FirstOrDefault(c => c.Background is not null) is { Background: { Count: > 0 } busy } measured)
+        {
+            editor.ShowBusyPrograms(measured.CapturedAt, busy);
+        }
 
         OpenGame = new GamePageViewModel(profile, editor, captures,
             back: CloseGamePage,

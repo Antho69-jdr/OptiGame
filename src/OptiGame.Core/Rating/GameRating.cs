@@ -172,14 +172,15 @@ public static class GameRatings
         below || ratio < 0.6 ? GraphicsPreset.Low : ratio < 1.0 ? GraphicsPreset.Medium : ratio < 1.6 ? GraphicsPreset.High : GraphicsPreset.Ultra;
 
     /// <summary>Une capture du jeu : statistiques, charge (null = inconnue) et réglage indiqué à ce moment-là.</summary>
-    public sealed record MeasuredCapture(FrameStats Stats, FrameLoad? Load, GraphicsPreset? Preset, Gpu.GpuHealth? GpuHealth = null);
+    public sealed record MeasuredCapture(FrameStats Stats, FrameLoad? Load, GraphicsPreset? Preset, Gpu.GpuHealth? GpuHealth = null,
+        IReadOnlyList<BackgroundProgram>? Background = null);
 
     /// <param name="Preset">Réglage du jeu pendant les mesures (null = non indiqué).</param>
     /// <param name="PresetAssumed">Captures sans réglage enregistré : on suppose le réglage indiqué actuellement.</param>
     /// <param name="CurrentPreset">Réglage indiqué actuellement (peut différer de celui des mesures).</param>
     public sealed record Measurement(int Score, int Captures, double AverageFps, double OnePercentLowFps, bool HasHeadroom, int RefreshHz,
         GraphicsPreset? Preset = null, bool PresetAssumed = false, GraphicsPreset? CurrentPreset = null, FrameLoad? Load = null,
-        Bottleneck? Bottleneck = null, Gpu.GpuHealth? GpuHealth = null, PcSpecs? Pc = null);
+        Bottleneck? Bottleneck = null, Gpu.GpuHealth? GpuHealth = null, PcSpecs? Pc = null, IReadOnlyList<BackgroundProgram>? Background = null);
 
     public static Estimate? EstimateFrom(PcSpecs pc, SystemRequirements requirements)
     {
@@ -287,7 +288,7 @@ public static class GameRatings
             preset, median.Preset is null && preset is not null, currentPreset, median.Load,
             median.Load is { } load ? Classify(load, stats.AverageFps, refreshHz) : null,
             chosen.Select(c => c.GpuHealth).FirstOrDefault(g => g is not null), // relevés de la mesure la plus récente
-            pc);
+            pc, chosen.Select(c => c.Background).FirstOrDefault(b => b is not null)); // programmes de la mesure la plus récente qui les a relevés
     }
 
     /// <summary>
@@ -364,6 +365,10 @@ public static class GameRatings
                                                 "(câbles PCIe bien enfoncés, bloc d'alimentation suffisant).",
                     _ => "",
                 };
+            }
+            if (measured.Background is { Count: > 0 } busy)
+            {
+                details.Add($"Programmes qui ont pris du processeur pendant la dernière mesure : {BackgroundLoad.Describe(busy)}.");
             }
             if (measured.Preset is { } during)
             {
@@ -442,7 +447,10 @@ public static class GameRatings
             Bottleneck.Cpu when m.Score < 70 => (0,
                 $"Le processeur limite les FPS (carte graphique occupée {gpu} % du temps seulement) : baisser les graphismes, la résolution " +
                 "ou activer l'upscaling changera peu. " +
-                "Réduisez plutôt ce qui charge le processeur (distance d'affichage, foule, physique) et fermez les programmes en arrière-plan."),
+                "Réduisez plutôt ce qui charge le processeur (distance d'affichage, foule, physique)" +
+                (m.Background is { Count: > 0 } busy
+                    ? $", et fermez pendant les parties ce qui a pris du processeur pendant la mesure : {BackgroundLoad.Describe(busy)} (onglet Optimisation)."
+                    : " et fermez les programmes en arrière-plan.")),
             Bottleneck.Cpu when gpuIdle => (1, $"La carte graphique attend le processeur (occupée {gpu} % du temps) : monter les graphismes d'un cran coûtera peu de FPS."),
             Bottleneck.Cpu => (0, "Réglages adaptés à votre PC."),
 
