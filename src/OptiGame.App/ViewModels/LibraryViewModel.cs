@@ -1450,6 +1450,7 @@ public sealed partial class GameCardViewModel(GameProfile profile, bool isPlayin
         Enabled ? null : "optimisation désactivée",
         Rating is null ? null : $"note {Rating.Score} sur 100 ({(Rating.Source == Core.Rating.RatingSource.Measured ? "mesurée" : "estimée")})",
         IsPinned ? "épinglé au dock" : null,
+        StoreLabel,
         PlaytimeText,
     }.OfType<string>());
 
@@ -1492,8 +1493,14 @@ public sealed partial class GameCardViewModel(GameProfile profile, bool isPlayin
     /// <summary>Genres et types affichés et filtrés : magasin + IGDB (vides tant que rien n'est connu).</summary>
     public IReadOnlyList<string> Genres { get; set; } = [];
 
-    /// <summary>Magasin du jeu (filtre « Plateforme ») ; null = inconnu (jeu ajouté à la main).</summary>
-    public GameSource? Store { get; set; }
+    /// <summary>Magasin du jeu (filtre et pastille de la jaquette) ; null = inconnu (jeu ajouté à la main).</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(StoreLabel), nameof(HasStore), nameof(AccessibleName))]
+    private GameSource? _store;
+
+    public bool HasStore => Store is not null and not GameSource.Folder;
+
+    public string? StoreLabel => HasStore ? Core.Library.StoreCatalogs.Label(Store!.Value) : null;
 
     public IReadOnlySet<Core.Library.GameKind> Kinds { get; set; } = new HashSet<Core.Library.GameKind>();
 }

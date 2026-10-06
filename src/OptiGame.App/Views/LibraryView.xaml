@@ -11,6 +11,19 @@
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
 
+        <!-- Pastille du magasin (Steam, Epic Games, GOG) : icône du lanceur installé sur ce PC ; masquée s'il est absent -->
+        <DataTemplate x:Key="StoreBadge">
+            <Border x:Name="Badge" Margin="0,0,6,0" Width="26" Height="26" VerticalAlignment="Top" CornerRadius="{StaticResource Radius.Round}"
+                    Background="{StaticResource Brush.Scrim}">
+                <Image Width="16" Height="16" RenderOptions.BitmapScalingMode="HighQuality" Source="{Binding Converter={StaticResource StoreIcon}}" />
+            </Border>
+            <DataTemplate.Triggers>
+                <DataTrigger Binding="{Binding Converter={StaticResource StoreIcon}}" Value="{x:Null}">
+                    <Setter TargetName="Badge" Property="Visibility" Value="Collapsed" />
+                </DataTrigger>
+            </DataTemplate.Triggers>
+        </DataTemplate>
+
         <!-- Pastille de note : chiffre coloré par niveau (le chiffre porte le sens, la couleur le double) -->
         <Style x:Key="RatingText" TargetType="TextBlock">
             <Setter Property="Foreground" Value="{StaticResource Brush.Ok}" />
@@ -200,6 +213,8 @@
                                     <controls:CoverTile.TopLeft>
                                         <!-- États du jeu. « Épinglé au dock » : bouton d'épingle vert au survol (plus d'icône permanente) -->
                                         <StackPanel Orientation="Horizontal">
+                                            <ContentControl Content="{Binding Store}" ContentTemplate="{StaticResource StoreBadge}" Focusable="False" IsTabStop="False"
+                                                            ToolTip="{Binding StoreLabel}" Visibility="{Binding HasStore, Converter={StaticResource BoolToVisibility}}" />
                                             <StackPanel>
                                                 <Border Margin="{StaticResource Margin.StackXS}" Style="{StaticResource Badge.Overlay}"
                                                         Visibility="{Binding IsPlaying, Converter={StaticResource BoolToVisibility}}">
@@ -326,9 +341,13 @@
                                                         CommandParameter="{Binding}"
                                                         Tag="{Binding DataContext, RelativeSource={RelativeSource AncestorType=UserControl}}">
                                         <controls:CoverTile.TopLeft>
-                                            <Border Style="{StaticResource Badge.Overlay}">
-                                                <TextBlock Foreground="{StaticResource Brush.TextSecondary}" Text="Non installé" />
-                                            </Border>
+                                            <StackPanel Orientation="Horizontal">
+                                                <ContentControl Content="{Binding Store}" ContentTemplate="{StaticResource StoreBadge}" Focusable="False" IsTabStop="False"
+                                                                ToolTip="{Binding StoreLabel}" />
+                                                <Border Style="{StaticResource Badge.Overlay}">
+                                                    <TextBlock Foreground="{StaticResource Brush.TextSecondary}" Text="Non installé" />
+                                                </Border>
+                                            </StackPanel>
                                         </controls:CoverTile.TopLeft>
                                         <controls:CoverTile.Actions>
                                             <StackPanel>
