@@ -13,6 +13,7 @@ public static class KnownSettings
     public const string ProcessKind = "process";
     public const string PowerSettingKind = "power-setting";
     public const string NvidiaProfileKind = "nvidia-profile";
+    public const string IniValueKind = "ini-value";
 
     /// <summary>Mode Jeu. Absente = activé (défaut Windows).</summary>
     public static readonly SettingTarget GameMode =
@@ -57,6 +58,9 @@ public static class KnownSettings
 
     /// <summary>Plafond de FPS du pilote NVIDIA (FRL_FPS, 0x10835002) dans le profil que le pilote applique à cet exe ; DWord, Absent = non défini.</summary>
     public static SettingTarget NvidiaFrameRateLimit(string exePath) => new(NvidiaProfileKind, exePath, "0x10835002");
+
+    /// <summary>Valeur d'un fichier .ini d'un jeu (GameUserSettings.ini d'Unreal Engine) ; Absent = clé absente. Path = « fichier|section ».</summary>
+    public static SettingTarget IniValue(string file, string section, string key) => new(IniValueKind, $"{file}|{section}", key);
 
     /// <summary>Plan d'alimentation actif (valeur = GUID en texte).</summary>
     public static readonly SettingTarget ActivePowerScheme = new(PowerSchemeKind, "active");

@@ -48,6 +48,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IPowerSchemeProvider>(sp => sp.GetRequiredService<PowerSchemeService>());
         services.AddSingleton<ISettingAccessor, PowerSettingAccessor>();
         services.AddSingleton<ISettingAccessor, Gpu.NvidiaProfileSettingAccessor>();
+        services.AddSingleton<ISettingAccessor, InGame.IniFileAccessor>();
         services.AddSingleton<Gpu.NvidiaSmiProvider>();
         services.AddSingleton<INvidiaInfoProvider>(sp => sp.GetRequiredService<Gpu.NvidiaSmiProvider>());
 

@@ -399,9 +399,33 @@
                         </Border>
 
                         <!-- Réglages permanents : « Appliquer… » confirmé, « Restaurer l'original… » -->
-                        <TextBlock Style="{StaticResource Text.SectionTitle}" Text="Réglages permanents (Windows et pilote)" />
+                        <TextBlock Style="{StaticResource Text.SectionTitle}" Text="Réglages permanents (jeu, Windows et pilote)" />
                         <TextBlock Margin="0,4,0,12" Style="{StaticResource Text.Secondary}"
                                    Text="Gardés après la partie. Appliqués tout de suite après confirmation, sans « Enregistrer » ; « Restaurer l'original… » rétablit le réglage d'origine." />
+
+                        <!-- Qualité graphique écrite dans le fichier du jeu (Unreal Engine ; carte masquée sinon) -->
+                        <Border Margin="{StaticResource Margin.StackL}" Style="{StaticResource Card}" DataContext="{Binding InGameQuality}"
+                                Visibility="{Binding IsAvailable, Converter={StaticResource BoolToVisibility}}">
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource Text.SectionTitle}" Text="Qualité graphique (fichier du jeu)" />
+                                <TextBlock Margin="0,4,0,0" Style="{StaticResource Text.Caption}"
+                                           Text="Le réglage général du jeu, écrit dans son fichier GameUserSettings.ini comme le ferait son menu d'options. À faire jeu fermé ; pris en compte au prochain lancement." />
+                                <TextBlock Margin="0,8,0,0" Style="{StaticResource Text.Body}" Text="{Binding CurrentText}" />
+                                <Label Margin="0,12,0,0" Style="{StaticResource Text.FieldLabel}" Content="_Nouvelle qualité" Target="{Binding ElementName=QualityBox}" />
+                                <WrapPanel>
+                                    <ComboBox x:Name="QualityBox" MinWidth="180" Margin="0,0,8,8" ItemsSource="{Binding Levels}" SelectedItem="{Binding SelectedLevel}"
+                                              DisplayMemberPath="Label" AutomationProperties.Name="Nouvelle qualité graphique du jeu" />
+                                    <Button Margin="0,0,8,8" Style="{StaticResource Button.Secondary}" Content="Appliquer…" Command="{Binding ApplyCommand}"
+                                            AutomationProperties.Name="Appliquer la qualité graphique…" />
+                                    <Button Margin="0,0,8,8" Style="{StaticResource Button.Ghost}" Content="Restaurer l'original…" Command="{Binding UndoCommand}"
+                                            AutomationProperties.Name="Restaurer la qualité graphique d'origine…"
+                                            Visibility="{Binding HasAppliedChange, Converter={StaticResource BoolToVisibility}}" />
+                                    <Button Margin="0,0,0,8" Style="{StaticResource Button.Ghost}" Content="{Binding UseSuggestionLabel}" Command="{Binding UseSuggestionCommand}"
+                                            Visibility="{Binding HasSuggestion, Converter={StaticResource BoolToVisibility}}" />
+                                </WrapPanel>
+                                <TextBlock Margin="0,4,0,0" Style="{StaticResource Text.Caption}" Text="{Binding AppliedText}" />
+                            </StackPanel>
+                        </Border>
 
                         <!-- Plafond de FPS : profil NVIDIA du jeu (carte masquée sans pilote NVIDIA) -->
                         <Border Margin="{StaticResource Margin.StackL}" Style="{StaticResource Card}" DataContext="{Binding FrameCap}"

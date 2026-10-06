@@ -32,6 +32,7 @@ public sealed partial class GamePageViewModel(
     Action<Core.Rating.GraphicsPreset?> setPlayedPreset,
     GameGraphicsViewModel graphics,
     FrameCapViewModel frameCap,
+    InGameQualityViewModel inGameQuality,
     bool isPinned,
     bool isPlaying,
     GameTab initialTab,
@@ -194,6 +195,11 @@ public sealed partial class GamePageViewModel(
 
     /// <summary>Carte « Pilote NVIDIA » : plafond de FPS dans le profil du pilote.</summary>
     public FrameCapViewModel FrameCap { get; } = frameCap;
+
+    /// <summary>Qualité graphique écrite dans le fichier du jeu (jeux Unreal Engine) ; propose le réglage conseillé par la note.</summary>
+    public InGameQualityViewModel InGameQuality { get; } = inGameQuality;
+
+    partial void OnRatingChanged(Core.Rating.GameRating? value) => InGameQuality.SetRecommended(value?.Preset);
 
     /// <summary>Appid Steam, retrouvé en arrière-plan à l'ouverture de la page ; null pour un jeu hors Steam.</summary>
     [ObservableProperty]

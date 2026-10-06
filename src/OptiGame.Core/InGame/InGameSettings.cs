@@ -22,6 +22,8 @@ public enum InGameDisplayMode
 /// <param name="RenderScalePercent">Échelle de rendu (Unreal : sg.ResolutionQuality) ; null = 100 % ou inconnue.</param>
 /// <param name="FrameLimit">Limite de FPS du moteur ; 0 = aucune.</param>
 /// <param name="Upscaler">Upscaling choisi, ex. « DLSS Qualité » ; null = aucun ou inconnu.</param>
+/// <param name="QualityLevel">Niveau médian des groupes de qualité (Unreal), dans <paramref name="Scale"/>.</param>
+/// <param name="QualityKeys">Clés des groupes de qualité trouvées (« sg.ShadowQuality »…) : celles qu'OptiGame peut régler.</param>
 public sealed record InGameSettings(
     string Engine,
     string SourceName,
@@ -35,7 +37,10 @@ public sealed record InGameSettings(
     InGameDisplayMode? DisplayMode = null,
     bool? VSync = null,
     int? FrameLimit = null,
-    string? Upscaler = null)
+    string? Upscaler = null,
+    int? QualityLevel = null,
+    UnrealSettings.QualityScale? Scale = null,
+    IReadOnlyList<string>? QualityKeys = null)
 {
     /// <summary>« qualité Moyen, 3440×1440, plein écran fenêtré, V-Sync activée, sans limite de FPS, DLSS Qualité ».</summary>
     public string Summary()
@@ -109,6 +114,7 @@ public static class UnrealSettings
     {
         var values = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         var groups = new List<int>();
+        var groupKeys = new List<string>();
         int? renderScale = null;
         var section = "";
         foreach (var raw in ini.Split('\n'))
@@ -129,7 +135,11 @@ public static class UnrealSettings
                 if (!double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var level)) continue;
                 if (key.Equals("sg.ResolutionQuality", StringComparison.OrdinalIgnoreCase)) renderScale = (int)Math.Round(level);
                 // Paysage : souvent fixé par le jeu, indépendamment du réglage général (ARC Raiders : 3 alors que tout est à 1).
-                else if (!key.Equals("sg.LandscapeQuality", StringComparison.OrdinalIgnoreCase)) groups.Add((int)Math.Round(level));
+                else if (!key.Equals("sg.LandscapeQuality", StringComparison.OrdinalIgnoreCase))
+                {
+                    groups.Add((int)Math.Round(level));
+                    groupKeys.Add(key);
+                }
                 continue;
             }
             values.TryAdd(key, value); // la 1re occurrence (section des réglages du jeu) l'emporte
@@ -137,6 +147,7 @@ public static class UnrealSettings
 
         GraphicsPreset? preset = null;
         string? detail = null;
+        int? qualityLevel = null;
         if (groups.Count >= 4)
         {
             var sorted = groups.Order().ToList();
@@ -144,6 +155,7 @@ public static class UnrealSettings
             var qualityScale = ScaleOf(project);
             var level = Math.Clamp(median, 0, qualityScale.Levels.Count - 1);
             preset = qualityScale.Levels[level].Preset;
+            qualityLevel = level;
             var where = qualityScale.Game is { } game ? $"« {qualityScale.Levels[level].Name} » dans {game}" : "du moteur, 0 à 4";
             detail = sorted[0] == sorted[^1]
                 ? $"{groups.Count} groupes de qualité au niveau {median} ({where})"
@@ -156,7 +168,8 @@ public static class UnrealSettings
             Int("FullscreenMode") switch { 0 => InGameDisplayMode.Fullscreen, 1 => InGameDisplayMode.Borderless, 2 => InGameDisplayMode.Windowed, _ => null },
             Bool("bUseVSync"),
             Double("FrameRateLimit") is { } limit ? (limit <= 0 || limit > NoLimitAbove ? 0 : (int)Math.Round(limit)) : null,
-            Upscaler());
+            Upscaler(),
+            qualityLevel, ScaleOf(project), groupKeys.Count >= 4 ? groupKeys : null);
         return settings.Summary().Length == 0 ? null : settings;
 
         string? Get(string key) => values.TryGetValue(key, out var v) ? v : null;

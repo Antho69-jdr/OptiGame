@@ -51,6 +51,7 @@ public sealed partial class LibraryViewModel : ObservableObject
     private readonly SteamPlaytimeReader _steamReader;
     private readonly GameGraphicsService _graphics;
     private readonly FrameCapService _frameCap;
+    private readonly InGameQualityService _inGameQuality;
     private readonly Platform.Library.StoreOwnedLibrary _storeLibrary;
     private readonly Platform.Library.StoreCoverCache _storeCovers;
     private readonly GameRatingService _ratings;
@@ -82,7 +83,8 @@ public sealed partial class LibraryViewModel : ObservableObject
         GameGraphicsService graphics, NewSteamGamesViewModel newGames, GameRatingService ratings, Platform.Measurement.AutoCapture autoCapture,
         FrameCapService frameCap, Platform.Library.StoreOwnedLibrary storeLibrary, Platform.Library.StoreCoverCache storeCovers,
         GameTimeGate gate, [FromKeyedServices(Platform.JournalKeys.Fixes)] Core.State.ChangeJournal fixes, UnsavedChangesGuard unsaved,
-        SessionViewModel session, GameTagService tags, Platform.Library.StorePageResolver storePages, LaunchersViewModel launchers)
+        SessionViewModel session, GameTagService tags, Platform.Library.StorePageResolver storePages, LaunchersViewModel launchers,
+        InGameQualityService inGameQuality)
     {
         _session = session;
         unsaved.Register(ConfirmDiscard);
@@ -93,6 +95,7 @@ public sealed partial class LibraryViewModel : ObservableObject
         _steamReader = steamReader;
         _graphics = graphics;
         _frameCap = frameCap;
+        _inGameQuality = inGameQuality;
         _storeLibrary = storeLibrary;
         _storeCovers = storeCovers;
         _ratings = ratings;
@@ -1028,6 +1031,11 @@ public sealed partial class LibraryViewModel : ObservableObject
             },
             graphics: new GameGraphicsViewModel(profile, _graphics, _dialogs, _log),
             frameCap: new FrameCapViewModel(profile, _frameCap, _dialogs, _log),
+            inGameQuality: new InGameQualityViewModel(profile, _inGameQuality, _dialogs, _log, changed: () =>
+            {
+                _ = LoadRatingsAsync(); // la note part de la qualité lue dans le jeu
+                if (OpenGame?.Id == id) _ = LoadInGameSettingsAsync(OpenGame, profile.ExePath);
+            }),
             isPinned: profile.DockOrder.HasValue,
             isPlaying: _sessions.Current?.Profile.Id == id,
             initialTab: _lastGameTab,
@@ -1040,6 +1048,7 @@ public sealed partial class LibraryViewModel : ObservableObject
         _ = LoadSteamAppIdAsync(OpenGame, profile);
         _ = OpenGame.Graphics.LoadAsync();
         _ = OpenGame.FrameCap.LoadAsync();
+        _ = OpenGame.InGameQuality.LoadAsync();
         _ = LoadDiskAsync(OpenGame, profile);
         OpenGame.Rating = Games.FirstOrDefault(c => c.Id == id)?.Rating; // déjà calculée pour la jaquette
         OpenGame.IsRatingLoaded = _ratingsLoaded;

@@ -433,6 +433,7 @@ public partial class App : Application
         services.AddSingleton<DriversViewModel>();
         services.AddSingleton<GameGraphicsService>();
         services.AddSingleton<FrameCapService>();
+        services.AddSingleton<InGameQualityService>();
         services.AddSingleton<GameRatingService>();
         services.AddSingleton<NewSteamGamesViewModel>();
         services.AddSingleton<GameTagService>();

@@ -332,6 +332,15 @@ vit dans Core ; Platform ne fait que lire/écrire le système.
     réglages sont dans son propre Settings.json). Overwatch, Scrap Mechanic, Star Citizen, Portal 2 : rien de lisible. Les
     conseils s'en servent : cause du plafond (V-Sync / limite lue), upscaling déjà actif (mode plus rapide plutôt
     qu'« activez »), estimation avec upscaling si déjà activé.
+  - Qualité ÉCRITE dans un jeu Unreal (carte « Qualité graphique (fichier du jeu) », onglet Optimisation ;
+    `Core/InGame/UnrealQuality` + `IniText`, `Platform/InGame/IniFileAccessor` = kind `ini-value`, Path « fichier|section »,
+    `App/Services/InGameQualityService`) : tous les `sg.*` lus (hors ResolutionQuality / LandscapeQuality) mis au niveau choisi,
+    journal fixes.json « game.unreal-quality.<profil> », confirmé, « Restaurer l'original… ». Seule la ligne change (IniText),
+    même encodage et fins de ligne, fichier remplacé d'un coup ; fichier disparu = jamais recréé. Aller-retour vérifié OCTET
+    PAR OCTET sur un extrait réel de PUBG (tests Platform). REFUSÉ jeu ouvert (il réécrit le fichier en quittant) — sauf
+    restauration depuis le Diagnostic, qui ne vérifie pas. Niveau d'un réglage : `UnrealQuality.LevelFor` (Bas = le plus haut
+    des « Bas », Ultra = le premier des « Ultra » : Épique, pas Cinématique). Non testé en vrai sur les jeux de l'utilisateur
+    (son choix).
   - Limitation (`GameRatings.Classify`) d'après `FrameLoad` (Σ GPUBusy / Σ FrameTime, Σ CPUWait / Σ FrameTime, colonnes
     vérifiées sur de vrais CSV 2.6.0) : GPU ≥ 85 % = carte graphique ; sinon attente ≥ 15 % ou FPS ≈ fréquence = plafond ;
     sinon processeur. Réel : Overwatch plafonné 76 %/43 %, en V-Sync 82 %/64 % ; Void Crew 98 %/2 %. Captures antérieures :
