@@ -137,6 +137,9 @@ public sealed partial class GamePageViewModel(
     /// <summary>Sous le choix du réglage : ce qui a été lu dans le jeu, ou pourquoi il faut l'indiquer.</summary>
     public string PresetCaption => InGame switch
     {
+        { Preset: { } inGame } read when PlayedPreset?.Value is { } chosen && chosen != inGame => read.Description(DateTime.Now) +
+            $" Le jeu indique « {Core.Rating.GameRatings.Label(inGame)} » alors que vous avez choisi « {Core.Rating.GameRatings.Label(chosen)} » : " +
+            "choisissez « Automatique » pour suivre le jeu.",
         { Preset: not null } read => read.Description(DateTime.Now) +
             " « Automatique » suit ce fichier ; choisissez un réglage seulement si le jeu nomme ses niveaux autrement.",
         { } read => read.Description(DateTime.Now) + (PlayedPreset?.Value is null

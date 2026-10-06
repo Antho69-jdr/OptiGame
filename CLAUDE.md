@@ -324,7 +324,8 @@ vit dans Core ; Platform ne fait que lire/écrire le système.
     `DiagDump -- --ingame-settings`), vérifiés le 2026-10-06 : Unreal Engine 4/5 = `%LocalAppData%\<projet>\Saved\Config\
     <Windows|WindowsClient|WindowsNoEditor>\GameUserSettings.ini` (projet = dossier au-dessus de Binaries\Win64 : PUBG TslGame,
     ARC Raiders PioneerGame) ; qualité = médiane des `sg.*` (hors ResolutionQuality = échelle de rendu, et LandscapeQuality,
-    fixé par le jeu) en niveaux DU MOTEUR (0 Bas … 3-4 Ultra : PUBG les nomme Très bas … Ultra, d'où le choix manuel possible),
+    fixé par le jeu) en niveaux du moteur (0 Bas … 3-4 Ultra) SAUF échelle propre au jeu (`UnrealSettings.ScaleOf`, par projet :
+    TslGame = PUBG, Très bas … Ultra sur 0-4, niveau 2 = « Moyen » confirmé par l'utilisateur) ; choix manuel ≠ jeu = signalé,
     ResolutionSizeX/Y, FullscreenMode, bUseVSync, FrameRateLimit (> 500 = sans limite), upscaling si ResolutionScalingMethod /
     UpscalingMethod + <méthode>Mode / QualityOption. Unity = écran SEULEMENT (`<exe>_Data\app.info` → HKCU\Software\<éditeur>\
     <jeu>, « Screenmanager … _h<hash> ») : UnityGraphicsQuality NON lu (Void Crew : 1 alors qu'il est en Ultra ; ses vrais

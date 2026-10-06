@@ -16,8 +16,8 @@ public enum InGameDisplayMode
 /// Réglages d'un jeu lus dans SES fichiers (lecture seule) : moteurs dont le format est commun à tous les jeux (Unreal Engine :
 /// GameUserSettings.ini ; Unity : registre). Champ null = non lu (absent, ou format propre au jeu).
 /// </summary>
-/// <param name="Preset">Qualité générale d'après les niveaux du MOTEUR (Unreal : 0 Bas, 1 Moyen, 2 Élevé, 3-4 Ultra) ; un jeu
-/// peut nommer ses niveaux autrement (PUBG : « Très bas » à « Ultra » sur 0-4).</param>
+/// <param name="Preset">Qualité générale, dans l'échelle du jeu (Unreal : 0 Bas, 1 Moyen, 2 Élevé, 3-4 Ultra, sauf jeux connus ;
+/// PUBG : « Très bas » à « Ultra » sur 0-4, voir <see cref="UnrealSettings.ScaleOf"/>).</param>
 /// <param name="PresetDetail">D'où vient la qualité : « 9 groupes, niveau 1 (Moyen du moteur) ».</param>
 /// <param name="RenderScalePercent">Échelle de rendu (Unreal : sg.ResolutionQuality) ; null = 100 % ou inconnue.</param>
 /// <param name="FrameLimit">Limite de FPS du moteur ; 0 = aucune.</param>
@@ -78,7 +78,34 @@ public static class UnrealSettings
     /// <summary>Limite au-delà de laquelle FrameRateLimit ne limite plus rien (PUBG : 1000 = « illimité »).</summary>
     private const double NoLimitAbove = 500;
 
-    public static InGameSettings? Parse(string ini, string path, DateTime savedAt)
+    /// <summary>Niveaux de qualité d'un jeu : réglage d'OptiGame et nom affiché par le jeu, du niveau 0 au plus haut.</summary>
+    public sealed record QualityScale(string? Game, IReadOnlyList<(GraphicsPreset Preset, string Name)> Levels);
+
+    /// <summary>Niveaux standard d'Unreal Engine (Scalability : Low, Medium, High, Epic, Cinematic).</summary>
+    public static readonly QualityScale EngineScale = new(null,
+    [
+        (GraphicsPreset.Low, "Bas"), (GraphicsPreset.Medium, "Moyen"), (GraphicsPreset.High, "Élevé"),
+        (GraphicsPreset.Ultra, "Épique"), (GraphicsPreset.Ultra, "Cinématique"),
+    ]);
+
+    /// <summary>
+    /// Jeux qui nomment autrement les niveaux du moteur, par nom de projet. PUBG (TslGame) : Très bas … Ultra sur 0-4, confirmé
+    /// le 2026-10-06 par l'utilisateur (niveau 2 = « Moyen » dans le jeu).
+    /// </summary>
+    private static readonly Dictionary<string, QualityScale> GameScales = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["TslGame"] = new("PUBG",
+        [
+            (GraphicsPreset.Low, "Très bas"), (GraphicsPreset.Low, "Bas"), (GraphicsPreset.Medium, "Moyen"),
+            (GraphicsPreset.High, "Élevé"), (GraphicsPreset.Ultra, "Ultra"),
+        ]),
+    };
+
+    public static QualityScale ScaleOf(string? project) =>
+        project is not null && GameScales.TryGetValue(project, out var scale) ? scale : EngineScale;
+
+    /// <param name="project">Nom du projet Unreal (dossier au-dessus de Binaries\Win64) : choisit l'échelle de qualité du jeu.</param>
+    public static InGameSettings? Parse(string ini, string path, DateTime savedAt, string? project = null)
     {
         var values = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         var groups = new List<int>();
@@ -114,10 +141,13 @@ public static class UnrealSettings
         {
             var sorted = groups.Order().ToList();
             var median = sorted[sorted.Count / 2];
-            preset = median switch { <= 0 => GraphicsPreset.Low, 1 => GraphicsPreset.Medium, 2 => GraphicsPreset.High, _ => GraphicsPreset.Ultra };
+            var qualityScale = ScaleOf(project);
+            var level = Math.Clamp(median, 0, qualityScale.Levels.Count - 1);
+            preset = qualityScale.Levels[level].Preset;
+            var where = qualityScale.Game is { } game ? $"« {qualityScale.Levels[level].Name} » dans {game}" : "du moteur, 0 à 4";
             detail = sorted[0] == sorted[^1]
-                ? $"{groups.Count} groupes de qualité au niveau {median} du moteur (0 à 4)"
-                : $"{groups.Count} groupes de qualité, niveaux {sorted[0]} à {sorted[^1]} du moteur (0 à 4), médiane {median}";
+                ? $"{groups.Count} groupes de qualité au niveau {median} ({where})"
+                : $"{groups.Count} groupes de qualité, niveaux {sorted[0]} à {sorted[^1]}, médiane {median} ({where})";
         }
 
         var settings = new InGameSettings("Unreal Engine", FileName, path, savedAt, preset, detail,

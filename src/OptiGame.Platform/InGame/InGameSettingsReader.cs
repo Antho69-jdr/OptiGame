@@ -68,7 +68,7 @@ public static class InGameSettingsReader
         if (UnrealProject(exePath) is not { Length: > 0 } project) return null;
         foreach (var file in UnrealFiles(project))
         {
-            if (UnrealSettings.Parse(File.ReadAllText(file.FullName), file.FullName, file.LastWriteTime) is { } settings) return settings;
+            if (UnrealSettings.Parse(File.ReadAllText(file.FullName), file.FullName, file.LastWriteTime, project) is { } settings) return settings;
         }
         return null;
     }

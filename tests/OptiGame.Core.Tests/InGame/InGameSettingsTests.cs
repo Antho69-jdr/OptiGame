@@ -16,7 +16,7 @@ public sealed class InGameSettingsTests
 
         Assert.Equal("Unreal Engine", settings.Engine);
         Assert.Equal(GraphicsPreset.Medium, settings.Preset); // tous les groupes à 1 ; le paysage (3) est ignoré
-        Assert.Equal("10 groupes de qualité au niveau 1 du moteur (0 à 4)", settings.PresetDetail);
+        Assert.Equal("10 groupes de qualité au niveau 1 (du moteur, 0 à 4)", settings.PresetDetail);
         Assert.Equal((3440, 1440), (settings.Width, settings.Height));
         Assert.Equal(87, settings.RenderScalePercent);
         Assert.Equal(InGameDisplayMode.Borderless, settings.DisplayMode);
@@ -29,9 +29,12 @@ public sealed class InGameSettingsTests
     [Fact]
     public void Reads_the_real_settings_of_pubg_unreal_engine_4()
     {
-        var settings = UnrealSettings.Parse(Sample("pubg-GameUserSettings-excerpt.ini"), "GameUserSettings.ini", Saved)!;
+        var settings = UnrealSettings.Parse(Sample("pubg-GameUserSettings-excerpt.ini"), "GameUserSettings.ini", Saved, "TslGame")!;
 
-        Assert.Equal(GraphicsPreset.High, settings.Preset); // niveau 2 du moteur pour les 7 groupes
+        // Niveau 2 pour les 7 groupes = « Moyen » dans PUBG (Très bas … Ultra, confirmé par l'utilisateur), « Élevé » du moteur.
+        Assert.Equal(GraphicsPreset.Medium, settings.Preset);
+        Assert.Equal("7 groupes de qualité au niveau 2 (« Moyen » dans PUBG)", settings.PresetDetail);
+        Assert.Equal(GraphicsPreset.High, UnrealSettings.Parse(Sample("pubg-GameUserSettings-excerpt.ini"), "x", Saved)!.Preset);
         Assert.Equal((3440, 1440), (settings.Width, settings.Height)); // et non LastUserConfirmed… (1920×1080)
         Assert.Null(settings.RenderScalePercent);  // 100 %
         Assert.Equal((false, 0), (settings.VSync, settings.FrameLimit)); // FrameRateLimit=1000 = sans limite
@@ -45,7 +48,7 @@ public sealed class InGameSettingsTests
         var settings = UnrealSettings.Parse(ini, "x", Saved)!;
 
         Assert.Equal(GraphicsPreset.High, settings.Preset);
-        Assert.Equal("5 groupes de qualité, niveaux 0 à 3 du moteur (0 à 4), médiane 2", settings.PresetDetail);
+        Assert.Equal("5 groupes de qualité, niveaux 0 à 3, médiane 2 (du moteur, 0 à 4)", settings.PresetDetail);
     }
 
     [Fact]
