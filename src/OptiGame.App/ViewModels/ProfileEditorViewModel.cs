@@ -44,7 +44,6 @@ public sealed partial class ProfileEditorViewModel : ObservableObject
         _enabled = profile.Enabled;
         _selectedPowerScheme = PowerSchemeOptions.First(o => o.Id == profile.PowerSchemeId);
         _selectedPriority = PriorityOptions.First(o => o.Value == profile.Priority);
-        _reduceVisualEffects = profile.ReduceVisualEffects;
         _selectedLaunchMode = LaunchModeOptions.First(o => o.Value == profile.LaunchMode);
         _steamAppId = profile.SteamAppId ?? "";
         _launcherPath = profile.LauncherPath ?? "";
@@ -132,7 +131,6 @@ public sealed partial class ProfileEditorViewModel : ObservableObject
     [ObservableProperty] private bool _enabled;
     [ObservableProperty] private PowerSchemeOption _selectedPowerScheme;
     [ObservableProperty] private PriorityOption _selectedPriority;
-    [ObservableProperty] private bool _reduceVisualEffects;
     [ObservableProperty] private string _newProcessName = "";
 
     /// <summary>Différent de la version enregistrée (comparaison, pas un simple drapeau : revenir à l'original efface la barre).</summary>
@@ -156,8 +154,6 @@ public sealed partial class ProfileEditorViewModel : ObservableObject
     partial void OnEnabledChanged(bool value) => Touch();
     partial void OnSelectedPowerSchemeChanged(PowerSchemeOption value) => Touch();
     partial void OnSelectedPriorityChanged(PriorityOption value) => Touch();
-
-    partial void OnReduceVisualEffectsChanged(bool value) => Touch();
 
     [RelayCommand]
     private void ChangeExe()
@@ -224,7 +220,6 @@ public sealed partial class ProfileEditorViewModel : ObservableObject
         Enabled = Enabled,
         PowerSchemeId = SelectedPowerScheme.Id,
         Priority = SelectedPriority.Value,
-        ReduceVisualEffects = ReduceVisualEffects,
         ProcessesToClose = ProcessesToClose.Select(p => new ProcessToClose { ExeName = p.ExeName, Relaunch = p.Relaunch }).ToList(),
         LaunchMode = SelectedLaunchMode?.Value ?? LaunchMode.Automatic,
         SteamAppId = string.IsNullOrWhiteSpace(SteamAppId) ? null : SteamAppId.Trim(),
@@ -255,7 +250,7 @@ public sealed partial class ProfileEditorViewModel : ObservableObject
         if (SelectedPowerScheme is null || SelectedPriority is null || SelectedLaunchMode is null) return; // construction
         var current = ToProfile();
         IsOptimizationDirty = current.Enabled != _original.Enabled || current.PowerSchemeId != _original.PowerSchemeId ||
-                              current.Priority != _original.Priority || current.ReduceVisualEffects != _original.ReduceVisualEffects ||
+                              current.Priority != _original.Priority ||
                               !current.ProcessesToClose.Select(p => (p.ExeName.ToLowerInvariant(), p.Relaunch))
                                   .SequenceEqual(_original.ProcessesToClose.Select(p => (p.ExeName.ToLowerInvariant(), p.Relaunch)));
         IsPropertiesDirty = current.Name != _original.Name.Trim() || !string.Equals(current.ExePath, _original.ExePath, StringComparison.OrdinalIgnoreCase) ||

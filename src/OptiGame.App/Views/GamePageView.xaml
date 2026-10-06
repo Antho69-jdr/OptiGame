@@ -341,11 +341,6 @@
                                         </StackPanel>
                                     </Grid>
 
-                                    <!-- Confort, pas de FPS : dit tel quel (principe « pas de placebo », assoupli à la demande de l'utilisateur) -->
-                                    <CheckBox Margin="0,16,0,0" IsChecked="{Binding ReduceVisualEffects}" Content="Couper les effets visuels de Windows pendant la partie" />
-                                    <TextBlock Margin="28,4,0,0" Style="{StaticResource Text.Caption}"
-                                               Text="Animations des fenêtres et transparence coupées, rétablies quand le jeu se ferme. Confort seulement (Alt+Tab, superpositions) : pas de FPS en plus, Windows n'anime rien pendant qu'un jeu est au premier plan." />
-
                                     <Label Margin="0,16,0,0" Style="{StaticResource Text.FieldLabel}" Content="Programmes à _fermer" Target="{Binding ElementName=NewProcessBox}" />
                                     <TextBlock Margin="{StaticResource Margin.StackS}" Style="{StaticResource Text.Caption}"
                                                Text="Fermés normalement au lancement du jeu, puis arrêtés de force après 5 secondes : les données non enregistrées peuvent être perdues. Jamais les composants de Windows ni les services ; relancés sans droits administrateur." />

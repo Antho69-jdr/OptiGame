@@ -36,12 +36,6 @@ public sealed class GameProfile
 
     public List<ProcessToClose> ProcessesToClose { get; set; } = [];
 
-    /// <summary>
-    /// Pendant la partie : animations et transparence de Windows coupées, rétablies à la fin (réglage de session). Confort, pas de
-    /// FPS : Windows n'anime rien pendant qu'un jeu est au premier plan.
-    /// </summary>
-    public bool ReduceVisualEffects { get; set; }
-
     /// <summary>Façon de lancer le jeu depuis OptiGame (voir <see cref="Launching.LaunchPlanner"/>).</summary>
     public Launching.LaunchMode LaunchMode { get; set; } = Launching.LaunchMode.Automatic;
 
@@ -83,7 +77,6 @@ public sealed class GameProfile
         PowerSchemeId = PowerSchemeId,
         Priority = Priority,
         ProcessesToClose = ProcessesToClose.Select(p => new ProcessToClose { ExeName = p.ExeName, Relaunch = p.Relaunch }).ToList(),
-        ReduceVisualEffects = ReduceVisualEffects,
         LaunchMode = LaunchMode,
         SteamAppId = SteamAppId,
         LauncherPath = LauncherPath,

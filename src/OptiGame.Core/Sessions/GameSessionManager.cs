@@ -229,12 +229,6 @@ public sealed class GameSessionManager(
             }
         }
 
-        if (SessionPlan.VisualEffectsChange(profile) is { } visualEffects)
-        {
-            Try(() => journal.Apply(visualEffects), "Animations et transparence de Windows coupées.", "Effets visuels de Windows non modifiés",
-                applied, warnings);
-        }
-
         if (profile.Priority != GamePriority.Normal)
         {
             if (processes.TrySetPriority(processId, profile.Priority) is { } error)

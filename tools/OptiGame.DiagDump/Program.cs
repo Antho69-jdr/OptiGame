@@ -240,29 +240,6 @@ if (args.Length >= 2 && args[0] == "--igdb-taxonomy")
     return;
 }
 
-// --visual-effects [--selftest] : animations et transparence de Windows lues ; --selftest inverse chacune, relit, puis remet
-// AUSSITÔT la valeur d'origine (écriture vérifiée sur le vrai système).
-if (args.Length >= 1 && args[0] == "--visual-effects")
-{
-    var accessor = new OptiGame.Platform.Settings.VisualEffectsAccessor();
-    var targets = new[] { OptiGame.Core.Settings.KnownSettings.ClientAreaAnimation, OptiGame.Core.Settings.KnownSettings.WindowAnimation, OptiGame.Core.Settings.KnownSettings.Transparency };
-    foreach (var target in targets)
-    {
-        var original = accessor.Read(target);
-        Console.Write($"{target.Path} : {original}");
-        if (args.Length == 2 && args[1] == "--selftest")
-        {
-            var flipped = OptiGame.Core.State.SettingValue.DWord(original.AsDWord() == 0 ? 1u : 0u);
-            accessor.Write(target, flipped);
-            var read = accessor.Read(target);
-            accessor.Write(target, original);
-            Console.Write($" → écrit {flipped}, relu {read} → remis {accessor.Read(target)} {(read.Equals(flipped) && accessor.Read(target).Equals(original) ? "OK" : "ÉCHEC")}");
-        }
-        Console.WriteLine();
-    }
-    return;
-}
-
 // --store-page <epic|gog> <espace de noms ou id produit> <titre> : adresse que « Voir sur Epic Games / GOG » ouvrirait (rien n'est ouvert).
 if (args.Length == 4 && args[0] == "--store-page")
 {

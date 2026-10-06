@@ -21,8 +21,6 @@ DI Microsoft.Extensions.DependencyInjection, tests xUnit.
 3. **Pas de tweaks placebo ou risqués.** Interdits : tweaks registre réseau/système (NetworkThrottlingIndex,
    SystemResponsiveness…), flags plein écran `GameDVR_FSE*`, vidage de RAM en boucle, désactivation de
    Defender / Windows Update / services système, timer resolution.
-   Seule exception, demandée par l'utilisateur le 2026-10-06 (carte Trello 12) : le réglage de partie « Couper les effets visuels
-   de Windows », présenté comme du CONFORT, jamais comme un gain de FPS (Windows n'anime rien pendant qu'un jeu est au premier plan).
 4. **Léger en tâche de fond.** Pas de polling agressif : événements WMI (`Win32_ProcessStartTrace` /
    `Win32_ProcessStopTrace`) pour détecter les jeux, lectures à la demande pour le diagnostic.
 5. **Élévation isolée.** Manifeste `requireAdministrator` en v1, mais toutes les opérations nécessitant admin
@@ -260,14 +258,6 @@ vit dans Core ; Platform ne fait que lire/écrire le système.
   l'annulation s'il est vide). Valeur NVIDIA prédéfinie = « non définie » (la retirer la rétablit). Lecture ET écriture sans
   admin (vérifié). `DiagDump -- --nvidia-profiles` (lecture) ; `--nvidia-selftest <exe INEXISTANT>` = journal → pilote →
   annulation sur un profil factice. Ne JAMAIS cliquer « Appliquer » sur l'instance de test : le pilote est celui du vrai PC.
-- Effets visuels de Windows (réglage de partie `GameProfile.ReduceVisualEffects`, `SessionPlan.VisualEffectsChange`, accesseur
-  `Platform/Settings/VisualEffectsAccessor`, kind `visual-effect`) : SPI_GET/SETCLIENTAREAANIMATION, SPI_GET/SETANIMATION
-  (ANIMATIONINFO) et `HKCU\…\Themes\Personalize\EnableTransparency` + WM_SETTINGCHANGE « ImmersiveColorSet ». Écriture et
-  restauration vérifiées le 2026-10-06 (`DiagDump -- --visual-effects --selftest`). Machine de dev : animations 0 (AtlasOS),
-  transparence 1.
-- « Ne pas déranger » pendant les jeux (contrôle `GameNotificationsCheck`, toujours « À savoir » + lien ms-settings:notifications) :
-  rangé dans le CloudStore (`…\windows.data.donotdisturb.quietmoment$quietmomentgame`), format binaire NON documenté — les 7
-  règles automatiques y ont le même contenu de 13 octets : état illisible de façon fiable, JAMAIS lu ni écrit.
 - Une valeur de registre absente se sauvegarde comme `Absent` et se restaure par **suppression**.
 - CSV réel de PresentMon 2.6.0 (`--v2_metrics`) : colonnes `FrameTime`, `CPUBusy`, `GPUTime`, `DisplayedTime`… SANS
   préfixe `Ms`, contrairement à sa documentation. Toujours valider un format sur un vrai fichier, et ne jamais

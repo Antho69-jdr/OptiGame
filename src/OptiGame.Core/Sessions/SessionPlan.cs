@@ -38,27 +38,6 @@ public static class SessionPlan
         };
     }
 
-    public const string VisualEffectsChangeId = "session.visual-effects";
-
-    /// <summary>
-    /// Effets visuels de Windows coupés pendant la partie (animations, transparence), rétablis à la fin. Confort, pas de FPS :
-    /// Windows n'anime rien pendant qu'un jeu est au premier plan (dit tel quel à l'utilisateur, principe « pas de placebo »).
-    /// </summary>
-    public static ReversibleChange? VisualEffectsChange(GameProfile profile) => !profile.ReduceVisualEffects ? null : new ReversibleChange
-    {
-        Id = VisualEffectsChangeId,
-        Title = "Effets visuels de Windows coupés",
-        What = "Animations des fenêtres et des éléments, et transparence de Windows, coupées pendant la session.",
-        Why = "Choisi dans le profil du jeu : rien ne s'anime ni ne se superpose à la sortie du jeu (Alt+Tab, superpositions). " +
-              "Confort seulement : pas de FPS en plus.",
-        Writes =
-        [
-            new SettingWrite(KnownSettings.ClientAreaAnimation, SettingValue.DWord(0)),
-            new SettingWrite(KnownSettings.WindowAnimation, SettingValue.DWord(0)),
-            new SettingWrite(KnownSettings.Transparency, SettingValue.DWord(0)),
-        ],
-    };
-
     /// <summary>Fermeture journalisée : la restauration relance le programme (sans droits administrateur).</summary>
     public static ReversibleChange CloseAndRelaunch(ProcessToClose process) => new()
     {
@@ -88,8 +67,6 @@ public static class SessionPlan
         lines.Add(profile.Priority == GamePriority.Normal
             ? "Priorité du jeu : inchangée (normale)."
             : $"Priorité du jeu : {PriorityLabel(profile.Priority)}.");
-
-        if (profile.ReduceVisualEffects) lines.Add("Animations et transparence de Windows coupées (confort, pas de FPS en plus).");
 
         return lines;
     }
