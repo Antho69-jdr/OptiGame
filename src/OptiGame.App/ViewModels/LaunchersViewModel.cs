@@ -120,6 +120,9 @@ public sealed partial class LauncherItemViewModel(LauncherApp launcher, Launcher
 
     public string OpenLabel => IsRunning ? $"Afficher {Name}" : $"Ouvrir {Name}";
 
+    /// <summary>Libellé du menu (une liaison StringFormat ne s'applique PAS à MenuItem.Header, de type object : il affichait « Steam »).</summary>
+    public string CloseLabel => $"Fermer {Name}…";
+
     public string AccessibleName => $"{Name}, {StatusText}. Entrée : ouvrir ou fermer.";
 
     [RelayCommand]

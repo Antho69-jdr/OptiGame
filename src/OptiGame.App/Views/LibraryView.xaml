@@ -90,7 +90,7 @@
                                     <Button.ContextMenu>
                                         <ContextMenu>
                                             <MenuItem FontWeight="SemiBold" Header="{Binding OpenLabel}" Command="{Binding OpenCommand}" />
-                                            <MenuItem Header="{Binding Name, StringFormat='Fermer {0}…'}" Command="{Binding CloseCommand}"
+                                            <MenuItem Header="{Binding CloseLabel}" Command="{Binding CloseCommand}"
                                                       Visibility="{Binding IsRunning, Converter={StaticResource BoolToVisibility}}" />
                                         </ContextMenu>
                                     </Button.ContextMenu>
