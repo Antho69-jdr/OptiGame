@@ -57,6 +57,7 @@ public sealed partial class LibraryViewModel : ObservableObject
     private readonly Platform.Library.StoreCoverCache _storeCovers;
     private readonly GameRatingService _ratings;
     private readonly GameTimeGate _gate;
+    private readonly Platform.Library.StoreAboutClient _storeAbout;
     private readonly Core.State.ChangeJournal _fixes;
     private int _ratingVersion;
 
@@ -85,13 +86,14 @@ public sealed partial class LibraryViewModel : ObservableObject
         FrameCapService frameCap, Platform.Library.StoreOwnedLibrary storeLibrary, Platform.Library.StoreCoverCache storeCovers,
         GameTimeGate gate, [FromKeyedServices(Platform.JournalKeys.Fixes)] Core.State.ChangeJournal fixes, UnsavedChangesGuard unsaved,
         SessionViewModel session, GameTagService tags, Platform.Library.StorePageResolver storePages, LaunchersViewModel launchers,
-        InGameQualityService inGameQuality, DlssOverrideService dlss)
+        InGameQualityService inGameQuality, DlssOverrideService dlss, Platform.Library.StoreAboutClient storeAbout)
     {
         _session = session;
         unsaved.Register(ConfirmDiscard);
         // Dock activé ou non (Paramètres) : épingles des jaquettes affichées seulement s'il l'est.
         settings.Changed += (_, _) => OnUi(() => OnPropertyChanged(nameof(IsDockEnabled)));
         _gate = gate;
+        _storeAbout = storeAbout;
         _fixes = fixes;
         _steamReader = steamReader;
         _graphics = graphics;
@@ -1028,6 +1030,7 @@ public sealed partial class LibraryViewModel : ObservableObject
             play: () => PlayAsync(id),
             togglePin: () => _store.SetPinned(id, _store.Find(id)?.DockOrder is null),
             openStorePage: OpenStorePage,
+            openPressPage: OpenPressPage,
             setPlayedPreset: preset =>
             {
                 _store.SetGraphicsPreset(id, preset);
@@ -1078,7 +1081,7 @@ public sealed partial class LibraryViewModel : ObservableObject
         }
     }
 
-    /// <summary>Appid Steam de la fiche (lecture des manifestes Steam, hors du thread UI) : affiche « Voir sur Steam ».</summary>
+    /// <summary>Appid Steam de la fiche (lecture des manifestes Steam, hors du thread UI) : affiche « Voir sur Steam » et la présentation du jeu.</summary>
     private async Task LoadSteamAppIdAsync(GamePageViewModel page, GameProfile profile)
     {
         try
@@ -1088,6 +1091,55 @@ public sealed partial class LibraryViewModel : ObservableObject
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
             _log.Error($"Appid Steam de « {profile.Name} » introuvable", ex);
+        }
+        if (page.SteamAppId is { } appId) await LoadAboutAsync(page, appId);
+    }
+
+    /// <summary>
+    /// Présentation du jeu (magasin Steam) : celle du cache tout de suite, puis à jour (réseau, au plus une fois par semaine et
+    /// par jeu, seulement fiche ouverte) ; pendant une partie, la mise à jour attend la fin de la partie.
+    /// </summary>
+    private async Task LoadAboutAsync(GamePageViewModel page, string appId)
+    {
+        try
+        {
+            page.About = await Task.Run(() => _storeAbout.Cached(appId));
+            if (_gate.InGame)
+            {
+                _gate.RunOrDefer("store-about", () => { if (OpenGame == page) _ = RefreshAboutAsync(page, appId); });
+                return;
+            }
+            await RefreshAboutAsync(page, appId);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            _log.Error($"Présentation Steam de « {page.Name} » illisible", ex);
+        }
+    }
+
+    private async Task RefreshAboutAsync(GamePageViewModel page, string appId)
+    {
+        try
+        {
+            var about = await _storeAbout.GetAsync(appId);
+            if (OpenGame == page && about is not null) page.About = about;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            _log.Error($"Présentation Steam de « {page.Name} » non enregistrée", ex);
+        }
+    }
+
+    private void OpenPressPage(string url)
+    {
+        try
+        {
+            _launcher.OpenPressPage(url);
+        }
+        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException or ArgumentException)
+        {
+            _log.Error($"Ouverture des critiques de la presse impossible ({url})", ex);
+            _dialogs.ShowError("Impossible d'ouvrir les critiques", "Le navigateur n'a pas pu ouvrir la page des critiques de la presse.", ex.Message);
         }
     }
 

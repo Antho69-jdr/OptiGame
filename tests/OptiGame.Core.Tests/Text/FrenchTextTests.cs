@@ -13,6 +13,13 @@ public class FrenchTextTests
         Assert.Equal(expected, FrenchText.Count(count, "jeu", "jeux"));
 
     [Fact]
+    public void Number_groups_thousands_with_narrow_no_break_spaces()
+    {
+        Assert.Equal("418 369", FrenchText.Number(418_369));
+        Assert.Equal("14", FrenchText.Number(14));
+    }
+
+    [Fact]
     public void Agree_returns_the_word_only() =>
         Assert.Equal("appliquées", FrenchText.Agree(3, "appliquée", "appliquées"));
 

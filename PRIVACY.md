@@ -2,7 +2,7 @@
 
 *English version below.*
 
-Dernière mise à jour : 6 octobre 2026.
+Dernière mise à jour : 7 octobre 2026.
 
 ## En bref
 
@@ -25,7 +25,7 @@ confidentialité.
 | Service | Quand | Ce qui est envoyé |
 |---|---|---|
 | GitHub (`api.github.com`, `github.com`) | recherche de mise à jour : 2 min après le démarrage puis toutes les 24 h (réglable ou désactivable dans Paramètres › Mises à jour), téléchargement d'une mise à jour | la version d'OptiGame |
-| Magasin Steam (`store.steampowered.com`) | estimation de la note d'un jeu Steam de votre bibliothèque | le numéro du jeu sur Steam |
+| Magasin Steam (`store.steampowered.com`) | estimation de la note d'un jeu Steam de votre bibliothèque ; description, avis des joueurs et note de la presse quand vous ouvrez la fiche d'un jeu Steam (au plus une fois par semaine et par jeu, jamais pendant une partie) | le numéro du jeu sur Steam |
 | PCGamingWiki (`www.pcgamingwiki.com`) | estimation de la note d'un jeu hors Steam | le nom du jeu |
 | IGDB / Twitch (`api.igdb.com`, `id.twitch.tv`, `images.igdb.com`) | jaquettes, fonds et genres, **seulement** si vous avez saisi vos identifiants IGDB | le nom des jeux, vos identifiants IGDB |
 | Images Epic Games / GOG (`cdn1.epicgames.com`, `images.gog.com`) | jaquettes des jeux possédés non installés | l'adresse de l'image |
@@ -47,7 +47,7 @@ Questions ou remarques : [ouvrez un ticket sur GitHub](https://github.com/Antho6
 
 # OptiGame privacy policy
 
-Last updated: October 6, 2026.
+Last updated: October 7, 2026.
 
 **OptiGame does not collect any data**: no account, no usage statistics, no crash reports, no advertising. Nothing is sent to
 the OptiGame developer.
@@ -55,7 +55,8 @@ the OptiGame developer.
 This program will not transfer any information to other networked systems unless specifically requested by the user or the
 person installing or operating it, except for the connections listed above, which never include personal information:
 update checks on GitHub (can be turned off in Settings › Updates), game requirements lookups on the Steam store and
-PCGamingWiki (Steam game number or game name), game artwork and genres from IGDB (only if the user enters IGDB credentials),
+PCGamingWiki (Steam game number or game name), descriptions and review scores from the Steam store when a Steam game page is
+opened (Steam game number), game artwork and genres from IGDB (only if the user enters IGDB credentials),
 store artwork and store pages from Epic Games and GOG, and driver lookups from NVIDIA, AMD and Windows Update on the
 "Drivers" page. As with any Internet connection, these services see your IP address and handle it under their own privacy
 policies.

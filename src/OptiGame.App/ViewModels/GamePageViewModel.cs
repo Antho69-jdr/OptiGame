@@ -29,6 +29,7 @@ public sealed partial class GamePageViewModel(
     Func<Task> play,
     Action togglePin,
     Action<string> openStorePage,
+    Action<string> openPressPage,
     Action<Core.Rating.GraphicsPreset?> setPlayedPreset,
     GameGraphicsViewModel graphics,
     FrameCapViewModel frameCap,
@@ -220,6 +221,52 @@ public sealed partial class GamePageViewModel(
     {
         if (SteamAppId is { } appId) openStorePage(appId);
         else if (storeProduct is { } product) await openProductPage(product);
+    }
+
+    // ---- À propos du jeu (magasin Steam : description, avis des joueurs, presse) ----
+
+    /// <summary>Présentation du jeu ; null tant qu'elle n'est pas lue, ou jeu hors Steam (la carte est alors masquée).</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasAbout), nameof(AboutSummary), nameof(AboutDetails), nameof(HasAboutDetails), nameof(HasPlayerScore),
+        nameof(PlayerScoreText), nameof(PlayerScoreCaption), nameof(HasFewReviews), nameof(FewReviewsText), nameof(HasPressScore),
+        nameof(PressScoreText), nameof(HasPressLink))]
+    private Core.Library.GameAbout? _about;
+
+    public bool HasAbout => About is not null;
+
+    public string AboutSummary => About?.Summary ?? "";
+
+    public IReadOnlyList<Core.Library.GameAboutBlock> AboutDetails => About?.Details ?? [];
+
+    public bool HasAboutDetails => AboutDetails.Count > 0;
+
+    /// <summary>Avis des joueurs notés par Steam (assez d'avis pour un qualificatif).</summary>
+    public bool HasPlayerScore => About?.Players is { IsRated: true };
+
+    public string PlayerScoreText => About?.Players is { IsRated: true } players ? $"{players.Percent}{Core.Text.FrenchText.NarrowNoBreakSpace}%" : "";
+
+    /// <summary>« Évaluations très positives · 418 369 avis sur Steam, toutes langues ».</summary>
+    public string PlayerScoreCaption => About?.Players is { IsRated: true } players
+        ? $"Évaluations {players.Label} · {Core.Text.FrenchText.Number(players.Total)} avis sur Steam, toutes langues"
+        : "";
+
+    /// <summary>Quelques avis, trop peu pour que Steam donne un qualificatif.</summary>
+    public bool HasFewReviews => About?.Players is { IsRated: false };
+
+    public string FewReviewsText => About?.Players is { IsRated: false } players
+        ? $"Trop peu d'avis sur Steam pour une note ({Core.Text.FrenchText.Number(players.Total)} avis)."
+        : "";
+
+    public bool HasPressScore => About?.Press is not null;
+
+    public string PressScoreText => About?.Press is { } press ? $"{press.Score}" : "";
+
+    public bool HasPressLink => About?.Press?.Url is not null;
+
+    [RelayCommand]
+    private void OpenPressPage()
+    {
+        if (About?.Press?.Url is { } url) openPressPage(url);
     }
 
     [ObservableProperty]

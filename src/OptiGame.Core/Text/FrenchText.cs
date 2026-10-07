@@ -56,6 +56,10 @@ public static class FrenchText
     /// <summary>Culture des nombres et dates affichés (« 12,5 »), quelle que soit la langue de Windows.</summary>
     public static readonly CultureInfo French = CultureInfo.GetCultureInfo("fr-FR");
 
+    /// <summary>Nombre entier groupé par milliers avec une espace fine insécable : « 418 369 ».</summary>
+    public static string Number(long value) =>
+        value.ToString("N0", French).Replace(' ', NarrowNoBreakSpace).Replace(' ', NarrowNoBreakSpace);
+
     /// <summary>Le format de date de toute l'interface : « 22 sept. 2026 » (mois abrégé à la française).</summary>
     public static string Date(DateOnly date) => date.ToString("d MMM yyyy", French);
 

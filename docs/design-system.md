@@ -144,7 +144,10 @@ grille, flèches d'une jaquette à l'autre).
 - Trois onglets (`Segment`, flèches pour passer de l'un à l'autre), le dernier choisi est gardé :
   - **Vue d'ensemble** : note (chiffre + mot + « Note mesurée / estimée », « Calcul de la note… » tant qu'elle n'est pas
     calculée), « Mon réglage dans le jeu » (gardé tout de suite), puis temps de jeu, mesures et disque en cartes (3 colonnes
-    dès 880 de large, 2 dès 720, sinon 1 ; `WidthToColumnsConverter` « 720,880 » ; alignées sur la carte de la note).
+    dès 880 de large, 2 dès 720, sinon 1 ; `WidthToColumnsConverter` « 720,880 » ; alignées sur la carte de la note), enfin
+    « À propos du jeu » (jeux Steam : % d'avis positifs + qualificatif de Steam, note de la presse sur 100, description courte,
+    « Lire la description complète » replié, titres de section en gras, colonne de texte limitée à 760 ; source citée + « Voir
+    sur Steam » / « Voir les critiques » ; carte absente tant que rien n'est lu). Aucune valeur colorée : chiffres en `Text.Stat`.
   - **Optimisation** : « Réglages de partie » (case « Optimiser ce jeu pendant les parties », réglages grisés sinon,
     avertissements en ligne, « Ce qui se passera » toujours visible) → barre **Enregistrer** ; « Réglages permanents (Windows
     et pilote) » → **Appliquer…** confirmé et **Restaurer l'original…**, état relu, jamais stocké.

@@ -322,6 +322,59 @@
                                 </StackPanel>
                             </Border>
                         </UniformGrid>
+
+                        <!-- À propos du jeu (magasin Steam, en français) : avis des joueurs, note de la presse, description ; carte
+                             masquée tant que rien n'est lu et pour les jeux hors Steam. Texte seul, jamais de HTML. -->
+                        <Border Style="{StaticResource Card}" Visibility="{Binding HasAbout, Converter={StaticResource BoolToVisibility}}">
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource Text.SectionTitle}" Text="À propos du jeu" />
+                                <WrapPanel Margin="0,8,0,0">
+                                    <StackPanel Margin="0,0,40,8" Visibility="{Binding HasPlayerScore, Converter={StaticResource BoolToVisibility}}">
+                                        <TextBlock Style="{StaticResource Text.Stat}" Text="{Binding PlayerScoreText}" />
+                                        <TextBlock Style="{StaticResource Text.Secondary}" Text="{Binding PlayerScoreCaption}" TextWrapping="Wrap" />
+                                    </StackPanel>
+                                    <StackPanel Margin="0,0,40,8" Visibility="{Binding HasPressScore, Converter={StaticResource BoolToVisibility}}">
+                                        <WrapPanel>
+                                            <TextBlock Style="{StaticResource Text.Stat}" Text="{Binding PressScoreText}" />
+                                            <TextBlock Margin="4,0,0,5" VerticalAlignment="Bottom" Style="{StaticResource Text.Secondary}" Text="/ 100" />
+                                        </WrapPanel>
+                                        <TextBlock Style="{StaticResource Text.Secondary}" Text="Note de la presse, publiée par Steam" />
+                                    </StackPanel>
+                                </WrapPanel>
+                                <TextBlock Margin="0,0,0,8" Style="{StaticResource Text.Secondary}" Text="{Binding FewReviewsText}" TextWrapping="Wrap"
+                                           Visibility="{Binding HasFewReviews, Converter={StaticResource BoolToVisibility}}" />
+                                <TextBlock MaxWidth="760" HorizontalAlignment="Left" Style="{StaticResource Text.Body}" Text="{Binding AboutSummary}" TextWrapping="Wrap" />
+                                <Expander Margin="0,8,0,0" Style="{StaticResource Expander.Disclosure}" Header="Lire la description complète"
+                                          Visibility="{Binding HasAboutDetails, Converter={StaticResource BoolToVisibility}}">
+                                    <ItemsControl MaxWidth="760" Margin="0,4,0,0" HorizontalAlignment="Left" ItemsSource="{Binding AboutDetails}" Focusable="False">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Margin="0,6,0,0" Text="{Binding Text}" TextWrapping="Wrap">
+                                                    <TextBlock.Style>
+                                                        <Style TargetType="TextBlock" BasedOn="{StaticResource Text.Body}">
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding IsHeading}" Value="True">
+                                                                    <Setter Property="FontWeight" Value="SemiBold" />
+                                                                    <Setter Property="Margin" Value="0,14,0,0" />
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </TextBlock.Style>
+                                                </TextBlock>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </Expander>
+                                <WrapPanel Margin="0,12,0,0">
+                                    <TextBlock Margin="0,0,8,0" VerticalAlignment="Center" Style="{StaticResource Text.Caption}"
+                                               Text="Description et avis : magasin Steam." />
+                                    <Button Style="{StaticResource Button.Ghost}" Content="Voir sur Steam" Command="{Binding OpenStorePageCommand}" />
+                                    <Button Style="{StaticResource Button.Ghost}" Content="Voir les critiques" Command="{Binding OpenPressPageCommand}"
+                                            Visibility="{Binding HasPressLink, Converter={StaticResource BoolToVisibility}}"
+                                            AutomationProperties.HelpText="Ouvre les critiques de la presse dans le navigateur." />
+                                </WrapPanel>
+                            </StackPanel>
+                        </Border>
                     </StackPanel>
 
                     <!-- ===== Optimisation ===== -->
@@ -541,7 +594,9 @@
                     </StackPanel>
 
                     <!-- ===== Propriétés ===== -->
-                    <StackPanel Visibility="{Binding IsPropertiesTab, Converter={StaticResource BoolToVisibility}}" DataContext="{Binding Editor}">
+                    <!-- Visibilité liée à la fiche, PUIS DataContext de l'éditeur (sur le même élément, IsPropertiesTab serait cherché dans l'éditeur) -->
+                    <StackPanel Visibility="{Binding IsPropertiesTab, Converter={StaticResource BoolToVisibility}}">
+                    <StackPanel DataContext="{Binding Editor}">
                         <Border Margin="{StaticResource Margin.StackL}" Style="{StaticResource Card}">
                             <StackPanel>
                                 <TextBlock Style="{StaticResource Text.SectionTitle}" Text="Jeu" />
@@ -608,6 +663,7 @@
                                 </StackPanel>
                             </DockPanel>
                         </Border>
+                    </StackPanel>
                     </StackPanel>
                 </StackPanel>
             </StackPanel>

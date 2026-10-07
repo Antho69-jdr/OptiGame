@@ -75,6 +75,17 @@ public sealed class GameLauncher(FileLog log)
         log.Info($"Page du magasin ouverte dans le navigateur : {uri.AbsoluteUri}");
     }
 
+    /// <summary>Critiques de la presse citées par Steam (adresse metacritic.com de appdetails), dans le navigateur par défaut.</summary>
+    public void OpenPressPage(string url)
+    {
+        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri) || uri.Scheme != Uri.UriSchemeHttps || uri.Host != "www.metacritic.com")
+        {
+            throw new ArgumentException($"Adresse de la presse refusée : {url}", nameof(url));
+        }
+        OpenInBrowser(uri.AbsoluteUri);
+        log.Info($"Critiques de la presse ouvertes dans le navigateur : {uri.AbsoluteUri}");
+    }
+
     /// <summary>Page du projet OptiGame sur GitHub (politique de confidentialité…), dans le navigateur par défaut.</summary>
     public void OpenProjectPage(Uri page)
     {

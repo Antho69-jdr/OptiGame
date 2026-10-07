@@ -400,6 +400,15 @@ vit dans Core ; Platform ne fait que lire/écrire le système.
     utilisée, seuil 10 % des relevés. Thermique (sw/hw_thermal) → conseil refroidissement ; hw_slowdown SANS thermique →
     alimentation ; sw_power_cap = NORMAL à pleine charge (GPU Boost), seulement affiché. clocks.max.gr (2100) = maximum
     absolu, pas la fréquence de boost : non utilisé.
+- Présentation des jeux Steam sur la fiche (carte « À propos du jeu » ; `Core/Library/SteamStoreAbout`, `Platform/Library/
+  StoreAboutClient` = store-about.json, 7 jours, réponses BRUTES relues) : appdetails `l=french&filters=basic,metacritic` (6,8 Ko
+  au lieu de 29 ; `metacritic` n'est PAS dans basic, absent pour ARC Raiders) et `appreviews/<id>?json=1&language=all&
+  purchase_type=all&num_per_page=0&l=french` (`review_score` 1-9 + `review_score_desc` en français : « très positives » ;
+  0 = trop peu d'avis, « 3 évaluations » ; « aucune évaluation » = total 0). Vérifié le 2026-10-07, échantillons dans les
+  tests. Steam ne publie pas son arrondi : % arrondi au plus proche, « toutes langues » (la page du magasin affiche « dans votre
+  langue »). HTML de about_the_game réduit à du texte (titres, puces ; images et vidéos retirées), jamais affiché. Lu à
+  l'ouverture de la fiche seulement, cache d'abord, mise à jour reportée à la fin d'une partie (GameTimeGate « store-about ») ;
+  « Voir les critiques » = navigateur par défaut, www.metacritic.com SEULEMENT (`GameLauncher.OpenPressPage`).
 - Jeux Steam possédés non installés + genres/types (« Mes jeux » ; `Core/Library/SteamBinaryCache` + `SteamOwnedGames`,
   `Platform/Library/SteamOwnedLibrary`, `DiagDump -- --steam-owned`) : caches BINAIRES du client, format non documenté par
   Valve (SteamDB) : `appcache\appinfo.vdf` v29 (magic 0x07564429, clés = index d'une table de noms en fin de fichier ;

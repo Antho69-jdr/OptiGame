@@ -102,6 +102,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<Library.SteamPlaytimeReader>();
         services.AddSingleton<Library.SteamLibraryWatcher>();
         services.AddSingleton<Library.GameRequirementsClient>();
+        services.AddSingleton<Library.StoreAboutClient>();
         services.AddSingleton<Library.StoreOwnedLibrary>();
         services.AddSingleton<Library.StorePageResolver>();
         services.AddSingleton<Processes.LauncherControl>();
