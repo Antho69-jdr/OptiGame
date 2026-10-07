@@ -192,6 +192,14 @@ internal static class PageSnapshots
                 pages.Add(("6-fiche-du-jeu", async () => { main.Navigate(library); library.ShowGame(game.Id); await Settle(4000); }));
                 pages.Add(("6b-fiche-optimisation", async () => { library.OpenGame!.SelectedTab = GameTab.Optimization; await Settle(1500); }));
                 pages.Add(("6c-fiche-proprietes", async () => { library.OpenGame!.SelectedTab = GameTab.Properties; await Settle(800); }));
+                // Bas de la fiche : le fil d'Ariane flotte toujours en haut à gauche.
+                pages.Add(("6i-fiche-defilee", async () =>
+                {
+                    library.OpenGame!.SelectedTab = GameTab.Overview;
+                    await Settle(800);
+                    if (FindByName<System.Windows.Controls.ScrollViewer>(window, "PageScroll") is { } scroll) scroll.ScrollToEnd();
+                    await Settle(800);
+                }));
                 // Modification non enregistrée (rien n'est enregistré : la fiche est rechargée juste après)
                 pages.Add(("6d-fiche-modifiee", async () =>
                 {
@@ -272,6 +280,22 @@ internal static class PageSnapshots
                     player.SetFullScreen(false, offScreen: true);
                     await Settle(3000);
                     Log($"Plein écran, après retour dans la fiche : {await player.ProbeAsync()}");
+
+                    // Défilement : la vidéo passe sous le fil d'Ariane flottant puis hors de la zone visible ; sa fenêtre doit être découpée.
+                    if (All(window).OfType<System.Windows.Controls.ScrollViewer>().FirstOrDefault(s => s.Name == "PageScroll") is { } scroll)
+                    {
+                        window.Height = 560; // page plus haute que la fenêtre : la vidéo peut passer sous le fil d'Ariane
+                        await Settle(800);
+                        var top = player.TransformToVisual(scroll).Transform(new Point(0, 0)).Y + scroll.VerticalOffset;
+                        Log($"Découpage, vidéo à {top:0} du haut : {player.ClipDescription()}");
+                        foreach (var offset in new[] { top - 30, top + 120, top + 600 })
+                        {
+                            scroll.ScrollToVerticalOffset(Math.Max(0, offset));
+                            await Settle(800);
+                            Log($"Découpage, défilement {scroll.VerticalOffset:0} (haut de la vidéo à {player.TransformToVisual(scroll).Transform(new Point(0, 0)).Y:0}) : {player.ClipDescription()}");
+                        }
+                        scroll.ScrollToVerticalOffset(0);
+                    }
                     player.Stop();
                 }));
             }
@@ -457,6 +481,18 @@ internal static class PageSnapshots
         encoder.Frames.Add(BitmapFrame.Create(bitmap));
         using var stream = File.Create(path);
         encoder.Save(stream);
+    }
+
+    /// <summary>Premier élément de ce type et de ce nom dans l'arbre visuel.</summary>
+    private static T? FindByName<T>(DependencyObject root, string name) where T : FrameworkElement
+    {
+        for (var i = 0; i < VisualTreeHelper.GetChildrenCount(root); i++)
+        {
+            var child = VisualTreeHelper.GetChild(root, i);
+            if (child is T match && match.Name == name) return match;
+            if (FindByName<T>(child, name) is { } found) return found;
+        }
+        return null;
     }
 
     /// <summary>Laisse la mise en page, les liaisons et les lectures asynchrones se faire.</summary>

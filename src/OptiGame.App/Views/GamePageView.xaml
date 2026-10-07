@@ -54,6 +54,23 @@
             </DockPanel>
         </Border>
 
+        <Grid>
+        <!-- Fil d'Ariane FLOTTANT : hors du défilement, toujours au même endroit (en bas de la fiche aussi), sur une pastille opaque (fond de carte + contour) : lisible
+             sur l'image comme sur les cartes. Premier dans l'ordre de tabulation, au-dessus de la page ; la vidéo (fenêtre à part)
+             est découpée pour ne jamais passer dessus (TrailerPlayer.IsAboveVideo). -->
+        <Border Panel.ZIndex="1" Margin="26,14,32,0" Padding="2,2,10,2" HorizontalAlignment="Left" VerticalAlignment="Top"
+                CornerRadius="{StaticResource Radius.Control}" Background="{StaticResource Brush.Card}" BorderBrush="{StaticResource Brush.Border}" BorderThickness="1"
+                controls:TrailerPlayer.IsAboveVideo="True">
+            <StackPanel Orientation="Horizontal">
+                <Button Style="{StaticResource Button.Ghost}" Padding="6,2" MinHeight="28" Content="Mes jeux" Command="{Binding BackCommand}"
+                        AutomationProperties.Name="Revenir à Mes jeux" ToolTip="Revenir à Mes jeux (Échap)" />
+                <TextBlock Margin="2,0,8,0" Style="{StaticResource Text.Icon}" FontSize="{StaticResource IconSize.Small}"
+                           Foreground="{StaticResource Brush.TextMuted}" Text="&#xE76C;" />
+                <TextBlock MaxWidth="360" VerticalAlignment="Center" Style="{StaticResource Text.Secondary}" Text="{Binding Name}"
+                           TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" />
+            </StackPanel>
+        </Border>
+
         <ScrollViewer x:Name="PageScroll" VerticalScrollBarVisibility="Auto">
             <Grid>
                 <!-- Fond : l'image descend sous la bannière (1,4 fois sa hauteur), derrière les onglets et le haut des cartes
@@ -76,18 +93,6 @@
                      plus grand (rien n'est rogné en fenêtre étroite). -->
                 <Grid x:Name="Banner" MinHeight="{Binding ViewportHeight, ElementName=PageScroll, Converter={StaticResource HeightFraction}, ConverterParameter='0.55,360,560'}">
 
-                    <!-- Fil d'Ariane, sur une pastille (le haut de l'image est peu voilé) -->
-                    <Border Margin="26,14,32,0" Padding="2,2,10,2" HorizontalAlignment="Left" VerticalAlignment="Top"
-                            CornerRadius="{StaticResource Radius.Control}" Background="{StaticResource Brush.ScrimStrong}">
-                    <StackPanel Orientation="Horizontal">
-                        <Button Style="{StaticResource Button.Ghost}" Padding="6,2" MinHeight="28" Content="Mes jeux" Command="{Binding BackCommand}"
-                                AutomationProperties.Name="Revenir à Mes jeux" ToolTip="Revenir à Mes jeux (Échap)" />
-                        <TextBlock Margin="2,0,8,0" Style="{StaticResource Text.Icon}" FontSize="{StaticResource IconSize.Small}"
-                                   Foreground="{StaticResource Brush.TextMuted}" Text="&#xE76C;" />
-                        <TextBlock MaxWidth="360" VerticalAlignment="Center" Style="{StaticResource Text.Secondary}" Text="{Binding Name}"
-                                   TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" />
-                    </StackPanel>
-                    </Border>
 
                     <DockPanel Margin="32,72,32,32" VerticalAlignment="Bottom">
                         <Grid DockPanel.Dock="Left" Width="135" Height="180" Margin="0,0,24,0" VerticalAlignment="Bottom">
@@ -686,5 +691,6 @@
             </StackPanel>
             </Grid>
         </ScrollViewer>
+        </Grid>
     </DockPanel>
 </UserControl>

@@ -137,6 +137,8 @@ public partial class TrailerPlayer : UserControl
             var web = new WebView2 { DefaultBackgroundColor = ToDrawing((Color)FindResource("Color.Window")) };
             _web = web;
             Host.Child = web;
+            _clipKey = null;
+            LayoutUpdated += OnLayoutUpdated; // découpage recalculé à chaque mise en page (défilement compris)
             Host.Visibility = Visibility.Visible;
             Poster.Visibility = Visibility.Hidden;
             CloseButton.Visibility = Visibility.Visible;
@@ -229,6 +231,126 @@ public partial class TrailerPlayer : UserControl
         }
     }
 
+    // ---- Découpage de la vidéo (fenêtre hébergée : WPF ne peut rien dessiner dessus et ne la rogne pas) ----
+
+    /// <summary>
+    /// Élément posé au-dessus de la page (fil d'Ariane flottant) : la vidéo est découpée pour ne jamais le recouvrir.
+    /// </summary>
+    private static readonly List<WeakReference<FrameworkElement>> Overlays = [];
+
+    public static readonly DependencyProperty IsAboveVideoProperty = DependencyProperty.RegisterAttached(
+        "IsAboveVideo", typeof(bool), typeof(TrailerPlayer), new PropertyMetadata(false, (d, e) =>
+        {
+            if (d is FrameworkElement element && e.NewValue is true) Overlays.Add(new WeakReference<FrameworkElement>(element));
+        }));
+
+    public static bool GetIsAboveVideo(DependencyObject element) => (bool)element.GetValue(IsAboveVideoProperty);
+
+    public static void SetIsAboveVideo(DependencyObject element, bool value) => element.SetValue(IsAboveVideoProperty, value);
+
+
+    /// <summary>Dernier découpage appliqué (en pixels), pour ne rappeler Windows que s'il change.</summary>
+    private string? _clipKey;
+
+    /// <summary>
+    /// Découpe la fenêtre de la vidéo (SetWindowRgn) : seulement la partie visible dans la zone qui défile, moins les éléments
+    /// marqués <see cref="IsAboveVideoProperty"/>. Sans cela, la vidéo défilée déborderait sur le fil d'Ariane flottant.
+    /// </summary>
+    private void OnLayoutUpdated(object? sender, EventArgs e) => UpdateClip();
+
+    private void UpdateClip()
+    {
+        if (_web is not { } web || _fullScreen is not null || web.Handle == IntPtr.Zero || !web.IsVisible) return;
+        if (PresentationSource.FromVisual(web)?.CompositionTarget is not { } target) return;
+        var scale = target.TransformToDevice;
+        var bounds = new Rect(0, 0, web.ActualWidth, web.ActualHeight);
+        var visible = bounds;
+        if (FindAncestor<ScrollViewer>(this) is { } scroller)
+        {
+            visible.Intersect(scroller.TransformToVisual(web).TransformBounds(new Rect(0, 0, scroller.ViewportWidth, scroller.ViewportHeight)));
+        }
+        var holes = new List<Rect>();
+        var window = Window.GetWindow(this);
+        Overlays.RemoveAll(r => !r.TryGetTarget(out _));
+        foreach (var reference in Overlays)
+        {
+            if (!reference.TryGetTarget(out var overlay) || !overlay.IsVisible || Window.GetWindow(overlay) != window) continue;
+            var hole = overlay.TransformToVisual(web).TransformBounds(new Rect(overlay.RenderSize));
+            hole.Intersect(bounds);
+            if (!hole.IsEmpty) holes.Add(hole);
+        }
+
+        Int32Rect Device(Rect r) => r.IsEmpty ? default : new Int32Rect(
+            (int)Math.Floor(r.Left * scale.M11), (int)Math.Floor(r.Top * scale.M22),
+            (int)Math.Ceiling(r.Width * scale.M11), (int)Math.Ceiling(r.Height * scale.M22));
+        var shown = Device(visible);
+        var cut = holes.Select(Device).ToList();
+        var key = $"{shown}|{string.Join(";", cut)}";
+        if (key == _clipKey) return;
+        _clipKey = key;
+
+        var region = CreateRectRgn(shown.X, shown.Y, shown.X + shown.Width, shown.Y + shown.Height);
+        foreach (var hole in cut)
+        {
+            var holeRegion = CreateRectRgn(hole.X, hole.Y, hole.X + hole.Width, hole.Y + hole.Height);
+            CombineRgn(region, region, holeRegion, RgnDiff);
+            DeleteObject(holeRegion);
+        }
+        if (SetWindowRgn(web.Handle, region, true) == 0) DeleteObject(region); // en cas de succès, Windows possède la région
+    }
+
+    /// <summary>Plus de découpage (plein écran) ; le prochain calcul repartira de zéro.</summary>
+    private void ClearClip()
+    {
+        _clipKey = null;
+        if (_web is { Handle: var handle } && handle != IntPtr.Zero) SetWindowRgn(handle, IntPtr.Zero, true);
+    }
+
+    /// <summary>Découpage actuel de la vidéo (mode capture : vérifier qu'elle ne déborde pas sur le fil d'Ariane).</summary>
+    internal string ClipDescription()
+    {
+        if (_web is not { Handle: var handle } || handle == IntPtr.Zero) return "aucun lecteur";
+        var kind = GetWindowRgnBox(handle, out var box);
+        return kind switch
+        {
+            0 => "aucun découpage (vidéo entière)",
+            1 => "vidéo entièrement masquée",
+            _ => $"zone affichée {box.Right - box.Left}×{box.Bottom - box.Top} px à ({box.Left}, {box.Top}){(kind == 3 ? ", trouée (fil d'Ariane)" : "")}",
+        };
+    }
+
+    private static T? FindAncestor<T>(DependencyObject start) where T : DependencyObject
+    {
+        for (var current = VisualTreeHelper.GetParent(start); current is not null; current = VisualTreeHelper.GetParent(current))
+        {
+            if (current is T found) return found;
+        }
+        return null;
+    }
+
+    private const int RgnDiff = 4;
+
+    [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
+    private struct NativeRect
+    {
+        public int Left, Top, Right, Bottom;
+    }
+
+    [System.Runtime.InteropServices.DllImport("gdi32.dll")]
+    private static extern IntPtr CreateRectRgn(int left, int top, int right, int bottom);
+
+    [System.Runtime.InteropServices.DllImport("gdi32.dll")]
+    private static extern int CombineRgn(IntPtr destination, IntPtr source1, IntPtr source2, int mode);
+
+    [System.Runtime.InteropServices.DllImport("gdi32.dll")]
+    private static extern bool DeleteObject(IntPtr handle);
+
+    [System.Runtime.InteropServices.DllImport("user32.dll")]
+    private static extern int SetWindowRgn(IntPtr window, IntPtr region, bool redraw);
+
+    [System.Runtime.InteropServices.DllImport("user32.dll")]
+    private static extern int GetWindowRgnBox(IntPtr window, out NativeRect box);
+
     /// <summary>Fenêtre plein écran pendant que la vidéo y est ; null sinon.</summary>
     private Window? _fullScreen;
 
@@ -266,11 +388,13 @@ public partial class TrailerPlayer : UserControl
                 _fullScreen = null;
                 window.Content = null;
                 Host.Child = web;
+                _clipKey = null;
                 _ = web.CoreWebView2?.ExecuteScriptAsync("if (document.fullscreenElement) document.exitFullscreen();");
             };
             _fullScreen = window;
             Host.Child = null;
             window.Content = web;
+            ClearClip(); // plein écran : vidéo entière
             window.Show();
             if (!offScreen)
             {
@@ -285,6 +409,7 @@ public partial class TrailerPlayer : UserControl
             _fullScreen = null;
             window.Content = null;
             Host.Child = web;
+            _clipKey = null;
             window.Close();
             if (!offScreen) Window.GetWindow(this)?.Activate();
         }
@@ -308,6 +433,8 @@ public partial class TrailerPlayer : UserControl
             fullScreen.Content = null;
             fullScreen.Close();
         }
+        LayoutUpdated -= OnLayoutUpdated;
+        _clipKey = null;
         if (_web is { } web)
         {
             _web = null;

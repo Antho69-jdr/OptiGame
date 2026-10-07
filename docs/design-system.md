@@ -99,7 +99,7 @@ un bord). Tous les styles maison le posent en `FocusVisualStyle` ; WPF ne l'affi
 
 | Jaquette | `controls:CoverTile` (`Image` lié avec IsAsync, `Initials`, `Title`, `Caption`, `CaptionGlyph`, `IsDimmed`, `TopLeft`, `TopRight`, `Actions`) | une seule pour installés et non installés ; bouton focalisable : Entrée = action principale, touche Menu = toutes les actions (menu contextuel complet) ; `Actions` = raccourcis souris hors tabulation (`Button.CoverPlay`, `Button.CoverRound`) ; voile sur l'image seulement ; zoom de survol seulement si les animations sont activées (`UiMotion`) ; pastille du magasin en haut à gauche (`StoreBadge` de Mes jeux : icône du lanceur INSTALLÉ, `Converters/StoreIcons`, jamais de logo embarqué) ; arrondi réglable (`Radius.Cover` dynamique) ; nom accessible = jeu + tout ce que disent les pastilles |
 | Bouton à menu | Button + ContextMenu ouvert sous le bouton (« Ajouter des jeux ▾ ») | nom accessible + HelpText « Ouvre un menu » ; choix avec « … » |
-| Bande-annonce | `controls:TrailerPlayer` (`Thumbnail`, `VideoUrl`, `Title`, `CanPlay`) + vignette `Button.VideoPoster` | 16:9, 640 au plus ; toute la vignette est le bouton « Lire la bande-annonce : nom » (clavier, `Focus.RingCard`), rond neutre (le vert reste à « Jouer ») ; pendant la lecture, rien ne peut se poser sur la vidéo (fenêtre à part) : « Fermer la vidéo » dessous ; plein écran par le bouton du lecteur ou un double-clic (Échap pour sortir), la vidéo continue ; désactivée pendant une partie (info-bulle qui dit pourquoi) ; plusieurs vidéos = liste `ListItem.Selectable` en ligne sous le lecteur |
+| Bande-annonce | `controls:TrailerPlayer` (`Thumbnail`, `VideoUrl`, `Title`, `CanPlay`) + vignette `Button.VideoPoster` | 16:9, 640 au plus ; toute la vignette est le bouton « Lire la bande-annonce : nom » (clavier, `Focus.RingCard`), rond neutre (le vert reste à « Jouer ») ; pendant la lecture, rien ne peut se poser sur la vidéo (fenêtre à part) : « Fermer la vidéo » dessous, et tout élément flottant au-dessus de la page porte `TrailerPlayer.IsAboveVideo` (la vidéo y est découpée) ; plein écran par le bouton du lecteur ou un double-clic (Échap pour sortir), la vidéo continue ; désactivée pendant une partie (info-bulle qui dit pourquoi) ; plusieurs vidéos = liste `ListItem.Selectable` en ligne sous le lecteur |
 
 Grilles de jaquettes : `ItemsControl` + `WrapPanel`, `KeyboardNavigation.TabNavigation="Once"` (Tab entre et sort de la
 grille, flèches d'une jaquette à l'autre).
@@ -131,8 +131,9 @@ grille, flèches d'une jaquette à l'autre).
 
 ## Fiche du jeu
 
-- Fil d'Ariane « Mes jeux › Nom » (Échap / Alt+← reviennent à la grille, avec la garde des modifications), posé sur l'image
-  dans une pastille `Brush.ScrimStrong` (nom limité à 360).
+- Fil d'Ariane « Mes jeux › Nom » (Échap / Alt+← reviennent à la grille, avec la garde des modifications), FLOTTANT
+  (hors du défilement, toujours en haut à gauche, demandé le 2026-10-07) sur une pastille opaque `Brush.Card` + contour (lisible sur
+  l'image comme sur les cartes qui passent dessous ; nom limité à 360), au-dessus de la page et premier à la tabulation.
 - Bannière en plein cadre (maquette C de `docs/audit-fonctionnalites-2026-10-07.md`, choisie le 2026-10-07, jaquette gardée) :
   55 % de la hauteur visible, entre 360 et 560 (`HeightFractionConverter`), jamais moins que son contenu (jamais rognée).
   Image du fond 1,4 fois plus haute que la bannière (derrière les onglets et le haut des cartes, opaques), défilant avec la
