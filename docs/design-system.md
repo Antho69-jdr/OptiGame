@@ -134,9 +134,10 @@ grille, flèches d'une jaquette à l'autre).
   dans une pastille `Brush.ScrimStrong` (nom limité à 360).
 - Bannière en plein cadre (maquette C de `docs/audit-fonctionnalites-2026-10-07.md`, choisie le 2026-10-07, jaquette gardée) :
   55 % de la hauteur visible, entre 360 et 560 (`HeightFractionConverter`), jamais moins que son contenu (jamais rognée).
-  Image nette à droite ; voile latéral en unités absolues (`Brush.BannerFadeSide`, ≥ 85 % sur 600 unités : la colonne de texte
+  Image du fond 1,4 fois plus haute que la bannière (derrière les onglets et le haut des cartes, opaques), défilant avec la
+  page, nette à droite ; voile latéral en unités absolues (`Brush.BannerFadeSide`, ≥ 85 % sur 600 unités : la colonne de texte
   est limitée à 400 à droite de la jaquette), allégé en haut sans texte (`Brush.BannerFadeSideMask`), fondu du bas vers la
-  fenêtre (`Brush.BannerFadeBottom`). Jaquette, nom (`Text.Hero`), temps de jeu ; **Jouer** (seule action
+  fenêtre progressif, de 55 % à 100 % du fond (`Brush.BannerFadeBottom`, demandé le 2026-10-07). Jaquette, nom (`Text.Hero`), temps de jeu ; **Jouer** (seule action
   principale) ou, pendant la partie, « Arrêter l'optimisation… » ; « Mesurer les FPS » ; menu « … » (Voir sur Steam,
   Épingler au dock si le dock est activé, Changer la jaquette…, Changer le fond…, Retirer de Mes jeux…). Fond : choisi, sinon bannière Steam
   locale, sinon illustration IGDB.

@@ -108,8 +108,9 @@
     </LinearGradientBrush>
     <!-- Bannière de la fiche du jeu, image en plein cadre. Voile latéral en unités ABSOLUES : au moins 85 % de voile sur les
          600 premières unités (jaquette + colonne de texte limitée à 400), soit, même sur une image blanche, Text 10,8:1 et
-         TextSecondary 5,3:1 ; l'image se dévoile ensuite jusqu'à 820 et reste nette au-delà. Masque : voile réduit à 55 % en haut
-         (aucun texte ; le fil d'Ariane a sa propre pastille Brush.ScrimStrong), entier dès 45 % de la hauteur, avant le texte. -->
+         TextSecondary 5,3:1 ; l'image se dévoile ensuite jusqu'à 820 et reste nette au-delà. Ces brosses couvrent le FOND de la
+         fiche, haut de 1,4 fois la bannière (bas de la bannière à 71 %). Masque : voile réduit à 55 % en haut (aucun texte ; le fil
+         d'Ariane a sa propre pastille Brush.ScrimStrong), entier dès 28 % de la hauteur, avant le haut de la jaquette (≥ 29 %). -->
     <LinearGradientBrush x:Key="Brush.BannerFadeSide" MappingMode="Absolute" StartPoint="0,0" EndPoint="820,0">
         <GradientStop Color="#F20E1014" Offset="0" />
         <GradientStop Color="#D90E1014" Offset="0.732" />
@@ -117,12 +118,17 @@
     </LinearGradientBrush>
     <LinearGradientBrush x:Key="Brush.BannerFadeSideMask" StartPoint="0,0" EndPoint="0,1">
         <GradientStop Color="#8C000000" Offset="0" />
-        <GradientStop Color="#FF000000" Offset="0.45" />
+        <GradientStop Color="#FF000000" Offset="0.28" />
     </LinearGradientBrush>
-    <!-- Fondu du bas de la bannière vers le fond de la fenêtre -->
+    <!-- Fondu du fond de la fiche vers la fenêtre : commence sous le texte de la bannière (55 % du fond) et s'étale, adouci,
+         jusque derrière le haut des cartes -->
     <LinearGradientBrush x:Key="Brush.BannerFadeBottom" StartPoint="0,0" EndPoint="0,1">
         <GradientStop Color="#000E1014" Offset="0" />
-        <GradientStop Color="#000E1014" Offset="0.72" />
+        <GradientStop Color="#000E1014" Offset="0.55" />
+        <GradientStop Color="#1A0E1014" Offset="0.65" />
+        <GradientStop Color="#4D0E1014" Offset="0.75" />
+        <GradientStop Color="#990E1014" Offset="0.85" />
+        <GradientStop Color="#D90E1014" Offset="0.93" />
         <GradientStop Color="#FF0E1014" Offset="1" />
     </LinearGradientBrush>
     <!-- Dock -->

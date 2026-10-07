@@ -55,11 +55,12 @@
         </Border>
 
         <ScrollViewer x:Name="PageScroll" VerticalScrollBarVisibility="Auto">
-            <StackPanel>
-                <!-- Bannière en plein cadre, fil d'Ariane compris : 55 % de la hauteur visible (360 à 560), ou la hauteur de son
-                     contenu s'il est plus grand (rien n'est rogné en fenêtre étroite). Image nette à droite, voilée à gauche sous le
-                     texte (colonne limitée à 400 : voir Brush.BannerFadeSide). -->
-                <Grid MinHeight="{Binding ViewportHeight, ElementName=PageScroll, Converter={StaticResource HeightFraction}, ConverterParameter='0.55,360,560'}">
+            <Grid>
+                <!-- Fond : l'image descend sous la bannière (1,4 fois sa hauteur), derrière les onglets et le haut des cartes
+                     (opaques), et défile avec la page. Image nette à droite, voilée à gauche sous le texte (colonne limitée à 400 :
+                     voir Brush.BannerFadeSide), fondu progressif vers la fenêtre à partir de la moitié de l'image. -->
+                <Grid VerticalAlignment="Top"
+                      Height="{Binding ActualHeight, ElementName=Banner, Converter={StaticResource HeightFraction}, ConverterParameter='1.4,0,100000'}">
                     <Border Background="{StaticResource Brush.BannerPlaceholder}" />
                     <Border>
                         <Border.Background>
@@ -68,6 +69,12 @@
                     </Border>
                     <Border Background="{StaticResource Brush.BannerFadeSide}" OpacityMask="{StaticResource Brush.BannerFadeSideMask}" />
                     <Border Background="{StaticResource Brush.BannerFadeBottom}" />
+                </Grid>
+
+            <StackPanel>
+                <!-- Bannière, fil d'Ariane compris : 55 % de la hauteur visible (360 à 560), ou la hauteur de son contenu s'il est
+                     plus grand (rien n'est rogné en fenêtre étroite). -->
+                <Grid x:Name="Banner" MinHeight="{Binding ViewportHeight, ElementName=PageScroll, Converter={StaticResource HeightFraction}, ConverterParameter='0.55,360,560'}">
 
                     <!-- Fil d'Ariane, sur une pastille (le haut de l'image est peu voilé) -->
                     <Border Margin="26,14,32,0" Padding="2,2,10,2" HorizontalAlignment="Left" VerticalAlignment="Top"
@@ -604,6 +611,7 @@
                     </StackPanel>
                 </StackPanel>
             </StackPanel>
+            </Grid>
         </ScrollViewer>
     </DockPanel>
 </UserControl>
