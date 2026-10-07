@@ -16,7 +16,7 @@ namespace OptiGame.App.Controls;
 /// Léger par construction : seule la vignette existe tant qu'on ne clique pas sur « Lire » ; le moteur web (plusieurs
 /// processus) est créé au clic et DÉTRUIT dès que la vidéo n'est plus visible (fiche quittée, autre onglet, fenêtre fermée)
 /// ou qu'une partie commence (<see cref="CanPlay"/>). Page verrouillée : une seule navigation (la nôtre), ni nouvelle fenêtre,
-/// ni menu, ni outils de développement, ni plein écran ; seule l'adresse d'une vidéo de Steam (*.steamstatic.com) est lue.
+/// ni menu, ni outils de développement ; plein écran = la vidéo passe dans une fenêtre sans bord (<see cref="SetFullScreen"/>) ; seule l'adresse d'une vidéo de Steam (*.steamstatic.com) est lue.
 /// </summary>
 public partial class TrailerPlayer : UserControl
 {
@@ -161,6 +161,8 @@ public partial class TrailerPlayer : UserControl
                 navigated = true;
             };
             core.WebMessageReceived += (_, a) => OnPageMessage(a.TryGetWebMessageAsString(), generation, environment);
+            // Bouton plein écran du lecteur, double-clic, Échap : la page le demande, la vidéo change de fenêtre sans s'arrêter.
+            core.ContainsFullScreenElementChanged += (_, _) => { if (generation == _generation) SetFullScreen(core.ContainsFullScreenElement); };
             core.NavigateToString(Page(uri, (Color)FindResource("Color.Window")));
             ShowStatus("");
         }
@@ -227,10 +229,85 @@ public partial class TrailerPlayer : UserControl
         }
     }
 
+    /// <summary>Fenêtre plein écran pendant que la vidéo y est ; null sinon.</summary>
+    private Window? _fullScreen;
+
+    /// <summary>
+    /// Plein écran : le moteur web (fenêtre hébergée) passe, SANS être recréé ni la vidéo relancée, dans une fenêtre sans bord
+    /// agrandie sur l'écran d'OptiGame ; puis revient dans la fiche. <paramref name="offScreen"/> : essai du mode capture, fenêtre
+    /// hors des écrans et jamais activée (rien ne doit apparaître devant l'utilisateur).
+    /// </summary>
+    internal void SetFullScreen(bool on, bool offScreen = false)
+    {
+        if (_web is not { } web) return;
+        if (on && _fullScreen is null)
+        {
+            var owner = Window.GetWindow(this);
+            var window = new Window
+            {
+                Title = string.IsNullOrWhiteSpace(Title) ? "Bande-annonce" : $"Bande-annonce : {Title}",
+                WindowStyle = WindowStyle.None,
+                ResizeMode = ResizeMode.NoResize,
+                ShowInTaskbar = false,
+                ShowActivated = !offScreen,
+                Background = (Brush)FindResource("Brush.Window"),
+                Owner = owner,
+                WindowStartupLocation = WindowStartupLocation.Manual,
+                // Sur l'écran de la fenêtre d'OptiGame (agrandie ensuite : sans bord, elle couvre aussi la barre des tâches).
+                Left = offScreen ? -20000 : (owner?.Left ?? 0) + 40,
+                Top = offScreen ? -20000 : (owner?.Top ?? 0) + 40,
+                Width = 640,
+                Height = 360,
+            };
+            // Fermée autrement (Alt+F4) : la vidéo revient dans la fiche AVANT la destruction de la fenêtre.
+            window.Closing += (_, _) =>
+            {
+                if (_fullScreen != window) return;
+                _fullScreen = null;
+                window.Content = null;
+                Host.Child = web;
+                _ = web.CoreWebView2?.ExecuteScriptAsync("if (document.fullscreenElement) document.exitFullscreen();");
+            };
+            _fullScreen = window;
+            Host.Child = null;
+            window.Content = web;
+            window.Show();
+            if (!offScreen)
+            {
+                window.WindowState = WindowState.Maximized;
+                window.Activate();
+                web.Focus();
+            }
+            _log?.Info("Bande-annonce en plein écran.");
+        }
+        else if (!on && _fullScreen is { } window)
+        {
+            _fullScreen = null;
+            window.Content = null;
+            Host.Child = web;
+            window.Close();
+            if (!offScreen) Window.GetWindow(this)?.Activate();
+        }
+    }
+
+    /// <summary>Position et état de la vidéo (mode capture : vérifier que la lecture continue pendant le plein écran).</summary>
+    internal async Task<string> ProbeAsync() =>
+        _web?.CoreWebView2 is { } core
+            ? await core.ExecuteScriptAsync("(() => { const v = document.getElementById('v'); return v.currentTime.toFixed(1) + (v.paused ? ' en pause' : ' en lecture'); })()")
+            : "aucun lecteur";
+
+    internal bool IsFullScreen => _fullScreen is not null;
+
     /// <summary>Arrête la lecture et détruit le moteur web (ses processus se ferment avec lui).</summary>
     public void Stop()
     {
         _generation++;
+        if (_fullScreen is { } fullScreen)
+        {
+            _fullScreen = null;
+            fullScreen.Content = null;
+            fullScreen.Close();
+        }
         if (_web is { } web)
         {
             _web = null;
@@ -251,7 +328,7 @@ public partial class TrailerPlayer : UserControl
     }
 
     /// <summary>
-    /// Page de lecture : la vidéo seule, contrôles natifs sans plein écran ni téléchargement, volume à moitié. Politique de
+    /// Page de lecture : la vidéo seule, contrôles natifs (plein écran compris, sans téléchargement), volume à moitié. Politique de
     /// sécurité : médias de *.steamstatic.com seulement, aucun autre contenu chargé.
     /// </summary>
     private static string Page(Uri video, Color background)
@@ -262,7 +339,7 @@ public partial class TrailerPlayer : UserControl
             <!doctype html><html><head><meta charset="utf-8">
             <meta http-equiv="Content-Security-Policy" content="default-src 'none'; media-src https://*.steamstatic.com blob:; connect-src https://*.steamstatic.com; script-src 'unsafe-inline'; style-src 'unsafe-inline'">
             <style>html,body{margin:0;height:100%;background:{{color}};overflow:hidden}video{width:100%;height:100%;background:{{color}}}</style>
-            </head><body><video id="v" src="{{src}}" controls autoplay playsinline disablepictureinpicture controlslist="nofullscreen nodownload noremoteplayback"></video>
+            </head><body><video id="v" src="{{src}}" controls autoplay playsinline disablepictureinpicture controlslist="nodownload noremoteplayback"></video>
             <script>
             const v = document.getElementById('v');
             v.volume = 0.5;

@@ -416,7 +416,10 @@ vit dans Core ; Platform ne fait que lire/écrire le système.
   n'est plus visible (fiche quittée, autre onglet, fenêtre fermée) ou qu'une partie commence (`IsGameRunning`) ; mesuré : 6
   processus, ≈ 220-245 Mo privés pendant la lecture, 0 processus après (ui-snapshots `-Only 6f,6g`, journal « Bande-annonce »).
   Dossier `webview\` (cache disque 10 Mo), page locale verrouillée (CSP médias *.steamstatic.com, une seule navigation, ni
-  menu, ni outils, ni plein écran, filtre de réputation coupé). La vidéo (fenêtre HWND) n'apparaît pas sur les captures.
+  menu, ni outils, filtre de réputation coupé). La vidéo (fenêtre HWND) n'apparaît pas sur les captures. Plein écran (bouton du
+  lecteur, double-clic ; Échap pour sortir) : `ContainsFullScreenElementChanged` → le contrôle WebView2 est DÉPLACÉ (pas recréé)
+  dans une fenêtre sans bord agrandie sur l'écran d'OptiGame, puis remis dans la fiche ; Alt+F4 le remet avant destruction de
+  la fenêtre (Closing). Vérifié (ui-snapshots `-Only 6h`, fenêtre hors écran) : lecture continue, 5,4 → 8,5 → 11,5 s.
 - Jeux Steam possédés non installés + genres/types (« Mes jeux » ; `Core/Library/SteamBinaryCache` + `SteamOwnedGames`,
   `Platform/Library/SteamOwnedLibrary`, `DiagDump -- --steam-owned`) : caches BINAIRES du client, format non documenté par
   Valve (SteamDB) : `appcache\appinfo.vdf` v29 (magic 0x07564429, clés = index d'une table de noms en fin de fichier ;

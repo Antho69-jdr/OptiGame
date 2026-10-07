@@ -242,6 +242,38 @@ internal static class PageSnapshots
                         .Count(p => (p["CommandLine"] as string)?.Contains(folder, StringComparison.OrdinalIgnoreCase) == true);
                     Log($"Fiche quittée : {left} processus du moteur web encore ouverts.");
                 }));
+                // Plein écran : la vidéo change de fenêtre (ici hors des écrans, jamais activée) et doit continuer sans redémarrer.
+                pages.Add(("6h-fiche-bande-annonce-plein-ecran", async () =>
+                {
+                    main.Navigate(library);
+                    library.ShowGame(game.Id);
+                    library.OpenGame!.SelectedTab = GameTab.Overview;
+                    await Settle(3000);
+                    static IEnumerable<DependencyObject> All(DependencyObject root)
+                    {
+                        for (var i = 0; i < VisualTreeHelper.GetChildrenCount(root); i++)
+                        {
+                            var child = VisualTreeHelper.GetChild(root, i);
+                            yield return child;
+                            foreach (var d in All(child)) yield return d;
+                        }
+                    }
+                    if (All(window).OfType<Controls.TrailerPlayer>().FirstOrDefault(p => p.IsVisible) is not { } player)
+                    {
+                        Log("Pas de bande-annonce pour ce jeu.");
+                        return;
+                    }
+                    await player.PlayAsync();
+                    await Settle(6000);
+                    Log($"Plein écran, avant : {await player.ProbeAsync()}");
+                    player.SetFullScreen(true, offScreen: true);
+                    await Settle(3000);
+                    Log($"Plein écran, pendant ({(player.IsFullScreen ? "fenêtre plein écran" : "PAS de fenêtre")}) : {await player.ProbeAsync()}");
+                    player.SetFullScreen(false, offScreen: true);
+                    await Settle(3000);
+                    Log($"Plein écran, après retour dans la fiche : {await player.ProbeAsync()}");
+                    player.Stop();
+                }));
             }
 
             foreach (var (name, open) in pages.Where(p => Wanted(p.Name)))
