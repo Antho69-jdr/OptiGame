@@ -67,8 +67,8 @@ public sealed partial class DlssOverrideViewModel(GameProfile profile, DlssOverr
                       (snapshot.Override.ProfileName is { } name ? $" — profil NVIDIA « {name} »." : ".");
         IsLatest = overrideValue == DlssOverride.On && preset == DlssOverride.LatestPreset;
         NoteText = snapshot.DriverSupports
-            ? "N'agit que si le DLSS est activé dans les options du jeu. Même mécanisme que l'appli NVIDIA : les fichiers du jeu ne " +
-              "sont pas modifiés (contrairement à DLSS Swapper), et une mise à jour du jeu ne l'annule pas."
+            ? "N'agit que si le DLSS est activé dans les options du jeu. Réglé dans le pilote : les fichiers du jeu ne sont pas " +
+              "modifiés, et une mise à jour du jeu ne l'annule pas."
             : "Ce pilote NVIDIA ne propose pas le remplacement du DLSS : mettez-le à jour (page Pilotes).";
         HasAppliedChange = snapshot.AppliedChange is not null;
         AppliedText = snapshot.AppliedChange is { } applied

@@ -265,14 +265,15 @@ vit dans Core ; Platform ne fait que lire/écrire le système.
 - DLSS le plus récent par jeu (carte « DLSS (pilote NVIDIA) », onglet Optimisation ; `Core/Gpu/DlssOverride`,
   `Platform/Gpu/DlssLibrary`, `App/Services/DlssOverrideService`) : réglages OFFICIELS de NvApiDriverSettings.h (lu le
   2026-10-07) NGX_DLSS_SR_OVERRIDE 0x10E41E01 = 1 + NGX_DLSS_SR_OVERRIDE_RENDER_PRESET_SELECTION 0x10E41DF3 = 0x00FFFFFF
-  (RENDER_PRESET_Latest), dans le profil du pilote du jeu (même mécanisme que l'appli NVIDIA, fichiers du jeu intacts),
+  (RENDER_PRESET_Latest), dans le profil du pilote du jeu (fichiers du jeu intacts),
   journal « game.dlss-latest.<profil> ». Écriture + annulation vérifiées sur exe FACTICE (`--nvidia-selftest`, profil créé
   puis supprimé). Carte seulement si nvngx_dlss.dll est trouvée (`DlssOverride.SearchRoot` : dossier steamapps\common\<jeu>,
   racine Unreal, sinon dossier de l'exe ; 10 niveaux) ou un remplacement existe : Overwatch 3.7.20, Void Crew 3.1.11, ARC
   Raiders / PUBG (Engine\Plugins\…), Star Citizen (Bin64). Cible générique `KnownSettings.NvidiaSetting(exe, id)` (le plafond
   de FPS garde le nom « 0x10835002 »). Écartés (principe 3) : « Power management mode » Performances maximales (effet sur les
   FPS quasi nul), mode faible latence (Maximum pre-rendered frames : sans effet en DX12 / Vulkan, API du jeu inconnue).
-  DLSS Swapper (remplacement de la DLL) NON repris : fichiers du jeu modifiés, risque anti-triche.
+  Remplacement de nvngx_dlss.dll dans le dossier du jeu NON repris : fichiers du jeu modifiés, risque anti-triche. Ne citer
+  AUCUN autre logiciel dans l'interface (demande de l'utilisateur, 2026-10-07).
 - Une valeur de registre absente se sauvegarde comme `Absent` et se restaure par **suppression**.
 - CSV réel de PresentMon 2.6.0 (`--v2_metrics`) : colonnes `FrameTime`, `CPUBusy`, `GPUTime`, `DisplayedTime`… SANS
   préfixe `Ms`, contrairement à sa documentation. Toujours valider un format sur un vrai fichier, et ne jamais
