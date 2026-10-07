@@ -1031,6 +1031,8 @@ public sealed partial class LibraryViewModel : ObservableObject
             togglePin: () => _store.SetPinned(id, _store.Find(id)?.DockOrder is null),
             openStorePage: OpenStorePage,
             openPressPage: OpenPressPage,
+            loadTrailerThumbnail: url => _storeAbout.ThumbnailAsync(url),
+            isGameRunning: _sessions.Current is not null,
             setPlayedPreset: preset =>
             {
                 _store.SetGraphicsPreset(id, preset);
@@ -1477,7 +1479,11 @@ public sealed partial class LibraryViewModel : ObservableObject
     {
         var playing = _sessions.Current?.Profile.Id;
         foreach (var card in Games) card.IsPlaying = card.Id == playing;
-        if (OpenGame is not null) OpenGame.IsPlaying = OpenGame.Id == playing;
+        if (OpenGame is not null)
+        {
+            OpenGame.IsPlaying = OpenGame.Id == playing;
+            OpenGame.IsGameRunning = playing is not null; // la bande-annonce s'arrête, et attend la fin de la partie
+        }
     }
 
     internal static string CleanName(string name) => name.Replace("®", "").Replace("™", "").Trim();

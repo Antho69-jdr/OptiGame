@@ -57,6 +57,7 @@ public partial class App : Application
 
         _services = ConfigureServices().BuildServiceProvider();
         UiMotion.Attach(_services.GetRequiredService<AppSettingsStore>());
+        Controls.TrailerPlayer.Attach(_services.GetRequiredService<FileLog>(), Path.Combine(_services.GetRequiredService<AppPaths>().Root, "webview"));
         CoverAppearance.Attach(_services.GetRequiredService<AppSettingsStore>());
         var services = _services;
 
@@ -129,6 +130,7 @@ public partial class App : Application
         }
         _services = ConfigureServices().BuildServiceProvider();
         CoverAppearance.Attach(_services.GetRequiredService<AppSettingsStore>()); // captures fidèles au réglage
+        Controls.TrailerPlayer.Attach(_services.GetRequiredService<FileLog>(), Path.Combine(_services.GetRequiredService<AppPaths>().Root, "webview"));
         var services = _services;
         DispatcherUnhandledException += (_, a) =>
         {

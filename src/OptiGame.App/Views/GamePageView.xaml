@@ -343,6 +343,23 @@
                                 </WrapPanel>
                                 <TextBlock Margin="0,0,0,8" Style="{StaticResource Text.Secondary}" Text="{Binding FewReviewsText}" TextWrapping="Wrap"
                                            Visibility="{Binding HasFewReviews, Converter={StaticResource BoolToVisibility}}" />
+
+                                <!-- Bande-annonce : vignette seule tant qu'on ne clique pas ; moteur web créé au clic, détruit en quittant -->
+                                <StackPanel Margin="0,4,0,16" Visibility="{Binding HasTrailer, Converter={StaticResource BoolToVisibility}}">
+                                    <controls:TrailerPlayer Thumbnail="{Binding TrailerThumbnail, IsAsync=True}" VideoUrl="{Binding TrailerUrl}"
+                                                            Title="{Binding TrailerTitle}" CanPlay="{Binding CanPlayTrailer}" />
+                                    <ListBox Margin="0,8,0,0" Background="Transparent" BorderThickness="0" ItemsSource="{Binding Trailers}"
+                                             SelectedItem="{Binding SelectedTrailer}" ItemContainerStyle="{StaticResource ListItem.Selectable}"
+                                             DisplayMemberPath="Name" AutomationProperties.Name="Choisir la bande-annonce"
+                                             ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                             Visibility="{Binding HasSeveralTrailers, Converter={StaticResource BoolToVisibility}}">
+                                        <ListBox.ItemsPanel>
+                                            <ItemsPanelTemplate>
+                                                <WrapPanel />
+                                            </ItemsPanelTemplate>
+                                        </ListBox.ItemsPanel>
+                                    </ListBox>
+                                </StackPanel>
                                 <TextBlock MaxWidth="760" HorizontalAlignment="Left" Style="{StaticResource Text.Body}" Text="{Binding AboutSummary}" TextWrapping="Wrap" />
                                 <Expander Margin="0,8,0,0" Style="{StaticResource Expander.Disclosure}" Header="Lire la description complète"
                                           Visibility="{Binding HasAboutDetails, Converter={StaticResource BoolToVisibility}}">

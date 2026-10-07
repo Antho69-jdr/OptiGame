@@ -26,6 +26,7 @@ confidentialité.
 |---|---|---|
 | GitHub (`api.github.com`, `github.com`) | recherche de mise à jour : 2 min après le démarrage puis toutes les 24 h (réglable ou désactivable dans Paramètres › Mises à jour), téléchargement d'une mise à jour | la version d'OptiGame |
 | Magasin Steam (`store.steampowered.com`) | estimation de la note d'un jeu Steam de votre bibliothèque ; description, avis des joueurs et note de la presse quand vous ouvrez la fiche d'un jeu Steam (au plus une fois par semaine et par jeu, jamais pendant une partie) | le numéro du jeu sur Steam |
+| Images et vidéos du magasin Steam (`shared.akamai.steamstatic.com`, `video.akamai.steamstatic.com`) | vignette de la bande-annonce à l'ouverture de la fiche d'un jeu Steam (téléchargée une fois) ; la vidéo **seulement** quand vous cliquez sur « Lire » | l'adresse de l'image ou de la vidéo |
 | PCGamingWiki (`www.pcgamingwiki.com`) | estimation de la note d'un jeu hors Steam | le nom du jeu |
 | IGDB / Twitch (`api.igdb.com`, `id.twitch.tv`, `images.igdb.com`) | jaquettes, fonds et genres, **seulement** si vous avez saisi vos identifiants IGDB | le nom des jeux, vos identifiants IGDB |
 | Images Epic Games / GOG (`cdn1.epicgames.com`, `images.gog.com`) | jaquettes des jeux possédés non installés | l'adresse de l'image |
@@ -34,7 +35,10 @@ confidentialité.
 | AMD (`www.amd.com`, `drivers.amd.com`) | page « Pilotes » | le modèle de chipset |
 | Windows Update (Microsoft) | page « Pilotes » | la recherche de pilotes est faite par Windows lui-même |
 
-Les pages web (magasins, PCGamingWiki, cette politique) s'ouvrent dans votre navigateur, seulement quand vous cliquez.
+Les pages web (magasins, critiques de la presse, PCGamingWiki, cette politique) s'ouvrent dans votre navigateur, seulement quand
+vous cliquez. Les bandes-annonces sont lues dans OptiGame par le moteur web de Windows (WebView2), créé au clic sur « Lire » et
+fermé ensuite ; il ne charge que la vidéo de Steam, et son filtre de réputation (qui enverrait l'adresse de la page à Microsoft)
+est désactivé.
 
 Les programmes que vous lancez depuis OptiGame (Steam, Epic Games Launcher, GOG Galaxy, vos jeux) ont leurs propres
 politiques de confidentialité.
@@ -56,7 +60,8 @@ This program will not transfer any information to other networked systems unless
 person installing or operating it, except for the connections listed above, which never include personal information:
 update checks on GitHub (can be turned off in Settings › Updates), game requirements lookups on the Steam store and
 PCGamingWiki (Steam game number or game name), descriptions and review scores from the Steam store when a Steam game page is
-opened (Steam game number), game artwork and genres from IGDB (only if the user enters IGDB credentials),
+opened (Steam game number), trailer thumbnails and, only when the user clicks Play, trailer videos from Steam's media servers
+(played by the Windows web engine, WebView2, closed afterwards), game artwork and genres from IGDB (only if the user enters IGDB credentials),
 store artwork and store pages from Epic Games and GOG, and driver lookups from NVIDIA, AMD and Windows Update on the
 "Drivers" page. As with any Internet connection, these services see your IP address and handle it under their own privacy
 policies.

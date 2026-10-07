@@ -30,6 +30,8 @@ public sealed partial class GamePageViewModel(
     Action togglePin,
     Action<string> openStorePage,
     Action<string> openPressPage,
+    Func<string, Task<string?>> loadTrailerThumbnail,
+    bool isGameRunning,
     Action<Core.Rating.GraphicsPreset?> setPlayedPreset,
     GameGraphicsViewModel graphics,
     FrameCapViewModel frameCap,
@@ -229,8 +231,56 @@ public sealed partial class GamePageViewModel(
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasAbout), nameof(AboutSummary), nameof(AboutDetails), nameof(HasAboutDetails), nameof(HasPlayerScore),
         nameof(PlayerScoreText), nameof(PlayerScoreCaption), nameof(HasFewReviews), nameof(FewReviewsText), nameof(HasPressScore),
-        nameof(PressScoreText), nameof(HasPressLink))]
+        nameof(PressScoreText), nameof(HasPressLink), nameof(Trailers), nameof(HasTrailer), nameof(HasSeveralTrailers))]
     private Core.Library.GameAbout? _about;
+
+    partial void OnAboutChanged(Core.Library.GameAbout? value)
+    {
+        // Même vidéo gardée si elle existe encore (mise à jour du cache pendant qu'on regarde la fiche).
+        SelectedTrailer = value?.Trailers.FirstOrDefault(t => t.HlsUrl == SelectedTrailer?.HlsUrl) ?? value?.Trailers.FirstOrDefault();
+    }
+
+    // ---- Bande-annonce (lecteur créé au clic seulement : Controls/TrailerPlayer) ----
+
+    public IReadOnlyList<Core.Library.GameTrailer> Trailers => About?.Trailers ?? [];
+
+    public bool HasTrailer => Trailers.Count > 0;
+
+    public bool HasSeveralTrailers => Trailers.Count > 1;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(TrailerUrl), nameof(TrailerTitle))]
+    private Core.Library.GameTrailer? _selectedTrailer;
+
+    public string? TrailerUrl => SelectedTrailer?.HlsUrl;
+
+    public string TrailerTitle => SelectedTrailer?.Name ?? "";
+
+    partial void OnSelectedTrailerChanged(Core.Library.GameTrailer? value)
+    {
+        TrailerThumbnailPath = null;
+        if (value is not null) _ = LoadTrailerThumbnailAsync(value);
+    }
+
+    private async Task LoadTrailerThumbnailAsync(Core.Library.GameTrailer trailer)
+    {
+        var path = await loadTrailerThumbnail(trailer.ThumbnailUrl);
+        if (SelectedTrailer == trailer) TrailerThumbnailPath = path;
+    }
+
+    /// <summary>Vignette de la bande-annonce choisie (fichier local), décodée à la largeur de la vidéo.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(TrailerThumbnail))]
+    private string? _trailerThumbnailPath;
+
+    public System.Windows.Media.ImageSource? TrailerThumbnail => Converters.ImageLoader.Load(TrailerThumbnailPath, Converters.ImageLoader.PixelsFor(640));
+
+    /// <summary>Une partie est en cours (n'importe quel jeu) : la bande-annonce attend sa fin.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanPlayTrailer))]
+    private bool _isGameRunning = isGameRunning;
+
+    public bool CanPlayTrailer => !IsGameRunning;
 
     public bool HasAbout => About is not null;
 

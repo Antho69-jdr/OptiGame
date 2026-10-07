@@ -99,6 +99,7 @@ un bord). Tous les styles maison le posent en `FocusVisualStyle` ; WPF ne l'affi
 
 | Jaquette | `controls:CoverTile` (`Image` lié avec IsAsync, `Initials`, `Title`, `Caption`, `CaptionGlyph`, `IsDimmed`, `TopLeft`, `TopRight`, `Actions`) | une seule pour installés et non installés ; bouton focalisable : Entrée = action principale, touche Menu = toutes les actions (menu contextuel complet) ; `Actions` = raccourcis souris hors tabulation (`Button.CoverPlay`, `Button.CoverRound`) ; voile sur l'image seulement ; zoom de survol seulement si les animations sont activées (`UiMotion`) ; pastille du magasin en haut à gauche (`StoreBadge` de Mes jeux : icône du lanceur INSTALLÉ, `Converters/StoreIcons`, jamais de logo embarqué) ; arrondi réglable (`Radius.Cover` dynamique) ; nom accessible = jeu + tout ce que disent les pastilles |
 | Bouton à menu | Button + ContextMenu ouvert sous le bouton (« Ajouter des jeux ▾ ») | nom accessible + HelpText « Ouvre un menu » ; choix avec « … » |
+| Bande-annonce | `controls:TrailerPlayer` (`Thumbnail`, `VideoUrl`, `Title`, `CanPlay`) + vignette `Button.VideoPoster` | 16:9, 640 au plus ; toute la vignette est le bouton « Lire la bande-annonce : nom » (clavier, `Focus.RingCard`), rond neutre (le vert reste à « Jouer ») ; pendant la lecture, rien ne peut se poser sur la vidéo (fenêtre à part) : « Fermer la vidéo » dessous ; désactivée pendant une partie (info-bulle qui dit pourquoi) ; plusieurs vidéos = liste `ListItem.Selectable` en ligne sous le lecteur |
 
 Grilles de jaquettes : `ItemsControl` + `WrapPanel`, `KeyboardNavigation.TabNavigation="Once"` (Tab entre et sort de la
 grille, flèches d'une jaquette à l'autre).
@@ -145,8 +146,8 @@ grille, flèches d'une jaquette à l'autre).
   - **Vue d'ensemble** : note (chiffre + mot + « Note mesurée / estimée », « Calcul de la note… » tant qu'elle n'est pas
     calculée), « Mon réglage dans le jeu » (gardé tout de suite), puis temps de jeu, mesures et disque en cartes (3 colonnes
     dès 880 de large, 2 dès 720, sinon 1 ; `WidthToColumnsConverter` « 720,880 » ; alignées sur la carte de la note), enfin
-    « À propos du jeu » (jeux Steam : % d'avis positifs + qualificatif de Steam, note de la presse sur 100, description courte,
-    « Lire la description complète » replié, titres de section en gras, colonne de texte limitée à 760 ; source citée + « Voir
+    « À propos du jeu » (jeux Steam : % d'avis positifs + qualificatif de Steam, note de la presse sur 100, bande-annonce,
+    description courte, « Lire la description complète » replié, titres de section en gras, colonne de texte limitée à 760 ; source citée + « Voir
     sur Steam » / « Voir les critiques » ; carte absente tant que rien n'est lu). Aucune valeur colorée : chiffres en `Text.Stat`.
   - **Optimisation** : « Réglages de partie » (case « Optimiser ce jeu pendant les parties », réglages grisés sinon,
     avertissements en ligne, « Ce qui se passera » toujours visible) → barre **Enregistrer** ; « Réglages permanents (Windows

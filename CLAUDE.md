@@ -409,6 +409,14 @@ vit dans Core ; Platform ne fait que lire/écrire le système.
   langue »). HTML de about_the_game réduit à du texte (titres, puces ; images et vidéos retirées), jamais affiché. Lu à
   l'ouverture de la fiche seulement, cache d'abord, mise à jour reportée à la fin d'une partie (GameTimeGate « store-about ») ;
   « Voir les critiques » = navigateur par défaut, www.metacritic.com SEULEMENT (`GameLauncher.OpenPressPage`).
+  Bandes-annonces (`Controls/TrailerPlayer`, paquet Microsoft.Web.WebView2 1.0.4258.31) : Steam ne fournit PLUS de MP4 pour les
+  vidéos récentes (movie480.mp4 = 404 pour ARC Raiders), seulement HLS / DASH (`movies[].hls_h264`) ; le moteur WebView2 de
+  Windows (154, présent sous AtlasOS sans le navigateur Edge) lit le HLS NATIVEMENT (vérifié le 2026-10-07). Vignette (293×165
+  anciennes, 600×337 récentes ; aucune autre taille fiable) dans `covers\trailers`. Moteur créé AU CLIC, détruit si la vidéo
+  n'est plus visible (fiche quittée, autre onglet, fenêtre fermée) ou qu'une partie commence (`IsGameRunning`) ; mesuré : 6
+  processus, ≈ 220-245 Mo privés pendant la lecture, 0 processus après (ui-snapshots `-Only 6f,6g`, journal « Bande-annonce »).
+  Dossier `webview\` (cache disque 10 Mo), page locale verrouillée (CSP médias *.steamstatic.com, une seule navigation, ni
+  menu, ni outils, ni plein écran, filtre de réputation coupé). La vidéo (fenêtre HWND) n'apparaît pas sur les captures.
 - Jeux Steam possédés non installés + genres/types (« Mes jeux » ; `Core/Library/SteamBinaryCache` + `SteamOwnedGames`,
   `Platform/Library/SteamOwnedLibrary`, `DiagDump -- --steam-owned`) : caches BINAIRES du client, format non documenté par
   Valve (SteamDB) : `appcache\appinfo.vdf` v29 (magic 0x07564429, clés = index d'une table de noms en fin de fichier ;

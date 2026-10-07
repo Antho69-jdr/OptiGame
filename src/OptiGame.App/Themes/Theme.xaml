@@ -1078,6 +1078,40 @@
         </Setter>
     </Style>
 
+    <!-- Vignette d'une bande-annonce (Controls/TrailerPlayer) : toute la vignette est le bouton « Lire », focalisable (Entrée,
+         Espace) ; Background = l'image. Bouton rond neutre (le vert reste à « Jouer »), voile allégé au survol. -->
+    <Style x:Key="Button.VideoPoster" TargetType="Button">
+        <Setter Property="FocusVisualStyle" Value="{StaticResource Focus.RingCard}" />
+        <Setter Property="Background" Value="{StaticResource Brush.BannerPlaceholder}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border CornerRadius="{StaticResource Radius.Card}" Background="{TemplateBinding Background}"
+                            BorderThickness="1" BorderBrush="{StaticResource Brush.Border}">
+                        <Grid>
+                            <Border x:Name="Veil" CornerRadius="{StaticResource Radius.Card}" Background="{StaticResource Brush.ScrimLight}" Opacity="0.55" />
+                            <Border x:Name="Round" Width="56" Height="56" CornerRadius="{StaticResource Radius.Round}" Background="{StaticResource Brush.CoverButton}"
+                                    BorderThickness="1" BorderBrush="{StaticResource Brush.CoverButtonBorder}">
+                                <TextBlock Margin="3,0,0,0" HorizontalAlignment="Center" VerticalAlignment="Center" Style="{StaticResource Text.Icon}"
+                                           FontSize="{StaticResource IconSize.Hero}" Foreground="{StaticResource Brush.Text}" Text="&#xE768;" />
+                            </Border>
+                        </Grid>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Veil" Property="Opacity" Value="0.2" />
+                            <Setter TargetName="Round" Property="Background" Value="{StaticResource Brush.CoverButtonHover}" />
+                            <Setter TargetName="Round" Property="BorderBrush" Value="{StaticResource Brush.TextSecondary}" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter TargetName="Round" Property="Opacity" Value="0.4" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <!-- ===== InfoBar (modèle WinUI) : gravité = fond + icône de forme + nom accessible ; annoncée aux lecteurs d'écran ===== -->
     <Style TargetType="controls:InfoBar">
         <Setter Property="Focusable" Value="False" />

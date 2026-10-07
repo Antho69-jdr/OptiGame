@@ -1,0 +1,16 @@
+<UserControl x:Class="OptiGame.App.Controls.TrailerPlayer"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <!-- Bande-annonce : vignette (bouton « Lire ») tant que rien ne joue ; le moteur web n'existe que pendant la lecture. -->
+    <StackPanel x:Name="Root">
+        <Grid x:Name="Frame" HorizontalAlignment="Left">
+            <Button x:Name="Poster" Style="{StaticResource Button.VideoPoster}" Click="OnPlayClick" />
+            <!-- Fenêtre du moteur web (HWND) : rien ne peut s'afficher par-dessus, d'où les boutons sous la vidéo -->
+            <Border x:Name="Host" Visibility="Collapsed" CornerRadius="{StaticResource Radius.Card}" Background="{StaticResource Brush.Window}" />
+        </Grid>
+        <TextBlock x:Name="Status" Margin="0,8,0,0" Style="{StaticResource Text.Secondary}" Visibility="Collapsed"
+                   AutomationProperties.LiveSetting="Polite" />
+        <Button x:Name="CloseButton" Margin="0,8,0,0" HorizontalAlignment="Left" Style="{StaticResource Button.Secondary}"
+                Content="Fermer la vidéo" Visibility="Collapsed" Click="OnCloseClick" />
+    </StackPanel>
+</UserControl>

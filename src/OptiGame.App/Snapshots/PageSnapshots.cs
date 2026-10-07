@@ -205,6 +205,43 @@ internal static class PageSnapshots
                     library.OpenGame!.SelectedTab = GameTab.Overview;
                     await Settle(800);
                 }));
+                // Bande-annonce lancée pour de vrai : le journal note la mémoire du moteur web (la vidéo, fenêtre à part, peut
+                // manquer sur la capture). Fermée en quittant la fiche, à la fin.
+                pages.Add(("6f-fiche-bande-annonce", async () =>
+                {
+                    library.OpenGame!.SelectedTab = GameTab.Overview;
+                    await Settle(1500);
+                    static IEnumerable<DependencyObject> All(DependencyObject root)
+                    {
+                        for (var i = 0; i < VisualTreeHelper.GetChildrenCount(root); i++)
+                        {
+                            var child = VisualTreeHelper.GetChild(root, i);
+                            yield return child;
+                            foreach (var d in All(child)) yield return d;
+                        }
+                    }
+                    if (All(window).OfType<Controls.TrailerPlayer>().FirstOrDefault(p => p.IsVisible) is { } player)
+                    {
+                        await player.PlayAsync();
+                        await Settle(10_000);
+                    }
+                    else
+                    {
+                        Log("Pas de bande-annonce pour ce jeu.");
+                    }
+                }));
+                // Fiche quittée : le moteur web doit être détruit, ses processus fermés (ligne de commande = notre dossier).
+                pages.Add(("6g-fiche-bande-annonce-quittee", async () =>
+                {
+                    main.Navigate(library);
+                    library.OpenGame!.BackCommand.Execute(null);
+                    await Settle(4000);
+                    var folder = Path.Combine(services.GetRequiredService<Core.AppPaths>().Root, "webview");
+                    using var search = new System.Management.ManagementObjectSearcher("SELECT CommandLine FROM Win32_Process WHERE Name = 'msedgewebview2.exe'");
+                    var left = search.Get().Cast<System.Management.ManagementObject>()
+                        .Count(p => (p["CommandLine"] as string)?.Contains(folder, StringComparison.OrdinalIgnoreCase) == true);
+                    Log($"Fiche quittée : {left} processus du moteur web encore ouverts.");
+                }));
             }
 
             foreach (var (name, open) in pages.Where(p => Wanted(p.Name)))

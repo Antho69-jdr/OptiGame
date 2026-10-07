@@ -22,19 +22,30 @@ public sealed record PlayerReviews(int Score, string Label, int Positive, int To
 /// <summary>Note de la presse publiée par Steam (Metacritic), sur 100, et sa page.</summary>
 public sealed record PressScore(int Score, string? Url);
 
-/// <summary>Présentation d'un jeu sur sa fiche : description, avis des joueurs, note de la presse.</summary>
-public sealed record GameAbout(string Summary, IReadOnlyList<GameAboutBlock> Details, PressScore? Press, PlayerReviews? Players)
+/// <summary>
+/// Bande-annonce publiée sur le magasin Steam : flux HLS en H.264 (décodage matériel le plus répandu) et vignette, toutes deux
+/// en https sur *.steamstatic.com.
+/// </summary>
+public sealed record GameTrailer(string Name, string ThumbnailUrl, string HlsUrl);
+
+/// <summary>Présentation d'un jeu sur sa fiche : description, avis des joueurs, note de la presse, bandes-annonces.</summary>
+public sealed record GameAbout(string Summary, IReadOnlyList<GameAboutBlock> Details, PressScore? Press, PlayerReviews? Players,
+    IReadOnlyList<GameTrailer> Trailers)
 {
-    public bool IsEmpty => Summary.Length == 0 && Details.Count == 0 && Press is null && Players is null;
+    public bool IsEmpty => Summary.Length == 0 && Details.Count == 0 && Press is null && Players is null && Trailers.Count == 0;
 }
+
+/// <summary>Ce que appdetails dit d'un jeu (sans les avis, qui viennent d'appreviews).</summary>
+public sealed record SteamDetails(string Summary, IReadOnlyList<GameAboutBlock> Details, PressScore? Press, IReadOnlyList<GameTrailer> Trailers);
 
 /// <summary>
 /// Description et avis d'un jeu sur le magasin Steam, en français. Formats relevés le 2026-10-07 (échantillons réels dans les
 /// tests) :
 /// <list type="bullet">
-/// <item>appdetails avec filters=basic,metacritic et l=french (6,8 Ko pour Portal 2 au lieu de 29 sans filtre) :
-/// short_description (texte), about_the_game (HTML : h2, p, br, ul/li, img, video), metacritic { score, url } (absent pour
-/// ARC Raiders) ;</item>
+/// <item>appdetails avec filters=basic,metacritic,movies et l=french (19 Ko pour Portal 2 et ses 18 vidéos ; metacritic et
+/// movies ne sont PAS dans basic) : short_description (texte), about_the_game (HTML : h2, p, br, ul/li, img, video),
+/// metacritic { score, url } (absent pour ARC Raiders), movies [{ name, thumbnail, hls_h264, dash_h264, dash_av1, highlight }]
+/// (plus aucun fichier MP4 pour les vidéos récentes ; vignette 293×165 pour les anciennes, 600×337 pour les récentes) ;</item>
 /// <item>appreviews json=1, language=all, num_per_page=0, l=french : query_summary { review_score 0-9, review_score_desc
 /// (« très positives », « positives », « moyennes », « 3 évaluations », « aucune évaluation »), total_positive,
 /// total_reviews }.</item>
@@ -44,13 +55,16 @@ public sealed record GameAbout(string Summary, IReadOnlyList<GameAboutBlock> Det
 public static partial class SteamStoreAbout
 {
     public static Uri DetailsUri(string appId) =>
-        new($"https://store.steampowered.com/api/appdetails?appids={Uri.EscapeDataString(appId)}&l=french&filters=basic,metacritic");
+        new($"https://store.steampowered.com/api/appdetails?appids={Uri.EscapeDataString(appId)}&l=french&filters=basic,metacritic,movies");
+
+    /// <summary>Bandes-annonces gardées au plus (les premières : celle mise en avant par Steam, puis l'ordre du magasin).</summary>
+    public const int MaxTrailers = 4;
 
     public static Uri ReviewsUri(string appId) =>
         new($"https://store.steampowered.com/appreviews/{Uri.EscapeDataString(appId)}?json=1&language=all&purchase_type=all&num_per_page=0&l=french");
 
-    /// <summary>Description et note de la presse ; null si Steam ne connaît pas l'appid (success = false). JsonException si illisible.</summary>
-    public static (string Summary, IReadOnlyList<GameAboutBlock> Details, PressScore? Press)? ParseDetails(string json, string appId)
+    /// <summary>Description, note de la presse et bandes-annonces ; null si Steam ne connaît pas l'appid (success = false). JsonException si illisible.</summary>
+    public static SteamDetails? ParseDetails(string json, string appId)
     {
         using var document = JsonDocument.Parse(json);
         if (!document.RootElement.TryGetProperty(appId, out var app)
@@ -76,8 +90,37 @@ public static partial class SteamStoreAbout
                 : null;
             press = new PressScore(value, url);
         }
-        return (summary, details, press);
+        return new SteamDetails(summary, details, press, ParseTrailers(data));
     }
+
+    /// <summary>Bandes-annonces lisibles (flux HLS H.264 et vignette sur *.steamstatic.com), celle mise en avant d'abord.</summary>
+    private static IReadOnlyList<GameTrailer> ParseTrailers(JsonElement data)
+    {
+        if (!data.TryGetProperty("movies", out var movies) || movies.ValueKind != JsonValueKind.Array) return [];
+        var trailers = new List<(GameTrailer Trailer, bool Highlight)>();
+        foreach (var movie in movies.EnumerateArray())
+        {
+            if (movie.ValueKind != JsonValueKind.Object) continue;
+            var hls = SteamUrl(movie, "hls_h264");
+            var thumbnail = SteamUrl(movie, "thumbnail");
+            if (hls is null || thumbnail is null) continue;
+            var name = movie.TryGetProperty("name", out var n) && n.ValueKind == JsonValueKind.String ? Collapse(WebUtility.HtmlDecode(n.GetString()!)) : "";
+            var highlight = movie.TryGetProperty("highlight", out var h) && h.ValueKind == JsonValueKind.True;
+            trailers.Add((new GameTrailer(name, thumbnail, hls), highlight));
+        }
+        return trailers.OrderByDescending(t => t.Highlight).Select(t => t.Trailer).Take(MaxTrailers).ToList(); // tri stable
+    }
+
+    /// <summary>Adresse https d'un serveur de Steam (*.steamstatic.com) ; null sinon.</summary>
+    private static string? SteamUrl(JsonElement element, string name) =>
+        element.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String
+        && Uri.TryCreate(value.GetString(), UriKind.Absolute, out var uri) && IsSteamMedia(uri)
+            ? uri.AbsoluteUri
+            : null;
+
+    /// <summary>Médias du magasin Steam : https, hôte *.steamstatic.com.</summary>
+    public static bool IsSteamMedia(Uri uri) =>
+        uri.Scheme == Uri.UriSchemeHttps && uri.Host.EndsWith(".steamstatic.com", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>Avis des joueurs ; null si aucun avis ou réponse en échec. JsonException si illisible.</summary>
     public static PlayerReviews? ParseReviews(string json)
