@@ -284,6 +284,22 @@ vit dans Core ; Platform ne fait que lire/écrire le système.
     admin ; l'état réel est journalisé à chaque installation. Création de point : WMI `root\default:SystemRestore`.
   - Windows Update : COM `Microsoft.Update.Session`, « IsInstalled=0 and Type='Driver' and IsHidden=0 », ≈ 25 s, fonctionne
     sous AtlasOS même sans droits admin. Le pilote NVIDIA de Windows Update est masqué si celui de NVIDIA est plus récent.
+  - Avis sur une mise à jour NVIDIA (`Core/Drivers/DriverConfidence`, encadré sous la carte graphique) : FAITS publiés par
+    NVIDIA seulement (pas de forums) croisés avec les noms de Mes jeux (`DriverConfidences.Mentions` : nom entier, mots
+    entiers, casse / accents / ™ / ponctuation ignorés, < 4 lettres ignoré). Sources (`NvidiaReleaseNotes`, relevées le
+    2026-10-07) : JSON du service = titre « Game Ready for … », listes « Fixed … Bugs » (numéros retirés), lien du PDF dans
+    OtherNotes ; PDF des notes de version (`PdfText` : flux FlateDecode, Tj/TJ, polices TrueType WinAnsi, octaux \222 \223 ; PAS
+    un lecteur PDF général) = section « Open Issues in Version X » (DERNIÈRE occurrence), éléments après « > », jusqu'à
+    « Issues Not Caused by NVIDIA », pieds de page « RN - 08399- 617.14_ v01 | 15 … » retirés (espaces variables). Vérifié sur
+    617.14, 616.56, 591.86 (`DiagDump -- --nvidia-release-notes <versions> [--excerpt <dossier>]` ; extraits du texte dans les
+    tests, jamais les PDF de NVIDIA). PDF lu seulement sur *.download.nvidia.com, 20 Mo max, gardé en mémoire par version.
+    Niveaux : Non vérifié (PDF illisible : jamais « sans risque ») / Prudence (problème ouvert qui cite un de vos jeux) /
+    Aucun problème connu / Conseillée (+ correction ou Game Ready pour vos jeux) ; publiée depuis < 3 jours = signalé.
+    AMD : cartes graphiques AMD non gérées par la page Pilotes (chipset seulement) ; pas de machine AMD pour vérifier.
+  - Avant / après un changement de pilote (`Core/Drivers/DriverImpact`, encadré sous la carte graphique) : chaque mesure note
+    `CaptureRecord.GpuDriver` (« 617.42 », depuis le 2026-10-07 ; WMI 32.0.16.1742) ; par jeu, médiane des FPS moyens sous le
+    pilote actuel contre le précédent, au MÊME réglage graphique ; baisse ≥ 5 % = signalée avec « Restaurer le pilote ».
+    Aperçu : ui-snapshots `-Only 3b` (avis et bilan d'exemple, en mémoire).
 - Nouveaux jeux Steam (`Core/Library/NewSteamGames`, `Platform/Library/SteamLibraryWatcher`, bandeau de « Mes jeux ») :
   FileSystemWatcher sur `steamapps\appmanifest_*.acf` de chaque bibliothèque, 3 s après la dernière écriture ; proposé si
   `StateFlags` a le bit 4 (entièrement installé ; 1026 = téléchargement en cours), sans profil et absent de

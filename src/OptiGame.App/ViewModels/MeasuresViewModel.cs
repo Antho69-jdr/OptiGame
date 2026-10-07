@@ -26,13 +26,15 @@ public sealed partial class MeasuresViewModel : ObservableObject
     private readonly IDialogService _dialogs;
     private readonly TimeProvider _time;
     private readonly FileLog _log;
+    private readonly Core.Abstractions.IGpuInfoProvider _gpus;
     private readonly DispatcherTimer _countdown = new() { Interval = TimeSpan.FromSeconds(1) };
     private CancellationTokenSource? _cancellation;
     private DateTimeOffset _recordingStartsAt;
     private DateTimeOffset _recordingEndsAt;
 
     public MeasuresViewModel(CaptureStore store, PresentMonRunner runner, AppSettingsStore settings, ProfileStore profiles,
-        GameSessionManager sessions, IDialogService dialogs, TimeProvider time, FileLog log, AutoCapture autoCapture)
+        GameSessionManager sessions, IDialogService dialogs, TimeProvider time, FileLog log, AutoCapture autoCapture,
+        Core.Abstractions.IGpuInfoProvider gpus)
     {
         // Mesure automatique terminée (pendant une partie) : ajoutée à la liste tout de suite, sélection gardée.
         autoCapture.CaptureAdded += (_, _) => OnUi(() => RefreshCaptures(keepSelection: true));
@@ -46,6 +48,7 @@ public sealed partial class MeasuresViewModel : ObservableObject
         _dialogs = dialogs;
         _time = time;
         _log = log;
+        _gpus = gpus;
         _countdown.Tick += (_, _) => UpdateCountdown();
 
         // PresentMon : chemin configuré, sinon celui du dossier des outils d'OptiGame (mémorisé).
@@ -292,7 +295,16 @@ public sealed partial class MeasuresViewModel : ObservableObject
             : null;
         var preset = Platform.InGame.InGameSettingsReader.PresetForCapture(_profiles.GetAll()
             .FirstOrDefault(p => Path.GetFileName(p.ExePath).Equals(request.ProcessName, StringComparison.OrdinalIgnoreCase)));
-        return Platform.Measurement.CaptureReader.Build(request, label, csvName, capturedAt, presentMonOutput, activeProfile, preset: preset);
+        var record = Platform.Measurement.CaptureReader.Build(request, label, csvName, capturedAt, presentMonOutput, activeProfile, preset: preset);
+        try
+        {
+            record.GpuDriver = Core.Drivers.DriverImpacts.CurrentDriver(_gpus.GetAdapters()); // avant / après un changement de pilote
+        }
+        catch (Exception ex) when (ex is System.Management.ManagementException or UnauthorizedAccessException or InvalidOperationException)
+        {
+            _log.Warn($"Version du pilote graphique illisible pour la mesure : {ex.Message}");
+        }
+        return record;
     }
 
     /// <summary>

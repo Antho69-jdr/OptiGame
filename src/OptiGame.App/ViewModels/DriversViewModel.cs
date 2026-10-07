@@ -30,7 +30,9 @@ public sealed partial class DriversViewModel(
     IPrivilegedOperations privileged,
     IDialogService dialogs,
     FileLog log,
-    TimeProvider time) : ObservableObject
+    TimeProvider time,
+    Core.Profiles.ProfileStore profiles,
+    Core.Measurement.CaptureStore captures) : ObservableObject
 {
     private bool _searchedOnce;
     private CancellationTokenSource? _download;
@@ -106,7 +108,22 @@ public sealed partial class DriversViewModel(
             {
                 var status = await nvidia.CheckAsync(gpu);
                 nvidiaLatest ??= status.Latest?.Version;
-                found.Add(new GpuDriverItemViewModel(status, gpu.DriverDate));
+                var item = new GpuDriverItemViewModel(status, gpu.DriverDate);
+                // Avant / après le dernier changement de pilote, avec les mesures de Mes jeux.
+                if (DriverImpacts.DriverLabel(gpu) is { } current)
+                {
+                    var names = profiles.GetAll().GroupBy(p => Path.GetFileName(p.ExePath), StringComparer.OrdinalIgnoreCase)
+                        .ToDictionary(g => g.Key, g => g.First().Name, StringComparer.OrdinalIgnoreCase);
+                    item.Impact = DriverImpacts.Compare(captures.GetAll(), current, exe => names.GetValueOrDefault(exe));
+                }
+                // Avis sur la mise à jour : problèmes encore ouverts (PDF des notes de version) croisés avec les jeux de Mes jeux.
+                if (status is { State: DriverState.UpdateAvailable, Latest: { } latest })
+                {
+                    var openIssues = await nvidia.OpenIssuesAsync(latest);
+                    item.Confidence = DriverConfidences.Evaluate(latest, openIssues, profiles.GetAll().Select(p => p.Name).ToList(),
+                        DateOnly.FromDateTime(time.GetLocalNow().DateTime));
+                }
+                found.Add(item);
             }
             Gpus.Clear();
             foreach (var item in found) Gpus.Add(item);
@@ -484,6 +501,40 @@ public abstract partial class InstallableDriverViewModel : ObservableObject
 
     /// <summary>« Carte graphique, Mise à jour disponible » (lecteurs d'écran).</summary>
     public string AccessibleName => $"{Name}, {StateLabel}";
+
+    /// <summary>Avis sur la mise à jour disponible (notes de version de NVIDIA croisées avec Mes jeux) ; null = pas d'avis.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasConfidence), nameof(ConfidenceHeadline), nameof(ConfidenceReasons), nameof(ConfidenceLevel))]
+    private DriverConfidence? _confidence;
+
+    public bool HasConfidence => Confidence is not null;
+
+    public string ConfidenceHeadline => Confidence?.Headline ?? "";
+
+    public IReadOnlyList<string> ConfidenceReasons => Confidence?.Reasons ?? [];
+
+    /// <summary>Niveau de l'avis, pour la couleur de l'encadré.</summary>
+    public ConfidenceLevel ConfidenceLevel => Confidence?.Level ?? Core.Drivers.ConfidenceLevel.Unknown;
+
+    /// <summary>Effet du dernier changement de pilote sur vos jeux, d'après vos mesures ; null = pas assez de mesures.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasImpact), nameof(ImpactHeadline), nameof(ImpactLines), nameof(HasRegression))]
+    private DriverImpactReport? _impact;
+
+    public bool HasImpact => Impact is not null;
+
+    public bool HasRegression => Impact?.HasRegression == true;
+
+    public string ImpactHeadline => Impact is { } i ? $"Vos mesures depuis le passage du pilote {i.PreviousDriver} au {i.CurrentDriver} :" : "";
+
+    public IReadOnlyList<string> ImpactLines => Impact is not { } i ? [] :
+    [
+        .. i.Games.Select(DriverImpacts.Describe),
+        .. i.HasRegression
+            ? new[] { "Un jeu a perdu des FPS (une mise à jour du jeu peut aussi en être la cause). Pour revenir au pilote précédent : " +
+                      "Gestionnaire de périphériques › Cartes graphiques › Propriétés › Pilote › « Restaurer le pilote »." }
+            : [],
+    ];
 }
 
 public sealed partial class GpuDriverItemViewModel(GpuDriverStatus status, DateTime? installedDate) : InstallableDriverViewModel

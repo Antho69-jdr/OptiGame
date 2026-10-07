@@ -18,6 +18,14 @@ public static class FrenchText
     public static string Count(int count, string singular, string plural) =>
         $"{count}{NoBreakSpace}{(Math.Abs(count) < 2 ? singular : plural)}";
 
+    /// <summary>« A », « A et B », « A, B et C ».</summary>
+    public static string Join(IReadOnlyList<string> items) => items.Count switch
+    {
+        0 => "",
+        1 => items[0],
+        _ => $"{string.Join(", ", items.Take(items.Count - 1))} et {items[^1]}",
+    };
+
     /// <summary>Le mot seul, accordé : Agree(3, "appliquée", "appliquées") = « appliquées ».</summary>
     public static string Agree(int count, string singular, string plural) => Math.Abs(count) < 2 ? singular : plural;
 

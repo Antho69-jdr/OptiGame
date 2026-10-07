@@ -13,7 +13,7 @@ namespace OptiGame.Platform.Measurement;
 /// automatiques de chaque jeu sont gardées. Désactivable dans les paramètres ; sans PresentMon, rien n'est fait.
 /// </summary>
 public sealed class AutoCapture(GameSessionManager sessions, CaptureStore store, PresentMonRunner runner, AppSettingsStore settings, ProfileStore profiles,
-    Gpu.NvidiaSmiProvider nvidia,
+    Gpu.NvidiaSmiProvider nvidia, Core.Abstractions.IGpuInfoProvider gpus,
     FileLog log, TimeProvider time)
 {
     public const int DelaySeconds = 240;
@@ -79,6 +79,7 @@ public sealed class AutoCapture(GameSessionManager sessions, CaptureStore store,
             var record = CaptureReader.Build(request, "Automatique", csvName, now.AddSeconds(DelaySeconds), output, session.Profile.Name, automatic: true, preset);
             record.GpuHealth = await gpu;
             record.Background = await background;
+            record.GpuDriver = CurrentDriver();
             store.Add(record);
             log.Info($"Mesure automatique de « {session.Profile.Name} » : {record.Stats.AverageFps:0} FPS moyens, 1 % low {record.Stats.OnePercentLowFps:0} ({record.Stats.FrameCount} images).");
             if (record.GpuHealth is { } health) log.Info(Core.Rating.GameRatings.GpuHealthText(health));
@@ -149,6 +150,20 @@ public sealed class AutoCapture(GameSessionManager sessions, CaptureStore store,
         catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException)
         {
             log.Warn($"Relevé des programmes en arrière-plan impossible pendant la mesure de « {game.Name} » : {ex.Message}");
+            return null;
+        }
+    }
+
+    /// <summary>Version du pilote graphique au moment de la mesure (WMI) ; null si illisible (jamais d'exception).</summary>
+    private string? CurrentDriver()
+    {
+        try
+        {
+            return Core.Drivers.DriverImpacts.CurrentDriver(gpus.GetAdapters());
+        }
+        catch (Exception ex) when (ex is System.Management.ManagementException or UnauthorizedAccessException or InvalidOperationException)
+        {
+            log.Warn($"Version du pilote graphique illisible pour la mesure : {ex.Message}");
             return null;
         }
     }

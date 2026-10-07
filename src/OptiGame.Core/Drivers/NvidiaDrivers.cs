@@ -4,9 +4,12 @@ using System.Xml.Linq;
 
 namespace OptiGame.Core.Drivers;
 
-/// <summary>Dernier pilote NVIDIA publié pour une carte (service de recherche de pilotes de nvidia.com).</summary>
+/// <summary>
+/// Dernier pilote NVIDIA publié pour une carte (service de recherche de pilotes de nvidia.com). <paramref name="GameReadyTitle"/>,
+/// <paramref name="FixedIssues"/>, <paramref name="ReleaseNotesPdf"/> : tirés des notes de version (<see cref="NvidiaReleaseNotes"/>).
+/// </summary>
 public sealed record NvidiaDriver(string Name, string Version, DateOnly? ReleaseDate, Uri DownloadUrl, string? SizeText, Uri? DetailsUrl,
-    IReadOnlyList<string> SupportedSeries);
+    IReadOnlyList<string> SupportedSeries, string? GameReadyTitle = null, IReadOnlyList<string>? FixedIssues = null, Uri? ReleaseNotesPdf = null);
 
 /// <summary>
 /// Pilotes NVIDIA. Services non documentés : formats vérifiés sur de vraies réponses le 2026-09-30 (copies dans les
@@ -97,7 +100,10 @@ public static class NvidiaDrivers
             : [];
 
         return new NvidiaDriver(Unescape(Text(info, "Name")) ?? "Pilote NVIDIA", version, released, download,
-            Text(info, "DownloadURLFileSize"), details, series);
+            Text(info, "DownloadURLFileSize"), details, series,
+            Unescape(Text(info, "ReleaseNotes")) is { } notes ? NvidiaReleaseNotes.GameReadyTitle(notes) : null,
+            Unescape(Text(info, "ReleaseNotes")) is { } fixes ? NvidiaReleaseNotes.FixedIssues(fixes) : null,
+            Unescape(Text(info, "OtherNotes")) is { } other ? NvidiaReleaseNotes.PdfUri(other) : null);
     }
 
     private static string? Text(JsonElement element, string property) =>

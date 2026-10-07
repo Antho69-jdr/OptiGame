@@ -146,6 +146,35 @@ if (args.Length == 1 && args[0] == "--steam-playtime")
     return;
 }
 
+// --nvidia-release-notes <version>… [--excerpt <dossier>] : problèmes encore ouverts lus dans le PDF des notes de version de
+// NVIDIA, et avis de confiance pour les jeux de « Mes jeux » (lecture seule). --excerpt : texte de la section seule, pour les tests.
+if (args.Length >= 2 && args[0] == "--nvidia-release-notes")
+{
+    var excerptDir = Array.IndexOf(args, "--excerpt") is var e and >= 0 && e + 1 < args.Length ? args[e + 1] : null;
+    var profiles = new OptiGame.Core.Profiles.ProfileStore(
+        new JsonStateStore<OptiGame.Core.Profiles.ProfilesDocument>(AppPaths.Default.Profiles));
+    var games = profiles.GetAll().Select(p => p.Name).ToList();
+    using var http = new System.Net.Http.HttpClient();
+    foreach (var version in args.Skip(1).TakeWhile(a => a != "--excerpt"))
+    {
+        var url = new Uri($"https://us.download.nvidia.com/Windows/{version}/{version}-win11-win10-release-notes.pdf");
+        var text = OptiGame.Core.Drivers.PdfText.Extract(await http.GetByteArrayAsync(url));
+        var issues = OptiGame.Core.Drivers.NvidiaReleaseNotes.OpenIssues(text, version);
+        Console.WriteLine($"{version} : {(issues is null ? "section introuvable" : $"{issues.Count} problème(s) ouvert(s)")}");
+        foreach (var issue in issues ?? []) Console.WriteLine($"  > {issue}");
+        var driver = new OptiGame.Core.Drivers.NvidiaDriver("GeForce Game Ready Driver", version, null, url, null, null, []);
+        var confidence = OptiGame.Core.Drivers.DriverConfidences.Evaluate(driver, issues, games, DateOnly.FromDateTime(DateTime.Today));
+        Console.WriteLine($"  Avis pour vos {games.Count} jeux : {confidence.Headline}");
+        if (excerptDir is not null)
+        {
+            var start = text.LastIndexOf($"Open Issues in Version {version}", StringComparison.Ordinal);
+            var end = text.IndexOf("Issues Not Caused by NVIDIA Drivers", start, StringComparison.Ordinal);
+            File.WriteAllText(Path.Combine(excerptDir, $"nvidia-open-issues-{version}.txt"), text[start..(end + 35)]);
+        }
+    }
+    return;
+}
+
 // --background [secondes] : programmes qui prennent du processeur, comme pendant la mesure automatique (deux relevés, lecture seule).
 if (args.Length >= 1 && args[0] == "--background")
 {

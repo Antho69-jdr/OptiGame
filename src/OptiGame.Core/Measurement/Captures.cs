@@ -71,6 +71,9 @@ public sealed class CaptureRecord
 
     /// <summary>Programmes qui ont pris du processeur pendant une mesure automatique (<see cref="BackgroundLoad"/>) ; null = non relevé.</summary>
     public List<BackgroundProgram>? Background { get; set; }
+
+    /// <summary>Version du pilote graphique pendant la capture (« 617.42 » ; null = capture antérieure au 2026-10-07).</summary>
+    public string? GpuDriver { get; set; }
 }
 
 public sealed class CapturesDocument

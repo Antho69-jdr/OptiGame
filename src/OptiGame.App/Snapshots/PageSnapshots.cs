@@ -155,6 +155,25 @@ internal static class PageSnapshots
                 ("5e-parametres-mises-a-jour", async () => { main.Settings.SelectedTab = SettingsTab.Updates; main.Navigate(main.Settings); await Settle(800); }),
                 ("5f-parametres-donnees", async () => { main.Settings.SelectedTab = SettingsTab.Data; main.Navigate(main.Settings); await Settle(800); }),
             };
+            // Avis de confiance d'exemple sur la carte graphique (en mémoire : la vraie recherche peut trouver le pilote à jour).
+            pages.Add(("3b-pilotes-avis", async () =>
+            {
+                var drivers = (DriversViewModel)main.NavItems[2].Page;
+                main.Navigate(drivers);
+                await WaitUntil(() => !drivers.IsSearching, 90_000);
+                if (drivers.Gpus.FirstOrDefault() is { } gpu)
+                {
+                    var sample = new Core.Drivers.NvidiaDriver("GeForce Game Ready Driver", "617.14", new DateOnly(2026, 10, 6),
+                        new Uri("https://us.download.nvidia.com/x.exe"), null, null, [], "CONTROL Resonant & AION 2",
+                        ["Portal 2 may crash when loading a save"]);
+                    gpu.Confidence = Core.Drivers.DriverConfidences.Evaluate(sample,
+                        ["PUBG: BATTLEGROUNDS may stutter after extended gameplay", "\"Prefer Maximum Performance\" may not be applied correctly"],
+                        ["PUBG: BATTLEGROUNDS", "Portal 2"], new DateOnly(2026, 10, 7));
+                    gpu.Impact = new Core.Drivers.DriverImpactReport("616.56", "617.42",
+                        [new("Overwatch", 162, 151, 3, 2), new("Void Crew", 118, 121, 2, 2)]);
+                }
+                await Settle(800);
+            }));
             // Coque avec alertes et badges d'exemple (rien n'est écrit : alertes en mémoire, compteurs remis ensuite par l'analyse).
             pages.Add(("8-coque-alertes", async () =>
             {

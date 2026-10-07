@@ -34,6 +34,40 @@
                                    Visibility="{Binding HasLatest, Converter={StaticResource BoolToVisibility}}" />
                     </StackPanel>
                 </Border>
+                <!-- Avis sur la mise à jour : notes de version de NVIDIA croisées avec Mes jeux (faits seulement) -->
+                <Border x:Name="ConfidenceBox" Margin="0,8,0,0" Padding="12,8" CornerRadius="{StaticResource Radius.Control}" Background="{StaticResource Brush.Control}"
+                        Visibility="{Binding HasConfidence, Converter={StaticResource BoolToVisibility}}">
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock x:Name="ConfidenceIcon" Margin="0,0,8,0" VerticalAlignment="Center" Style="{StaticResource Text.Icon}" Text="&#xE946;" />
+                            <TextBlock Style="{StaticResource Text.BodyStrong}" Text="{Binding ConfidenceHeadline}" />
+                        </StackPanel>
+                        <ItemsControl Margin="0,4,0,0" ItemsSource="{Binding ConfidenceReasons}" Focusable="False">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Margin="0,2,0,0" Style="{StaticResource Text.Secondary}" TextWrapping="Wrap" Text="{Binding StringFormat='• {0}'}" />
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </Border>
+                <!-- Avant / après le dernier changement de pilote, d'après les mesures de l'utilisateur -->
+                <Border x:Name="ImpactBox" Margin="0,8,0,0" Padding="12,8" CornerRadius="{StaticResource Radius.Control}" Background="{StaticResource Brush.Control}"
+                        Visibility="{Binding HasImpact, Converter={StaticResource BoolToVisibility}}">
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock x:Name="ImpactIcon" Margin="0,0,8,0" VerticalAlignment="Center" Style="{StaticResource Text.Icon}" Text="&#xE9D9;" />
+                            <TextBlock Style="{StaticResource Text.BodyStrong}" Text="{Binding ImpactHeadline}" TextWrapping="Wrap" />
+                        </StackPanel>
+                        <ItemsControl Margin="0,4,0,0" ItemsSource="{Binding ImpactLines}" Focusable="False">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Margin="0,2,0,0" Style="{StaticResource Text.Secondary}" TextWrapping="Wrap" Text="{Binding StringFormat='• {0}'}" />
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </Border>
                 <WrapPanel Margin="0,4,0,0">
                     <!-- Installation : confirmation (non annulable par OptiGame), téléchargement officiel, signature vérifiée -->
                     <controls:IconButton Margin="0,8,8,0" Style="{StaticResource Button.Primary}" Glyph="&#xE896;" Label="{Binding InstallLabel}"
@@ -60,6 +94,25 @@
                 <DataTrigger Binding="{Binding IsUpToDate}" Value="True">
                     <Setter TargetName="StateBadge" Property="Style" Value="{StaticResource Badge.Success}" />
                     <Setter TargetName="StateIcon" Property="Text" Value="&#xE73E;" />
+                </DataTrigger>
+                <!-- Avis : vert = conseillée, jaune = prudence ; icône + mot, jamais la couleur seule -->
+                <DataTrigger Binding="{Binding ConfidenceLevel}" Value="Recommended">
+                    <Setter TargetName="ConfidenceBox" Property="Background" Value="{StaticResource Brush.OkSoft}" />
+                    <Setter TargetName="ConfidenceIcon" Property="Text" Value="&#xE73E;" />
+                    <Setter TargetName="ConfidenceIcon" Property="Foreground" Value="{StaticResource Brush.Ok}" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding ConfidenceLevel}" Value="NoKnownIssue">
+                    <Setter TargetName="ConfidenceIcon" Property="Text" Value="&#xE73E;" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding HasRegression}" Value="True">
+                    <Setter TargetName="ImpactBox" Property="Background" Value="{StaticResource Brush.WarningSoft}" />
+                    <Setter TargetName="ImpactIcon" Property="Text" Value="&#xE7BA;" />
+                    <Setter TargetName="ImpactIcon" Property="Foreground" Value="{StaticResource Brush.Warning}" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding ConfidenceLevel}" Value="Caution">
+                    <Setter TargetName="ConfidenceBox" Property="Background" Value="{StaticResource Brush.WarningSoft}" />
+                    <Setter TargetName="ConfidenceIcon" Property="Text" Value="&#xE7BA;" />
+                    <Setter TargetName="ConfidenceIcon" Property="Foreground" Value="{StaticResource Brush.Warning}" />
                 </DataTrigger>
             </DataTemplate.Triggers>
         </DataTemplate>
