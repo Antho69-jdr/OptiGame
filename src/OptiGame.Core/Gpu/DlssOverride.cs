@@ -6,8 +6,8 @@ namespace OptiGame.Core.Gpu;
 
 /// <summary>
 /// Modèle DLSS le plus récent imposé par le pilote NVIDIA pour un jeu, dans le
-/// profil du pilote du jeu : les fichiers du jeu ne sont PAS modifiés (remplacer nvngx_dlss.dll dans le dossier du jeu
-/// nvngx_dlss.dll et peut être signalé par un anti-triche). Réglages officiels (NvApiDriverSettings.h, lu le 2026-10-07, présents
+/// profil du pilote du jeu : les fichiers du jeu ne sont PAS modifiés (remplacer nvngx_dlss.dll dans le dossier du jeu peut être
+/// signalé par un anti-triche). Réglages officiels (NvApiDriverSettings.h, lu le 2026-10-07, présents
 /// dans le pilote 617.42 de la machine de dev) : NGX_DLSS_SR_OVERRIDE 0x10E41E01 (1 = activé) et
 /// NGX_DLSS_SR_OVERRIDE_RENDER_PRESET_SELECTION 0x10E41DF3 (0x00FFFFFF = RENDER_PRESET_Latest). Effet seulement si le DLSS est
 /// activé dans le jeu.

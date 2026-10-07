@@ -55,6 +55,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<DisplayService>();
         services.AddSingleton<ISettingAccessor>(sp => sp.GetRequiredService<DisplayService>());
         services.AddSingleton<IDisplayInfoProvider>(sp => sp.GetRequiredService<DisplayService>());
+        services.AddSingleton<IDisplayLinkInfo, DisplayLinkReader>();
 
         services.AddSingleton<IPowerStatusProvider, PowerStatusProvider>();
         services.AddSingleton<IMemoryInfoProvider, WmiMemoryInfoProvider>();
@@ -115,6 +116,7 @@ public static class ServiceCollectionExtensions
 
         // Contrôles du diagnostic, dans l'ordre d'affichage.
         services.AddSingleton<IDiagnosticCheck, DisplayRefreshRateCheck>();
+        services.AddSingleton<IDiagnosticCheck, DisplayLinkCheck>();
         services.AddSingleton<IDiagnosticCheck, RamSpeedCheck>();
         services.AddSingleton<IDiagnosticCheck, MemoryChannelCheck>();
         services.AddSingleton<IDiagnosticCheck, GpuDriverAgeCheck>();

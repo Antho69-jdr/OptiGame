@@ -86,7 +86,7 @@ public sealed class DisplayService : IDisplayInfoProvider, ISettingAccessor
         }
     }
 
-    private static IEnumerable<DevMode> EnumerateModes(string deviceName)
+    internal static IEnumerable<DevMode> EnumerateModes(string deviceName)
     {
         for (var i = 0; ; i++)
         {

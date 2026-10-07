@@ -220,6 +220,16 @@ vit dans Core ; Platform ne fait que lire/écrire le système.
   `ms-settings:display-advancedgraphics`. Seule GpuPreference (0/1/2, documentée) est écrite, et seulement sur les PC à
   plusieurs cartes. Carte « Graphismes (Windows) » : `Core/Settings/GameGraphics` + `App/Services/GameGraphicsService`,
   journal fixes.json (annulable), état relu, jamais stocké.
+- Branchement des écrans (contrôle `DisplayLinkCheck` du Diagnostic, conseil matériel sans correction ; `Core/Display/Edid`,
+  `Platform/Display/DisplayLinkReader`) : QueryDisplayConfig + GET_SOURCE_NAME (« \\.\DISPLAY6 ») + GET_TARGET_NAME (connexion
+  = outputTechnology : 5 HDMI, 10 DisplayPort, 18 USB-C ; chemin « \\?\DISPLAY#SAM711A#<instance>#{…} » → EDID dans
+  HKLM\SYSTEM\CurrentControlSet\Enum\DISPLAY\<modèle>\<instance>\Device Parameters, lisible sans admin). EDID : modes
+  détaillés du bloc de base (1er = natif), de CTA-861 (0x02) et de DisplayID (0x70, blocs 0x03 / 0x22). La PLAGE de l'EDID
+  n'est PAS utilisée (BenQ GW2470 : 76 Hz annoncés, écran 60 Hz). Vérifié le 2026-10-07 : Samsung LC34G55T 165 Hz à
+  3440×1440 SEULEMENT dans DisplayID (100 Hz dans le bloc de base), BenQ 60 Hz, Acer KG241Q 143,85 Hz ; EDID réels (séries
+  effacées) dans les tests. Signalé : fréquence native de l'EDID > modes de Windows à cette résolution + 5 Hz (câble, port
+  HDMI 1.4, adaptateur ; modes en portrait = dimensions inversées) ; PC de bureau, écran PRINCIPAL sur la carte intégrée
+  alors qu'une carte dédiée existe (jamais sur portable ni pour un écran secondaire).
 - HDR des écrans : `DisplayConfigGetDeviceInfo(GET_ADVANCED_COLOR_INFO)`, bit 2 = couleur étendue SDR imposée, PAS du HDR
   (BenQ = 0x5, Samsung en HDR = 0x3). En PowerShell, le passage des structures échoue (code 31) : tester en C#.
 - VBS/HVCI : WMI `root\Microsoft\Windows\DeviceGuard` / `Win32_DeviceGuard` ; désactivation avancée via

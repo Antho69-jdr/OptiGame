@@ -125,3 +125,28 @@ public interface INvidiaInfoProvider
 {
     IReadOnlyList<Gpu.NvidiaGpuMemory>? GetMemory();
 }
+
+/// <summary>Type de connexion d'un écran (DISPLAYCONFIG_VIDEO_OUTPUT_TECHNOLOGY).</summary>
+public enum DisplayConnection
+{
+    Other,
+    Vga,
+    Dvi,
+    Hdmi,
+    DisplayPort,
+    UsbC,
+    Internal,
+    Wireless,
+}
+
+/// <summary>
+/// Liaison d'un écran actif : carte qui l'affiche, connexion, EDID (null = illisible) et fréquence la plus haute que Windows
+/// propose à la résolution native annoncée par l'EDID (null = inconnue).
+/// </summary>
+public sealed record DisplayLink(string DeviceName, string MonitorName, string GpuName, DisplayConnection Connection, byte[]? Edid,
+    int? WindowsMaxHzAtNative, bool IsPrimary = false);
+
+public interface IDisplayLinkInfo
+{
+    IReadOnlyList<DisplayLink> GetLinks();
+}
