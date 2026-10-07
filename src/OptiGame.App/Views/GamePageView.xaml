@@ -54,29 +54,35 @@
             </DockPanel>
         </Border>
 
-        <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <ScrollViewer x:Name="PageScroll" VerticalScrollBarVisibility="Auto">
             <StackPanel>
-                <!-- Fil d'Ariane (hors de l'image) -->
-                <StackPanel Margin="28,16,32,0" Orientation="Horizontal">
-                    <Button Style="{StaticResource Button.Ghost}" Padding="6,2" MinHeight="28" Content="Mes jeux" Command="{Binding BackCommand}"
-                            AutomationProperties.Name="Revenir à Mes jeux" ToolTip="Revenir à Mes jeux (Échap)" />
-                    <TextBlock Margin="2,0,8,0" Style="{StaticResource Text.Icon}" FontSize="{StaticResource IconSize.Small}"
-                               Foreground="{StaticResource Brush.TextMuted}" Text="&#xE76C;" />
-                    <TextBlock VerticalAlignment="Center" Style="{StaticResource Text.Secondary}" Text="{Binding Name}" TextTrimming="CharacterEllipsis"
-                               TextWrapping="NoWrap" />
-                </StackPanel>
-
-                <!-- Bannière : hauteur donnée par son contenu (rien n'est rogné en fenêtre étroite) -->
-                <Grid Margin="0,8,0,0">
+                <!-- Bannière en plein cadre, fil d'Ariane compris : 55 % de la hauteur visible (360 à 560), ou la hauteur de son
+                     contenu s'il est plus grand (rien n'est rogné en fenêtre étroite). Image nette à droite, voilée à gauche sous le
+                     texte (colonne limitée à 400 : voir Brush.BannerFadeSide). -->
+                <Grid MinHeight="{Binding ViewportHeight, ElementName=PageScroll, Converter={StaticResource HeightFraction}, ConverterParameter='0.55,360,560'}">
                     <Border Background="{StaticResource Brush.BannerPlaceholder}" />
                     <Border>
                         <Border.Background>
                             <ImageBrush Stretch="UniformToFill" AlignmentY="Top" ImageSource="{Binding HeroImage, IsAsync=True}" />
                         </Border.Background>
                     </Border>
-                    <Border Background="{StaticResource Brush.BannerFade}" />
+                    <Border Background="{StaticResource Brush.BannerFadeSide}" OpacityMask="{StaticResource Brush.BannerFadeSideMask}" />
+                    <Border Background="{StaticResource Brush.BannerFadeBottom}" />
 
-                    <DockPanel Margin="32,56,32,24">
+                    <!-- Fil d'Ariane, sur une pastille (le haut de l'image est peu voilé) -->
+                    <Border Margin="26,14,32,0" Padding="2,2,10,2" HorizontalAlignment="Left" VerticalAlignment="Top"
+                            CornerRadius="{StaticResource Radius.Control}" Background="{StaticResource Brush.ScrimStrong}">
+                    <StackPanel Orientation="Horizontal">
+                        <Button Style="{StaticResource Button.Ghost}" Padding="6,2" MinHeight="28" Content="Mes jeux" Command="{Binding BackCommand}"
+                                AutomationProperties.Name="Revenir à Mes jeux" ToolTip="Revenir à Mes jeux (Échap)" />
+                        <TextBlock Margin="2,0,8,0" Style="{StaticResource Text.Icon}" FontSize="{StaticResource IconSize.Small}"
+                                   Foreground="{StaticResource Brush.TextMuted}" Text="&#xE76C;" />
+                        <TextBlock MaxWidth="360" VerticalAlignment="Center" Style="{StaticResource Text.Secondary}" Text="{Binding Name}"
+                                   TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" />
+                    </StackPanel>
+                    </Border>
+
+                    <DockPanel Margin="32,72,32,32" VerticalAlignment="Bottom">
                         <Grid DockPanel.Dock="Left" Width="135" Height="180" Margin="0,0,24,0" VerticalAlignment="Bottom">
                             <Border CornerRadius="{DynamicResource Radius.Cover}" Background="{StaticResource Brush.CoverPlaceholder}">
                                 <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" Style="{StaticResource Text.PageTitle}"
@@ -90,7 +96,7 @@
                             </Border>
                         </Grid>
 
-                        <StackPanel VerticalAlignment="Bottom">
+                        <StackPanel MaxWidth="400" HorizontalAlignment="Left" VerticalAlignment="Bottom">
                             <Border Margin="{StaticResource Margin.StackS}" HorizontalAlignment="Left" Style="{StaticResource Badge.Success}"
                                     Visibility="{Binding IsPlaying, Converter={StaticResource BoolToVisibility}}">
                                 <StackPanel Orientation="Horizontal">

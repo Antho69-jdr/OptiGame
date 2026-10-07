@@ -37,8 +37,8 @@ Contrastes WCAG 2.x calculés sur les surfaces réelles (fonds « Soft » mélan
 | Information | `Brush.Info` / `Brush.InfoSoft` | #60CDFF | ≥ 7:1 |
 | Séries de graphe (avant / après) | `Brush.Series1` / `Brush.Series2` | #60CDFF / #FF9F43 | bleu / orange : lisibles par les daltoniens |
 | Focus clavier | `Brush.FocusRing` | #FFFFFF | ≥ 13:1 sur les surfaces |
-| Voiles sur image | `Brush.Scrim` / `ScrimStrong` / `ScrimLight` / `Overlay` / `OverlayBorder` | noir 80 % / 90 % / 60 %… | — |
-| Remplaçants d'image | `Brush.CoverPlaceholder` / `CoverPlaceholderMuted` / `BannerPlaceholder` / `BannerFade` / `DockPlaceholder` | dégradés | — |
+| Voiles sur image | `Brush.Scrim` / `ScrimStrong` / `ScrimLight` / `Overlay` / `OverlayBorder` ; bannière de la fiche : `BannerFadeSide` (+ `Mask`) / `BannerFadeBottom` | noir 80 % / 90 % / 60 %… ; voile ≥ 85 % sous le texte de la bannière | Text 10,8:1, TextSecondary 5,3:1 sur image blanche |
+| Remplaçants d'image | `Brush.CoverPlaceholder` / `CoverPlaceholderMuted` / `BannerPlaceholder` / `DockPlaceholder` | dégradés | — |
 | Dock | `Color.DockPlate`, `Brush.DockPlate`, `Brush.DockBorder`, `Color.Highlight` | — | — |
 | Bande du dock | `Brush.HitTestOnly` | #01000000 | alpha 1 VOLONTAIRE : reçoit la souris |
 
@@ -130,8 +130,13 @@ grille, flèches d'une jaquette à l'autre).
 
 ## Fiche du jeu
 
-- Fil d'Ariane « Mes jeux › Nom » (Échap / Alt+← reviennent à la grille, avec la garde des modifications).
-- Bannière à hauteur de son contenu (jamais rognée) : jaquette, nom (`Text.Hero`), temps de jeu ; **Jouer** (seule action
+- Fil d'Ariane « Mes jeux › Nom » (Échap / Alt+← reviennent à la grille, avec la garde des modifications), posé sur l'image
+  dans une pastille `Brush.ScrimStrong` (nom limité à 360).
+- Bannière en plein cadre (maquette C de `docs/audit-fonctionnalites-2026-10-07.md`, choisie le 2026-10-07, jaquette gardée) :
+  55 % de la hauteur visible, entre 360 et 560 (`HeightFractionConverter`), jamais moins que son contenu (jamais rognée).
+  Image nette à droite ; voile latéral en unités absolues (`Brush.BannerFadeSide`, ≥ 85 % sur 600 unités : la colonne de texte
+  est limitée à 400 à droite de la jaquette), allégé en haut sans texte (`Brush.BannerFadeSideMask`), fondu du bas vers la
+  fenêtre (`Brush.BannerFadeBottom`). Jaquette, nom (`Text.Hero`), temps de jeu ; **Jouer** (seule action
   principale) ou, pendant la partie, « Arrêter l'optimisation… » ; « Mesurer les FPS » ; menu « … » (Voir sur Steam,
   Épingler au dock si le dock est activé, Changer la jaquette…, Changer le fond…, Retirer de Mes jeux…). Fond : choisi, sinon bannière Steam
   locale, sinon illustration IGDB.
