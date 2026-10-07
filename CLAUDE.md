@@ -258,6 +258,21 @@ vit dans Core ; Platform ne fait que lire/écrire le système.
   l'annulation s'il est vide). Valeur NVIDIA prédéfinie = « non définie » (la retirer la rétablit). Lecture ET écriture sans
   admin (vérifié). `DiagDump -- --nvidia-profiles` (lecture) ; `--nvidia-selftest <exe INEXISTANT>` = journal → pilote →
   annulation sur un profil factice. Ne JAMAIS cliquer « Appliquer » sur l'instance de test : le pilote est celui du vrai PC.
+- Réglages du pilote NVIDIA, catalogue : `NvidiaProfiles.AvailableSettings` (NvAPI_DRS_EnumAvailableSettingIds 0xf020614a +
+  GetSettingNameFromId 0xd61cbe6e) et `AvailableValues` (EnumAvailableSettingValues 0x2ec39f90, NVDRS_SETTING_VALUES pack(4) =
+  414112 octets) ; `Knows(id)`. `DiagDump -- --nvidia-settings <mots>` (noms donnés par le pilote, valeurs admises, valeur
+  appliquée à chaque jeu). Pilote 617.42 : 130 réglages.
+- DLSS le plus récent par jeu (carte « DLSS (pilote NVIDIA) », onglet Optimisation ; `Core/Gpu/DlssOverride`,
+  `Platform/Gpu/DlssLibrary`, `App/Services/DlssOverrideService`) : réglages OFFICIELS de NvApiDriverSettings.h (lu le
+  2026-10-07) NGX_DLSS_SR_OVERRIDE 0x10E41E01 = 1 + NGX_DLSS_SR_OVERRIDE_RENDER_PRESET_SELECTION 0x10E41DF3 = 0x00FFFFFF
+  (RENDER_PRESET_Latest), dans le profil du pilote du jeu (même mécanisme que l'appli NVIDIA, fichiers du jeu intacts),
+  journal « game.dlss-latest.<profil> ». Écriture + annulation vérifiées sur exe FACTICE (`--nvidia-selftest`, profil créé
+  puis supprimé). Carte seulement si nvngx_dlss.dll est trouvée (`DlssOverride.SearchRoot` : dossier steamapps\common\<jeu>,
+  racine Unreal, sinon dossier de l'exe ; 10 niveaux) ou un remplacement existe : Overwatch 3.7.20, Void Crew 3.1.11, ARC
+  Raiders / PUBG (Engine\Plugins\…), Star Citizen (Bin64). Cible générique `KnownSettings.NvidiaSetting(exe, id)` (le plafond
+  de FPS garde le nom « 0x10835002 »). Écartés (principe 3) : « Power management mode » Performances maximales (effet sur les
+  FPS quasi nul), mode faible latence (Maximum pre-rendered frames : sans effet en DX12 / Vulkan, API du jeu inconnue).
+  DLSS Swapper (remplacement de la DLL) NON repris : fichiers du jeu modifiés, risque anti-triche.
 - Une valeur de registre absente se sauvegarde comme `Absent` et se restaure par **suppression**.
 - CSV réel de PresentMon 2.6.0 (`--v2_metrics`) : colonnes `FrameTime`, `CPUBusy`, `GPUTime`, `DisplayedTime`… SANS
   préfixe `Ms`, contrairement à sa documentation. Toujours valider un format sur un vrai fichier, et ne jamais

@@ -146,6 +146,39 @@ if (args.Length == 1 && args[0] == "--steam-playtime")
     return;
 }
 
+// --nvidia-settings [mot…] : réglages que le pilote NVIDIA installé connaît (identifiant + nom donné par le pilote), filtrés par
+// mots ; valeur appliquée à chaque jeu de Mes jeux pour les réglages trouvés (lecture seule).
+if (args.Length >= 1 && args[0] == "--nvidia-settings")
+{
+    var words = args.Skip(1).ToList();
+    var all = OptiGame.Platform.Gpu.NvidiaProfiles.AvailableSettings();
+    var found = all.Where(s => words.Count == 0 || words.Any(w => s.Name.Contains(w, StringComparison.OrdinalIgnoreCase))).ToList();
+    Console.WriteLine($"{all.Count} réglages connus du pilote ; {found.Count} retenus.");
+    var games = new OptiGame.Core.Profiles.ProfileStore(new JsonStateStore<OptiGame.Core.Profiles.ProfilesDocument>(AppPaths.Default.Profiles)).GetAll();
+    foreach (var (id, name) in found)
+    {
+        Console.WriteLine($"0x{id:X8}  {name}");
+        try
+        {
+            if (OptiGame.Platform.Gpu.NvidiaProfiles.AvailableValues(id) is { } admitted)
+            {
+                Console.WriteLine($"    défaut 0x{admitted.Default:X8} ; valeurs : {string.Join(", ", admitted.Values.Select(v => $"0x{v:X8}"))}");
+            }
+        }
+        catch (OptiGame.Platform.Gpu.NvidiaApiException ex) { Console.WriteLine($"    valeurs : {ex.Message}"); }
+        if (words.Count == 0) continue;
+        foreach (var game in games)
+        {
+            var value = OptiGame.Platform.Gpu.NvidiaProfiles.Read(game.ExePath, id);
+            if (value.Value is not null || value.EffectiveValue is not null)
+            {
+                Console.WriteLine($"    {game.Name} : propre au profil = {(value.Value is { } v ? $"0x{v:X8}" : "—")}, appliqué = {(value.EffectiveValue is { } e ? $"0x{e:X8}" : "défaut")}");
+            }
+        }
+    }
+    return;
+}
+
 // --nvidia-release-notes <version>… [--excerpt <dossier>] : problèmes encore ouverts lus dans le PDF des notes de version de
 // NVIDIA, et avis de confiance pour les jeux de « Mes jeux » (lecture seule). --excerpt : texte de la section seule, pour les tests.
 if (args.Length >= 2 && args[0] == "--nvidia-release-notes")
@@ -491,6 +524,20 @@ if (args.Length == 2 && args[0] == "--nvidia-selftest")
         Console.WriteLine($"réappliqué : {Show()}");
         var report = journal.Undo(OptiGame.Core.Gpu.FrameRateCap.ChangeId(id));
         Console.WriteLine($"annulé     : {Show()} (succès : {report.Success})");
+
+        // DLSS le plus récent : deux réglages dans le même profil, puis annulation (profil factice supprimé s'il est vide).
+        string ShowDlss()
+        {
+            var o = OptiGame.Platform.Gpu.NvidiaProfiles.Read(exe, OptiGame.Core.Gpu.DlssOverride.OverrideId);
+            var p = OptiGame.Platform.Gpu.NvidiaProfiles.Read(exe, OptiGame.Core.Gpu.DlssOverride.PresetId);
+            return $"profil={o.ProfileName ?? "(aucun)"} remplacement={o.Value?.ToString() ?? "-"} préréglage={(p.Value is { } v ? $"0x{v:X}" : "-")} " +
+                   $"→ {OptiGame.Core.Gpu.DlssOverride.Describe(o.EffectiveValue, p.EffectiveValue)}";
+        }
+        Console.WriteLine($"DLSS avant   : {ShowDlss()}");
+        journal.Apply(OptiGame.Core.Gpu.DlssOverride.Change(id, "test", exe, null, "test"));
+        Console.WriteLine($"DLSS imposé  : {ShowDlss()}");
+        var dlssReport = journal.Undo(OptiGame.Core.Gpu.DlssOverride.ChangeId(id));
+        Console.WriteLine($"DLSS annulé  : {ShowDlss()} (succès : {dlssReport.Success})");
         File.Delete(journalFile);
     }
     catch (OptiGame.Platform.Gpu.NvidiaApiException ex)

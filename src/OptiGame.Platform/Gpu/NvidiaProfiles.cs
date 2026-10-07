@@ -57,6 +57,21 @@ public static class NvidiaProfiles
     /// <summary>Le pilote NVIDIA (nvapi64.dll) est-il présent ?</summary>
     public static bool IsAvailable => Api.Instance is not null;
 
+    private static readonly Lazy<HashSet<uint>> KnownIds = new(() =>
+    {
+        try
+        {
+            return [.. AvailableSettings().Select(s => s.Id)];
+        }
+        catch (NvidiaApiException)
+        {
+            return [];
+        }
+    });
+
+    /// <summary>Ce pilote connaît-il ce réglage ? (Les remplacements DLSS n'existent pas dans les pilotes anciens.)</summary>
+    public static bool Knows(uint settingId) => KnownIds.Value.Contains(settingId);
+
     /// <summary>Lecture d'un réglage pour un jeu (sans droits administrateur).</summary>
     public static NvidiaProfileSetting Read(string exePath, uint settingId)
     {
@@ -68,6 +83,58 @@ public static class NvidiaProfiles
         var setting = GetSetting(session, profile, settingId);
         uint? own = setting is { Location: CurrentProfileLocation, IsPredefined: false } ? setting.Value : null;
         return new NvidiaProfileSetting(name, predefined, own, setting?.Value ?? globalValue);
+    }
+
+    /// <summary>
+    /// Réglages que CE pilote connaît, avec leur nom (NvAPI_DRS_EnumAvailableSettingIds + GetSettingNameFromId) : pour relever
+    /// sur le vrai pilote les identifiants absents des en-têtes publics (DLSS…). Lecture seule.
+    /// </summary>
+    public static IReadOnlyList<(uint Id, string Name)> AvailableSettings()
+    {
+        var api = Api.Instance ?? throw new NvidiaApiException("Pilote NVIDIA introuvable (nvapi64.dll).", -2);
+        var count = 16384u;
+        var ids = new uint[count];
+        Check(api.EnumAvailableSettingIds(ids, ref count), "EnumAvailableSettingIds");
+        var result = new List<(uint, string)>((int)count);
+        var name = new ushort[UnicodeChars];
+        for (var i = 0; i < count; i++)
+        {
+            Array.Clear(name);
+            var text = api.GetSettingNameFromId(ids[i], name) == Ok
+                ? new string(Array.ConvertAll(name, c => (char)c)).TrimEnd('\0').Split('\0')[0]
+                : "";
+            result.Add((ids[i], text));
+        }
+        return result;
+    }
+
+    // NVDRS_SETTING_VALUES (pack(4)) : version, numSettingValues, settingType, union défaut (4100 = NVDRS_BINARY_SETTING),
+    // puis settingValues[NVAPI_SETTING_MAX_VALUES = 100] de 4100 octets chacun.
+    private const int ValuesUnionSize = 4100;
+    private const int ValuesMax = 100;
+    private const int ValuesSize = 12 + ValuesUnionSize + ValuesMax * ValuesUnionSize; // 414112
+    private const uint ValuesVersion = ValuesSize | (1u << 16);
+
+    /// <summary>Valeurs admises par le pilote pour un réglage DWORD, et sa valeur par défaut ; null si ce n'est pas un DWORD.</summary>
+    public static (uint Default, IReadOnlyList<uint> Values)? AvailableValues(uint settingId)
+    {
+        var api = Api.Instance ?? throw new NvidiaApiException("Pilote NVIDIA introuvable (nvapi64.dll).", -2);
+        var buffer = Marshal.AllocHGlobal(ValuesSize);
+        try
+        {
+            Clear(buffer, ValuesSize);
+            Marshal.WriteInt32(buffer, 0, unchecked((int)ValuesVersion));
+            var max = (uint)ValuesMax;
+            Check(api.EnumAvailableSettingValues(settingId, ref max, buffer), "EnumAvailableSettingValues");
+            if (Marshal.ReadInt32(buffer, 8) != DwordType) return null;
+            var count = Math.Min(Math.Min((int)max, Marshal.ReadInt32(buffer, 4)), ValuesMax);
+            var values = Enumerable.Range(0, count).Select(i => unchecked((uint)Marshal.ReadInt32(buffer, 12 + ValuesUnionSize + i * ValuesUnionSize))).ToList();
+            return (unchecked((uint)Marshal.ReadInt32(buffer, 12)), values);
+        }
+        finally
+        {
+            Marshal.FreeHGlobal(buffer);
+        }
     }
 
     /// <summary>
@@ -280,6 +347,9 @@ public static class NvidiaProfiles
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)] public delegate int ProfileFn(IntPtr session, IntPtr profile);
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)] public delegate int GetSettingFn(IntPtr session, IntPtr profile, uint settingId, IntPtr setting);
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)] public delegate int DeleteSettingFn(IntPtr session, IntPtr profile, uint settingId);
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)] public delegate int EnumSettingIdsFn([MarshalAs(UnmanagedType.LPArray)] uint[] ids, ref uint maxCount);
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)] public delegate int SettingNameFn(uint settingId, [MarshalAs(UnmanagedType.LPArray)] ushort[] name);
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)] public delegate int EnumSettingValuesFn(uint settingId, ref uint maxValues, IntPtr values);
 
         public required CreateSessionFn CreateSession { get; init; }
         public required GlobalProfileFn GetCurrentGlobalProfile { get; init; }
@@ -295,6 +365,9 @@ public static class NvidiaProfiles
         public required GetSettingFn GetSettingRaw { get; init; }
         public required ProfileStructFn SetSetting { get; init; }
         public required DeleteSettingFn DeleteProfileSetting { get; init; }
+        public required EnumSettingIdsFn EnumAvailableSettingIds { get; init; }
+        public required SettingNameFn GetSettingNameFromId { get; init; }
+        public required EnumSettingValuesFn EnumAvailableSettingValues { get; init; }
 
         public void DestroySession(IntPtr session) => DestroySessionFn(session);
 
@@ -334,6 +407,9 @@ public static class NvidiaProfiles
                 GetSettingRaw = Get<GetSettingFn>(0x73bf8338),
                 SetSetting = Get<ProfileStructFn>(0x577dd202),
                 DeleteProfileSetting = Get<DeleteSettingFn>(0xe4a26362),
+                EnumAvailableSettingIds = Get<EnumSettingIdsFn>(0xf020614a),
+                GetSettingNameFromId = Get<SettingNameFn>(0xd61cbe6e),
+                EnumAvailableSettingValues = Get<EnumSettingValuesFn>(0x2ec39f90),
             };
         }
     }

@@ -33,6 +33,7 @@ public sealed partial class GamePageViewModel(
     GameGraphicsViewModel graphics,
     FrameCapViewModel frameCap,
     InGameQualityViewModel inGameQuality,
+    DlssOverrideViewModel dlss,
     bool isPinned,
     bool isPlaying,
     GameTab initialTab,
@@ -198,6 +199,9 @@ public sealed partial class GamePageViewModel(
 
     /// <summary>Qualité graphique écrite dans le fichier du jeu (jeux Unreal Engine) ; propose le réglage conseillé par la note.</summary>
     public InGameQualityViewModel InGameQuality { get; } = inGameQuality;
+
+    /// <summary>Version de DLSS du jeu et modèle le plus récent imposé par le pilote NVIDIA.</summary>
+    public DlssOverrideViewModel Dlss { get; } = dlss;
 
     partial void OnRatingChanged(Core.Rating.GameRating? value) => InGameQuality.SetRecommended(value?.Preset);
 

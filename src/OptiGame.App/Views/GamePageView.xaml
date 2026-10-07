@@ -479,6 +479,25 @@
                             </StackPanel>
                         </Border>
 
+                        <!-- DLSS : version du jeu, modèle le plus récent imposé par le profil du pilote NVIDIA (carte masquée sans DLSS) -->
+                        <Border Margin="{StaticResource Margin.StackL}" Style="{StaticResource Card}" DataContext="{Binding Dlss}"
+                                Visibility="{Binding IsAvailable, Converter={StaticResource BoolToVisibility}}">
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource Text.SectionTitle}" Text="DLSS (pilote NVIDIA)" />
+                                <TextBlock Margin="0,4,0,0" Style="{StaticResource Text.Caption}" Text="{Binding LibraryText}" />
+                                <TextBlock Margin="0,8,0,0" Style="{StaticResource Text.Body}" Text="{Binding CurrentText}" />
+                                <WrapPanel Margin="0,12,0,0">
+                                    <Button Margin="0,0,8,8" Style="{StaticResource Button.Secondary}" Content="Imposer le modèle le plus récent…" Command="{Binding ApplyCommand}"
+                                            AutomationProperties.Name="Imposer le modèle DLSS le plus récent…" />
+                                    <Button Margin="0,0,0,8" Style="{StaticResource Button.Ghost}" Content="Restaurer l'original…" Command="{Binding UndoCommand}"
+                                            AutomationProperties.Name="Restaurer le modèle DLSS d'origine…"
+                                            Visibility="{Binding HasAppliedChange, Converter={StaticResource BoolToVisibility}}" />
+                                </WrapPanel>
+                                <TextBlock Style="{StaticResource Text.Caption}" Text="{Binding NoteText}" />
+                                <TextBlock Margin="0,4,0,0" Style="{StaticResource Text.Caption}" Text="{Binding AppliedText}" />
+                            </StackPanel>
+                        </Border>
+
                         <!-- Graphismes (Windows) : Auto HDR (lecture seule) et carte graphique (PC à plusieurs cartes) -->
                         <Border Style="{StaticResource Card}" DataContext="{Binding Graphics}">
                             <StackPanel>

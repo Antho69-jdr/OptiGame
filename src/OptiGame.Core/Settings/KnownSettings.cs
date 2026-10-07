@@ -57,7 +57,10 @@ public static class KnownSettings
     public static readonly SettingTarget DirectXGlobalSettings = new(RegistryKind, GpuPreferencesKey, GpuPreferencesGlobalValue);
 
     /// <summary>Plafond de FPS du pilote NVIDIA (FRL_FPS, 0x10835002) dans le profil que le pilote applique à cet exe ; DWord, Absent = non défini.</summary>
-    public static SettingTarget NvidiaFrameRateLimit(string exePath) => new(NvidiaProfileKind, exePath, "0x10835002");
+    public static SettingTarget NvidiaFrameRateLimit(string exePath) => NvidiaSetting(exePath, 0x10835002);
+
+    /// <summary>Réglage DWORD du profil que le pilote NVIDIA applique à cet exe (identifiants de NvApiDriverSettings.h) ; Absent = non défini.</summary>
+    public static SettingTarget NvidiaSetting(string exePath, uint settingId) => new(NvidiaProfileKind, exePath, $"0x{settingId:X8}");
 
     /// <summary>Valeur d'un fichier .ini d'un jeu (GameUserSettings.ini d'Unreal Engine) ; Absent = clé absente. Path = « fichier|section ».</summary>
     public static SettingTarget IniValue(string file, string section, string key) => new(IniValueKind, $"{file}|{section}", key);
