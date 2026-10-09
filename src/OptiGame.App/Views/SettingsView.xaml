@@ -57,6 +57,29 @@
                                            Text="Leur mémoire est libérée tant que vous jouez. OptiGame continue depuis la zone de notification : réglages de partie appliqués puis restaurés, mesure automatique. Toujours, même décoché : jaquettes libérées, et le travail de fond (lecture des bibliothèques, jaquettes, notes) attend la fin de la partie." />
                             </controls:SettingRow.Details>
                         </controls:SettingRow>
+                        <controls:SettingRow Glyph="&#xE790;" Header="Couleur d'accent"
+                                             Description="Boutons principaux, sélection, cases cochées. Le logo garde le vert d'OptiGame.">
+                            <StackPanel HorizontalAlignment="Right">
+                                <ComboBox Width="200" ItemsSource="{Binding AccentOptions}" SelectedItem="{Binding SelectedAccent}"
+                                          AutomationProperties.Name="Couleur d'accent">
+                                    <ComboBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <StackPanel Orientation="Horizontal">
+                                                <Ellipse Width="12" Height="12" Margin="0,0,8,0" VerticalAlignment="Center" Fill="{Binding Swatch}" />
+                                                <TextBlock VerticalAlignment="Center" Text="{Binding Label}" />
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </ComboBox.ItemTemplate>
+                                </ComboBox>
+                                <TextBlock Margin="0,4,0,0" HorizontalAlignment="Right" Style="{StaticResource Text.Caption}"
+                                           Text="Cases cochées et curseurs : au prochain lancement." AutomationProperties.LiveSetting="Polite"
+                                           Visibility="{Binding AccentRestartNeeded, Converter={StaticResource BoolToVisibility}}" />
+                            </StackPanel>
+                            <controls:SettingRow.Details>
+                                <TextBlock Style="{StaticResource Text.Caption}"
+                                           Text="Pas de jaune, d'orange ni de rouge : ces couleurs signalent les avertissements et les erreurs. Chaque couleur garde un texte lisible sur les boutons et sur les fonds sombres." />
+                            </controls:SettingRow.Details>
+                        </controls:SettingRow>
                         <controls:SettingRow Glyph="&#xE80F;" Header="Page d'ouverture"
                                              Description="Page affichée au lancement d'OptiGame.">
                             <ComboBox Width="200" ItemsSource="{Binding StartPageOptions}" SelectedItem="{Binding SelectedStartPage}" DisplayMemberPath="Label"

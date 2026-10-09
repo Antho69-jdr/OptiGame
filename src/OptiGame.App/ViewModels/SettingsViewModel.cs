@@ -44,6 +44,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         _autoStart = autoStart;
         _dialogs = dialogs;
         _settings = settings;
+        _accentAtLaunch = settings.Get().AccentColor; // SettingsViewModel est créé au lancement
         _igdb = igdb;
         _profiles = profiles;
         profiles.DockChanged += (_, _) => OnUi(RefreshDockGames);
@@ -243,6 +244,32 @@ public sealed partial class SettingsViewModel : ObservableObject
         get => UiAnimationsOptions.FirstOrDefault(o => o.Value == _settings.Get().UiAnimations) ?? UiAnimationsOptions[0];
         set { if (value is not null) { _settings.Update(s => s.UiAnimations = value.Value); OnPropertyChanged(); } }
     }
+
+    public IReadOnlyList<AccentOption> AccentOptions { get; } =
+    [
+        new(AccentColor.Green, "Vert (OptiGame)"),
+        new(AccentColor.Teal, "Turquoise"),
+        new(AccentColor.Blue, "Bleu"),
+        new(AccentColor.Violet, "Violet"),
+    ];
+
+    /// <summary>Couleur d'accent : appliquée tout de suite (AccentAppearance).</summary>
+    public AccentOption SelectedAccent
+    {
+        get => AccentOptions.FirstOrDefault(o => o.Value == _settings.Get().AccentColor) ?? AccentOptions[0];
+        set
+        {
+            if (value is null || value.Value == _settings.Get().AccentColor) return;
+            _settings.Update(s => s.AccentColor = value.Value);
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(AccentRestartNeeded));
+        }
+    }
+
+    /// <summary>Couleur changée depuis le lancement : les contrôles Windows (cases, curseurs) ne la prendront qu'au prochain lancement.</summary>
+    public bool AccentRestartNeeded => _settings.Get().AccentColor != _accentAtLaunch;
+
+    private readonly AccentColor _accentAtLaunch;
 
     public IReadOnlyList<StartPageOption> StartPageOptions { get; } =
     [
@@ -583,6 +610,19 @@ public sealed partial class SettingsViewModel : ObservableObject
 public sealed record UpdateModeOption(UpdateMode Value, string Label);
 
 public sealed record StartPageOption(StartPage Value, string Label);
+
+/// <summary>Couleur d'accent proposée ; Swatch = sa couleur (données de la palette, pas une couleur écrite dans la vue).</summary>
+public sealed record AccentOption(AccentColor Value, string Label)
+{
+    public System.Windows.Media.Brush Swatch { get; } = Freeze(new System.Windows.Media.SolidColorBrush(
+        (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(AccentColors.For(Value).Accent)));
+
+    private static System.Windows.Media.Brush Freeze(System.Windows.Media.SolidColorBrush brush)
+    {
+        brush.Freeze();
+        return brush;
+    }
+}
 
 public sealed record CoverSizeOption(CoverSize Value, string Label);
 

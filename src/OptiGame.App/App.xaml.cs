@@ -56,6 +56,7 @@ public partial class App : Application
         }
 
         _services = ConfigureServices().BuildServiceProvider();
+        AccentAppearance.Attach(this, _services.GetRequiredService<AppSettingsStore>());
         UiMotion.Attach(_services.GetRequiredService<AppSettingsStore>());
         Controls.TrailerPlayer.Attach(_services.GetRequiredService<FileLog>(), Path.Combine(_services.GetRequiredService<AppPaths>().Root, "webview"));
         CoverAppearance.Attach(_services.GetRequiredService<AppSettingsStore>());
@@ -132,6 +133,7 @@ public partial class App : Application
             return;
         }
         _services = ConfigureServices().BuildServiceProvider();
+        AccentAppearance.Attach(this, _services.GetRequiredService<AppSettingsStore>());
         CoverAppearance.Attach(_services.GetRequiredService<AppSettingsStore>()); // captures fidèles au réglage
         Controls.TrailerPlayer.Attach(_services.GetRequiredService<FileLog>(), Path.Combine(_services.GetRequiredService<AppPaths>().Root, "webview"));
         var services = _services;

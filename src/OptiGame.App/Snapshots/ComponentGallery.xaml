@@ -39,7 +39,7 @@
 
         <TextBlock Style="{StaticResource Text.SectionTitle}" Text="Rôles de couleur" Margin="{StaticResource Margin.StackS}" />
         <WrapPanel Margin="{StaticResource Margin.StackXL}">
-            <Border Style="{StaticResource Swatch}" Background="{StaticResource Brush.Accent}"><TextBlock Foreground="{StaticResource Brush.OnAccent}" FontSize="12" FontWeight="SemiBold" Text="Marque · action · sélection" TextWrapping="Wrap" /></Border>
+            <Border Style="{StaticResource Swatch}" Background="{DynamicResource Brush.Accent}"><TextBlock Foreground="{DynamicResource Brush.OnAccent}" FontSize="12" FontWeight="SemiBold" Text="Marque · action · sélection" TextWrapping="Wrap" /></Border>
             <Border Style="{StaticResource Swatch}" Background="{StaticResource Brush.OkSoft}"><TextBlock Foreground="{StaticResource Brush.Ok}" FontSize="12" FontWeight="SemiBold" Text="Succès" /></Border>
             <Border Style="{StaticResource Swatch}" Background="{StaticResource Brush.WarningSoft}"><TextBlock Foreground="{StaticResource Brush.Warning}" FontSize="12" FontWeight="SemiBold" Text="Avertissement" /></Border>
             <Border Style="{StaticResource Swatch}" Background="{StaticResource Brush.DangerSoft}"><TextBlock Foreground="{StaticResource Brush.Danger}" FontSize="12" FontWeight="SemiBold" Text="Erreur" /></Border>

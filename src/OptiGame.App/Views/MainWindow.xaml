@@ -63,7 +63,7 @@
                             Background="{StaticResource Brush.Info}" VerticalAlignment="Center"
                             Visibility="{Binding HasBadge, Converter={StaticResource BoolToVisibility}}">
                         <TextBlock HorizontalAlignment="Center" FontSize="{StaticResource FontSize.Caption}" FontWeight="SemiBold"
-                                   Foreground="{StaticResource Brush.OnAccent}" Text="{Binding Badge}" />
+                                   Foreground="{DynamicResource Brush.OnAccent}" Text="{Binding Badge}" />
                     </Border>
                 </Grid>
             </RadioButton>

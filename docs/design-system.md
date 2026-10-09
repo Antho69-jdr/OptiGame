@@ -30,7 +30,7 @@ Contrastes WCAG 2.x calculés sur les surfaces réelles (fonds « Soft » mélan
 | Texte secondaire | `Brush.TextSecondary` | #A2A9B4 | ≥ 4,7:1 partout |
 | Légendes, aides | `Brush.TextMuted` | #9099A6 | ≥ 4,5:1 (pas sur `ControlSelected` : 3,9) |
 | Contrôle désactivé | `Brush.TextDisabled` | #6B7280 | exempté (WCAG 1.4.3) |
-| Marque · action · sélection | `Brush.Accent` (+ `Hover`, `Pressed`, `Soft`), texte dessus `Brush.OnAccent` | #2FD27A | OnAccent 9,5:1 |
+| Marque · action · sélection | `Brush.Accent` (+ `Hover`, `Pressed`, `Soft`), texte dessus `Brush.OnAccent` — TOUJOURS en `DynamicResource` (accent au choix de l'utilisateur : vert, turquoise, bleu, violet ; `AccentColors`, contrastes testés) ; logo = `Brush.Brand` / `OnBrand`, toujours vert | #2FD27A | OnAccent 9,5:1 ; ≥ 4,5:1 pour chaque accent |
 | Succès | `Brush.Ok` / `Brush.OkSoft` | #6CCB5F | ≥ 6,4:1 sur son fond doux |
 | Avertissement | `Brush.Warning` / `Brush.WarningSoft` | #FCE100 | ≥ 9:1 |
 | Erreur, action destructrice | `Brush.Danger` / `Brush.DangerSoft`, texte dessus `Brush.OnDanger` | #FF99A4 | ≥ 6,4:1 ; OnDanger 9:1 |

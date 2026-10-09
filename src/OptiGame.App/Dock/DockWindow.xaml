@@ -113,7 +113,7 @@
                       MouseLeftButtonUp="OnOptiGameClick" ToolTipOpening="OnTipOpening" AutomationProperties.Name="Ouvrir OptiGame">
                     <Border Width="{Binding IconWidth, RelativeSource={RelativeSource AncestorType=Window}}"
                             Height="{Binding IconHeight, RelativeSource={RelativeSource AncestorType=Window}}"
-                            CornerRadius="{Binding IconCornerRadius, RelativeSource={RelativeSource AncestorType=Window}}" Background="{StaticResource Brush.Accent}">
+                            CornerRadius="{Binding IconCornerRadius, RelativeSource={RelativeSource AncestorType=Window}}" Background="{StaticResource Brush.Brand}">
                         <Image Source="{StaticResource Logo.Mark}" Stretch="Uniform" />
                     </Border>
                 </Grid>

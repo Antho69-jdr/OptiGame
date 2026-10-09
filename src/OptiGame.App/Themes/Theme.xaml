@@ -65,6 +65,9 @@
     <SolidColorBrush x:Key="Brush.TextMuted" Color="{StaticResource Color.TextMuted}" />
     <SolidColorBrush x:Key="Brush.TextDisabled" Color="{StaticResource Color.TextDisabled}" />
     <SolidColorBrush x:Key="Brush.Accent" Color="{StaticResource Color.Accent}" />
+    <!-- Marque (logo, case OptiGame du dock) : TOUJOURS le vert d'OptiGame, même si l'utilisateur choisit une autre couleur d'accent -->
+    <SolidColorBrush x:Key="Brush.Brand" Color="#2FD27A" />
+    <SolidColorBrush x:Key="Brush.OnBrand" Color="#06140C" />
     <SolidColorBrush x:Key="Brush.AccentHover" Color="{StaticResource Color.AccentHover}" />
     <SolidColorBrush x:Key="Brush.AccentPressed" Color="{StaticResource Color.AccentPressed}" />
     <SolidColorBrush x:Key="Brush.OnAccent" Color="{StaticResource Color.OnAccent}" />
@@ -192,19 +195,19 @@
     <!-- ===== Logo (Assets/OptiGame.svg, case 64×64) : cadran ouvert en « O » + triangle « lecture » ===== -->
     <Geometry x:Key="Logo.Dial">M22.5,48.5 A19,19 0 1 1 41.5,48.5</Geometry>
     <Geometry x:Key="Logo.Play">M27,23 L27,41 L42,32 Z</Geometry>
-    <Pen x:Key="Logo.DialPen" Brush="{StaticResource Brush.OnAccent}" Thickness="6" StartLineCap="Round" EndLineCap="Round" />
-    <Pen x:Key="Logo.PlayPen" Brush="{StaticResource Brush.OnAccent}" Thickness="3" LineJoin="Round" />
-    <!-- Logo.Image = tuile verte entière (barre latérale) ; Logo.Mark = symbole seul, à poser sur Brush.Accent (dock) -->
+    <Pen x:Key="Logo.DialPen" Brush="{StaticResource Brush.OnBrand}" Thickness="6" StartLineCap="Round" EndLineCap="Round" />
+    <Pen x:Key="Logo.PlayPen" Brush="{StaticResource Brush.OnBrand}" Thickness="3" LineJoin="Round" />
+    <!-- Logo.Image = tuile verte entière (barre latérale) ; Logo.Mark = symbole seul, à poser sur Brush.Brand (dock) -->
     <DrawingImage x:Key="Logo.Image">
         <DrawingImage.Drawing>
             <DrawingGroup>
-                <GeometryDrawing Brush="{StaticResource Brush.Accent}">
+                <GeometryDrawing Brush="{StaticResource Brush.Brand}">
                     <GeometryDrawing.Geometry>
                         <RectangleGeometry Rect="0,0,64,64" RadiusX="14" RadiusY="14" />
                     </GeometryDrawing.Geometry>
                 </GeometryDrawing>
                 <GeometryDrawing Geometry="{StaticResource Logo.Dial}" Pen="{StaticResource Logo.DialPen}" />
-                <GeometryDrawing Geometry="{StaticResource Logo.Play}" Brush="{StaticResource Brush.OnAccent}" Pen="{StaticResource Logo.PlayPen}" />
+                <GeometryDrawing Geometry="{StaticResource Logo.Play}" Brush="{StaticResource Brush.OnBrand}" Pen="{StaticResource Logo.PlayPen}" />
             </DrawingGroup>
         </DrawingImage.Drawing>
     </DrawingImage>
@@ -213,7 +216,7 @@
             <DrawingGroup>
                 <GeometryDrawing Brush="Transparent" Geometry="M0,0 H64 V64 H0 Z" />
                 <GeometryDrawing Geometry="{StaticResource Logo.Dial}" Pen="{StaticResource Logo.DialPen}" />
-                <GeometryDrawing Geometry="{StaticResource Logo.Play}" Brush="{StaticResource Brush.OnAccent}" Pen="{StaticResource Logo.PlayPen}" />
+                <GeometryDrawing Geometry="{StaticResource Logo.Play}" Brush="{StaticResource Brush.OnBrand}" Pen="{StaticResource Logo.PlayPen}" />
             </DrawingGroup>
         </DrawingImage.Drawing>
     </DrawingImage>
@@ -382,18 +385,18 @@
 
     <!-- Action principale de l'écran : une seule visible à la fois -->
     <Style x:Key="Button.Primary" TargetType="Button" BasedOn="{StaticResource Button.Base}">
-        <Setter Property="Background" Value="{StaticResource Brush.Accent}" />
-        <Setter Property="BorderBrush" Value="{StaticResource Brush.Accent}" />
-        <Setter Property="Foreground" Value="{StaticResource Brush.OnAccent}" />
+        <Setter Property="Background" Value="{DynamicResource Brush.Accent}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource Brush.Accent}" />
+        <Setter Property="Foreground" Value="{DynamicResource Brush.OnAccent}" />
         <Setter Property="FontWeight" Value="SemiBold" />
         <Style.Triggers>
             <Trigger Property="IsMouseOver" Value="True">
-                <Setter Property="Background" Value="{StaticResource Brush.AccentHover}" />
-                <Setter Property="BorderBrush" Value="{StaticResource Brush.AccentHover}" />
+                <Setter Property="Background" Value="{DynamicResource Brush.AccentHover}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource Brush.AccentHover}" />
             </Trigger>
             <Trigger Property="IsPressed" Value="True">
-                <Setter Property="Background" Value="{StaticResource Brush.AccentPressed}" />
-                <Setter Property="BorderBrush" Value="{StaticResource Brush.AccentPressed}" />
+                <Setter Property="Background" Value="{DynamicResource Brush.AccentPressed}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource Brush.AccentPressed}" />
             </Trigger>
         </Style.Triggers>
     </Style>
@@ -491,7 +494,7 @@
                             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
                         </Border>
                         <Border x:Name="Pill" Width="16" Height="3" Margin="0,0,0,2" HorizontalAlignment="Center" VerticalAlignment="Bottom"
-                                CornerRadius="2" Background="{StaticResource Brush.Selection}" Visibility="Collapsed" />
+                                CornerRadius="2" Background="{DynamicResource Brush.Selection}" Visibility="Collapsed" />
                     </Grid>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
@@ -620,7 +623,7 @@
                             <ContentPresenter />
                         </Border>
                         <Border x:Name="Indicator" Width="3" Height="16" HorizontalAlignment="Left" CornerRadius="2"
-                                Background="{StaticResource Brush.Selection}" Visibility="Collapsed" />
+                                Background="{DynamicResource Brush.Selection}" Visibility="Collapsed" />
                     </Grid>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
@@ -801,7 +804,7 @@
                                     CornerRadius="{StaticResource Radius.Small}" BorderThickness="1"
                                     BorderBrush="{StaticResource Brush.TextSecondary}" Background="Transparent">
                                 <TextBlock x:Name="Check" HorizontalAlignment="Center" VerticalAlignment="Center" Style="{StaticResource Text.Icon}"
-                                           FontSize="{StaticResource IconSize.Small}" Foreground="{StaticResource Brush.OnAccent}" Text="&#xE73E;"
+                                           FontSize="{StaticResource IconSize.Small}" Foreground="{DynamicResource Brush.OnAccent}" Text="&#xE73E;"
                                            Visibility="Collapsed" />
                             </Border>
                             <ContentPresenter />
@@ -812,8 +815,8 @@
                             <Setter TargetName="Bg" Property="Background" Value="{StaticResource Brush.ControlHover}" />
                         </Trigger>
                         <Trigger Property="IsSelected" Value="True">
-                            <Setter TargetName="Box" Property="Background" Value="{StaticResource Brush.Accent}" />
-                            <Setter TargetName="Box" Property="BorderBrush" Value="{StaticResource Brush.Accent}" />
+                            <Setter TargetName="Box" Property="Background" Value="{DynamicResource Brush.Accent}" />
+                            <Setter TargetName="Box" Property="BorderBrush" Value="{DynamicResource Brush.Accent}" />
                             <Setter TargetName="Check" Property="Visibility" Value="Visible" />
                         </Trigger>
                         <Trigger Property="IsEnabled" Value="False">
@@ -927,7 +930,7 @@
                             <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" />
                         </Border>
                         <Border x:Name="Indicator" Width="3" Height="18" HorizontalAlignment="Left" CornerRadius="2"
-                                Background="{StaticResource Brush.Selection}" Visibility="Collapsed" />
+                                Background="{DynamicResource Brush.Selection}" Visibility="Collapsed" />
                     </Grid>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
@@ -1067,13 +1070,13 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="Button">
-                    <Border x:Name="Round" CornerRadius="{StaticResource Radius.Round}" Background="{StaticResource Brush.Accent}">
+                    <Border x:Name="Round" CornerRadius="{StaticResource Radius.Round}" Background="{DynamicResource Brush.Accent}">
                         <TextBlock Margin="3,0,0,0" HorizontalAlignment="Center" VerticalAlignment="Center" Style="{StaticResource Text.Icon}"
-                                   FontSize="18" Foreground="{StaticResource Brush.OnAccent}" Text="&#xE768;" />
+                                   FontSize="18" Foreground="{DynamicResource Brush.OnAccent}" Text="&#xE768;" />
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="Round" Property="Background" Value="{StaticResource Brush.AccentHover}" />
+                            <Setter TargetName="Round" Property="Background" Value="{DynamicResource Brush.AccentHover}" />
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>

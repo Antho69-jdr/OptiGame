@@ -159,6 +159,9 @@ public sealed class AppSettings
     /// <summary>Page d'ouverture de la fenêtre ; absente d'un ancien settings.json = Mes jeux.</summary>
     public StartPage StartPage { get; set; } = StartPage.Games;
 
+    /// <summary>Couleur d'accent (appliquée au lancement) ; absente d'un ancien settings.json = le vert d'OptiGame.</summary>
+    public AccentColor AccentColor { get; set; } = AccentColor.Green;
+
     /// <summary>Arrondi des coins des jaquettes de Mes jeux et de la fiche, en pixels (CoverStyle.Radius le borne).</summary>
     public int CoverCornerRadius { get; set; } = CoverStyle.DefaultRadius;
 
@@ -205,6 +208,7 @@ public sealed class AppSettings
         LightDuringGames = LightDuringGames,
         UiAnimations = UiAnimations,
         StartPage = StartPage,
+        AccentColor = AccentColor,
         CoverCornerRadius = CoverCornerRadius,
         CoverSize = CoverSize,
         DiagnosticAdvanced = DiagnosticAdvanced,

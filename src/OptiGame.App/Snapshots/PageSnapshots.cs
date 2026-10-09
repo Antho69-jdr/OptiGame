@@ -219,6 +219,18 @@ internal static class PageSnapshots
                     Log($"Menu de notification, jeux récents : {string.Join(" · ", tray.RecentGames.Select(g => g.Header))}");
                     await Settle(100);
                 }));
+                // Couleur d'accent changée fenêtre ouverte (copie des données), puis remise au vert (6m).
+                pages.Add(("6l-accent-en-direct", async () =>
+                {
+                    services.GetRequiredService<Core.Settings.AppSettingsStore>().Update(s => s.AccentColor = Core.Settings.AccentColor.Violet);
+                    library.OpenGame!.SelectedTab = GameTab.Optimization;
+                    await Settle(1500);
+                }));
+                pages.Add(("6m-accent-remis", async () =>
+                {
+                    services.GetRequiredService<Core.Settings.AppSettingsStore>().Update(s => s.AccentColor = Core.Settings.AccentColor.Green);
+                    await Settle(1500);
+                }));
                 // Réglages lus dans le jeu (base de définitions), liste dépliée.
                 pages.Add(("6j-fiche-reglages-du-jeu", async () =>
                 {

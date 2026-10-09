@@ -312,7 +312,7 @@
                                                             <Style.Triggers>
                                                                 <DataTrigger Binding="{Binding IsPinned}" Value="True">
                                                                     <Setter Property="ToolTip" Value="Retirer du dock" />
-                                                                    <Setter Property="Foreground" Value="{StaticResource Brush.Accent}" />
+                                                                    <Setter Property="Foreground" Value="{DynamicResource Brush.Accent}" />
                                                                     <Setter Property="AutomationProperties.Name" Value="{Binding Name, StringFormat='Retirer {0} du dock'}" />
                                                                 </DataTrigger>
                                                             </Style.Triggers>

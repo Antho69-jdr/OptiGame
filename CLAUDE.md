@@ -75,7 +75,11 @@ src/OptiGame.App/        WPF : composition DI, tray, vues/viewmodels, dialogue d
                          ApplicationIcon (toutes les fenêtres le reprennent) ; zone de notification : App.LoadTrayIcon, taille exacte
                          de Platform/Display/IconMetrics (20 px à 125 %) ; barre latérale et dock : DrawingImage Logo.Image /
                          Logo.Mark de Theme.xaml (vectoriels, brosses du thème). Le nom reste « OptiGame ».
-  App.xaml               ThemeMode="Dark" (Fluent .NET 10) + accent vert : redéfinir les clés
+  App.xaml               ThemeMode="Dark" (Fluent .NET 10) + accent vert : redéfinir les clés (accent au choix : vert, turquoise, bleu,
+                         violet = `AccentColor`, `Core/Settings/AccentColors` (contrastes testés), `Services/AccentAppearance` pose les
+                         pinceaux au niveau de l'application ; les vues lisent Brush.Accent/AccentHover/AccentPressed/OnAccent/Selection/
+                         AccentSoft en DynamicResource SEULEMENT : WPF fige les pinceaux du thème et un StaticResource garderait le vert ;
+                         cases et curseurs Fluent : au prochain lancement ; logo et case OptiGame du dock = `Brush.Brand`, toujours vert)
                          SystemColors.AccentColor…Key (les clés nommées Accent*Brush seules ne suffisent pas)
   Navigation             barre latérale (MainViewModel.NavItems + SettingsItem en pied, pastilles, compacte < 1008) ; page =
                          ViewModel, vue choisie par DataTemplate implicite (jamais ContentTemplate explicite : il s'applique même
