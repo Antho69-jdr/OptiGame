@@ -7,7 +7,7 @@
     <Company>OptiGame</Company>
     <Product>OptiGame</Product>
     <!-- Version de l'appli et de l'installeur (scripts\build-installer.ps1 la lit ici). -->
-    <Version>1.13.0</Version>
+    <Version>1.14.0</Version>
     <Description>Optimise le PC pendant les parties : diagnostic, profils de jeu appliqués puis restaurés, mesure des FPS.</Description>
     <Copyright>© 2026 OptiGame</Copyright>
   </PropertyGroup>
