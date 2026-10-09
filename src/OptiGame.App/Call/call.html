@@ -16,17 +16,19 @@
 const send = o => chrome.webview.postMessage(JSON.stringify(o));
 const remote = document.getElementById('remote');
 const STUN = 'stun:stun.cloudflare.com:3478';
-// Voix : Opus mono à 96 kbit/s (le moteur vise ~32 par défaut), correction d'erreurs, jamais coupé dans les silences (DTX : débuts
-// de phrase hachés). Négligeable même pendant une partie en ligne.
-const OPUS = { maxaveragebitrate: '96000', stereo: '0', 'sprop-stereo': '0', useinbandfec: '1', usedtx: '0', maxplaybackrate: '48000' };
-const BITRATE = 96000;
+// Voix : Opus mono, correction d'erreurs, jamais coupé dans les silences (DTX : débuts de phrase hachés). Sa propre description
+// autorise l'autre PC jusqu'à 192 kbit/s ; chacun limite ce qu'IL envoie à son réglage (96, 128 ou 192 kbit/s).
+const OPUS = { maxaveragebitrate: '192000', stereo: '0', 'sprop-stereo': '0', useinbandfec: '1', usedtx: '0', maxplaybackrate: '48000' };
+let bitrate = 128000;
 const NOISE_MODES = ['strong', 'standard', 'off'];
+const GATE_MODES = ['auto', 'manual', 'off'];
+let gateMode = 'auto', gateThreshold = -45;
 // Suppression du bruit : 'strong' = filtre RNNoise (noise-worklet.js), 'standard' = celle du moteur web, 'off' = aucune.
 const AUDIO = mode => ({ echoCancellation: true, noiseSuppression: mode === 'standard', autoGainControl: true, channelCount: 1 });
 
 let pc = null, control = null, sender = null, mic = null, muted = true, levels = null, ctx = null, analyser = null, source = null;
-let suppressor = null, outbound = null, sendTrack = null, noiseMode = 'strong';
-let relay = null, role = null, stun = false, connected = false, closing = false, sdpSent = false;
+let processor = null, outbound = null, sendTrack = null, noiseMode = 'strong';
+let relay = null, role = null, stun = false, connected = false, closing = false, sdpSent = false, testing = false;
 let localQueue = [], remoteQueue = [];
 // Périphériques : '' = celui de Windows par défaut, suivi quand il change ; sinon l'identifiant choisi.
 let micChoice = '', speakerChoice = '', defaultIn = null, defaultOut = null;
@@ -60,8 +62,8 @@ async function openMic() {
   analyser.fftSize = 512;
   outbound = ctx.createMediaStreamDestination();
   outbound.channelCount = 1;
-  if (noiseMode === 'strong') await loadSuppressor(); // ≈ 70 Mo : chargé seulement si le filtre fort est choisi
-  applyNoise();
+  if (needsProcessor() || testing) await loadProcessor(); // ≈ 70 Mo avec le filtre : chargé seulement s'il sert
+  applyVoice();
   connectSource();
   sendTrack = outbound.stream.getAudioTracks()[0];
   setMuted(true); // micro coupé tant que l'utilisateur ne l'ouvre pas
@@ -69,17 +71,20 @@ async function openMic() {
   await reportDevices();
 }
 
-// Filtre RNNoise (noise-worklet.js) : chargé à la demande ; indisponible = la suppression du moteur web prend le relais.
-async function loadSuppressor() {
-  if (suppressor) return;
+// Traitement de la voix (noise-worklet.js : filtre RNNoise + seuil du micro) : chargé seulement s'il sert ; indisponible = la
+// suppression du moteur web prend le relais et le seuil est sans effet.
+const needsProcessor = () => noiseMode === 'strong' || gateMode !== 'off';
+
+async function loadProcessor() {
+  if (processor) return;
   try {
     await ctx.audioWorklet.addModule('noise-worklet.js');
-    suppressor = new AudioWorkletNode(ctx, 'noise-suppressor', { numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [1] });
-    suppressor.port.onmessage = e => send({ ev: 'noiseStats', frames: e.data.frames, vad: e.data.vad });
-    suppressor.connect(outbound);
-    suppressor.connect(analyser);
+    processor = new AudioWorkletNode(ctx, 'voice-processor', { numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [1] });
+    processor.port.onmessage = e => send({ ev: 'voiceStats', ...e.data });
+    processor.connect(outbound);
+    processor.connect(analyser);
   } catch (err) {
-    suppressor = null;
+    processor = null;
     if (noiseMode === 'strong') noiseMode = 'standard';
     send({ ev: 'noiseUnavailable', message: String((err && err.message) || err) });
   }
@@ -88,17 +93,17 @@ async function loadSuppressor() {
 function connectSource() {
   if (source) source.disconnect();
   source = ctx.createMediaStreamSource(mic);
-  if (suppressor) {
-    source.connect(suppressor);
+  if (processor) {
+    source.connect(processor);
   } else {
     source.connect(outbound);
     source.connect(analyser);
   }
 }
 
-function applyNoise() {
-  if (suppressor) suppressor.port.postMessage({ enabled: noiseMode === 'strong' });
-  send({ ev: 'noise', mode: noiseMode, filter: !!suppressor });
+function applyVoice() {
+  if (processor) processor.port.postMessage({ denoise: noiseMode === 'strong', gateMode, threshold: gateThreshold });
+  send({ ev: 'noise', mode: noiseMode, filter: !!processor });
 }
 
 // Nouveau micro (ou autre réglage de suppression du moteur) sans couper l'appel.
@@ -132,7 +137,7 @@ async function raiseBitrate() {
   if (!sender) return;
   const params = sender.getParameters();
   if (!params.encodings || params.encodings.length === 0) params.encodings = [{}];
-  params.encodings[0].maxBitrate = BITRATE;
+  params.encodings[0].maxBitrate = bitrate;
   params.encodings[0].priority = 'high';
   params.encodings[0].networkPriority = 'high';
   await sender.setParameters(params).catch(() => {});
@@ -361,6 +366,13 @@ function reportError(err) {
   send({ ev: 'error', name: (err && err.name) || 'Error', message: String((err && err.message) || err) });
 }
 
+function readVoiceSettings(m) {
+  noiseMode = NOISE_MODES.includes(m.noise) ? m.noise : 'strong';
+  gateMode = GATE_MODES.includes(m.gate) ? m.gate : 'auto';
+  gateThreshold = Number.isFinite(m.threshold) ? Math.max(-80, Math.min(0, m.threshold)) : -45;
+  bitrate = [96, 128, 192].includes(m.kbps) ? m.kbps * 1000 : 128000;
+}
+
 async function handle(m) {
   switch (m.cmd) {
     case 'host':
@@ -368,9 +380,17 @@ async function handle(m) {
       stun = !!m.stun;
       micChoice = m.mic || '';
       speakerChoice = m.speaker || '';
-      noiseMode = NOISE_MODES.includes(m.noise) ? m.noise : 'strong';
+      readVoiceSettings(m);
       await openMic();
       openRelay(m.relay, m.code, m.cmd === 'host' ? 'host' : 'guest');
+      break;
+    case 'test':
+      // « Tester mon micro » : micro et traitement seuls, sans appel ni réseau ; mesures envoyées 10 fois par seconde.
+      testing = true;
+      micChoice = m.mic || '';
+      readVoiceSettings(m);
+      await openMic();
+      setMuted(false);
       break;
     case 'mute':
       setMuted(!!m.value);
@@ -388,9 +408,18 @@ async function handle(m) {
       break;
     case 'noise':
       noiseMode = NOISE_MODES.includes(m.mode) ? m.mode : 'strong';
-      if (noiseMode === 'strong') await loadSuppressor();
-      applyNoise();
+      if (needsProcessor()) await loadProcessor();
+      applyVoice();
       if (mic) await switchMic(); // suppression du moteur web : réglée à l'ouverture du micro
+      break;
+    case 'gate':
+      gateMode = GATE_MODES.includes(m.mode) ? m.mode : 'auto';
+      if (Number.isFinite(m.threshold)) gateThreshold = Math.max(-80, Math.min(0, m.threshold));
+      if (needsProcessor() && !processor) { await loadProcessor(); connectSource(); }
+      applyVoice();
+      break;
+    case 'quality':
+      if ([96, 128, 192].includes(m.kbps)) { bitrate = m.kbps * 1000; await raiseBitrate(); }
       break;
     case 'speaker':
       speakerChoice = m.id || '';

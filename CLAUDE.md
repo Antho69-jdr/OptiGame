@@ -202,6 +202,16 @@ fixe (MediaStreamDestination : changer de micro ou de filtre ne touche plus la c
 le micro reste ouvert pour l'annulation d'écho). Filtre chargé SEULEMENT si Forte (≈ 70 Mo par appel ; ≈ 360 Mo pour deux appels
 de test). Vérifié (ui-snapshots `-Only c1,c2,c3`, micro simulé lisant un souffle WAV `CallEngine.FakeAudioFile`) : souffle entendu
 0,34 sans filtre → 0,000 avec, filtre chargé en plein appel ; le bip du moteur (son tonal) n'est PAS retiré (RNNoise vise les bruits).
+2e retour (2026-10-09) : « qualité vraiment bien, viser 128-192 kbit/s » ; « réduction de bruit pas incroyable si quelqu'un parle
+fort en fond » (RNNoise garde les VOIX) → débit au choix `CallVoiceQuality` 96 / 128 (défaut) / 192 : sa description autorise
+l'autre jusqu'à 192 (maxaveragebitrate), chacun limite ce qu'IL envoie (sender maxBitrate) ; mesuré 140 et 191 kbit/s.
+Seuil du micro (« noise gate », `CallGateMode` Automatique (défaut) / Manuel (`CallGateThreshold` dBFS, curseur −80…−10) /
+Désactivé), dans `noise-worklet.js` APRÈS RNNoise : ouvert si niveau de la trame > seuil (et voix probable selon RNNoise),
+maintien 250 ms, fermeture 60 ms ; automatique = entre le fond (minimum qui remonte de ≈ 3 dB/s) et la voix (moyenne des trames
+« voix » nettes), 6 à 15 dB sous la voix, borné à −20 dB. RNNoise créé SEULEMENT si la suppression forte sert (≈ 70 Mo), le
+module se charge si filtre fort OU seuil. Mesures 10/s (`voiceStats`) → barre de niveau + « Niveau −32 dB · seuil −45 dB · le son
+passe » ; « Tester mon micro » (hors appel, aucun réseau : commande « test », moteur à part `_testEngine`, arrêté au début d'un
+appel). Vérifié : seuil −10 dB sur un souffle à −19 dB → coupé (0,001), −40 dB → passe.
 Raccourci du micro en jeu (`Core/Call/MicHotkey` + `MicHotkeyMatcher`, `Platform/Input/RawKeyboardListener`) : touche ou combinaison
 choisie dans la page (saisie dans la fenêtre, Échap annule ; `AppSettings.CallMicKey` = « ctrl+alt+0x4D », `CallMicKeyMode` Basculer
 / Appuyer pour parler). Lue par l'ENTRÉE BRUTE (RegisterRawInputDevices, RIDEV_INPUTSINK, fenêtre de messages sur un thread dédié)

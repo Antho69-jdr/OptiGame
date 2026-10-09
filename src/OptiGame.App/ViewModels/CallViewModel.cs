@@ -90,7 +90,7 @@ public sealed partial class CallViewModel : ObservableObject, IDisposable
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsIdle), nameof(IsWorking), nameof(IsWaiting), nameof(IsInCall), nameof(IsActive), nameof(WorkingText),
-        nameof(ShowsSafetyWords))]
+        nameof(ShowsSafetyWords), nameof(ShowsMeter))]
     [NotifyCanExecuteChangedFor(nameof(StartCallCommand), nameof(JoinCallCommand), nameof(HangUpCommand), nameof(ToggleMuteCommand), nameof(CopyCodeCommand))]
     private CallPhase _phase;
 
@@ -203,6 +203,7 @@ public sealed partial class CallViewModel : ObservableObject, IDisposable
             if (value is null || value.Mode == _settings.Get().CallNoiseSuppression) return;
             _settings.Update(s => s.CallNoiseSuppression = value.Mode);
             _engine?.Send(new { cmd = "noise", mode = NoiseMode(value.Mode) });
+            _testEngine?.Send(new { cmd = "noise", mode = NoiseMode(value.Mode) });
             _log.Info($"Appel : suppression du bruit « {value.Label} ».");
             OnPropertyChanged();
         }
@@ -274,6 +275,7 @@ public sealed partial class CallViewModel : ObservableObject, IDisposable
 
     private async Task OpenAsync(bool host, string code)
     {
+        if (IsTestingMic) StopMicTest(); // le micro sert à l'appel
         if (Relay is not { } relay)
         {
             ShowStatus("Le serveur de mise en relation des appels n'est pas encore en place : l'appel sera disponible dans une prochaine version.", Severity.Warning);
@@ -294,6 +296,9 @@ public sealed partial class CallViewModel : ObservableObject, IDisposable
             mic = settings.CallMicrophone ?? "",
             speaker = settings.CallSpeaker ?? "",
             noise = NoiseMode(settings.CallNoiseSuppression),
+            gate = GateMode(settings.CallGateMode),
+            threshold = settings.CallGateThreshold,
+            kbps = (int)settings.CallVoiceQuality,
         });
         ArmTimeout(TimeSpan.FromSeconds(20), "Le serveur de mise en relation ne répond pas : vérifiez votre connexion à Internet, puis recommencez.");
     }
@@ -537,9 +542,8 @@ public sealed partial class CallViewModel : ObservableObject, IDisposable
                     ShowStatus("Le filtre de bruit n'a pas pu démarrer sur ce PC : la suppression standard est utilisée.", Severity.Warning);
                 }
                 break;
-            case "noiseStats":
-                NoiseFrames = (long)Number(message, "frames");
-                NoiseVoice = Number(message, "vad");
+            case "voiceStats":
+                OnVoiceStats(message);
                 break;
             case "noiseUnavailable":
                 _log.Warn($"Appel : filtre de bruit indisponible ({Text(message, "message")}).");
@@ -795,6 +799,7 @@ public sealed partial class CallViewModel : ObservableObject, IDisposable
         PeerMuted = false;
         LocalLevel = RemoteLevel = 0;
         Phase = CallPhase.Idle;
+        ResetMeter();
         if (status.Length > 0) ShowStatus(status, severity);
         else ClearStatus();
     }
@@ -819,6 +824,8 @@ public sealed partial class CallViewModel : ObservableObject, IDisposable
         _ticker.Stop();
         _keyboard?.Dispose();
         _keyboard = null;
+        _testEngine?.Dispose();
+        _testEngine = null;
         if (_engine is { } engine)
         {
             engine.Send(new { cmd = "hangup" });

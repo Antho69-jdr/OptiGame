@@ -476,6 +476,7 @@ internal static class PageSnapshots
                     }
                     return (sum / Math.Max(1, samples), (guest.BytesReceived - bytes) * 8 / (milliseconds / 1000.0) / 1000);
                 }
+                host.SelectedGate = host.GateOptions.First(o => o.Value == Core.Call.MicGateMode.Off);
                 host.SelectedNoise = host.NoiseOptions.First(o => o.Mode == Core.Call.NoiseSuppression.Off);
                 await Settle(1500);
                 var off = await Listen(4000);
@@ -483,6 +484,27 @@ internal static class PageSnapshots
                 await Settle(1500);
                 var strong = await Listen(4000);
                 Log($"Souffle entendu par l'invité (niveau moyen) : sans filtre {off.Peak:0.000}, filtre fort {strong.Peak:0.000} ; débit {off.Kbps:0} puis {strong.Kbps:0} kbit/s ; filtre : {host.NoiseFrames} trames, voix {host.NoiseVoice:0.00}. {host.Status}");
+                // Débit réel (souffle non filtré = le codeur prend tout ce qu'on lui donne) et seuil manuel.
+                host.SelectedNoise = host.NoiseOptions.First(o => o.Mode == Core.Call.NoiseSuppression.Off);
+                host.SelectedQuality = host.QualityOptions.First(o => o.Value == Core.Call.VoiceQuality.High);
+                await Settle(1500);
+                var high = await Listen(3000);
+                host.SelectedQuality = host.QualityOptions.First(o => o.Value == Core.Call.VoiceQuality.Max);
+                await Settle(1500);
+                var max = await Listen(3000);
+                Log($"Débit envoyé : « Haute » {high.Kbps:0} kbit/s, « Maximale » {max.Kbps:0} kbit/s.");
+                host.SelectedGate = host.GateOptions.First(o => o.Value == Core.Call.MicGateMode.Manual);
+                host.GateThreshold = -10;
+                await Settle(1000);
+                var gated = await Listen(3000);
+                var gatedText = host.MeterText;
+                host.GateThreshold = -40;
+                await Settle(1000);
+                var passing = await Listen(3000);
+                Log($"Seuil manuel sur le souffle (≈ −19 dB) : seuil −10 dB → entendu {gated.Peak:0.000} ({gatedText}) ; seuil −40 dB → entendu {passing.Peak:0.000} ({host.MeterText}).");
+                host.SelectedGate = host.GateOptions.First(o => o.Value == Core.Call.MicGateMode.Auto);
+                host.SelectedNoise = host.NoiseOptions.First(o => o.Mode == Core.Call.NoiseSuppression.Strong);
+                host.SelectedQuality = host.QualityOptions.First(o => o.Value == Core.Call.VoiceQuality.High);
                 if (host.Speakers.Count > 1) host.SelectedSpeaker = host.Speakers[0];
                 // Raccourci du micro : F13 (aucun programme ne s'en sert) simulée au clavier, lue par l'entrée brute comme en jeu.
                 const int F13 = 0x7C;
@@ -515,6 +537,14 @@ internal static class PageSnapshots
                 await Settle(3000);
                 Log($"Après le raccroché : {WebProcesses() - webBaseline} processus du moteur restants.");
                 guest?.Dispose();
+            }));
+            pages.Add(("c4b-appel-test-du-micro", async () =>
+            {
+                main.Navigate(host);
+                await host.ToggleMicTestCommand.ExecuteAsync(null);
+                await WaitUntil(() => host.MeterText.Length > 0, 15_000);
+                await Settle(2500);
+                Log($"Test du micro (hors appel) : « {host.MeterText} », barre {host.MicMeter:0.00}, bouton « {host.MicTestLabel} ».");
             }));
             pages.Add(("c5-appel-code-inconnu", async () =>
             {

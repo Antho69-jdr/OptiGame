@@ -138,3 +138,21 @@ public enum NoiseSuppression
     /// <summary>Aucune (micro de studio, casque à réduction de bruit).</summary>
     Off,
 }
+
+/// <summary>Débit de la voix envoyée (Opus mono) : chacun choisit ce qu'il envoie.</summary>
+public enum VoiceQuality
+{
+    Standard = 96,
+    High = 128,
+    Max = 192,
+}
+
+/// <summary>Seuil du micro (« noise gate ») : le son ne passe qu'au-dessus d'un niveau (voix de fond coupées).</summary>
+public enum MicGateMode
+{
+    /// <summary>Seuil appris pendant l'appel, entre le fond sonore et votre voix.</summary>
+    Auto,
+    /// <summary>Seuil choisi (dBFS).</summary>
+    Manual,
+    Off,
+}

@@ -332,6 +332,39 @@
                         <TextBlock Margin="0,4,0,0" Style="{StaticResource Text.Caption}"
                                    Text="Forte : un filtre spécialisé dans la voix retire le clavier, le ventilateur et les bruits de fond, sur votre PC (rien n'est envoyé ailleurs). Aucune : pour un micro de studio ou un casque qui filtre déjà." />
                     </StackPanel>
+                    <WrapPanel Margin="0,12,0,0">
+                        <StackPanel Margin="0,0,16,8">
+                            <Label Style="{StaticResource Text.FieldLabel}" Content="_Qualité de la voix envoyée" Target="{Binding ElementName=QualityBox}" />
+                            <ComboBox x:Name="QualityBox" Width="340" ItemsSource="{Binding QualityOptions}" SelectedItem="{Binding SelectedQuality}"
+                                      AutomationProperties.Name="Qualité de la voix envoyée" />
+                        </StackPanel>
+                        <StackPanel Margin="0,0,16,8">
+                            <Label Style="{StaticResource Text.FieldLabel}" Content="Seuil du mi_cro" Target="{Binding ElementName=GateBox}" />
+                            <ComboBox x:Name="GateBox" Width="340" ItemsSource="{Binding GateOptions}" SelectedItem="{Binding SelectedGate}"
+                                      AutomationProperties.Name="Seuil du micro" />
+                        </StackPanel>
+                    </WrapPanel>
+                    <TextBlock Style="{StaticResource Text.Caption}"
+                               Text="Seuil : votre micro ne s'ouvre que lorsque vous parlez assez fort ; une voix en fond, plus faible au micro, est coupée. Automatique : OptiGame apprend le niveau de votre voix pendant l'appel." />
+                    <Grid Margin="0,8,0,0" Visibility="{Binding IsManualGate, Converter={StaticResource BoolToVisibility}}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" MaxWidth="340" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <Slider VerticalAlignment="Center" Minimum="-80" Maximum="-10" SmallChange="1" LargeChange="5" Value="{Binding GateThreshold}"
+                                AutomationProperties.Name="Seuil du micro, en décibels" />
+                        <TextBlock Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center" Style="{StaticResource Text.Body}"
+                                   Text="{Binding GateThreshold, StringFormat={}{0:0} dB}" />
+                    </Grid>
+                    <!-- Mesure du niveau (appel ou test) : barre = votre voix après la suppression du bruit ; texte = seuil et état -->
+                    <StackPanel Margin="0,12,0,0" Visibility="{Binding ShowsMeter, Converter={StaticResource BoolToVisibility}}">
+                        <ProgressBar Height="8" Width="340" HorizontalAlignment="Left" Maximum="1" Value="{Binding MicMeter, Mode=OneWay}"
+                                     AutomationProperties.Name="Niveau de votre micro" />
+                        <TextBlock Margin="0,4,0,0" Style="{StaticResource Text.Caption}" Text="{Binding MeterText}" AutomationProperties.LiveSetting="Off" />
+                    </StackPanel>
+                    <Button Margin="0,12,0,0" HorizontalAlignment="Left" Style="{StaticResource Button.Secondary}" Content="{Binding MicTestLabel}"
+                            Command="{Binding ToggleMicTestCommand}" Visibility="{Binding IsIdle, Converter={StaticResource BoolToVisibility}}"
+                            AutomationProperties.HelpText="Ouvre votre micro sans appel pour voir son niveau et régler le seuil ; rien n'est envoyé." />
                     <WrapPanel Margin="0,12,0,0" Visibility="{Binding IsActive, Converter={StaticResource BoolToVisibility}}">
                         <StackPanel Margin="0,0,16,8">
                             <Label Style="{StaticResource Text.FieldLabel}" Content="_Micro" Target="{Binding ElementName=MicBox}" />

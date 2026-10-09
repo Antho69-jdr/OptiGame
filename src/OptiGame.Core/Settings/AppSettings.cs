@@ -204,6 +204,15 @@ public sealed class AppSettings
     /// <summary>Suppression du bruit de la voix ; absente d'un ancien settings.json = forte (filtre RNNoise).</summary>
     public Call.NoiseSuppression CallNoiseSuppression { get; set; } = Call.NoiseSuppression.Strong;
 
+    /// <summary>Débit de la voix envoyée ; absent d'un ancien settings.json = haute (128 kbit/s).</summary>
+    public Call.VoiceQuality CallVoiceQuality { get; set; } = Call.VoiceQuality.High;
+
+    /// <summary>Seuil du micro ; absent = automatique.</summary>
+    public Call.MicGateMode CallGateMode { get; set; } = Call.MicGateMode.Auto;
+
+    /// <summary>Seuil manuel du micro, en dBFS (-80 à -10).</summary>
+    public int CallGateThreshold { get; set; } = -45;
+
     /// <summary>Effet du raccourci : basculer (par défaut) ou appuyer pour parler.</summary>
     public Call.MicHotkeyMode CallMicKeyMode { get; set; } = Call.MicHotkeyMode.Toggle;
 
@@ -257,6 +266,9 @@ public sealed class AppSettings
         CallSpeaker = CallSpeaker,
         CallMicKey = CallMicKey,
         CallNoiseSuppression = CallNoiseSuppression,
+        CallVoiceQuality = CallVoiceQuality,
+        CallGateMode = CallGateMode,
+        CallGateThreshold = CallGateThreshold,
         CallMicKeyMode = CallMicKeyMode,
         CallSteamTokenProtected = CallSteamTokenProtected,
         CallSteamName = CallSteamName,
