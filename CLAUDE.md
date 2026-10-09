@@ -82,7 +82,10 @@ src/OptiGame.App/        WPF : composition DI, tray, vues/viewmodels, dialogue d
                          quand le contenu est null). Coque (docs/design-system.md) : Services/ShellAlerts = alertes persistantes
                          en InfoBar (erreurs de détection / restauration : JAMAIS seulement en notification), raccourcis Ctrl+1…5,
                          Ctrl+F, F5, Échap/Alt+←, place de la fenêtre dans settings.json (Core/Settings/WindowLayout),
-                         UnsavedChangesGuard pour Quitter
+                         UnsavedChangesGuard pour Quitter ; page d'ouverture = `AppSettings.StartPage` (Paramètres › Général, au lancement
+                         seulement) ; menu de l'icône de notification : « Jeux récents » (5 derniers joués, installés, relus à
+                         l'ouverture du menu, aucun pendant une partie ; `TrayViewModel` résout Mes jeux à l'usage : Paramètres dépend du
+                         menu, Mes jeux de Paramètres — une injection directe = dépendance circulaire, OptiGame ne démarre plus)
   Mes jeux               LibraryViewModel (grille de jaquettes Controls/CoverTile, installés et non installés ; « Ajouter des jeux ▾ »,
                          recherche / tri / filtres en WrapPanel, « 3 sur 42 jeux », état « aucun résultat », messages en InfoBar,
                          nouveaux jeux Steam en UN bandeau) → GamePageViewModel (fiche : fil d'Ariane FLOTTANT (hors du défilement), bannière plein cadre avec jaquette, 55 % de la hauteur, au moins son

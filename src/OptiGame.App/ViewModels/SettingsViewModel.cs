@@ -230,6 +230,21 @@ public sealed partial class SettingsViewModel : ObservableObject
         set { if (value is not null) { _settings.Update(s => s.UiAnimations = value.Value); OnPropertyChanged(); } }
     }
 
+    public IReadOnlyList<StartPageOption> StartPageOptions { get; } =
+    [
+        new(StartPage.Games, "Mes jeux"),
+        new(StartPage.Diagnostic, "Diagnostic"),
+        new(StartPage.Drivers, "Pilotes"),
+        new(StartPage.Measures, "Mesures"),
+    ];
+
+    /// <summary>Page affichée au lancement d'OptiGame (la fenêtre rouverte après une partie garde sa page).</summary>
+    public StartPageOption SelectedStartPage
+    {
+        get => StartPageOptions.FirstOrDefault(o => o.Value == _settings.Get().StartPage) ?? StartPageOptions[0];
+        set { if (value is not null) { _settings.Update(s => s.StartPage = value.Value); OnPropertyChanged(); } }
+    }
+
     public bool LightDuringGames
     {
         get => _settings.Get().LightDuringGames;
@@ -552,6 +567,8 @@ public sealed partial class SettingsViewModel : ObservableObject
 }
 
 public sealed record UpdateModeOption(UpdateMode Value, string Label);
+
+public sealed record StartPageOption(StartPage Value, string Label);
 
 public sealed record DockEdgeOption(DockEdge Value, string Label);
 

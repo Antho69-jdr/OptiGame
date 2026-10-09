@@ -192,6 +192,14 @@ internal static class PageSnapshots
                 pages.Add(("6-fiche-du-jeu", async () => { main.Navigate(library); library.ShowGame(game.Id); await Settle(4000); }));
                 pages.Add(("6b-fiche-optimisation", async () => { library.OpenGame!.SelectedTab = GameTab.Optimization; await Settle(1500); }));
                 pages.Add(("6c-fiche-proprietes", async () => { library.OpenGame!.SelectedTab = GameTab.Properties; await Settle(800); }));
+                // Menu de l'icône de notification (pas d'icône en mode capture) : les jeux récents qu'il proposerait.
+                pages.Add(("6k-menu-notification", async () =>
+                {
+                    var tray = services.GetRequiredService<TrayViewModel>();
+                    tray.RefreshRecentGames();
+                    Log($"Menu de notification, jeux récents : {string.Join(" · ", tray.RecentGames.Select(g => g.Header))}");
+                    await Settle(100);
+                }));
                 // Réglages lus dans le jeu (base de définitions), liste dépliée.
                 pages.Add(("6j-fiche-reglages-du-jeu", async () =>
                 {

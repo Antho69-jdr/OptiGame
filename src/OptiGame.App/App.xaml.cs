@@ -81,7 +81,10 @@ public partial class App : Application
 
         _trayIcon = (TaskbarIcon)FindResource("TrayIcon");
         _trayIcon.Icon = LoadTrayIcon(_services.GetRequiredService<FileLog>());
-        _trayIcon.DataContext = _services.GetRequiredService<TrayViewModel>();
+        var tray = _services.GetRequiredService<TrayViewModel>();
+        _trayIcon.DataContext = tray;
+        // Jeux récents relus à chaque ouverture du menu (rien en tâche de fond).
+        if (_trayIcon.ContextMenu is { } trayMenu) trayMenu.Opened += (_, _) => tray.RefreshRecentGames();
         _trayIcon.ForceCreate(enablesEfficiencyMode: false);
         _services.GetRequiredService<NotificationService>().Attach(_trayIcon);
 

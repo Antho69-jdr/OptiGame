@@ -32,7 +32,8 @@ public sealed partial class MainViewModel : ObservableObject
         SettingsViewModel settings,
         UpdateService updates,
         ShellAlerts alerts,
-        NavigationService navigation)
+        NavigationService navigation,
+        Core.Settings.AppSettingsStore appSettings)
     {
         Updates = updates;
         Alerts = alerts;
@@ -51,7 +52,14 @@ public sealed partial class MainViewModel : ObservableObject
             new NavItem("Mesures", MeasuresGlyph, measures, this),
         ];
         SettingsItem = new NavItem("Paramètres", SettingsGlyph, settings, this);
-        NavItems[0].IsSelected = true;
+        // Page d'ouverture choisie dans Paramètres › Général (Mes jeux par défaut).
+        NavItems[appSettings.Get().StartPage switch
+        {
+            Core.Settings.StartPage.Diagnostic => 1,
+            Core.Settings.StartPage.Drivers => 2,
+            Core.Settings.StartPage.Measures => 3,
+            _ => 0,
+        }].IsSelected = true;
         navigation.NavigateRequested += Navigate;
 
         // Badges : contrôles à corriger, pilotes plus récents, mise à jour d'OptiGame.

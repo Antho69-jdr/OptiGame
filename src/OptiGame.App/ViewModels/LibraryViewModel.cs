@@ -808,6 +808,16 @@ public sealed partial class LibraryViewModel : ObservableObject
     private void DismissLaunchStatus() => LaunchStatus = "";
 
     /// <summary>Lance le jeu sans droits administrateur ; le profil s'appliquera par la détection habituelle. Faux si rien n'a été lancé.</summary>
+    /// <summary>
+    /// Jeux joués le plus récemment (temps de jeu d'OptiGame et de Steam), installés seulement : menu de l'icône de notification.
+    /// </summary>
+    public IReadOnlyList<(Guid Id, string Name)> RecentGames(int count) =>
+        Games.Where(g => g.LastPlayedTicks > 0 && !g.IsDimmed && g.Enabled)
+            .OrderByDescending(g => g.LastPlayedTicks)
+            .Take(count)
+            .Select(g => (g.Id, g.Name))
+            .ToList();
+
     public async Task<bool> PlayAsync(Guid id)
     {
         if (_store.Find(id) is not { } profile) return false;

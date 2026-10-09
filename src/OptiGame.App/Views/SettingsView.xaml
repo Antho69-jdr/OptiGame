@@ -57,13 +57,22 @@
                                            Text="Leur mémoire est libérée tant que vous jouez. OptiGame continue depuis la zone de notification : réglages de partie appliqués puis restaurés, mesure automatique. Toujours, même décoché : jaquettes libérées, et le travail de fond (lecture des bibliothèques, jaquettes, notes) attend la fin de la partie." />
                             </controls:SettingRow.Details>
                         </controls:SettingRow>
+                        <controls:SettingRow Glyph="&#xE80F;" Header="Page d'ouverture"
+                                             Description="Page affichée au lancement d'OptiGame.">
+                            <ComboBox Width="200" ItemsSource="{Binding StartPageOptions}" SelectedItem="{Binding SelectedStartPage}" DisplayMemberPath="Label"
+                                      AutomationProperties.Name="Page d'ouverture" />
+                            <controls:SettingRow.Details>
+                                <TextBlock Style="{StaticResource Text.Caption}"
+                                           Text="Pris en compte au prochain lancement. Après une partie, la fenêtre rouverte garde la page où vous étiez." />
+                            </controls:SettingRow.Details>
+                        </controls:SettingRow>
                         <controls:SettingRow Glyph="&#xE945;" Header="Animations"
                                              Description="Grossissement et glissement du dock, onde au clic, zoom des jaquettes au survol.">
                             <ComboBox Width="200" ItemsSource="{Binding UiAnimationsOptions}" SelectedItem="{Binding SelectedUiAnimations}" DisplayMemberPath="Label"
                                       AutomationProperties.Name="Animations de l'interface" />
                             <controls:SettingRow.Details>
                                 <TextBlock Style="{StaticResource Text.Caption}"
-                                           Text="« Selon Windows » suit « Effets d'animation » (Paramètres de Windows › Accessibilité › Effets visuels), que certaines versions modifiées de Windows (AtlasOS…) désactivent. « Toujours » anime OptiGame quel que soit ce réglage. Le zoom des jaquettes change au prochain affichage de Mes jeux." />
+                                           Text="« Selon Windows » suit « Effets d'animation » (Paramètres de Windows › Accessibilité › Effets visuels), que certaines versions modifiées de Windows désactivent. « Toujours » anime OptiGame quel que soit ce réglage. Le zoom des jaquettes change au prochain affichage de Mes jeux." />
                             </controls:SettingRow.Details>
                         </controls:SettingRow>
                     </StackPanel>

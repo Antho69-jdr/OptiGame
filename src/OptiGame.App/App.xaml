@@ -69,6 +69,18 @@
                     <ContextMenu>
                         <MenuItem Header="Ouvrir OptiGame" Command="{Binding ShowMainWindowCommand}" FontWeight="Bold" />
                         <Separator />
+                        <!-- Jeux récents (relus à chaque ouverture du menu, App.OnTrayMenuOpened) ; aucun pendant une partie -->
+                        <MenuItem Header="Jeux récents" ItemsSource="{Binding RecentGames}"
+                                  Visibility="{Binding HasRecentGames, Converter={StaticResource TrayBoolToVisibility}}">
+                            <MenuItem.ItemContainerStyle>
+                                <Style TargetType="MenuItem" BasedOn="{StaticResource {x:Type MenuItem}}">
+                                    <Setter Property="Header" Value="{Binding Header}" />
+                                    <Setter Property="Command" Value="{Binding Play}" />
+                                    <Setter Property="CommandParameter" Value="{Binding}" />
+                                </Style>
+                            </MenuItem.ItemContainerStyle>
+                        </MenuItem>
+                        <Separator Visibility="{Binding HasRecentGames, Converter={StaticResource TrayBoolToVisibility}}" />
                         <MenuItem Header="{Binding Session.StatusText}" IsEnabled="False"
                                   Visibility="{Binding Session.IsActive, Converter={StaticResource TrayBoolToVisibility}}" />
                         <MenuItem Header="Arrêter l'optimisation et restaurer…" Command="{Binding Session.EndNowCommand}"

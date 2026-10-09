@@ -10,6 +10,15 @@ public enum DockEdge
     Right,
 }
 
+/// <summary>Page affichée à l'ouverture de la fenêtre d'OptiGame (Paramètres › Général).</summary>
+public enum StartPage
+{
+    Games,
+    Diagnostic,
+    Drivers,
+    Measures,
+}
+
 /// <summary>Animations de l'interface (grossissement et glissement du dock, onde au clic, zoom des jaquettes).</summary>
 public enum UiAnimations
 {
@@ -129,6 +138,9 @@ public sealed class AppSettings
     /// <summary>Animations de l'interface : selon Windows par défaut (accessibilité).</summary>
     public UiAnimations UiAnimations { get; set; } = UiAnimations.FollowWindows;
 
+    /// <summary>Page d'ouverture de la fenêtre ; absente d'un ancien settings.json = Mes jeux.</summary>
+    public StartPage StartPage { get; set; } = StartPage.Games;
+
     /// <summary>Arrondi des coins des jaquettes de Mes jeux et de la fiche, en pixels (CoverStyle.Radius le borne).</summary>
     public int CoverCornerRadius { get; set; } = CoverStyle.DefaultRadius;
 
@@ -171,6 +183,7 @@ public sealed class AppSettings
         AutoMeasureFps = AutoMeasureFps,
         LightDuringGames = LightDuringGames,
         UiAnimations = UiAnimations,
+        StartPage = StartPage,
         CoverCornerRadius = CoverCornerRadius,
         DiagnosticAdvanced = DiagnosticAdvanced,
         LibraryShowUninstalled = LibraryShowUninstalled,
