@@ -392,17 +392,21 @@ internal static class PageSnapshots
             var host = main.Call;
             CallViewModel? guest = null;
             Call.LocalCallRelay? relay = null;
+            Uri? relayUrl = null;
             int WebProcesses() => System.Diagnostics.Process.GetProcessesByName("msedgewebview2").Length;
             var webBaseline = WebProcesses();
             long WebMemory() => System.Diagnostics.Process.GetProcessesByName("msedgewebview2").Sum(p => { using (p) return p.PrivateMemorySize64; });
             var webMemoryBaseline = WebMemory();
             CallViewModel NewGuest() => new(services.GetRequiredService<Core.AppPaths>(), services.GetRequiredService<Core.Settings.AppSettingsStore>(),
-                services.GetRequiredService<Core.Logging.FileLog>()) { Relay = relay!.Url };
+                services.GetRequiredService<Core.Logging.FileLog>()) { Relay = relayUrl };
             pages.Add(("c1-appel-depart", async () =>
             {
                 Call.CallEngine.UseFakeMedia = true;
                 relay = new Call.LocalCallRelay(TimeSpan.FromSeconds(8));
-                host.Relay = relay.Url;
+                // OPTIGAME_CALL_RELAY donné : le VRAI serveur (code valable 2 min, l'étape c6 attend alors en vain).
+                relayUrl = Core.Call.CallRelay.Resolve(Environment.GetEnvironmentVariable(Core.Call.CallRelay.OverrideVariable)) ?? relay.Url;
+                Log($"Serveur de mise en relation : {relayUrl}");
+                host.Relay = relayUrl;
                 host.UseStun = false;
                 main.Navigate(host);
                 await Settle(800);
@@ -421,7 +425,7 @@ internal static class PageSnapshots
                 var joined = DateTime.Now;
                 await guest.JoinCallCommand.ExecuteAsync(null);
                 await WaitUntil(() => host.Phase is CallPhase.Connected or CallPhase.Idle && guest.Phase is CallPhase.Connected or CallPhase.Idle, 40_000);
-                Log($"Appel : hôte {host.Phase}, invité {guest.Phase} en {(DateTime.Now - joined).TotalSeconds:0.0} s, {relay!.Relayed} messages relayés ; " +
+                Log($"Appel : hôte {host.Phase}, invité {guest.Phase} en {(DateTime.Now - joined).TotalSeconds:0.0} s, {relay!.Relayed} messages relayés en local ; " +
                     $"mots {(host.SafetyWords == guest.SafetyWords && host.SafetyWords.Length > 0 ? "identiques" : "DIFFÉRENTS")} ({host.SafetyWords}). {host.Status}{guest.Status}");
                 var silent = guest.BytesReceived;
                 await Settle(2000);

@@ -51,7 +51,7 @@ L'appel passe **directement entre votre PC et celui de votre ami** (WebRTC, voix
 n'est enregistré, la voix ne passe par aucun serveur. Seulement la voix : aucun texte n'est échangé.
 
 - **Mise en relation** : pour se trouver, les deux PC passent quelques secondes par le serveur de mise en relation d'OptiGame
-  (`optigame-call.….workers.dev`, hébergé chez Cloudflare, code source dans `server/call-relay`). Il reçoit le code de l'appel
+  (`optigame-call.antho-b-69.workers.dev`, hébergé chez Cloudflare, code source dans `server/call-relay`). Il reçoit le code de l'appel
   (6 caractères tirés au hasard) et relaie entre les deux PC leurs descriptions de connexion : adresses réseau (locales et, si
   l'option ci-dessous est cochée, publique) et clés de chiffrement publiques. Il ne garde rien : le salon est effacé dès que les
   deux PC sont connectés, qu'un des deux part, ou au bout de 2 minutes si personne ne rejoint. Comme tout serveur, il voit
@@ -90,7 +90,7 @@ policies.
 
 Voice calls ("Call" page) go directly between the two PCs (WebRTC, end-to-end encrypted voice), with no account and no
 recording; the voice never goes through a server and no text is exchanged. To find each other, the two PCs spend a few seconds on
-OptiGame's matchmaking server (`optigame-call.….workers.dev`, hosted by Cloudflare, source in `server/call-relay`), which relays
+OptiGame's matchmaking server (`optigame-call.antho-b-69.workers.dev`, hosted by Cloudflare, source in `server/call-relay`), which relays
 their connection descriptions (network addresses, public encryption keys) under a random 6-character call code and keeps
 nothing: the room is erased once they are connected, when one leaves, or after 2 minutes. Only when the user ticks "Passer par
 Internet" does OptiGame ask the public STUN server `stun.cloudflare.com` for the PC's public address (the server sees the IP

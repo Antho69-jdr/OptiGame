@@ -7,8 +7,8 @@ namespace OptiGame.Core.Call;
 /// </summary>
 public static class CallRelay
 {
-    /// <summary>Adresse du serveur déployé ; vide tant qu'il ne l'est pas (l'appel le dit au lieu d'essayer).</summary>
-    public const string DefaultUrl = "";
+    /// <summary>Serveur déployé le 2026-10-09 (scripts/deploy-call-relay.ps1, compte Cloudflare de l'auteur) ; vide = l'appel dit qu'il n'est pas en place.</summary>
+    public const string DefaultUrl = "wss://optigame-call.antho-b-69.workers.dev";
 
     /// <summary>Variable d'environnement qui remplace <see cref="DefaultUrl"/> (serveur de test local, autre déploiement).</summary>
     public const string OverrideVariable = "OPTIGAME_CALL_RELAY";

@@ -185,8 +185,10 @@ détruit au raccroché ; l'appel continue pendant les parties (menu de notificat
 STUN seulement si « Passer par Internet » est coché (`CallUseStun`) ; pas de relais TURN. Vérifié le 2026-10-09 (ui-snapshots
 `-Only c`, micro SIMULÉ `CallEngine.UseFakeMedia`, serveur local `App/Call/LocalCallRelay` = même protocole) : connexion en ≈ 1 s
 par le code, mots identiques, voix seulement micro ouvert, micro changé en cours d'appel sans coupure, raccroché transmis, code
-inconnu / expiré signalés, 8 processus et ≈ 220 Mo privés pour DEUX appels, 0 après. Serveur Cloudflare : à vérifier une fois
-déployé (compte de l'utilisateur).
+inconnu / expiré signalés, 8 processus et ≈ 220 Mo privés pour DEUX appels, 0 après. Serveur RÉEL déployé le 2026-10-09 :
+`wss://optigame-call.antho-b-69.workers.dev` (compte Cloudflare de l'utilisateur, JETON DE COMPTE « cfat_… » : il ne liste pas les
+comptes → `-AccountId a21125c3894c640606d3b7705ad60c16` ; un jeton à date de début future passe tokens/verify mais est refusé
+ailleurs). Vérifié avec `$env:OPTIGAME_CALL_RELAY` + ui-snapshots `-Only c1,c2,c3,c4,c5` : connecté en 1,6 s, mêmes résultats.
 
 Données fictives pour tester l'UI : `$env:OPTIGAME_DATA_DIR='<dossier temporaire>'` redirige tout le dossier de
 données ; `DiagDump -- --import-capture <csv> <libellé> <date ISO>` y ajoute une capture (refusé sans la variable).
