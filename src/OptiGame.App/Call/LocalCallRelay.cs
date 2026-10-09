@@ -57,11 +57,15 @@ internal sealed partial class LocalCallRelay : IDisposable
     // ===== Amis en ligne (même protocole que la classe Presence du serveur) =====
     // Jeton de TEST seulement (jamais accepté par le vrai serveur) : « test:<steamid>:<nom>:<amis séparés par des virgules> ».
 
-    private sealed record PresenceUser(string Id, string Name, string[] Friends, WebSocket Socket);
+    private sealed record PresenceUser(string Id, string Name, string[] Friends, WebSocket Socket)
+    {
+        public string[] Contacts { get; set; } = [];
+    }
 
     private readonly ConcurrentDictionary<string, PresenceUser> _presence = new();
 
-    private bool AreFriends(PresenceUser a, PresenceUser b) => a.Friends.Contains(b.Id) || b.Friends.Contains(a.Id);
+    private static bool AreFriends(PresenceUser a, PresenceUser b) =>
+        a.Friends.Contains(b.Id) || b.Friends.Contains(a.Id) || (a.Contacts.Contains(b.Id) && b.Contacts.Contains(a.Id));
 
     private static string Json(object value) => System.Text.Json.JsonSerializer.Serialize(value);
 
@@ -105,6 +109,31 @@ internal sealed partial class LocalCallRelay : IDisposable
                 var type = root.GetProperty("t").GetString();
                 var to = root.TryGetProperty("to", out var toValue) ? toValue.GetString() ?? "" : "";
                 var code = root.TryGetProperty("code", out var codeValue) ? codeValue.GetString() ?? "" : "";
+                if (type == "contacts")
+                {
+                    var before = _presence.Values.Where(u => u.Id != me.Id && AreFriends(me, u)).Select(u => u.Id).ToHashSet();
+                    me.Contacts = root.GetProperty("ids").EnumerateArray().Select(e => e.GetString() ?? "").ToArray();
+                    var after = _presence.Values.Where(u => u.Id != me.Id && AreFriends(me, u)).ToList();
+                    foreach (var other in after.Where(u => !before.Contains(u.Id)))
+                    {
+                        await SendAsync(socket, Json(new { t = "online", friend = new { id = other.Id, name = other.Name } }));
+                        await SendAsync(other.Socket, Json(new { t = "online", friend = new { id = me.Id, name = me.Name } }));
+                    }
+                    foreach (var gone in before.Where(id => after.All(u => u.Id != id)))
+                    {
+                        await SendAsync(socket, Json(new { t = "offline", id = gone }));
+                        if (_presence.TryGetValue(gone, out var goneUser)) await SendAsync(goneUser.Socket, Json(new { t = "offline", id = me.Id }));
+                    }
+                    continue;
+                }
+                if (type is "request" or "accept")
+                {
+                    if (_presence.TryGetValue(to, out var recipient))
+                    {
+                        await SendAsync(recipient.Socket, Json(new { t = type == "request" ? "friendRequest" : "friendAccepted", from = new { id = me.Id, name = me.Name } }));
+                    }
+                    continue;
+                }
                 if (type is not ("call" or "decline" or "cancel")) continue;
                 if (!_presence.TryGetValue(to, out var target) || !AreFriends(me, target))
                 {

@@ -63,8 +63,10 @@ n'est enregistré, la voix ne passe par aucun serveur. Seulement la voix : aucun
   (protection de données de Windows). Tant qu'OptiGame est ouvert et que vous êtes « visible », il reste connecté au serveur, qui
   demande alors à Steam (`api.steampowered.com`, avec la clé d'API de l'auteur d'OptiGame) votre nom affiché et votre liste
   d'amis, et les garde **seulement le temps de cette connexion** (effacés dès qu'OptiGame se ferme ou que vous devenez
-  invisible). Vous n'êtes visible, et joignable, que par vos **amis Steam** qui ont OptiGame ouvert ; un appel d'ami transmet
-  seulement votre nom affiché et le code de l'appel. « Se déconnecter » efface le jeton de votre PC.
+  invisible). Vous n'êtes visible, et joignable, que par vos **amis Steam** qui ont OptiGame ouvert, et par vos **amis OptiGame**
+  (« Ajouter un ami… » : demande envoyée à une personne que votre client Steam connaît, acceptée par elle ; la liste de vos amis
+  OptiGame est gardée sur votre PC et envoyée au serveur seulement le temps de la connexion). Une demande d'ami ou un appel
+  transmet seulement votre nom affiché (et le code de l'appel). « Se déconnecter » efface le jeton de votre PC.
 - **« Passer par Internet »** (décoché par défaut, à cocher quand votre ami n'est pas sur votre réseau) : OptiGame demande alors
   au serveur public de découverte d'adresse `stun.cloudflare.com` (protocole STUN) l'adresse sous laquelle Internet voit votre
   PC. Ce serveur voit votre adresse IP ; votre voix ne passe jamais par lui.

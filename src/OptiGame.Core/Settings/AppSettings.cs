@@ -213,6 +213,9 @@ public sealed class AppSettings
     /// <summary>Visible de ses amis Steam qui ont OptiGame (et joignable par eux) ; sans effet tant qu'on n'est pas connecté.</summary>
     public bool CallVisibleToFriends { get; set; } = true;
 
+    /// <summary>Amis OptiGame acceptés des deux côtés (demandes d'ami), en plus des amis Steam ; gardés ici seulement.</summary>
+    public List<Call.CallContact> CallContacts { get; set; } = [];
+
     public AppSettings Clone() => new()
     {
         Version = Version,
@@ -254,6 +257,7 @@ public sealed class AppSettings
         CallSteamTokenProtected = CallSteamTokenProtected,
         CallSteamName = CallSteamName,
         CallVisibleToFriends = CallVisibleToFriends,
+        CallContacts = [.. CallContacts],
     };
 }
 

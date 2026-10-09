@@ -149,6 +149,102 @@ public sealed partial class CallViewModel
         _notifications.Show("Appel manqué", $"{from.DisplayName} vous a appelé.");
     }
 
+    // ===== Amis OptiGame : demandes d'ami =====
+
+    /// <summary>Demandes d'ami reçues, en attente de réponse.</summary>
+    public System.Collections.ObjectModel.ObservableCollection<CallFriend> FriendRequests { get; } = [];
+
+    /// <summary>Amis OptiGame (acceptés des deux côtés), avec « Retirer ».</summary>
+    public System.Collections.ObjectModel.ObservableCollection<Core.Call.CallContact> ContactItems { get; } = [];
+
+    public string ContactsHeader => $"Mes amis OptiGame ({ContactItems.Count})";
+
+    /// <summary>Panneau « Ajouter un ami » ouvert : recherche dans les noms connus du client Steam.</summary>
+    [ObservableProperty]
+    private bool _isAddingFriend;
+
+    [ObservableProperty]
+    private string _friendSearch = "";
+
+    public System.Collections.ObjectModel.ObservableCollection<Core.Call.SteamPersona> FriendSearchResults { get; } = [];
+
+    private IReadOnlyList<Core.Call.SteamPersona> _knownPeople = [];
+
+    [RelayCommand]
+    private void ToggleAddFriend()
+    {
+        IsAddingFriend = !IsAddingFriend;
+        if (!IsAddingFriend) return;
+        _knownPeople = Friends.KnownPeople();
+        FriendSearch = "";
+        UpdateFriendSearch();
+    }
+
+    partial void OnFriendSearchChanged(string value) => UpdateFriendSearch();
+
+    private void UpdateFriendSearch()
+    {
+        FriendSearchResults.Clear();
+        var contacts = Friends.Contacts.Select(c => c.SteamId).ToHashSet();
+        foreach (var person in Core.Call.SteamPersonas.Search(_knownPeople.Where(p => !contacts.Contains(p.SteamId)).ToList(), FriendSearch))
+        {
+            FriendSearchResults.Add(person);
+        }
+    }
+
+    [RelayCommand]
+    private void SendFriendRequest(Core.Call.SteamPersona? person)
+    {
+        if (person is null) return;
+        Friends.SendFriendRequest(person);
+        IsAddingFriend = false;
+        ShowStatus($"Demande d'ami envoyée à {person.Name}. Elle lui arrive s'il a OptiGame ouvert et connecté à Steam ; vous le verrez en ligne dès qu'il l'aura acceptée.",
+            Severity.Info);
+    }
+
+    [RelayCommand]
+    private void AcceptFriendRequest(CallFriend? from)
+    {
+        if (from is null) return;
+        FriendRequests.Remove(from);
+        Friends.AcceptFriendRequest(from);
+    }
+
+    /// <summary>Ignorer : rien n'est envoyé (l'autre ne sait pas que sa demande est refusée).</summary>
+    [RelayCommand]
+    private void IgnoreFriendRequest(CallFriend? from)
+    {
+        if (from is not null) FriendRequests.Remove(from);
+    }
+
+    [RelayCommand]
+    private void RemoveContact(Core.Call.CallContact? contact)
+    {
+        if (contact is not null) Friends.RemoveContact(contact.SteamId);
+    }
+
+    private void RefreshContacts()
+    {
+        ContactItems.Clear();
+        foreach (var contact in Friends.Contacts.OrderBy(c => c.Name, StringComparer.CurrentCultureIgnoreCase)) ContactItems.Add(contact);
+        OnPropertyChanged(nameof(ContactsHeader));
+    }
+
+    private void OnFriendRequest(CallFriend from)
+    {
+        if (Friends.Contacts.Any(c => c.SteamId == from.Id))
+        {
+            Friends.AcceptFriendRequest(from); // déjà ami de notre côté (l'autre a réinstallé OptiGame) : accord renvoyé
+            return;
+        }
+        if (FriendRequests.Any(r => r.Id == from.Id)) return;
+        FriendRequests.Add(from);
+        _log.Info("Amis Steam : demande d'ami reçue.");
+        _notifications.Show("Demande d'ami", $"{from.DisplayName} veut vous ajouter comme ami dans OptiGame (page Appel).");
+    }
+
+    private void OnFriendAccepted(CallFriend from) => ShowStatus($"{from.DisplayName} a accepté votre demande d'ami.", Severity.Success);
+
     private void OnDeclined(CallFriend from, string code)
     {
         if (_outgoing is not { } friend || friend.Id != from.Id || code != _rawCode) return;

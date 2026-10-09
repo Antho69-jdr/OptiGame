@@ -215,6 +215,14 @@ mots), refus, appel manqué, ami déconnecté (ui-snapshots `-Only c1,c2,c3,c4,c
 redirection vers Steam, retour falsifié refusé, jeton faux = 401, appels par code inchangés (1,3 s). Liste d'amis du compte de
 l'utilisateur PRIVÉE (GetFriendList 401) : il n'est vu que des amis dont la liste est publique. Connexion avec Steam RÉELLE :
 à vérifier par l'utilisateur (navigateur, devant le PC).
+Amis OPTIGAME (l'utilisateur ne veut pas rendre sa liste Steam publique ; Steam n'offre AUCUN accès autorisé aux amis pour une appli
+hors Steam, et se faire passer pour un jeu via le client Steam est écarté) : « Ajouter un ami… » cherche dans les noms connus du
+client Steam (`Core/Call/SteamPersonas`, bloc « friends » de localconfig.vdf) → {t:"request"} remis seulement si l'autre est en
+ligne, sans rien dire à l'expéditeur ; accepté → chacun garde l'autre dans `AppSettings.CallContacts` (sur SON PC) et envoie sa liste
+{t:"contacts"} à chaque connexion ; lien = amis Steam OU contacts MUTUELS ; « Ignorer » ne prévient pas ; déjà contact = accord
+renvoyé automatiquement ; acceptation non demandée ignorée ; 20 demandes par connexion. Vérifié le 2026-10-09 (serveur local, 3e
+personne aux réglages en mémoire, ui-snapshots `-Only c5`) : invisible sans lien, demande reçue, acceptée = vus des deux côtés,
+retirée = plus vus. Serveur v3 déployé (appels par code revérifiés).
 
 Données fictives pour tester l'UI : `$env:OPTIGAME_DATA_DIR='<dossier temporaire>'` redirige tout le dossier de
 données ; `DiagDump -- --import-capture <csv> <libellé> <date ISO>` y ajoute une capture (refusé sans la variable).

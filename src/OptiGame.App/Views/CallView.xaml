@@ -38,6 +38,28 @@
                 </StackPanel>
             </Border>
 
+            <!-- ===== Demandes d'ami reçues ===== -->
+            <ItemsControl ItemsSource="{Binding FriendRequests}" AutomationProperties.Name="Demandes d'ami">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Border Margin="{StaticResource Margin.StackL}" Style="{StaticResource Card}">
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource Text.BodyStrong}" TextWrapping="Wrap"
+                                           Text="{Binding DisplayName, StringFormat={}{0} veut vous ajouter comme ami dans OptiGame}" />
+                                <TextBlock Margin="0,4,0,0" Style="{StaticResource Text.Caption}"
+                                           Text="En acceptant, vous vous voyez en ligne et pouvez vous appeler, même sans être amis sur Steam. Ignorer ne prévient pas l'autre." />
+                                <WrapPanel Margin="0,12,0,0">
+                                    <Button Margin="0,0,8,0" Style="{StaticResource Button.Primary}" Content="Accepter" CommandParameter="{Binding}"
+                                            Command="{Binding DataContext.AcceptFriendRequestCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+                                    <Button Style="{StaticResource Button.Secondary}" Content="Ignorer" CommandParameter="{Binding}"
+                                            Command="{Binding DataContext.IgnoreFriendRequestCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+                                </WrapPanel>
+                            </StackPanel>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
             <!-- ===== Départ ===== -->
             <StackPanel Visibility="{Binding IsIdle, Converter={StaticResource BoolToVisibility}}">
                 <!-- Amis Steam : connexion, amis qui ont OptiGame ouvert, « Appeler » -->
@@ -91,8 +113,62 @@
                             <TextBlock Style="{StaticResource Text.Caption}" Text="Aucun de vos amis Steam n'a OptiGame ouvert en ce moment."
                                        Visibility="{Binding ShowsNoFriends, Converter={StaticResource BoolToVisibility}}" />
                             <TextBlock Margin="0,6,0,0" Style="{StaticResource Text.Caption}" TextWrapping="Wrap"
-                                       Text="Votre liste d'amis Steam est privée : seuls vos amis dont la liste est publique vous voient. Pour être vu de tous, rendez-la visible dans Steam (Profil › Modifier › Confidentialité › Liste d'amis)."
+                                       Text="Votre liste d'amis Steam est privée : seuls vos amis dont la liste est publique vous voient. Sans rien changer dans Steam, ajoutez vos amis ici : ils n'ont qu'à accepter."
                                        Visibility="{Binding ShowsPrivateListHint, Converter={StaticResource BoolToVisibility}}" />
+
+                            <!-- Amis OptiGame : demande d'ami à une personne connue de Steam, acceptée par elle -->
+                            <Button Margin="0,12,0,0" HorizontalAlignment="Left" Style="{StaticResource Button.Secondary}" Content="Ajouter un ami…"
+                                    Command="{Binding DataContext.ToggleAddFriendCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+                            <StackPanel Margin="0,8,0,0"
+                                        Visibility="{Binding DataContext.IsAddingFriend, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BoolToVisibility}}">
+                                <Label Style="{StaticResource Text.FieldLabel}" Content="_Rechercher parmi les personnes que votre Steam connaît" Target="{Binding ElementName=FriendSearchBox}" />
+                                <TextBox x:Name="FriendSearchBox" Width="320" HorizontalAlignment="Left"
+                                         Text="{Binding DataContext.FriendSearch, RelativeSource={RelativeSource AncestorType=UserControl}, UpdateSourceTrigger=PropertyChanged}"
+                                         AutomationProperties.Name="Rechercher un ami" />
+                                <ItemsControl Margin="0,8,0,0" MaxHeight="260"
+                                              ItemsSource="{Binding DataContext.FriendSearchResults, RelativeSource={RelativeSource AncestorType=UserControl}}">
+                                    <ItemsControl.Template>
+                                        <ControlTemplate TargetType="ItemsControl">
+                                            <ScrollViewer VerticalScrollBarVisibility="Auto"><ItemsPresenter /></ScrollViewer>
+                                        </ControlTemplate>
+                                    </ItemsControl.Template>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Grid Margin="0,0,8,4">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock VerticalAlignment="Center" Style="{StaticResource Text.Body}" Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
+                                                <Button Grid.Column="1" Style="{StaticResource Button.SecondarySmall}" Content="Envoyer une demande" CommandParameter="{Binding}"
+                                                        Command="{Binding DataContext.SendFriendRequestCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                        AutomationProperties.Name="{Binding Name, StringFormat='Envoyer une demande d’ami à {0}'}" />
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                                <TextBlock Margin="0,4,0,0" Style="{StaticResource Text.Caption}"
+                                           Text="Ce sont les personnes que votre Steam a croisées (amis, groupes, discussions). La demande ne lui arrive que s'il a OptiGame ouvert et connecté à Steam." />
+                            </StackPanel>
+                            <Expander Margin="0,12,0,0" Style="{StaticResource Expander.Disclosure}"
+                                      Header="{Binding DataContext.ContactsHeader, RelativeSource={RelativeSource AncestorType=UserControl}}">
+                                <ItemsControl Margin="0,6,0,0" ItemsSource="{Binding DataContext.ContactItems, RelativeSource={RelativeSource AncestorType=UserControl}}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Grid Margin="0,0,0,4">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock VerticalAlignment="Center" Style="{StaticResource Text.Body}" Text="{Binding Name}" />
+                                                <Button Grid.Column="1" Style="{StaticResource Button.Ghost}" Content="Retirer" CommandParameter="{Binding}"
+                                                        Command="{Binding DataContext.RemoveContactCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                        AutomationProperties.Name="{Binding Name, StringFormat=Retirer {0} de mes amis OptiGame}" />
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </Expander>
                         </StackPanel>
                         <TextBlock Margin="0,8,0,0" Style="{StaticResource Text.Caption}" Foreground="{StaticResource Brush.Warning}" TextWrapping="Wrap"
                                    Text="{Binding Message}" Visibility="{Binding HasMessage, Converter={StaticResource BoolToVisibility}}" />

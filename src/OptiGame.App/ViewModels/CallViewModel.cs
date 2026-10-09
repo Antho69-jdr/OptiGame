@@ -79,6 +79,10 @@ public sealed partial class CallViewModel : ObservableObject, IDisposable
         friends.Declined += OnDeclined;
         friends.Cancelled += OnCancelled;
         friends.CallError += OnCallError;
+        friends.FriendRequest += OnFriendRequest;
+        friends.FriendAccepted += OnFriendAccepted;
+        friends.PropertyChanged += (_, e) => { if (e.PropertyName == nameof(SteamFriendsService.Contacts)) RefreshContacts(); };
+        RefreshContacts();
     }
 
     /// <summary>Serveur de mise en relation (remplacé par la variable OPTIGAME_CALL_RELAY pour les essais) ; null = pas en place.</summary>
@@ -719,6 +723,7 @@ public sealed partial class CallViewModel : ObservableObject, IDisposable
         if (Phase == CallPhase.Connected)
         {
             _log.Info($"Appel terminé après {Duration} ({_received / 1024} Ko reçus, {_sent / 1024} Ko envoyés).");
+            JoinCode = ""; // code utilisé : plus rien à rejoindre
         }
         var engine = _engine;
         _engine = null;

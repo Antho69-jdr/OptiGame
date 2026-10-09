@@ -561,6 +561,37 @@ internal static class PageSnapshots
                 caller.Dispose();
                 await Settle(500);
             }));
+            // Amis OptiGame (sans être amis sur Steam) : demande d'ami, acceptation, puis retrait. Clara a ses propres réglages
+            // (en mémoire) : chaque PC garde sa liste.
+            pages.Add(("c5f-appel-ami-optigame", async () =>
+            {
+                if (hostFriends is null) return;
+                var claraSettings = new Core.Settings.AppSettingsStore(new MemoryStateStore<Core.Settings.AppSettings>());
+                var claraFriends = new Call.SteamFriendsService(claraSettings, services.GetRequiredService<Core.Logging.FileLog>(),
+                    services.GetRequiredService<Platform.Processes.GameLauncher>()) { Relay = relayUrl, TestToken = "test:76561198000000003:Clara:" };
+                var clara = new CallViewModel(services.GetRequiredService<Core.AppPaths>(), claraSettings, services.GetRequiredService<Core.Logging.FileLog>(),
+                    claraFriends, services.GetRequiredService<Services.INotificationService>()) { Relay = relayUrl };
+                hostFriends.Start();
+                claraFriends.Start();
+                await WaitUntil(() => hostFriends.IsOnline && claraFriends.IsOnline, 15_000);
+                await Settle(500);
+                Log($"Sans lien : l'hôte voit [{string.Join(", ", hostFriends.OnlineFriends.Select(f => f.DisplayName))}], Clara voit {claraFriends.OnlineFriends.Count} ami(s).");
+                host.SendFriendRequestCommand.Execute(new Core.Call.SteamPersona("76561198000000003", "Clara"));
+                await WaitUntil(() => clara.FriendRequests.Count == 1, 10_000);
+                Log($"Demande reçue par Clara : « {clara.FriendRequests.FirstOrDefault()?.DisplayName} ».");
+                clara.AcceptFriendRequestCommand.Execute(clara.FriendRequests.First());
+                await WaitUntil(() => hostFriends.OnlineFriends.Any(f => f.Name == "Clara") && claraFriends.OnlineFriends.Count == 1, 10_000);
+                Log($"Acceptée : l'hôte voit [{string.Join(", ", hostFriends.OnlineFriends.Select(f => f.DisplayName))}] ({host.ContactsHeader}), " +
+                    $"Clara voit [{string.Join(", ", claraFriends.OnlineFriends.Select(f => f.DisplayName))}] ({clara.ContactsHeader}). « {host.Status} »");
+                main.Navigate(host);
+                await Settle(800);
+                host.RemoveContactCommand.Execute(host.ContactItems.First());
+                await WaitUntil(() => claraFriends.OnlineFriends.Count == 0, 10_000);
+                Log($"Retirée : l'hôte voit {hostFriends.OnlineFriends.Count} ami(s), Clara {claraFriends.OnlineFriends.Count}.");
+                claraFriends.Stop();
+                hostFriends.Stop();
+                clara.Dispose();
+            }));
             pages.Add(("c6-appel-code-expire", async () =>
             {
                 host.JoinCode = "";
@@ -767,6 +798,20 @@ internal static class PageSnapshots
     }
 
     /// <summary>Laisse la mise en page, les liaisons et les lectures asynchrones se faire.</summary>
+    /// <summary>Réglages en mémoire (personne fictive des vérifications) : rien n'est écrit sur le disque.</summary>
+    private sealed class MemoryStateStore<T> : Core.State.IStateStore<T> where T : class
+    {
+        private T? _document;
+
+        public bool Exists => _document is not null;
+
+        public T? Load() => _document;
+
+        public void Save(T document) => _document = document;
+
+        public void Delete() => _document = null;
+    }
+
     [System.Runtime.InteropServices.DllImport("user32.dll")]
     private static extern void keybd_event(byte virtualKey, byte scanCode, uint flags, UIntPtr extraInfo);
 

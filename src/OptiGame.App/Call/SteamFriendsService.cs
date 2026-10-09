@@ -139,6 +139,12 @@ public sealed partial class SteamFriendsService : ObservableObject, IDisposable
     /// <summary>Appel impossible (ami parti, plus amis) : identifiant de l'ami, raison.</summary>
     public event Action<string, string>? CallError;
 
+    /// <summary>Quelqu'un demande à devenir ami OptiGame.</summary>
+    public event Action<CallFriend>? FriendRequest;
+
+    /// <summary>Une demande d'ami envoyée a été acceptée (l'ami est ajouté).</summary>
+    public event Action<CallFriend>? FriendAccepted;
+
     private string? Token => TestToken ?? SecretProtector.Unprotect(_settings.Get().CallSteamTokenProtected);
 
     // ===== Connexion avec Steam =====
@@ -362,6 +368,7 @@ public sealed partial class SteamFriendsService : ObservableObject, IDisposable
                 }
                 Message = "";
                 State = FriendsLinkState.Online;
+                SendContacts(); // amis OptiGame de ce PC : le serveur ne les garde que le temps de la connexion
                 _log.Info($"Amis Steam : en ligne, {OnlineFriends.Count} ami(s) avec OptiGame ouvert, liste d'amis {(FriendsListPublic ? "publique" : "privée")}.");
                 break;
             case "online" when message.TryGetProperty("friend", out var arrived):
@@ -381,11 +388,75 @@ public sealed partial class SteamFriendsService : ObservableObject, IDisposable
             case "cancelled" when message.TryGetProperty("from", out var canceller):
                 Cancelled?.Invoke(Friend(canceller), Text(message, "code"));
                 break;
+            case "friendRequest" when message.TryGetProperty("from", out var requester):
+                FriendRequest?.Invoke(Friend(requester));
+                break;
+            case "friendAccepted" when message.TryGetProperty("from", out var accepter):
+                var accepted = Friend(accepter);
+                if (!_pendingRequests.Remove(accepted.Id)) break; // acceptation d'une demande jamais envoyée : ignorée
+                AddContact(new CallContact(accepted.Id, accepted.Name));
+                FriendAccepted?.Invoke(accepted);
+                break;
             case "callError":
                 CallError?.Invoke(Text(message, "to"), Text(message, "reason"));
                 break;
         }
     }
+
+    // ===== Amis OptiGame (demandes d'ami, accord gardé sur ce PC) =====
+
+    private readonly HashSet<string> _pendingRequests = [];
+
+    /// <summary>Amis OptiGame acceptés des deux côtés (settings.json).</summary>
+    public IReadOnlyList<CallContact> Contacts => _settings.Get().CallContacts;
+
+    /// <summary>Personnes connues du client Steam de ce PC, à qui proposer une demande d'ami (relu à chaque appel).</summary>
+    public IReadOnlyList<SteamPersona> KnownPeople()
+    {
+        try
+        {
+            if (SteamPlaytimeReader.LocalConfigPath() is not { } config) return [];
+            var account = Path.GetFileName(Path.GetDirectoryName(Path.GetDirectoryName(config)));
+            return SteamPersonas.Read(File.ReadAllText(config), uint.TryParse(account, out var id) ? id : 0);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or FormatException)
+        {
+            _log.Warn($"Amis Steam : noms connus de Steam illisibles ({ex.Message}).");
+            return [];
+        }
+    }
+
+    /// <summary>Demande d'ami : remise seulement si l'autre a OptiGame ouvert ; on ne sait ni s'il l'a reçue ni s'il refuse.</summary>
+    public void SendFriendRequest(SteamPersona person)
+    {
+        _pendingRequests.Add(person.SteamId);
+        Send(new { t = "request", to = person.SteamId });
+        _log.Info("Amis Steam : demande d'ami envoyée.");
+    }
+
+    public void AcceptFriendRequest(CallFriend from)
+    {
+        AddContact(new CallContact(from.Id, from.Name));
+        Send(new { t = "accept", to = from.Id });
+        _log.Info("Amis Steam : demande d'ami acceptée.");
+    }
+
+    public void RemoveContact(string steamId)
+    {
+        _settings.Update(s => s.CallContacts = s.CallContacts.Where(c => c.SteamId != steamId).ToList());
+        OnPropertyChanged(nameof(Contacts));
+        SendContacts();
+        _log.Info("Amis Steam : ami OptiGame retiré.");
+    }
+
+    private void AddContact(CallContact contact)
+    {
+        _settings.Update(s => s.CallContacts = [.. s.CallContacts.Where(c => c.SteamId != contact.SteamId), contact]);
+        OnPropertyChanged(nameof(Contacts));
+        SendContacts();
+    }
+
+    private void SendContacts() => Send(new { t = "contacts", ids = _settings.Get().CallContacts.Select(c => c.SteamId).ToArray() });
 
     public void Call(string friendId, string code) => Send(new { t = "call", to = friendId, code });
 

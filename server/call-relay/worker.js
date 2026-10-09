@@ -9,7 +9,8 @@
 // 3. Amis en ligne (classe Presence, une seule) : OptiGame connecté (WebSocket /v1/presence, jeton dans l'en-tête Authorization)
 //    voit ses amis Steam qui ont OptiGame ouvert, et peut les appeler (sonnerie = le code d'un salon). Deux comptes ne se voient
 //    que s'ils sont AMIS SUR STEAM (liste d'amis demandée à Steam avec la clé d'API de l'auteur ; une liste privée suffit si celle
-//    de l'autre est publique). Gardé seulement le temps de la connexion : numéro de compte, nom affiché, liste d'amis.
+//    de l'autre est publique) ou AMIS OPTIGAME (demande d'ami acceptée, gardée sur les deux PC). Gardé seulement le temps de la
+//    connexion : numéro de compte, nom affiché, liste d'amis Steam, liste d'amis OptiGame envoyée par le PC.
 //
 // Rien n'est journalisé. Plan gratuit de Cloudflare : rien ne peut être facturé (au-delà du quota quotidien, refus jusqu'au
 // lendemain). Secrets du Worker : TOKEN_SECRET (signature des jetons), STEAM_API_KEY (clé d'API Web de Steam).
@@ -17,8 +18,9 @@
 // Protocole des salons (JSON) — envoyé par le serveur : {t:"waiting", expiresAt} à l'hôte, {t:"peer"} aux deux quand l'ami arrive,
 // {t:"left"} quand l'autre part, {t:"error", code:"busy"|"unknown"|"expired"|"limit"} avant de fermer ; le reste est relayé tel quel.
 // Protocole des amis : serveur → {t:"hello", you, online:[{id,name}], friendsListPublic}, {t:"online", friend}, {t:"offline", id},
-// {t:"ring", from, code}, {t:"declined"|"cancelled", from, code}, {t:"callError", to, reason}, {t:"replaced"} ;
-// client → {t:"call"|"decline"|"cancel", to, code}, {t:"ping"} (réponse automatique {t:"pong"}).
+// {t:"ring", from, code}, {t:"declined"|"cancelled", from, code}, {t:"callError", to, reason}, {t:"replaced"},
+// {t:"friendRequest"|"friendAccepted", from} ;
+// client → {t:"call"|"decline"|"cancel", to, code}, {t:"contacts", ids}, {t:"request"|"accept", to}, {t:"ping"} (réponse {t:"pong"}).
 
 const CODE = /^[23456789ABCDEFGHJKMNPQRSTUVWXYZ]{6}$/;
 const ROOM = /^\/v1\/rooms\/([23456789ABCDEFGHJKMNPQRSTUVWXYZ]{6})$/;
@@ -297,11 +299,27 @@ export class Login {
 }
 
 // ===== Amis en ligne (une seule instance) =====
+//
+// Deux comptes sont « liés » s'ils sont amis sur Steam (liste de l'un OU de l'autre), ou s'ils se sont ajoutés MUTUELLEMENT comme
+// amis OptiGame (listes « contacts » envoyées par chaque PC, qui les garde : le serveur ne les conserve que le temps de la connexion).
+// Une demande d'ami n'est remise que si le destinataire est en ligne, et l'expéditeur n'apprend rien (ni s'il est en ligne, ni s'il
+// refuse) : il ne le voit que si l'autre accepte.
+
+const MAX_CONTACTS = 500;
+const MAX_REQUESTS = 20; // demandes d'ami par connexion
+
+function linked(a, ua, b, ub) {
+  if (!ua || !ub) return false;
+  const steam = (ua.friends && ua.friends.includes(b)) || (ub.friends && ub.friends.includes(a));
+  const mutual = (ua.contacts || []).includes(b) && (ub.contacts || []).includes(a);
+  return steam || mutual;
+}
 
 export class Presence {
   constructor(state, env) {
     this.state = state;
     this.env = env;
+    this.requests = new Map();
     this.state.setWebSocketAutoResponse(new WebSocketRequestResponsePair('{"t":"ping"}', '{"t":"pong"}'));
   }
 
@@ -313,12 +331,13 @@ export class Presence {
       try { old.send(JSON.stringify({ t: "replaced" })); old.close(4001, "replaced"); } catch { /* fermée */ }
     }
     const [friends, name] = await Promise.all([friendIds(this.env, id), personaName(this.env, id)]);
-    await this.state.storage.put(`u:${id}`, { name, friends });
+    const me = { name, friends, contacts: [] };
+    await this.state.storage.put(`u:${id}`, me);
     const [client, server] = Object.values(new WebSocketPair());
     this.state.acceptWebSocket(server, [id]);
 
     const online = [];
-    for (const other of await this.onlineFriends(id, friends)) {
+    for (const other of await this.linkedOnline(id, me)) {
       online.push({ id: other.id, name: other.name });
       this.sendTo(other.id, { t: "online", friend: { id, name } });
     }
@@ -326,25 +345,23 @@ export class Presence {
     return new Response(null, { status: 101, webSocket: client });
   }
 
-  // Comptes connectés qui sont amis Steam avec `id` (d'après la liste de l'un OU de l'autre).
-  async onlineFriends(id, friends) {
+  // Comptes connectés liés à `id`.
+  async linkedOnline(id, me) {
     const ids = [...new Set(this.state.getWebSockets().map(ws => this.state.getTags(ws)[0]))].filter(other => other !== id);
     const result = [];
     for (let i = 0; i < ids.length; i += 100) {
       const users = await this.state.storage.get(ids.slice(i, i + 100).map(other => `u:${other}`));
       for (const other of ids.slice(i, i + 100)) {
         const user = users.get(`u:${other}`);
-        if (!user) continue;
-        if ((friends && friends.includes(other)) || (user.friends && user.friends.includes(id))) result.push({ id: other, name: user.name });
+        if (linked(id, me, other, user)) result.push({ id: other, name: user.name });
       }
     }
     return result;
   }
 
-  async areFriends(a, b) {
+  async areLinked(a, b) {
     const users = await this.state.storage.get([`u:${a}`, `u:${b}`]);
-    const ua = users.get(`u:${a}`), ub = users.get(`u:${b}`);
-    return !!ua && !!ub && ((ua.friends && ua.friends.includes(b)) || (ub.friends && ub.friends.includes(a)));
+    return linked(a, users.get(`u:${a}`), b, users.get(`u:${b}`));
   }
 
   sendTo(id, message) {
@@ -352,13 +369,26 @@ export class Presence {
   }
 
   async webSocketMessage(ws, raw) {
-    if (typeof raw !== "string" || raw.length > 1024) return;
+    if (typeof raw !== "string" || raw.length > 32 * 1024) return;
     let m;
     try { m = JSON.parse(raw); } catch { return; }
     const from = this.state.getTags(ws)[0];
+
+    if (m.t === "contacts" && Array.isArray(m.ids)) return this.setContacts(from, m.ids);
+
+    if (m.t === "request" || m.t === "accept") {
+      if (!STEAM_ID.test(m.to || "") || m.to === from) return;
+      const count = (this.requests.get(from) || 0) + 1;
+      this.requests.set(from, count);
+      if (count > MAX_REQUESTS) return;
+      const user = await this.state.storage.get(`u:${from}`);
+      this.sendTo(m.to, { t: m.t === "request" ? "friendRequest" : "friendAccepted", from: { id: from, name: user?.name || "" } });
+      return;
+    }
+
     if (!["call", "decline", "cancel"].includes(m.t) || !STEAM_ID.test(m.to || "") || !CODE.test(m.code || "")) return;
     const online = this.state.getWebSockets(m.to).length > 0;
-    if (!online || !(await this.areFriends(from, m.to))) {
+    if (!online || !(await this.areLinked(from, m.to))) {
       if (m.t === "call") ws.send(JSON.stringify({ t: "callError", to: m.to, reason: online ? "notFriend" : "offline" }));
       return;
     }
@@ -367,12 +397,35 @@ export class Presence {
     this.sendTo(m.to, { t: type, from: { id: from, name: user?.name || "" }, code: m.code });
   }
 
+  // Liste d'amis OptiGame du PC : ceux qui deviennent (ou cessent d'être) liés en sont prévenus, des deux côtés.
+  async setContacts(id, ids) {
+    const contacts = [...new Set(ids.filter(c => typeof c === "string" && STEAM_ID.test(c) && c !== id))].slice(0, MAX_CONTACTS);
+    const me = await this.state.storage.get(`u:${id}`);
+    if (!me) return;
+    const before = new Set((await this.linkedOnline(id, me)).map(u => u.id));
+    me.contacts = contacts;
+    await this.state.storage.put(`u:${id}`, me);
+    const after = await this.linkedOnline(id, me);
+    for (const other of after) {
+      if (before.has(other.id)) continue;
+      this.sendTo(id, { t: "online", friend: { id: other.id, name: other.name } });
+      this.sendTo(other.id, { t: "online", friend: { id, name: me.name } });
+    }
+    const still = new Set(after.map(u => u.id));
+    for (const gone of before) {
+      if (still.has(gone)) continue;
+      this.sendTo(id, { t: "offline", id: gone });
+      this.sendTo(gone, { t: "offline", id });
+    }
+  }
+
   async webSocketClose(ws) {
     try { ws.close(1000, "bye"); } catch { /* déjà fermée */ }
     const id = this.state.getTags(ws)[0];
     if (this.state.getWebSockets(id).some(other => other !== ws)) return; // remplacée par une connexion plus récente
-    const user = await this.state.storage.get(`u:${id}`);
-    for (const friend of await this.onlineFriends(id, user?.friends ?? null)) this.sendTo(friend.id, { t: "offline", id });
+    this.requests.delete(id);
+    const me = await this.state.storage.get(`u:${id}`);
+    if (me) for (const friend of await this.linkedOnline(id, me)) this.sendTo(friend.id, { t: "offline", id });
     await this.state.storage.delete(`u:${id}`);
   }
 
