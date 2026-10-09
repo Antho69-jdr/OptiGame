@@ -153,6 +153,12 @@ tests/OptiGame.Platform.Tests/  intégration sur le vrai registre, UNIQUEMENT so
 tools/OptiGame.DiagDump/        diagnostic en console (lecture seule), pour vérifier les lectures système
 ```
 
+Partage sans serveur (étape 6 de l'audit) : fichier « .optigame » des réglages de partie (`Core/Profiles/SharedGameSettings` :
+optimiser, plan d'alimentation de Windows seulement, priorité, programmes à fermer ; JAMAIS de chemin, lanceur ni identifiant ;
+relu strictement : 64 Ko max, format + version, nom « x.exe » seul, programmes protégés écartés et listés) ; fiche › Optimisation ›
+« Importer… » remplit l'éditeur SANS enregistrer (confirmation si l'exe diffère), « Exporter… ». Page Mesures › « Copier le
+résumé » (`Core/Measurement/CaptureSummary`, presse-papiers ; deux jeux différents = les deux nommés). Captures 6n / 6o, 4b.
+
 Pages Mesures et Paramètres (refonte, étape 7) : mesures automatiques ajoutées à la liste dès AutoCapture.CaptureAdded ;
 PresentMon se règle dans Paramètres › Mesures (MeasuresViewModel.ChoosePresentMon) ; Paramètres en onglets (SettingsTab,
 sélecteur `Segment` comme la fiche du jeu), une carte `SettingsCard` de Controls/SettingRow par onglet.

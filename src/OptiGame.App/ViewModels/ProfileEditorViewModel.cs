@@ -203,6 +203,88 @@ public sealed partial class ProfileEditorViewModel : ObservableObject
         }
     }
 
+    /// <summary>
+    /// « Exporter… » : réglages de partie affichés (enregistrés ou non) dans un fichier « .optigame », sans rien de propre au PC
+    /// (chemins, lanceur, identifiants).
+    /// </summary>
+    [RelayCommand]
+    private void ExportSharedSettings()
+    {
+        var shared = SharedGameSettings.From(ToProfile());
+        if (_dialogs.PickSharedSettingsToSave(SharedGameSettings.SuggestedFileName(shared.Game)) is not { } path) return;
+        try
+        {
+            File.WriteAllText(path, shared.ToJson());
+            _dialogs.ShowInfo("Réglages exportés",
+                $"Les réglages de partie de {shared.Game} sont dans « {Path.GetFileName(path)} ». Le fichier ne contient ni chemin ni " +
+                "identifiant de ce PC : vous pouvez l'envoyer. Chez vous comme ailleurs, « Importer… » le relit sans rien appliquer.");
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            _dialogs.ShowError("Export impossible", "OptiGame n'a pas pu écrire le fichier de réglages.", ex.Message);
+        }
+    }
+
+    /// <summary>
+    /// « Importer… » : un fichier « .optigame » remplit l'éditeur (rien n'est enregistré ni appliqué) ; l'utilisateur relit puis
+    /// « Enregistrer ». Ce qui est écarté (programme protégé, plan absent de ce PC…) est dit.
+    /// </summary>
+    [RelayCommand]
+    private void ImportSharedSettings()
+    {
+        if (_dialogs.PickSharedSettingsToOpen() is not { } path) return;
+        SharedGameSettings.ParseResult result;
+        try
+        {
+            if (new FileInfo(path).Length > SharedGameSettings.MaxBytes) throw new FormatException("Fichier trop gros pour des réglages de partie.");
+            result = SharedGameSettings.Parse(File.ReadAllText(path));
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or FormatException)
+        {
+            _dialogs.ShowError("Import impossible", ex is FormatException ? ex.Message : "OptiGame n'a pas pu lire ce fichier.", ex.Message);
+            return;
+        }
+
+        var (shared, ignored) = result;
+        var thisExe = Path.GetFileName(ExePath);
+        if (shared.Exe.Length > 0 && !shared.Exe.Equals(thisExe, StringComparison.OrdinalIgnoreCase)
+            && !_dialogs.Confirm($"Utiliser les réglages de {(shared.Game.Length > 0 ? shared.Game : shared.Exe)} ?",
+                $"Ce fichier a été exporté pour {(shared.Game.Length > 0 ? $"« {shared.Game} » ({shared.Exe})" : shared.Exe)}, pas pour {Name} ({thisExe}).",
+                "Utiliser ces réglages", isDestructive: false))
+        {
+            return;
+        }
+
+        var notes = ApplySharedSettings(shared, ignored);
+        _dialogs.ShowInfo("Réglages importés : relisez-les",
+            $"Les réglages de partie du fichier sont dans l'onglet Optimisation, PAS encore enregistrés : vérifiez-les, puis « Enregistrer » " +
+            "(ou « Abandonner les modifications »)." + (notes.Count == 0 ? "" : $"{Environment.NewLine}{Environment.NewLine}Écartés : {string.Join(" ; ", notes)}."));
+    }
+
+    /// <summary>Réglages d'un fichier lu, versés dans l'éditeur (non enregistrés) ; renvoie ce qui a été écarté. Sans dialogue (mode capture).</summary>
+    internal IReadOnlyList<string> ApplySharedSettings(SharedGameSettings shared, IReadOnlyList<string> ignored)
+    {
+        var notes = ignored.ToList();
+        Enabled = shared.Optimize;
+        SelectedPriority = PriorityOptions.First(o => o.Value == shared.Priority);
+        if (shared.PowerPlan is { } plan && PowerSchemeOptions.FirstOrDefault(o => o.Id == plan) is { } option && !option.Label.StartsWith("Plan introuvable", StringComparison.Ordinal))
+        {
+            SelectedPowerScheme = option;
+        }
+        else
+        {
+            if (shared.PowerPlan is { } missing)
+            {
+                notes.Add($"plan d'alimentation « {(SharedGameSettings.WindowsPowerPlans.TryGetValue(missing, out var name) ? name : missing.ToString())} » absent de ce PC (gardé : ne pas changer)");
+            }
+            SelectedPowerScheme = PowerSchemeOptions[0];
+        }
+        ProcessesToClose.Clear();
+        foreach (var program in shared.ClosePrograms) AddProcessRow(program.ExeName, program.Relaunch);
+        Touch();
+        return notes;
+    }
+
     private bool CanSave() => IsDirty && NameError.Length == 0;
 
     /// <summary>« Enregistrer » (ou Ctrl+S) : seulement s'il y a des modifications valides.</summary>

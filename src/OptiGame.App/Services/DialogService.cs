@@ -52,6 +52,12 @@ public interface IDialogService
     /// <summary>Sélection d'un dossier ; null si annulé.</summary>
     string? PickFolder(string title);
 
+    /// <summary>Fichier de réglages de partie à importer (« .optigame ») ; null si annulé.</summary>
+    string? PickSharedSettingsToOpen();
+
+    /// <summary>Emplacement où exporter des réglages de partie (« .optigame ») ; null si annulé.</summary>
+    string? PickSharedSettingsToSave(string suggestedName);
+
     /// <summary>Sélection d'un fichier .exe quelconque ; null si annulé.</summary>
     string? PickProgram(string title, string? initialPath);
 
@@ -123,6 +129,30 @@ public sealed class DialogService(FileLog log) : IDialogService
     {
         var dialog = new GameScanDialog(games, hasProfile, gameFolders);
         return ShowOwned(dialog) == true ? dialog.Selection : [];
+    }
+
+    public string? PickSharedSettingsToOpen()
+    {
+        var dialog = new OpenFileDialog
+        {
+            Title = "Importer des réglages de partie",
+            Filter = $"Réglages OptiGame (*{Core.Profiles.SharedGameSettings.FileExtension})|*{Core.Profiles.SharedGameSettings.FileExtension}",
+            CheckFileExists = true,
+        };
+        return dialog.ShowDialog(ActiveWindow()) == true ? dialog.FileName : null;
+    }
+
+    public string? PickSharedSettingsToSave(string suggestedName)
+    {
+        var dialog = new SaveFileDialog
+        {
+            Title = "Exporter les réglages de partie",
+            Filter = $"Réglages OptiGame (*{Core.Profiles.SharedGameSettings.FileExtension})|*{Core.Profiles.SharedGameSettings.FileExtension}",
+            FileName = suggestedName,
+            AddExtension = true,
+            OverwritePrompt = true,
+        };
+        return dialog.ShowDialog(ActiveWindow()) == true ? dialog.FileName : null;
     }
 
     public string? PickFolder(string title)

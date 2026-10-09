@@ -441,7 +441,20 @@
                     <!-- ===== Optimisation ===== -->
                     <StackPanel Visibility="{Binding IsOptimizationTab, Converter={StaticResource BoolToVisibility}}">
                         <!-- Réglages de partie : barre « Enregistrer » -->
-                        <TextBlock Style="{StaticResource Text.SectionTitle}" Text="Réglages de partie" />
+                        <!-- Partage sans serveur : fichier « .optigame » (rien de propre au PC) ; l'import remplit l'éditeur, rien n'est enregistré -->
+                        <DockPanel>
+                            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                                <controls:IconButton Style="{StaticResource Button.Ghost}" Glyph="&#xE8B5;" Label="Importer…"
+                                                     Command="{Binding Editor.ImportSharedSettingsCommand}"
+                                                     AutomationProperties.Name="Importer des réglages de partie"
+                                                     AutomationProperties.HelpText="Lit un fichier .optigame dans l'éditeur ; rien n'est enregistré avant « Enregistrer »." />
+                                <controls:IconButton Margin="4,0,0,0" Style="{StaticResource Button.Ghost}" Glyph="&#xEDE1;" Label="Exporter…"
+                                                     Command="{Binding Editor.ExportSharedSettingsCommand}"
+                                                     AutomationProperties.Name="Exporter les réglages de partie"
+                                                     AutomationProperties.HelpText="Fichier .optigame à partager : sans chemin ni identifiant de ce PC." />
+                            </StackPanel>
+                            <TextBlock VerticalAlignment="Center" Style="{StaticResource Text.SectionTitle}" Text="Réglages de partie" />
+                        </DockPanel>
                         <TextBlock Margin="0,4,0,12" Style="{StaticResource Text.Secondary}"
                                    Text="Appliqués quand le jeu démarre, restaurés quand il se ferme. Gardés avec « Enregistrer »." />
                         <Border Margin="{StaticResource Margin.StackXL}" Style="{StaticResource Card}" DataContext="{Binding Editor}">

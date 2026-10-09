@@ -140,7 +140,7 @@ public sealed partial class MeasuresViewModel : ObservableObject
     [ObservableProperty] private IReadOnlyList<double>? _afterFrames;
     [ObservableProperty] private IReadOnlyList<ComparisonRow> _comparison = [];
     [ObservableProperty]
-    [NotifyCanExecuteChangedFor(nameof(DeleteSelectedCommand))]
+    [NotifyCanExecuteChangedFor(nameof(DeleteSelectedCommand), nameof(CopySummaryCommand))]
     private bool _hasSelection;
     [ObservableProperty] private bool _isComparison;
 
@@ -235,6 +235,61 @@ public sealed partial class MeasuresViewModel : ObservableObject
                 "Supprimer", isDestructive: true)) return;
         foreach (var item in selected) _store.Remove(item.Record.Id);
         RefreshCaptures();
+    }
+
+    /// <summary>
+    /// « Copier le résumé » : une mesure (ou les deux comparées) en une ligne de texte à coller où l'on veut. OptiGame n'envoie
+    /// rien : c'est l'utilisateur qui partage.
+    /// </summary>
+    [RelayCommand(CanExecute = nameof(HasSelection))]
+    private void CopySummary()
+    {
+        if (SummaryText() is not { } text) return;
+        try
+        {
+            System.Windows.Clipboard.SetText(text);
+            CaptureStatusSeverity = Controls.Severity.Success;
+            CaptureStatus = "Résumé copié : collez-le où vous voulez.";
+        }
+        catch (System.Runtime.InteropServices.COMException ex)
+        {
+            _log.Warn($"Presse-papiers occupé : {ex.Message}");
+            CaptureStatusSeverity = Controls.Severity.Warning;
+            CaptureStatus = "Le presse-papiers est occupé par un autre programme : réessayez dans un instant.";
+        }
+    }
+
+    /// <summary>Texte du résumé de la sélection (une mesure, ou deux comparées) ; null sans sélection.</summary>
+    internal string? SummaryText()
+    {
+        if (Before is not { } before) return null;
+        var game = GameName(before.Record);
+        var gpu = GpuName();
+        return After is { } after
+            ? Core.Measurement.CaptureSummary.Compare(before.Record, after.Record, game, GameName(after.Record), gpu)
+            : Core.Measurement.CaptureSummary.Of(before.Record, game, gpu,
+                TimeZoneInfo.ConvertTime(before.Record.CapturedAt, _time.LocalTimeZone).DateTime);
+    }
+
+    /// <summary>Nom du jeu (profil dont l'exe a été mesuré), sinon l'exe.</summary>
+    private string GameName(CaptureRecord record) =>
+        _profiles.GetAll().FirstOrDefault(p => Path.GetFileName(p.ExePath).Equals(record.ProcessName, StringComparison.OrdinalIgnoreCase))?.Name
+        ?? record.ProcessName;
+
+    /// <summary>Carte graphique la plus puissante reconnue du PC (celle des jeux), sinon la première carte physique ; null si illisible.</summary>
+    private string? GpuName()
+    {
+        try
+        {
+            var adapters = _gpus.GetAdapters().Where(a => a.IsPhysical).ToList();
+            return adapters.Select(a => (a.Name, Match: Core.Rating.GpuPerformance.Identify(a.Name)))
+                       .OrderByDescending(x => x.Match?.Index ?? -1).FirstOrDefault().Name
+                   ?? adapters.FirstOrDefault()?.Name;
+        }
+        catch (Exception ex) when (ex is System.Management.ManagementException or UnauthorizedAccessException or InvalidOperationException)
+        {
+            return null;
+        }
     }
 
     /// <summary>Présélectionne un jeu (bouton « Mesurer les FPS » de la page d'un jeu).</summary>

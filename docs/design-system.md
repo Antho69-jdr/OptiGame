@@ -154,7 +154,8 @@ grille, flèches d'une jaquette à l'autre).
     « Voir sur GOG » ; sinon IGDB = « 86 / 100 » + « Note des membres d'IGDB · 96 votes », presse « moyenne de N critiques
     (IGDB) », et la ligne de source dit « en anglais ». Leurs vidéos = boutons `Button.Secondary` (icône lecture + nom) sous
     « Bandes-annonces, dans votre navigateur : » (aucun lecteur dans OptiGame).
-  - **Optimisation** : « Réglages de partie » (case « Optimiser ce jeu pendant les parties », réglages grisés sinon,
+  - **Optimisation** : « Réglages de partie » (« Importer… » / « Exporter… » en `Button.Ghost` à droite du titre : fichier
+    `.optigame`, l'import remplit l'éditeur sans enregistrer ; case « Optimiser ce jeu pendant les parties », réglages grisés sinon,
     avertissements en ligne, « Ce qui se passera » toujours visible) → barre **Enregistrer** ; « Réglages permanents (Windows
     et pilote) » → **Appliquer…** confirmé et **Restaurer l'original…**, état relu, jamais stocké.
   - **Propriétés** : nom (validé en ligne), fichier .exe surveillé, lancement, retrait du jeu (bouton Danger).

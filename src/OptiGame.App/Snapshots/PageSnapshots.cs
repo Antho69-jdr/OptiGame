@@ -164,7 +164,10 @@ internal static class PageSnapshots
                 ("4b-mesures-comparaison", async () =>
                 {
                     main.Navigate(main.Measures);
+                    main.Measures.UpdateSelection(main.Measures.Captures.Take(1).ToList());
+                    Log($"Résumé d'une mesure : {main.Measures.SummaryText()}");
                     main.Measures.UpdateSelection(main.Measures.Captures.Take(2).ToList());
+                    Log($"Résumé de deux mesures : {main.Measures.SummaryText()}");
                     await Settle(1500);
                 }),
                 ("5-parametres", async () => { main.Settings.SelectedTab = SettingsTab.General; main.Navigate(main.Settings); await Settle(1500); }),
@@ -218,6 +221,29 @@ internal static class PageSnapshots
                     tray.RefreshRecentGames();
                     Log($"Menu de notification, jeux récents : {string.Join(" · ", tray.RecentGames.Select(g => g.Header))}");
                     await Settle(100);
+                }));
+                // Partage : export des réglages de partie, puis import d'un fichier « reçu » (programme protégé, plan inconnu) dans
+                // l'éditeur ; rien n'est enregistré (barre « Enregistrer » visible), puis « Abandonner les modifications ».
+                pages.Add(("6n-reglages-importes", async () =>
+                {
+                    var editor = library.OpenGame!.Editor;
+                    library.OpenGame.SelectedTab = GameTab.Optimization;
+                    var exported = Core.Profiles.SharedGameSettings.From(services.GetRequiredService<Core.Profiles.ProfileStore>().Find(library.OpenGame.Id)!).ToJson();
+                    Log($"Export : {exported.Length} caractères, chemin du PC dedans : {(exported.Contains(@":\\") ? "OUI" : "non")}");
+                    var received = """
+                        { "format": "optigame-reglages-de-partie", "version": 1, "jeu": "Portal 2", "exe": "portal2.exe", "optimiser": true,
+                          "planAlimentation": "e9a42b02-d5df-448d-aa00-03f14749eb61", "priorite": "AboveNormal",
+                          "programmesAFermer": [ { "exe": "chrome.exe", "relancer": true }, { "exe": "explorer.exe" } ] }
+                        """;
+                    var (shared, ignored) = Core.Profiles.SharedGameSettings.Parse(received);
+                    var notes = editor.ApplySharedSettings(shared, ignored);
+                    await Settle(1200);
+                    Log($"Import : modifié = {editor.IsDirty}, priorité = {editor.SelectedPriority.Label}, à fermer = {string.Join(", ", editor.ProcessesToClose.Select(p => p.ExeName))} ; écartés : {string.Join(" ; ", notes)}");
+                }));
+                pages.Add(("6o-import-abandonne", async () =>
+                {
+                    library.OpenGame!.Editor.RevertCommand.Execute(null);
+                    await Settle(800);
                 }));
                 // Couleur d'accent changée fenêtre ouverte (copie des données), puis remise au vert (6m).
                 pages.Add(("6l-accent-en-direct", async () =>

@@ -97,6 +97,9 @@
                             <controls:IconButton DockPanel.Dock="Right" VerticalAlignment="Top" Style="{StaticResource Button.Ghost}" Glyph="&#xE74D;"
                                                  Label="Supprimer…" Command="{Binding DeleteSelectedCommand}"
                                                  AutomationProperties.HelpText="Supprime les mesures sélectionnées (touche Suppr)." />
+                            <controls:IconButton DockPanel.Dock="Right" Margin="0,0,4,0" VerticalAlignment="Top" Style="{StaticResource Button.Ghost}" Glyph="&#xE8C8;"
+                                                 Label="Copier le résumé" Command="{Binding CopySummaryCommand}"
+                                                 AutomationProperties.HelpText="Copie une ligne de texte (FPS, 1 % les plus lents, carte graphique) à coller où vous voulez ; deux mesures = avant / après." />
                             <StackPanel>
                                 <TextBlock Style="{StaticResource Text.SectionTitle}" Text="Mesures enregistrées" />
                                 <TextBlock Style="{StaticResource Text.Caption}" Text="Une mesure, ou deux (Ctrl+clic, ou Maj+flèches) pour les comparer." />
@@ -113,6 +116,7 @@
                                  Visibility="{Binding HasCaptures, Converter={StaticResource BoolToVisibility}}">
                             <ListBox.ContextMenu>
                                 <ContextMenu>
+                                    <MenuItem Header="Copier le résumé" Command="{Binding CopySummaryCommand}" />
                                     <MenuItem Header="Supprimer…" Command="{Binding DeleteSelectedCommand}" />
                                 </ContextMenu>
                             </ListBox.ContextMenu>
