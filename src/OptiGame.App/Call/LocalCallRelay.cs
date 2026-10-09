@@ -54,8 +54,82 @@ internal sealed partial class LocalCallRelay : IDisposable
         }
     }
 
+    // ===== Amis en ligne (même protocole que la classe Presence du serveur) =====
+    // Jeton de TEST seulement (jamais accepté par le vrai serveur) : « test:<steamid>:<nom>:<amis séparés par des virgules> ».
+
+    private sealed record PresenceUser(string Id, string Name, string[] Friends, WebSocket Socket);
+
+    private readonly ConcurrentDictionary<string, PresenceUser> _presence = new();
+
+    private bool AreFriends(PresenceUser a, PresenceUser b) => a.Friends.Contains(b.Id) || b.Friends.Contains(a.Id);
+
+    private static string Json(object value) => System.Text.Json.JsonSerializer.Serialize(value);
+
+    private async Task PresenceAsync(HttpListenerContext context)
+    {
+        var parts = (context.Request.Headers["Authorization"] ?? "").Replace("Bearer ", "").Split(':');
+        if (parts.Length != 4 || parts[0] != "test" || !context.Request.IsWebSocketRequest)
+        {
+            context.Response.StatusCode = 401;
+            context.Response.Close();
+            return;
+        }
+        var socket = (await context.AcceptWebSocketAsync(null)).WebSocket;
+        var me = new PresenceUser(parts[1], parts[2], parts[3].Split(',', StringSplitOptions.RemoveEmptyEntries), socket);
+        if (_presence.TryGetValue(me.Id, out var old))
+        {
+            await SendAsync(old.Socket, """{"t":"replaced"}""");
+            await CloseAsync(old.Socket);
+        }
+        _presence[me.Id] = me;
+        var online = _presence.Values.Where(u => u.Id != me.Id && AreFriends(me, u)).ToList();
+        foreach (var friend in online) await SendAsync(friend.Socket, Json(new { t = "online", friend = new { id = me.Id, name = me.Name } }));
+        await SendAsync(socket, Json(new { t = "hello", you = new { id = me.Id, name = me.Name }, online = online.Select(u => new { id = u.Id, name = u.Name }),
+            friendsListPublic = me.Friends.Length > 0 }));
+
+        var buffer = new byte[4096];
+        try
+        {
+            while (socket.State == WebSocketState.Open)
+            {
+                var result = await socket.ReceiveAsync(buffer, CancellationToken.None);
+                if (result.MessageType == WebSocketMessageType.Close) break;
+                var text = Encoding.UTF8.GetString(buffer, 0, result.Count);
+                if (text == """{"t":"ping"}""")
+                {
+                    await SendAsync(socket, """{"t":"pong"}""");
+                    continue;
+                }
+                using var document = System.Text.Json.JsonDocument.Parse(text);
+                var root = document.RootElement;
+                var type = root.GetProperty("t").GetString();
+                var to = root.TryGetProperty("to", out var toValue) ? toValue.GetString() ?? "" : "";
+                var code = root.TryGetProperty("code", out var codeValue) ? codeValue.GetString() ?? "" : "";
+                if (type is not ("call" or "decline" or "cancel")) continue;
+                if (!_presence.TryGetValue(to, out var target) || !AreFriends(me, target))
+                {
+                    if (type == "call") await SendAsync(socket, Json(new { t = "callError", to, reason = target is null ? "offline" : "notFriend" }));
+                    continue;
+                }
+                var forwarded = type switch { "call" => "ring", "decline" => "declined", _ => "cancelled" };
+                await SendAsync(target.Socket, Json(new { t = forwarded, from = new { id = me.Id, name = me.Name }, code }));
+            }
+        }
+        catch (Exception ex) when (ex is WebSocketException or System.Text.Json.JsonException or KeyNotFoundException) { }
+        if (_presence.TryRemove(new KeyValuePair<string, PresenceUser>(me.Id, me)))
+        {
+            foreach (var friend in _presence.Values.Where(u => AreFriends(me, u))) await SendAsync(friend.Socket, Json(new { t = "offline", id = me.Id }));
+        }
+        await CloseAsync(socket);
+    }
+
     private async Task HandleAsync(HttpListenerContext context)
     {
+        if (context.Request.Url!.AbsolutePath == "/v1/presence")
+        {
+            await PresenceAsync(context);
+            return;
+        }
         var match = RoomPath().Match(context.Request.Url!.AbsolutePath);
         var role = context.Request.QueryString["role"];
         if (!match.Success || !context.Request.IsWebSocketRequest || role is not ("host" or "guest"))

@@ -204,6 +204,15 @@ public sealed class AppSettings
     /// <summary>Effet du raccourci : basculer (par défaut) ou appuyer pour parler.</summary>
     public Call.MicHotkeyMode CallMicKeyMode { get; set; } = Call.MicHotkeyMode.Toggle;
 
+    /// <summary>Jeton de connexion avec Steam (amis des appels), chiffré par la protection de données de Windows ; null = non connecté.</summary>
+    public string? CallSteamTokenProtected { get; set; }
+
+    /// <summary>Nom Steam affiché du compte connecté (donné par le serveur).</summary>
+    public string? CallSteamName { get; set; }
+
+    /// <summary>Visible de ses amis Steam qui ont OptiGame (et joignable par eux) ; sans effet tant qu'on n'est pas connecté.</summary>
+    public bool CallVisibleToFriends { get; set; } = true;
+
     public AppSettings Clone() => new()
     {
         Version = Version,
@@ -242,6 +251,9 @@ public sealed class AppSettings
         CallSpeaker = CallSpeaker,
         CallMicKey = CallMicKey,
         CallMicKeyMode = CallMicKeyMode,
+        CallSteamTokenProtected = CallSteamTokenProtected,
+        CallSteamName = CallSteamName,
+        CallVisibleToFriends = CallVisibleToFriends,
     };
 }
 

@@ -66,13 +66,19 @@ public sealed partial class CallViewModel : ObservableObject, IDisposable
     private RawKeyboardListener? _keyboard;
     private volatile MicHotkeyMatcher? _matcher;
 
-    public CallViewModel(AppPaths paths, AppSettingsStore settings, FileLog log)
+    public CallViewModel(AppPaths paths, AppSettingsStore settings, FileLog log, SteamFriendsService friends, Services.INotificationService notifications)
     {
         _paths = paths;
         _settings = settings;
         _log = log;
         _ticker = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
         _ticker.Tick += (_, _) => UpdateCountdown();
+        Friends = friends;
+        _notifications = notifications;
+        friends.Ring += OnRing;
+        friends.Declined += OnDeclined;
+        friends.Cancelled += OnCancelled;
+        friends.CallError += OnCallError;
     }
 
     /// <summary>Serveur de mise en relation (remplacé par la variable OPTIGAME_CALL_RELAY pour les essais) ; null = pas en place.</summary>
@@ -205,6 +211,8 @@ public sealed partial class CallViewModel : ObservableObject, IDisposable
     private Task StartCallAsync()
     {
         _codeRetries = 0;
+        _outgoing = null;
+        NotifyWaitingTexts();
         return OpenAsync(host: true, CallCode.Create());
     }
 
@@ -500,6 +508,7 @@ public sealed partial class CallViewModel : ObservableObject, IDisposable
                 Phase = CallPhase.Waiting;
                 UpdateCountdown();
                 _ticker.Start();
+                RingOutgoing();
                 _log.Info("Appel : code créé, en attente de l'ami.");
                 break;
             case "peer":
@@ -550,7 +559,10 @@ public sealed partial class CallViewModel : ObservableObject, IDisposable
         if (code == "busy" && _isHost && Phase == CallPhase.Preparing && _codeRetries++ < 3)
         {
             // Code déjà pris (rare) : un autre, sans rien dire.
+            var friend = _outgoing;
             End("", Severity.Info, tellPeer: false);
+            _outgoing = friend;
+            NotifyWaitingTexts();
             _ = OpenAsync(host: true, CallCode.Create());
             return;
         }
@@ -700,6 +712,7 @@ public sealed partial class CallViewModel : ObservableObject, IDisposable
     /// <summary>Fin de l'appel : moteur détruit (micro libéré), page remise au départ, message gardé.</summary>
     private void End(string status, Severity severity, bool tellPeer)
     {
+        StopOutgoing();
         _timeout?.Cancel();
         _ticker.Stop();
         _generation++;

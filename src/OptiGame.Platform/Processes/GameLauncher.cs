@@ -103,6 +103,21 @@ public sealed class GameLauncher(FileLog log)
         log.Info($"Bande-annonce ouverte dans le navigateur : {uri.AbsoluteUri}");
     }
 
+    /// <summary>
+    /// Connexion avec Steam des appels : page du serveur de mise en relation (https *.workers.dev, /v1/auth/steam), qui mène à la page
+    /// de connexion de Steam, dans le navigateur par défaut, sans droits administrateur.
+    /// </summary>
+    public void OpenSteamLogin(Uri page)
+    {
+        if (page.Scheme != Uri.UriSchemeHttps || !page.Host.EndsWith(".workers.dev", StringComparison.OrdinalIgnoreCase)
+            || page.AbsolutePath != "/v1/auth/steam")
+        {
+            throw new ArgumentException($"Adresse de connexion refusée : {page}", nameof(page));
+        }
+        OpenInBrowser(page.AbsoluteUri);
+        log.Info("Connexion avec Steam ouverte dans le navigateur.");
+    }
+
     /// <summary>Page du projet OptiGame sur GitHub (politique de confidentialité…), dans le navigateur par défaut.</summary>
     public void OpenProjectPage(Uri page)
     {

@@ -25,8 +25,80 @@
                         Visibility="{Binding CanOpenMicrophoneSettings, Converter={StaticResource BoolToVisibility}}" />
             </controls:InfoBar>
 
+            <!-- ===== Appel entrant d'un ami Steam (aussi en petite fenêtre, Call/IncomingCallWindow) ===== -->
+            <Border Margin="{StaticResource Margin.StackL}" Style="{StaticResource Card}"
+                    Visibility="{Binding HasIncomingCall, Converter={StaticResource BoolToVisibility}}">
+                <StackPanel>
+                    <TextBlock Style="{StaticResource Text.SectionTitle}" Text="{Binding IncomingCallText}" AutomationProperties.LiveSetting="Assertive" />
+                    <WrapPanel Margin="0,12,0,0">
+                        <controls:IconButton Margin="0,0,8,0" Style="{StaticResource Button.Primary}" Glyph="&#xE717;" Label="Répondre"
+                                             Command="{Binding AnswerCallCommand}" />
+                        <controls:IconButton Style="{StaticResource Button.DangerFilled}" Glyph="&#xE778;" Label="Refuser" Command="{Binding DeclineCallCommand}" />
+                    </WrapPanel>
+                </StackPanel>
+            </Border>
+
             <!-- ===== Départ ===== -->
             <StackPanel Visibility="{Binding IsIdle, Converter={StaticResource BoolToVisibility}}">
+                <!-- Amis Steam : connexion, amis qui ont OptiGame ouvert, « Appeler » -->
+                <Border Margin="0,0,0,12" Style="{StaticResource Card}" DataContext="{Binding Friends}">
+                    <StackPanel>
+                        <TextBlock Style="{StaticResource Text.SectionTitle}" Text="Amis Steam" />
+                        <StackPanel Visibility="{Binding IsSignedIn, Converter={StaticResource InverseBoolToVisibility}}">
+                            <TextBlock Margin="0,4,0,0" Style="{StaticResource Text.Caption}"
+                                       Text="Connectez-vous avec Steam pour voir vos amis Steam qui ont OptiGame ouvert et les appeler en un clic, sans code. La connexion se fait sur la page officielle de Steam, dans votre navigateur : OptiGame ne voit jamais votre mot de passe." />
+                            <WrapPanel Margin="0,12,0,0">
+                                <controls:IconButton Margin="0,0,8,0" Style="{StaticResource Button.Primary}" Glyph="&#xE77B;" Label="Se connecter avec Steam"
+                                                     Command="{Binding DataContext.SignInSteamCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                     Visibility="{Binding IsSigningIn, Converter={StaticResource InverseBoolToVisibility}}" />
+                                <TextBlock Margin="0,0,12,0" VerticalAlignment="Center" Style="{StaticResource Text.Body}"
+                                           Text="Terminez la connexion dans votre navigateur…" AutomationProperties.LiveSetting="Polite"
+                                           Visibility="{Binding IsSigningIn, Converter={StaticResource BoolToVisibility}}" />
+                                <Button Style="{StaticResource Button.Secondary}" Content="Annuler"
+                                        Command="{Binding DataContext.CancelSteamSignInCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                        Visibility="{Binding IsSigningIn, Converter={StaticResource BoolToVisibility}}" />
+                            </WrapPanel>
+                        </StackPanel>
+                        <StackPanel Visibility="{Binding IsSignedIn, Converter={StaticResource BoolToVisibility}}">
+                            <WrapPanel Margin="0,4,0,0">
+                                <TextBlock Margin="0,0,12,0" VerticalAlignment="Center" Style="{StaticResource Text.Caption}">
+                                    <Run Text="Connecté : " /><Run Text="{Binding MyName, Mode=OneWay}" /><Run Text=" · " /><Run Text="{Binding StateText, Mode=OneWay}" />
+                                </TextBlock>
+                                <Button Style="{StaticResource Button.Ghost}" Content="Se déconnecter"
+                                        Command="{Binding DataContext.SignOutSteamCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+                            </WrapPanel>
+                            <CheckBox Margin="0,8,0,0" IsChecked="{Binding IsVisible}" Content="Visible de mes amis Steam qui ont OptiGame (ils peuvent m'appeler)" />
+                            <ItemsControl Margin="0,12,0,0" ItemsSource="{Binding OnlineFriends}" AutomationProperties.Name="Amis Steam en ligne">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Grid Margin="0,0,0,8">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <Border Width="32" Height="32" CornerRadius="16" Background="{DynamicResource Brush.AccentSoft}">
+                                                <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" Style="{StaticResource Text.BodyStrong}" Text="{Binding Initial}" />
+                                            </Border>
+                                            <TextBlock Grid.Column="1" Margin="12,0" VerticalAlignment="Center" Style="{StaticResource Text.Body}" Text="{Binding DisplayName}" />
+                                            <controls:IconButton Grid.Column="2" Style="{StaticResource Button.Secondary}" Glyph="&#xE717;" Label="Appeler"
+                                                                 Command="{Binding DataContext.CallFriendCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                                 CommandParameter="{Binding}" AutomationProperties.Name="{Binding DisplayName, StringFormat=Appeler {0}}" />
+                                        </Grid>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <TextBlock Style="{StaticResource Text.Caption}" Text="Aucun de vos amis Steam n'a OptiGame ouvert en ce moment."
+                                       Visibility="{Binding ShowsNoFriends, Converter={StaticResource BoolToVisibility}}" />
+                            <TextBlock Margin="0,6,0,0" Style="{StaticResource Text.Caption}" TextWrapping="Wrap"
+                                       Text="Votre liste d'amis Steam est privée : seuls vos amis dont la liste est publique vous voient. Pour être vu de tous, rendez-la visible dans Steam (Profil › Modifier › Confidentialité › Liste d'amis)."
+                                       Visibility="{Binding ShowsPrivateListHint, Converter={StaticResource BoolToVisibility}}" />
+                        </StackPanel>
+                        <TextBlock Margin="0,8,0,0" Style="{StaticResource Text.Caption}" Foreground="{StaticResource Brush.Warning}" TextWrapping="Wrap"
+                                   Text="{Binding Message}" Visibility="{Binding HasMessage, Converter={StaticResource BoolToVisibility}}" />
+                    </StackPanel>
+                </Border>
+
                 <Border Style="{StaticResource Card}">
                     <StackPanel>
                         <TextBlock Style="{StaticResource Text.SectionTitle}" Text="Appeler un ami" />
@@ -78,9 +150,9 @@
             <!-- ===== Code à donner ===== -->
             <Border Style="{StaticResource Card}" Visibility="{Binding IsWaiting, Converter={StaticResource BoolToVisibility}}">
                 <StackPanel>
-                    <TextBlock Style="{StaticResource Text.SectionTitle}" Text="Votre code" />
+                    <TextBlock Style="{StaticResource Text.SectionTitle}" Text="{Binding WaitingTitle}" />
                     <TextBlock Margin="0,4,0,0" Style="{StaticResource Text.Caption}"
-                               Text="Envoyez-le à votre ami : dès qu'il le saisit dans « Rejoindre un ami », l'appel commence." />
+                               Text="{Binding WaitingHelp}" />
                     <WrapPanel Margin="0,12,0,0">
                         <TextBox Margin="0,0,12,8" IsReadOnly="True" BorderThickness="0" Background="Transparent" Padding="0"
                                  FontFamily="{StaticResource Font.Mono}" FontSize="{StaticResource FontSize.Hero}" FontWeight="SemiBold"

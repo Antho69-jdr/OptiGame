@@ -196,6 +196,23 @@ et JAMAIS par un crochet clavier : rien n'est retardé ni retiré au jeu (la tou
 eux-mêmes. Écoute SEULEMENT pendant un appel connecté avec un raccourci choisi. Modificateurs demandés tenus, autres touches
 tenues permises (courir avec Maj), répétition ignorée. Basculer = 2 notes (WebAudio, sortie choisie, jamais envoyées à l'ami).
 Vérifié le 2026-10-09 (ui-snapshots `-Only c1,c2,c3`, F13 simulée par keybd_event) : bascule, et tenue = ouvert / relâchée = coupé.
+Amis Steam (choix de l'utilisateur le 2026-10-09 ; `Core/Call/SteamFriendsLink`, `App/Call/SteamFriendsService`, classes Login et
+Presence du serveur) : le bloc « friends » de `userdata\<compte>\config\localconfig.vdf` N'EST PAS la liste d'amis (319 personnes
+croisées : groupes, discussions) → liste d'amis demandée à Steam par le SERVEUR (ISteamUser/GetFriendList, secret STEAM_API_KEY =
+clé d'API Web de l'auteur ; liste privée = 401 → il suffit que l'un des deux amis ait la sienne publique). Identité : OpenID 2.0 de
+Steam dans le navigateur par défaut (`GameLauncher.OpenSteamLogin`, https *.workers.dev /v1/auth/steam seulement), réponse
+VÉRIFIÉE auprès de Steam (check_authentication) par le serveur, jeton HMAC « steamid.expiration.signature » de 30 jours (secret
+TOKEN_SECRET, tiré au hasard par `deploy-call-relay.ps1` s'il manque) remis par la WebSocket /v1/auth/wait?state=… (état de
+128 bits), gardé chiffré DPAPI (`AppSettings.CallSteamTokenProtected`). Présence : UNE WebSocket au repos (/v1/presence, jeton dans
+l'en-tête Authorization, jamais dans l'adresse), ping 45 s (réponse automatique du serveur, sans réveil), nouvel essai 5 s → 5 min,
+401 = jeton expiré → déconnecté ; démarrée au lancement si connecté et « Visible » (`CallVisibleToFriends`), jamais en mode
+capture ; une connexion par compte (« replaced »). Deux comptes ne se voient / ne s'appellent que s'ils sont amis Steam. Appel d'un
+ami = salon ouvert (code) puis « call » → « ring » chez l'ami : `Call/IncomingCallWindow` (en bas à droite, Topmost,
+ShowActivated=False, jamais Application.MainWindow) + sonnerie WAV en mémoire (`IncomingCallPresenter`) ; 30 s sans réponse =
+refusé + « Appel manqué » ; déjà en appel = refusé tout de suite. Vérifié le 2026-10-09 avec le serveur LOCAL et des jetons de
+TEST « test:<steamid>:<nom>:<amis> » (acceptés par `LocalCallRelay` seulement) : présence, sonnerie + fenêtre, réponse (mêmes
+mots), refus, appel manqué, ami déconnecté (ui-snapshots `-Only c1,c2,c3,c4,c5`). Connexion avec Steam RÉELLE et serveur v2 :
+à vérifier après déploiement (clé d'API Web de Steam + jeton Cloudflare de l'utilisateur).
 
 Données fictives pour tester l'UI : `$env:OPTIGAME_DATA_DIR='<dossier temporaire>'` redirige tout le dossier de
 données ; `DiagDump -- --import-capture <csv> <libellé> <date ISO>` y ajoute une capture (refusé sans la variable).

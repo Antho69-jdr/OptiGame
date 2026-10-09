@@ -97,6 +97,8 @@ public partial class App : Application
         _services.GetRequiredService<Dock.DockController>().Start();
         _services.GetRequiredService<Platform.Measurement.AutoCapture>().Start();
         _services.GetRequiredService<UpdateService>().Start(this);
+        _services.GetRequiredService<Call.IncomingCallPresenter>().Start();
+        _services.GetRequiredService<Call.SteamFriendsService>().Start(); // amis Steam : seulement si connecté avec Steam et visible
 
         _quitWatcher = new QuitRequestWatcher(services.GetRequiredService<AppPaths>().Root,
             () => Dispatcher.BeginInvoke(async () =>
@@ -449,7 +451,9 @@ public partial class App : Application
         services.AddSingleton<LibraryViewModel>();
         services.AddSingleton<SettingsViewModel>();
         services.AddSingleton<MeasuresViewModel>();
+        services.AddSingleton<Call.SteamFriendsService>();
         services.AddSingleton<CallViewModel>();
+        services.AddSingleton<Call.IncomingCallPresenter>();
         services.AddSingleton<DockViewModel>();
         services.AddSingleton<Dock.DockController>();
         services.AddSingleton<MainViewModel>();

@@ -397,8 +397,11 @@ internal static class PageSnapshots
             var webBaseline = WebProcesses();
             long WebMemory() => System.Diagnostics.Process.GetProcessesByName("msedgewebview2").Sum(p => { using (p) return p.PrivateMemorySize64; });
             var webMemoryBaseline = WebMemory();
-            CallViewModel NewGuest() => new(services.GetRequiredService<Core.AppPaths>(), services.GetRequiredService<Core.Settings.AppSettingsStore>(),
-                services.GetRequiredService<Core.Logging.FileLog>()) { Relay = relayUrl };
+            Call.SteamFriendsService NewFriends(string token) => new(services.GetRequiredService<Core.Settings.AppSettingsStore>(),
+                services.GetRequiredService<Core.Logging.FileLog>(), services.GetRequiredService<Platform.Processes.GameLauncher>()) { Relay = relayUrl, TestToken = token };
+            CallViewModel NewGuest(Call.SteamFriendsService? friends = null) => new(services.GetRequiredService<Core.AppPaths>(),
+                services.GetRequiredService<Core.Settings.AppSettingsStore>(), services.GetRequiredService<Core.Logging.FileLog>(),
+                friends ?? NewFriends("test:76561198000000009:Inconnu:"), services.GetRequiredService<Services.INotificationService>()) { Relay = relayUrl };
             pages.Add(("c1-appel-depart", async () =>
             {
                 Call.CallEngine.UseFakeMedia = true;
@@ -492,6 +495,71 @@ internal static class PageSnapshots
                 await WaitUntil(() => host.Phase == CallPhase.Idle && host.HasStatus, 20_000);
                 Log($"Code inconnu : « {host.Status} »");
                 guest.Dispose();
+            }));
+            // Amis Steam (serveur local, jetons de TEST : la vraie connexion passe par Steam dans le navigateur) : deux amis en ligne,
+            // appel d'un ami (sonnerie, fenêtre « … vous appelle »), réponse, refus, appel manqué.
+            Call.SteamFriendsService? hostFriends = null, guestFriends = null;
+            CallViewModel? caller = null;
+            pages.Add(("c5b-appel-amis-en-ligne", async () =>
+            {
+                if (relay is null || relayUrl != relay.Url)
+                {
+                    Log("Amis Steam : vérifiés avec le serveur local seulement (jetons de test).");
+                    return;
+                }
+                hostFriends = host.Friends;
+                hostFriends.Relay = relayUrl;
+                hostFriends.TestToken = "test:76561198000000001:Anthracite:76561198000000002";
+                guestFriends = NewFriends("test:76561198000000002:Gaming:");
+                caller = NewGuest(guestFriends);
+                services.GetRequiredService<Call.IncomingCallPresenter>().Start();
+                hostFriends.Start();
+                guestFriends.Start();
+                await WaitUntil(() => hostFriends.IsOnline && guestFriends.IsOnline && hostFriends.OnlineFriends.Count == 1 && guestFriends.OnlineFriends.Count == 1, 15_000);
+                Log($"Amis : l'hôte voit [{string.Join(", ", hostFriends.OnlineFriends.Select(f => f.DisplayName))}], l'ami voit " +
+                    $"[{string.Join(", ", guestFriends.OnlineFriends.Select(f => f.DisplayName))}] (liste privée : {!guestFriends.FriendsListPublic}).");
+                main.Navigate(host);
+                await Settle(800);
+            }));
+            pages.Add(("c5c-appel-ami-sonne", async () =>
+            {
+                if (caller is null || guestFriends is null) return;
+                await caller.CallFriendCommand.ExecuteAsync(guestFriends.OnlineFriends.First());
+                await WaitUntil(() => host.HasIncomingCall, 15_000);
+                await Settle(500);
+                var popup = Application.Current.Windows.OfType<Call.IncomingCallWindow>().FirstOrDefault();
+                Log($"Sonnerie : appelant « {caller.WaitingTitle} », appelé « {host.IncomingCallText} », fenêtre d'appel entrant {(popup is null ? "ABSENTE" : "affichée")}.");
+                if (popup is not null) Save(popup, Path.Combine(output, "c5c-fenetre-appel-entrant.png"));
+            }));
+            pages.Add(("c5d-appel-ami-repondu", async () =>
+            {
+                if (caller is null) return;
+                await host.AnswerCallCommand.ExecuteAsync(null);
+                await WaitUntil(() => host.Phase is CallPhase.Connected or CallPhase.Idle && caller.Phase is CallPhase.Connected or CallPhase.Idle, 30_000);
+                Log($"Répondu : hôte {host.Phase}, appelant {caller.Phase}, mots {(host.SafetyWords == caller.SafetyWords ? "identiques" : "DIFFÉRENTS")}, " +
+                    $"fenêtre d'appel entrant {(Application.Current.Windows.OfType<Call.IncomingCallWindow>().Any() ? "ENCORE là" : "fermée")}. {host.Status}{caller.Status}");
+                caller.HangUpCommand.Execute(null);
+                await WaitUntil(() => host.Phase == CallPhase.Idle, 15_000);
+            }));
+            pages.Add(("c5e-appel-ami-refuse", async () =>
+            {
+                if (caller is null || guestFriends is null) return;
+                await caller.CallFriendCommand.ExecuteAsync(guestFriends.OnlineFriends.First());
+                await WaitUntil(() => host.HasIncomingCall, 15_000);
+                host.DeclineCallCommand.Execute(null);
+                await WaitUntil(() => caller.Phase == CallPhase.Idle, 15_000);
+                Log($"Refusé : l'appelant lit « {caller.Status} ».");
+                await caller.CallFriendCommand.ExecuteAsync(guestFriends.OnlineFriends.First());
+                await WaitUntil(() => host.HasIncomingCall, 15_000);
+                caller.HangUpCommand.Execute(null);
+                await WaitUntil(() => !host.HasIncomingCall, 15_000);
+                Log($"Annulé par l'appelant : l'appelé lit « {host.Status} ».");
+                guestFriends.Stop();
+                await WaitUntil(() => hostFriends!.OnlineFriends.Count == 0, 10_000);
+                Log($"Ami déconnecté : l'hôte voit {hostFriends!.OnlineFriends.Count} ami(s) en ligne.");
+                hostFriends.Stop();
+                caller.Dispose();
+                await Settle(500);
             }));
             pages.Add(("c6-appel-code-expire", async () =>
             {

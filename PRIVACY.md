@@ -7,8 +7,8 @@ Dernière mise à jour : 9 octobre 2026.
 ## En bref
 
 OptiGame **ne collecte aucune donnée** : pas de compte, pas de statistiques d'utilisation, pas de rapport de plantage envoyé,
-pas de publicité. Rien n'est envoyé au développeur d'OptiGame, hormis le passage de quelques secondes par son serveur de
-mise en relation quand vous lancez un appel vocal (rien n'y est gardé, voir plus bas).
+pas de publicité. Rien n'est envoyé au développeur d'OptiGame, hormis ce qu'il faut à son serveur de mise en relation des
+appels vocaux, le temps d'un appel ou de votre connexion à vos amis Steam (rien n'y est gardé ensuite, voir plus bas).
 
 ## Ce qui reste sur votre PC
 
@@ -57,6 +57,14 @@ n'est enregistré, la voix ne passe par aucun serveur. Seulement la voix : aucun
   deux PC sont connectés, qu'un des deux part, ou au bout de 2 minutes si personne ne rejoint. Comme tout serveur, il voit
   l'adresse IP de connexion ; OptiGame n'y écrit aucun journal. Les **mots de contrôle** affichés pendant l'appel permettent de vérifier
   que personne (pas même ce serveur) ne s'est interposé.
+- **Amis Steam** (facultatif, bouton « Se connecter avec Steam ») : la connexion se fait sur la page officielle de Steam, dans
+  votre navigateur ; OptiGame ne voit jamais votre mot de passe. Steam confirme au serveur de mise en relation votre numéro de
+  compte Steam (public), et le serveur remet à OptiGame un jeton de connexion valable 30 jours, gardé chiffré sur votre PC
+  (protection de données de Windows). Tant qu'OptiGame est ouvert et que vous êtes « visible », il reste connecté au serveur, qui
+  demande alors à Steam (`api.steampowered.com`, avec la clé d'API de l'auteur d'OptiGame) votre nom affiché et votre liste
+  d'amis, et les garde **seulement le temps de cette connexion** (effacés dès qu'OptiGame se ferme ou que vous devenez
+  invisible). Vous n'êtes visible, et joignable, que par vos **amis Steam** qui ont OptiGame ouvert ; un appel d'ami transmet
+  seulement votre nom affiché et le code de l'appel. « Se déconnecter » efface le jeton de votre PC.
 - **« Passer par Internet »** (décoché par défaut, à cocher quand votre ami n'est pas sur votre réseau) : OptiGame demande alors
   au serveur public de découverte d'adresse `stun.cloudflare.com` (protocole STUN) l'adresse sous laquelle Internet voit votre
   PC. Ce serveur voit votre adresse IP ; votre voix ne passe jamais par lui.
@@ -74,7 +82,7 @@ Questions ou remarques : [ouvrez un ticket sur GitHub](https://github.com/Antho6
 Last updated: October 9, 2026.
 
 **OptiGame does not collect any data**: no account, no usage statistics, no crash reports, no advertising. Nothing is sent to
-the OptiGame developer, except for the few seconds a voice call spends on its matchmaking server (nothing is kept there, see below).
+the OptiGame developer, except what its voice-call matchmaking server needs during a call or while connected to Steam friends (nothing is kept afterwards, see below).
 
 This program will not transfer any information to other networked systems unless specifically requested by the user or the
 person installing or operating it, except for the connections listed above, which never include personal information:
@@ -94,7 +102,11 @@ OptiGame's matchmaking server (`optigame-call.antho-b-69.workers.dev`, hosted by
 their connection descriptions (network addresses, public encryption keys) under a random 6-character call code and keeps
 nothing: the room is erased once they are connected, when one leaves, or after 2 minutes. Only when the user ticks "Passer par
 Internet" does OptiGame ask the public STUN server `stun.cloudflare.com` for the PC's public address (the server sees the IP
-address, never the voice).
+address, never the voice). Optional "Steam friends": the user signs in on Steam's official page in their browser (OptiGame never
+sees the password); Steam confirms the public Steam account number to the matchmaking server, which gives OptiGame a 30-day
+sign-in token kept encrypted on the PC. While OptiGame is open and the user is "visible", the server asks Steam
+(`api.steampowered.com`, with the OptiGame author's API key) for the display name and friends list and keeps them only for
+the duration of that connection; users are visible and callable only by their Steam friends who have OptiGame open.
 
 Your game profiles, backups of original settings, FPS measurements, playtime, artwork, settings and log are stored only on
 your PC, in `%LocalAppData%\OptiGame`. IGDB credentials, if entered, are encrypted with Windows DPAPI.
