@@ -147,6 +147,32 @@
                 </StackPanel>
             </Border>
 
+            <!-- ===== Raccourci du micro (en jeu) : réglable à tout moment ===== -->
+            <Border Margin="0,12,0,0" Style="{StaticResource Card}">
+                <StackPanel>
+                    <TextBlock Style="{StaticResource Text.SectionTitle}" Text="Raccourci du micro en jeu" />
+                    <TextBlock Margin="0,4,0,0" Style="{StaticResource Text.Caption}"
+                               Text="Fonctionne jeu au premier plan, pendant un appel seulement. La touche n'est pas retirée au jeu : choisissez-en une qu'il n'utilise pas (F13 à F24, Pause, pavé numérique…) ou une combinaison (Ctrl + Alt + M)." />
+                    <WrapPanel Margin="0,12,0,0">
+                        <TextBlock Margin="0,0,16,8" VerticalAlignment="Center" Style="{StaticResource Text.BodyStrong}" Text="{Binding MicKeyLabel}"
+                                   Visibility="{Binding IsCapturingMicKey, Converter={StaticResource InverseBoolToVisibility}}" />
+                        <TextBlock Margin="0,0,16,8" VerticalAlignment="Center" Style="{StaticResource Text.BodyStrong}" AutomationProperties.LiveSetting="Assertive"
+                                   Text="Appuyez sur la touche ou la combinaison voulue… (Échap pour annuler)"
+                                   Visibility="{Binding IsCapturingMicKey, Converter={StaticResource BoolToVisibility}}" />
+                        <Button x:Name="ChooseKeyButton" Margin="0,0,8,8" Style="{StaticResource Button.Secondary}" Content="Choisir une touche…"
+                                Command="{Binding ChooseMicKeyCommand}" />
+                        <Button Margin="0,0,8,8" Style="{StaticResource Button.Secondary}" Content="Annuler" Command="{Binding CancelMicKeyCaptureCommand}"
+                                Visibility="{Binding IsCapturingMicKey, Converter={StaticResource BoolToVisibility}}" />
+                        <Button Margin="0,0,8,8" Style="{StaticResource Button.Ghost}" Content="Retirer" Command="{Binding ClearMicKeyCommand}"
+                                Visibility="{Binding HasMicKey, Converter={StaticResource BoolToVisibility}}" />
+                    </WrapPanel>
+                    <RadioButton Margin="0,4,0,0" GroupName="MicKeyMode" IsChecked="{Binding IsToggleMode}"
+                                 Content="Basculer : une pression coupe ou ouvre le micro (petit son de confirmation)" />
+                    <RadioButton Margin="0,6,0,0" GroupName="MicKeyMode" IsChecked="{Binding IsPushToTalk}"
+                                 Content="Appuyer pour parler : micro ouvert tant que la touche est enfoncée" />
+                </StackPanel>
+            </Border>
+
             <!-- ===== Micro et sortie (dès que le micro est ouvert) ===== -->
             <Border Margin="0,12,0,0" Style="{StaticResource Card}" Visibility="{Binding IsActive, Converter={StaticResource BoolToVisibility}}">
                 <StackPanel>

@@ -198,6 +198,12 @@ public sealed class AppSettings
     /// <summary>Sortie audio de l'appel ; null = celle de Windows par défaut, suivie quand elle change.</summary>
     public string? CallSpeaker { get; set; }
 
+    /// <summary>Raccourci du micro pendant les appels (Call.MicHotkey.Serialize) ; null = aucun.</summary>
+    public string? CallMicKey { get; set; }
+
+    /// <summary>Effet du raccourci : basculer (par défaut) ou appuyer pour parler.</summary>
+    public Call.MicHotkeyMode CallMicKeyMode { get; set; } = Call.MicHotkeyMode.Toggle;
+
     public AppSettings Clone() => new()
     {
         Version = Version,
@@ -234,6 +240,8 @@ public sealed class AppSettings
         CallUseStun = CallUseStun,
         CallMicrophone = CallMicrophone,
         CallSpeaker = CallSpeaker,
+        CallMicKey = CallMicKey,
+        CallMicKeyMode = CallMicKeyMode,
     };
 }
 

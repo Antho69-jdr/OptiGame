@@ -404,7 +404,8 @@ internal static class PageSnapshots
                 Call.CallEngine.UseFakeMedia = true;
                 relay = new Call.LocalCallRelay(TimeSpan.FromSeconds(8));
                 // OPTIGAME_CALL_RELAY donné : le VRAI serveur (code valable 2 min, l'étape c6 attend alors en vain).
-                relayUrl = Core.Call.CallRelay.Resolve(Environment.GetEnvironmentVariable(Core.Call.CallRelay.OverrideVariable)) ?? relay.Url;
+                var realRelay = Environment.GetEnvironmentVariable(Core.Call.CallRelay.OverrideVariable);
+                relayUrl = string.IsNullOrWhiteSpace(realRelay) ? relay.Url : Core.Call.CallRelay.Resolve(realRelay) ?? relay.Url;
                 Log($"Serveur de mise en relation : {relayUrl}");
                 host.Relay = relayUrl;
                 host.UseStun = false;
@@ -448,6 +449,26 @@ internal static class PageSnapshots
                     host.SelectedMicrophone = host.Microphones[0];
                 }
                 if (host.Speakers.Count > 1) host.SelectedSpeaker = host.Speakers[0];
+                // Raccourci du micro : F13 (aucun programme ne s'en sert) simulée au clavier, lue par l'entrée brute comme en jeu.
+                const int F13 = 0x7C;
+                host.ChooseMicKeyCommand.Execute(null);
+                host.CaptureMicKey(F13, false, false, false);
+                host.IsPushToTalk = false;
+                var mutedBefore = host.IsMuted;
+                PressKey(F13, down: true);
+                PressKey(F13, down: false);
+                await Settle(600);
+                Log($"Raccourci « {host.MicKeyLabel} » (basculer) : micro {(mutedBefore ? "coupé" : "ouvert")} → {(host.IsMuted ? "coupé" : "ouvert")}.");
+                host.IsPushToTalk = true;
+                if (!host.IsMuted) host.ToggleMuteCommand.Execute(null);
+                PressKey(F13, down: true);
+                await Settle(600);
+                var whileHeld = host.IsMuted;
+                PressKey(F13, down: false);
+                await Settle(600);
+                Log($"Appuyer pour parler : touche tenue = micro {(whileHeld ? "coupé" : "ouvert")}, relâchée = micro {(host.IsMuted ? "coupé" : "ouvert")}.");
+                host.IsPushToTalk = false;
+                host.ClearMicKeyCommand.Execute(null);
                 guest.Volume = 40;
             }));
             pages.Add(("c4-appel-raccroche", async () =>
@@ -678,6 +699,12 @@ internal static class PageSnapshots
     }
 
     /// <summary>Laisse la mise en page, les liaisons et les lectures asynchrones se faire.</summary>
+    [System.Runtime.InteropServices.DllImport("user32.dll")]
+    private static extern void keybd_event(byte virtualKey, byte scanCode, uint flags, UIntPtr extraInfo);
+
+    /// <summary>Touche simulée (raccourci du micro) : arrive à la fenêtre au premier plan ET aux lectures en entrée brute.</summary>
+    private static void PressKey(int virtualKey, bool down) => keybd_event((byte)virtualKey, 0, down ? 0u : 2u, UIntPtr.Zero);
+
     private static async Task Settle(int milliseconds)
     {
         await Task.Delay(milliseconds);

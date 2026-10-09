@@ -189,6 +189,13 @@ inconnu / expiré signalés, 8 processus et ≈ 220 Mo privés pour DEUX appels,
 `wss://optigame-call.antho-b-69.workers.dev` (compte Cloudflare de l'utilisateur, JETON DE COMPTE « cfat_… » : il ne liste pas les
 comptes → `-AccountId a21125c3894c640606d3b7705ad60c16` ; un jeton à date de début future passe tokens/verify mais est refusé
 ailleurs). Vérifié avec `$env:OPTIGAME_CALL_RELAY` + ui-snapshots `-Only c1,c2,c3,c4,c5` : connecté en 1,6 s, mêmes résultats.
+Raccourci du micro en jeu (`Core/Call/MicHotkey` + `MicHotkeyMatcher`, `Platform/Input/RawKeyboardListener`) : touche ou combinaison
+choisie dans la page (saisie dans la fenêtre, Échap annule ; `AppSettings.CallMicKey` = « ctrl+alt+0x4D », `CallMicKeyMode` Basculer
+/ Appuyer pour parler). Lue par l'ENTRÉE BRUTE (RegisterRawInputDevices, RIDEV_INPUTSINK, fenêtre de messages sur un thread dédié)
+et JAMAIS par un crochet clavier : rien n'est retardé ni retiré au jeu (la touche lui parvient aussi), mécanisme des jeux
+eux-mêmes. Écoute SEULEMENT pendant un appel connecté avec un raccourci choisi. Modificateurs demandés tenus, autres touches
+tenues permises (courir avec Maj), répétition ignorée. Basculer = 2 notes (WebAudio, sortie choisie, jamais envoyées à l'ami).
+Vérifié le 2026-10-09 (ui-snapshots `-Only c1,c2,c3`, F13 simulée par keybd_event) : bascule, et tenue = ouvert / relâchée = coupé.
 
 Données fictives pour tester l'UI : `$env:OPTIGAME_DATA_DIR='<dossier temporaire>'` redirige tout le dossier de
 données ; `DiagDump -- --import-capture <csv> <libellé> <date ISO>` y ajoute une capture (refusé sans la variable).

@@ -10,6 +10,7 @@ using OptiGame.Core;
 using OptiGame.Core.Call;
 using OptiGame.Core.Logging;
 using OptiGame.Core.Settings;
+using OptiGame.Platform.Input;
 
 namespace OptiGame.App.ViewModels;
 
@@ -61,6 +62,9 @@ public sealed partial class CallViewModel : ObservableObject, IDisposable
     private int _generation;
     private int _codeRetries;
     private bool _updatingDevices;
+    private readonly Dispatcher _dispatcher = Dispatcher.CurrentDispatcher;
+    private RawKeyboardListener? _keyboard;
+    private volatile MicHotkeyMatcher? _matcher;
 
     public CallViewModel(AppPaths paths, AppSettingsStore settings, FileLog log)
     {
@@ -286,6 +290,128 @@ public sealed partial class CallViewModel : ObservableObject, IDisposable
             _log.Warn($"Paramètres du micro impossibles à ouvrir : {ex.Message}");
         }
     }
+
+    // ===== Raccourci du micro (en jeu) =====
+
+    /// <summary>« Ctrl + Alt + M », ou « Aucun ».</summary>
+    public string MicKeyLabel => MicHotkey.Parse(_settings.Get().CallMicKey)?.Label(RawKeyboardListener.KeyName) ?? "Aucun";
+
+    public bool HasMicKey => MicHotkey.Parse(_settings.Get().CallMicKey) is not null;
+
+    /// <summary>Saisie du raccourci en cours : la prochaine touche (ou combinaison) pressée dans la fenêtre devient le raccourci.</summary>
+    [ObservableProperty]
+    private bool _isCapturingMicKey;
+
+    public bool IsPushToTalk
+    {
+        get => _settings.Get().CallMicKeyMode == MicHotkeyMode.PushToTalk;
+        set
+        {
+            if (value == IsPushToTalk) return;
+            _settings.Update(s => s.CallMicKeyMode = value ? MicHotkeyMode.PushToTalk : MicHotkeyMode.Toggle);
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(IsToggleMode));
+            _log.Info($"Appel : raccourci en mode {(value ? "appuyer pour parler" : "basculer")}.");
+        }
+    }
+
+    public bool IsToggleMode
+    {
+        get => !IsPushToTalk;
+        set => IsPushToTalk = !value;
+    }
+
+    [RelayCommand]
+    private void ChooseMicKey() => IsCapturingMicKey = true;
+
+    [RelayCommand]
+    private void CancelMicKeyCapture() => IsCapturingMicKey = false;
+
+    [RelayCommand(CanExecute = nameof(HasMicKey))]
+    private void ClearMicKey() => SetMicKey(null);
+
+    /// <summary>Touche pressée pendant la saisie (vue) : Échap annule, un modificateur seul attend la touche principale.</summary>
+    public void CaptureMicKey(int virtualKey, bool ctrl, bool alt, bool shift)
+    {
+        if (!IsCapturingMicKey) return;
+        if (virtualKey == 0x1B)
+        {
+            IsCapturingMicKey = false;
+            return;
+        }
+        if (MicHotkey.IsModifier(virtualKey)) return;
+        SetMicKey(new MicHotkey(virtualKey, ctrl, alt, shift));
+    }
+
+    private void SetMicKey(MicHotkey? hotkey)
+    {
+        IsCapturingMicKey = false;
+        _settings.Update(s => s.CallMicKey = hotkey?.Serialize());
+        OnPropertyChanged(nameof(MicKeyLabel));
+        OnPropertyChanged(nameof(HasMicKey));
+        ClearMicKeyCommand.NotifyCanExecuteChanged();
+        _log.Info(hotkey is null ? "Appel : raccourci du micro retiré." : $"Appel : raccourci du micro « {hotkey.Label(RawKeyboardListener.KeyName)} ».");
+        UpdateKeyboard();
+    }
+
+    /// <summary>Clavier écouté pendant un appel en cours seulement, et seulement si un raccourci est choisi.</summary>
+    private void UpdateKeyboard()
+    {
+        var hotkey = Phase == CallPhase.Connected ? MicHotkey.Parse(_settings.Get().CallMicKey) : null;
+        if (hotkey is null)
+        {
+            _keyboard?.Dispose();
+            _keyboard = null;
+            _matcher = null;
+            return;
+        }
+        _matcher = new MicHotkeyMatcher(hotkey);
+        if (_keyboard is not null) return;
+        try
+        {
+            var keyboard = new RawKeyboardListener();
+            keyboard.KeyChanged += OnRawKey;
+            keyboard.Start();
+            _keyboard = keyboard;
+        }
+        catch (InvalidOperationException ex)
+        {
+            _log.Error("Appel : lecture du clavier impossible", ex);
+            ShowStatus("Le raccourci du micro ne fonctionne pas sur ce PC (détails dans le journal).", Severity.Warning);
+        }
+    }
+
+    // Thread d'écoute du clavier → thread de l'interface.
+    private void OnRawKey(int virtualKey, bool isDown)
+    {
+        var change = _matcher?.OnKey(virtualKey, isDown) ?? 0;
+        if (change == 0) return;
+        _dispatcher.BeginInvoke(() => OnMicKey(change == 1));
+    }
+
+    /// <summary>Raccourci pressé (true) ou relâché (false).</summary>
+    internal void OnMicKey(bool pressed)
+    {
+        if (Phase != CallPhase.Connected) return;
+        if (IsPushToTalk)
+        {
+            SetMuted(!pressed);
+        }
+        else if (pressed)
+        {
+            SetMuted(!IsMuted);
+            _engine?.Send(new { cmd = "cue", on = !IsMuted }); // son de confirmation : on ne voit pas OptiGame en jeu
+        }
+    }
+
+    private void SetMuted(bool muted)
+    {
+        if (IsMuted == muted) return;
+        IsMuted = muted;
+        _engine?.Send(new { cmd = "mute", value = muted });
+    }
+
+    partial void OnPhaseChanged(CallPhase value) => UpdateKeyboard();
 
     partial void OnVolumeChanged(double value) => _engine?.Send(new { cmd = "volume", value = Math.Clamp(value, 0, 100) / 100 });
 
@@ -625,6 +751,8 @@ public sealed partial class CallViewModel : ObservableObject, IDisposable
     public void Dispose()
     {
         _ticker.Stop();
+        _keyboard?.Dispose();
+        _keyboard = null;
         if (_engine is { } engine)
         {
             engine.Send(new { cmd = "hangup" });

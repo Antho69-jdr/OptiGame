@@ -81,6 +81,8 @@ async function applySpeaker(list) {
     target = def && outputs.find(d => d.deviceId !== 'default' && d.deviceId !== 'communications' && d.groupId === def.groupId) || def;
   }
   if (target && remote.sinkId !== target.deviceId) await remote.setSinkId(target.deviceId);
+  // Sons de confirmation sur la même sortie que la voix.
+  if (target && ctx && typeof ctx.setSinkId === 'function' && ctx.sinkId !== target.deviceId) await ctx.setSinkId(target.deviceId).catch(() => {});
 }
 
 function plain(list, kind) {
@@ -252,6 +254,25 @@ async function reportLevels() {
   send({ ev: 'levels', local, remote: remoteLevel, received, sent, path });
 }
 
+// Son de confirmation du raccourci du micro (entendu seulement ici, jamais envoyé à l'ami) : deux notes montantes = ouvert,
+// descendantes = coupé, discrètes.
+function cue(on) {
+  if (!ctx) return;
+  const notes = on ? [660, 880] : [880, 520];
+  notes.forEach((frequency, i) => {
+    const start = ctx.currentTime + i * 0.09;
+    const osc = ctx.createOscillator(), gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.value = frequency;
+    gain.gain.setValueAtTime(0.0001, start);
+    gain.gain.exponentialRampToValueAtTime(0.12, start + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.08);
+    osc.connect(gain).connect(ctx.destination);
+    osc.start(start);
+    osc.stop(start + 0.09);
+  });
+}
+
 function hangup() {
   closing = true;
   if (levels) { clearInterval(levels); levels = null; }
@@ -283,6 +304,9 @@ async function handle(m) {
       break;
     case 'mute':
       setMuted(!!m.value);
+      break;
+    case 'cue':
+      cue(!!m.on);
       break;
     case 'volume':
       remote.volume = Math.max(0, Math.min(1, Number(m.value) || 0));
