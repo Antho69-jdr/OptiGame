@@ -183,6 +183,9 @@
     <CornerRadius x:Key="Radius.Card">8</CornerRadius>
     <CornerRadius x:Key="Radius.CardTop">8,8,0,0</CornerRadius>
     <CornerRadius x:Key="Radius.Cover">8</CornerRadius>
+    <!-- Jaquette de Mes jeux (controls:CoverTile) : taille réglable (Paramètres › Mes jeux, CoverAppearance la remplace ; 3:4) -->
+    <sys:Double x:Key="Size.CoverWidth">198</sys:Double>
+    <sys:Double x:Key="Size.CoverHeight">264</sys:Double>
     <CornerRadius x:Key="Radius.Pill">12</CornerRadius>
     <CornerRadius x:Key="Radius.Round">999</CornerRadius>
 
@@ -940,7 +943,7 @@
         </Setter>
     </Style>
 
-    <!-- ===== Jaquette (controls:CoverTile) : 198 × 264 (ImageLoader.GridCoverWidth), titre et légende dessous ===== -->
+    <!-- ===== Jaquette (controls:CoverTile) : Size.CoverWidth × Size.CoverHeight (198 × 264 par défaut, = ImageLoader.GridCoverWidth), titre et légende dessous ===== -->
     <Style TargetType="controls:CoverTile">
         <Setter Property="Margin" Value="0,0,20,24" />
         <Setter Property="FocusVisualStyle" Value="{StaticResource Focus.RingCard}" />
@@ -948,8 +951,8 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="controls:CoverTile">
-                    <StackPanel Width="198" Background="Transparent">
-                        <Grid x:Name="Cover" Height="264" RenderTransformOrigin="0.5,0.5">
+                    <StackPanel Width="{DynamicResource Size.CoverWidth}" Background="Transparent">
+                        <Grid x:Name="Cover" Height="{DynamicResource Size.CoverHeight}" RenderTransformOrigin="0.5,0.5">
                             <Grid.RenderTransform>
                                 <ScaleTransform x:Name="Scale" ScaleX="1" ScaleY="1" />
                             </Grid.RenderTransform>

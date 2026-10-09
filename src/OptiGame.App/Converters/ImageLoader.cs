@@ -19,8 +19,17 @@ public static class ImageLoader
     private static int _decoded;
     private static double _displayScale = 1;
 
-    /// <summary>Largeur d'une jaquette des grilles de « Mes jeux », en unités WPF (Width de la carte dans LibraryView).</summary>
-    public const double GridCoverWidth = 198;
+    /// <summary>
+    /// Largeur d'une jaquette des grilles de « Mes jeux », en unités WPF (Size.CoverWidth du thème), réglable dans Paramètres ›
+    /// Mes jeux (CoverAppearance la tient à jour). Le cache distingue les largeurs : une autre taille redécode les images.
+    /// </summary>
+    public static double GridCoverWidth
+    {
+        get => Volatile.Read(ref _gridCoverWidth);
+        set => Volatile.Write(ref _gridCoverWidth, value);
+    }
+
+    private static double _gridCoverWidth = 198;
 
     /// <summary>
     /// Échelle d'affichage de l'écran de la fenêtre principale (1 = 100 %, 1,5 = 150 %), donnée par MainWindow. Les jaquettes

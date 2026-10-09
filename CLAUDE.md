@@ -94,7 +94,9 @@ src/OptiGame.App/        WPF : composition DI, tray, vues/viewmodels, dialogue d
                          IsDirty COMPARÉ à la version enregistrée, point sur l'onglet modifié) ; réglages permanents NVIDIA /
                          Windows = « Appliquer… » confirmé + « Restaurer l'original… » ; images décodées par ImageLoader, IsAsync).
                          Rapidité : jaquettes décodées UNE fois par Converters/ImageLoader (cache borné à 96 Mo, images
-                         figées) à la taille réelle à l'écran (198 unités × échelle d'affichage de MainWindow, PerMonitorV2),
+                         figées) à la taille réelle à l'écran (largeur des jaquettes, 198 unités par défaut, réglable Petites 150 / Moyennes 198 /
+                         Grandes 250 dans Paramètres › Mes jeux = `CoverSize`, ressources `Size.CoverWidth/Height` posées par
+                         `CoverAppearance`, Mes jeux vide le cache et redemande les images ; × échelle d'affichage de MainWindow, PerMonitorV2),
                          grises = pixels COPIÉS dans une image autonome (un FormatConvertedBitmap garde l'image couleur :
                          733 Ko par jaquette mesurés au lieu de 214) ; fenêtre masquée (fermer = masquer, appli en zone de
                          notification) ou section décochée → jeux non installés ramenés à la 1re page, cache vidé, un GC

@@ -71,6 +71,25 @@ internal static class PageSnapshots
                     await Settle(2500);
                 }),
                 ("1d-mes-jeux-filtres-effaces", async () => { library.ClearFiltersCommand.Execute(null); await Settle(800); }),
+                // Taille des jaquettes (Paramètres › Mes jeux) : grandes puis petites, dans la copie des données ; remise à la fin (1g).
+                ("1f-mes-jeux-grandes-jaquettes", async () =>
+                {
+                    services.GetRequiredService<Core.Settings.AppSettingsStore>().Update(s => s.CoverSize = Core.Settings.CoverSize.Large);
+                    main.Navigate(library);
+                    await Settle(2500);
+                }),
+                ("1g-mes-jeux-petites-jaquettes", async () =>
+                {
+                    var store = services.GetRequiredService<Core.Settings.AppSettingsStore>();
+                    store.Update(s => s.CoverSize = Core.Settings.CoverSize.Small);
+                    await Settle(2500);
+                    Log($"Jaquettes : {Converters.ImageLoader.Describe()}");
+                }),
+                ("1h-mes-jeux-taille-remise", async () =>
+                {
+                    services.GetRequiredService<Core.Settings.AppSettingsStore>().Update(s => s.CoverSize = Core.Settings.CoverSize.Medium);
+                    await Settle(1500);
+                }),
                 // Contrôle des liaisons : chaque bouton visible de chaque page doit avoir sa commande (une liaison en erreur laisse le
                 // bouton sans effet, et son clic retombe sur son parent — la jaquette lançait l'installation, constaté le 2026-10-06).
                 ("1z-liaisons-des-boutons", async () =>

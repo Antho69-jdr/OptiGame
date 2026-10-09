@@ -201,6 +201,20 @@ public sealed partial class SettingsViewModel : ObservableObject
         set { _settings.Update(s => s.AutoMeasureFps = value); OnPropertyChanged(); OnPropertyChanged(nameof(ShowsPresentMonWarning)); }
     }
 
+    public IReadOnlyList<CoverSizeOption> CoverSizeOptions { get; } =
+    [
+        new(CoverSize.Small, "Petites"),
+        new(CoverSize.Medium, "Moyennes"),
+        new(CoverSize.Large, "Grandes"),
+    ];
+
+    /// <summary>Taille des jaquettes de Mes jeux : visible tout de suite (CoverAppearance, images redemandées par Mes jeux).</summary>
+    public CoverSizeOption SelectedCoverSize
+    {
+        get => CoverSizeOptions.FirstOrDefault(o => o.Value == _settings.Get().CoverSize) ?? CoverSizeOptions[1];
+        set { if (value is not null) { _settings.Update(s => s.CoverSize = value.Value); OnPropertyChanged(); } }
+    }
+
     public int MaxCoverCornerRadius => CoverStyle.MaxRadius;
 
     /// <summary>Arrondi des jaquettes, en pixels (curseur ; enregistré une fois le curseur immobile, visible tout de suite).</summary>
@@ -569,6 +583,8 @@ public sealed partial class SettingsViewModel : ObservableObject
 public sealed record UpdateModeOption(UpdateMode Value, string Label);
 
 public sealed record StartPageOption(StartPage Value, string Label);
+
+public sealed record CoverSizeOption(CoverSize Value, string Label);
 
 public sealed record DockEdgeOption(DockEdge Value, string Label);
 

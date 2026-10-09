@@ -58,6 +58,7 @@ public sealed partial class LibraryViewModel : ObservableObject
     private readonly GameRatingService _ratings;
     private readonly GameTimeGate _gate;
     private readonly Platform.Library.StoreAboutClient _storeAbout;
+    private Core.Settings.CoverSize _coverSize;
     private readonly Core.State.ChangeJournal _fixes;
     private int _ratingVersion;
 
@@ -92,6 +93,17 @@ public sealed partial class LibraryViewModel : ObservableObject
         unsaved.Register(ConfirmDiscard);
         // Dock activé ou non (Paramètres) : épingles des jaquettes affichées seulement s'il l'est.
         settings.Changed += (_, _) => OnUi(() => OnPropertyChanged(nameof(IsDockEnabled)));
+        // Taille des jaquettes (Paramètres › Mes jeux) : CoverAppearance a déjà changé la largeur ; images redemandées à cette taille,
+        // anciennes images libérées (le cache distingue les largeurs, elles ne resserviraient pas).
+        _coverSize = settings.Get().CoverSize;
+        settings.Changed += (_, _) => OnUi(() =>
+        {
+            if (settings.Get().CoverSize == _coverSize) return;
+            _coverSize = settings.Get().CoverSize;
+            Converters.ImageLoader.Clear();
+            foreach (var card in Games) card.RefreshCoverImage();
+            foreach (var card in VisibleUninstalled) card.RefreshCoverImage();
+        });
         _gate = gate;
         _storeAbout = storeAbout;
         _fixes = fixes;
@@ -1577,6 +1589,9 @@ public sealed partial class GameCardViewModel(GameProfile profile, bool isPlayin
     public bool HasCover => CoverPath is not null;
 
     /// <summary>Jaquette décodée ; lue par une liaison IsAsync (hors du thread UI), gardée par <see cref="Converters.ImageLoader"/>.</summary>
+    /// <summary>Taille des jaquettes changée (Paramètres) : l'image est redemandée à la nouvelle largeur.</summary>
+    public void RefreshCoverImage() => OnPropertyChanged(nameof(CoverImage));
+
     public System.Windows.Media.ImageSource? CoverImage =>
         Converters.ImageLoader.Load(CoverPath, Converters.ImageLoader.PixelsFor(Converters.ImageLoader.GridCoverWidth));
 
@@ -1732,6 +1747,9 @@ public sealed partial class OwnedGameCardViewModel : ObservableObject
     public bool HasCover => CoverPath is not null;
 
     /// <summary>Jaquette grisée ; lue par une liaison IsAsync (hors du thread UI), gardée par <see cref="Converters.ImageLoader"/>.</summary>
+    /// <summary>Taille des jaquettes changée (Paramètres) : l'image est redemandée à la nouvelle largeur.</summary>
+    public void RefreshCoverImage() => OnPropertyChanged(nameof(CoverImage));
+
     public System.Windows.Media.ImageSource? CoverImage =>
         Converters.ImageLoader.Load(CoverPath, Converters.ImageLoader.PixelsFor(Converters.ImageLoader.GridCoverWidth), gray: true);
 

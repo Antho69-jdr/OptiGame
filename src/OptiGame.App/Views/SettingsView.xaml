@@ -81,6 +81,15 @@
                 <!-- ===== Mes jeux ===== -->
                 <Border Style="{StaticResource SettingsCard}" Visibility="{Binding IsGamesTab, Converter={StaticResource BoolToVisibility}}">
                     <StackPanel Margin="{StaticResource Margin.SettingsCardContent}">
+                        <controls:SettingRow Glyph="&#xE740;" Header="Taille des jaquettes"
+                                             Description="Jaquettes de la grille de Mes jeux : plus grandes, il en tient moins par ligne.">
+                            <ComboBox Width="200" ItemsSource="{Binding CoverSizeOptions}" SelectedItem="{Binding SelectedCoverSize}" DisplayMemberPath="Label"
+                                      AutomationProperties.Name="Taille des jaquettes" />
+                            <controls:SettingRow.Details>
+                                <TextBlock Style="{StaticResource Text.Caption}"
+                                           Text="Petites : 150 × 200, moyennes : 198 × 264 (par défaut), grandes : 250 × 333. Les images sont décodées à la taille affichée : de grandes jaquettes demandent plus de mémoire (environ 1,6 fois les moyennes)." />
+                            </controls:SettingRow.Details>
+                        </controls:SettingRow>
                         <!-- Curseur : enregistré une fois immobile ; les jaquettes suivent tout de suite (ressource dynamique) -->
                         <controls:SettingRow Glyph="&#xE7A8;" Header="Arrondi des jaquettes"
                                              Description="{Binding Value, ElementName=CoverRadiusSlider, StringFormat='{}{0:0} px (8 px par défaut). Jaquettes de Mes jeux et de la fiche du jeu.'}">

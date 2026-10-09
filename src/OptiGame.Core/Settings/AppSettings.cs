@@ -25,17 +25,35 @@ public enum UiAnimations
     /// <summary>Selon « Effets d'animation » de Windows (Accessibilité) : coupées si Windows les coupe.</summary>
     FollowWindows,
 
-    /// <summary>Toujours : par ex. AtlasOS coupe les effets de Windows, mais l'utilisateur veut ceux d'OptiGame.</summary>
+    /// <summary>Toujours : certaines versions modifiées de Windows coupent ses effets, mais l'utilisateur veut ceux d'OptiGame.</summary>
     Always,
 
     Never,
 }
 
 /// <summary>Aspect des jaquettes réglable par l'utilisateur.</summary>
+/// <summary>Taille des jaquettes de Mes jeux (Paramètres › Mes jeux) ; la mémoire d'une jaquette suit sa surface.</summary>
+public enum CoverSize
+{
+    Small,
+    Medium,
+    Large,
+}
+
 public static class CoverStyle
 {
     public const int DefaultRadius = 8;
     public const int MaxRadius = 24;
+
+    /// <summary>Largeur d'une jaquette de Mes jeux (unités WPF) ; hauteur = 4/3 (format portrait des jaquettes).</summary>
+    public static double Width(CoverSize size) => size switch
+    {
+        CoverSize.Small => 150,
+        CoverSize.Large => 250,
+        _ => 198,
+    };
+
+    public static double Height(CoverSize size) => Math.Round(Width(size) * 4 / 3);
 
     /// <summary>Arrondi ramené entre 0 (coins droits) et 24 px.</summary>
     public static int Radius(int radius) => Math.Clamp(radius, 0, MaxRadius);
@@ -144,6 +162,9 @@ public sealed class AppSettings
     /// <summary>Arrondi des coins des jaquettes de Mes jeux et de la fiche, en pixels (CoverStyle.Radius le borne).</summary>
     public int CoverCornerRadius { get; set; } = CoverStyle.DefaultRadius;
 
+    /// <summary>Taille des jaquettes de Mes jeux ; absente d'un ancien settings.json = Moyenne (198 × 264, la taille d'avant).</summary>
+    public CoverSize CoverSize { get; set; } = CoverSize.Medium;
+
     /// <summary>Ancien choix de vue du Diagnostic (Simple / Avancé) : plus utilisé depuis la page unique (1.5), gardé pour relire les anciens fichiers.</summary>
     public bool DiagnosticAdvanced { get; set; }
 
@@ -185,6 +206,7 @@ public sealed class AppSettings
         UiAnimations = UiAnimations,
         StartPage = StartPage,
         CoverCornerRadius = CoverCornerRadius,
+        CoverSize = CoverSize,
         DiagnosticAdvanced = DiagnosticAdvanced,
         LibraryShowUninstalled = LibraryShowUninstalled,
         UpdateMode = UpdateMode,
