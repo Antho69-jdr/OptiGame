@@ -186,6 +186,12 @@ public sealed class AppSettings
     /// <summary>L'utilisateur a déjà été prévenu qu'en fermant la fenêtre, OptiGame continue dans la zone de notification.</summary>
     public bool CloseToTrayExplained { get; set; }
 
+    /// <summary>
+    /// Appel vocal : l'utilisateur accepte qu'un serveur public de découverte d'adresse (STUN, cité dans PRIVACY.md) voie son
+    /// adresse IP, pour que l'appel passe hors du réseau local. Désactivé par défaut : sans lui, seulement entre PC du même réseau.
+    /// </summary>
+    public bool CallUseStun { get; set; }
+
     public AppSettings Clone() => new()
     {
         Version = Version,
@@ -219,6 +225,7 @@ public sealed class AppSettings
             ? new WindowPlacement { Left = p.Left, Top = p.Top, Width = p.Width, Height = p.Height, Maximized = p.Maximized }
             : null,
         CloseToTrayExplained = CloseToTrayExplained,
+        CallUseStun = CallUseStun,
     };
 }
 

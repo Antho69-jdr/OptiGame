@@ -14,11 +14,12 @@ namespace OptiGame.App.ViewModels;
 public sealed partial class MainViewModel : ObservableObject
 {
     // Glyphes Segoe Fluent Icons : manette, diagnostic, composant (pilotes ; le téléchargement E896 reste à la mise à jour),
-    // courbe, engrenage.
+    // courbe, téléphone (appel), engrenage.
     private const string GamesGlyph = "";
     private const string DiagnosticGlyph = "";
     private const string DriversGlyph = "";
     private const string MeasuresGlyph = "";
+    private const string CallGlyph = "";
     private const string SettingsGlyph = "";
 
     private readonly DriversViewModel _drivers;
@@ -28,6 +29,7 @@ public sealed partial class MainViewModel : ObservableObject
         DriversViewModel drivers,
         LibraryViewModel library,
         MeasuresViewModel measures,
+        CallViewModel call,
         SessionViewModel session,
         SettingsViewModel settings,
         UpdateService updates,
@@ -40,6 +42,7 @@ public sealed partial class MainViewModel : ObservableObject
         Diagnostic = diagnostic;
         Library = library;
         Measures = measures;
+        Call = call;
         Session = session;
         Settings = settings;
         _drivers = drivers;
@@ -50,6 +53,7 @@ public sealed partial class MainViewModel : ObservableObject
             new NavItem("Diagnostic", DiagnosticGlyph, diagnostic, this),
             new NavItem("Pilotes", DriversGlyph, drivers, this),
             new NavItem("Mesures", MeasuresGlyph, measures, this),
+            new NavItem("Appel", CallGlyph, call, this),
         ];
         SettingsItem = new NavItem("Paramètres", SettingsGlyph, settings, this);
         // Page d'ouverture choisie dans Paramètres › Général (Mes jeux par défaut).
@@ -76,6 +80,8 @@ public sealed partial class MainViewModel : ObservableObject
     public LibraryViewModel Library { get; }
 
     public MeasuresViewModel Measures { get; }
+
+    public CallViewModel Call { get; }
 
     public SessionViewModel Session { get; }
 
@@ -127,7 +133,7 @@ public sealed partial class MainViewModel : ObservableObject
         if (ReferenceEquals(item, SettingsItem) && Updates.HasPackage) Settings.SelectedTab = SettingsTab.Updates;
     }
 
-    /// <summary>Ctrl+1 … Ctrl+5 : pages dans l'ordre de la barre latérale (Paramètres en dernier).</summary>
+    /// <summary>Ctrl+1 … Ctrl+6 : pages dans l'ordre de la barre latérale (Paramètres en dernier).</summary>
     [RelayCommand]
     private void NavigateTo(string? position)
     {

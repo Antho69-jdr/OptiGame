@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<!-- Page d'appel d'OptiGame (Call/CallEngine) : servie depuis le dossier de l'appli sous https://appel.optigame/ (contexte
+     sécurisé, exigé pour le micro). Aucun contenu distant. Réseau : la connexion WebRTC directe vers l'ami et, si l'utilisateur
+     l'a accepté, le serveur public de découverte d'adresse. Seulement la voix : le canal « control » ne porte que deux signaux
+     fixes (raccroché, micro coupé), jamais de texte saisi. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; media-src blob: mediastream:">
+</head>
+<body>
+<audio id="remote" autoplay></audio>
+<script>
+"use strict";
+const send = o => chrome.webview.postMessage(JSON.stringify(o));
+const remote = document.getElementById('remote');
+let pc = null, control = null, mic = null, muted = true, levels = null, ctx = null, analyser = null;
+
+const STUN = 'stun:stun.cloudflare.com:3478';
+
+async function openMic() {
+  mic = await navigator.mediaDevices.getUserMedia({
+    audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+    video: false,
+  });
+  const track = mic.getAudioTracks()[0];
+  send({ ev: 'mic', label: track ? track.label : '' });
+  ctx = new AudioContext();
+  analyser = ctx.createAnalyser();
+  analyser.fftSize = 512;
+  ctx.createMediaStreamSource(mic).connect(analyser);
+  setMuted(true); // micro coupé tant que l'utilisateur ne l'ouvre pas
+}
+
+function setMuted(value) {
+  muted = value;
+  if (mic) mic.getAudioTracks().forEach(t => t.enabled = !value);
+  if (control && control.readyState === 'open') control.send(value ? 'muted' : 'unmuted');
+  send({ ev: 'muted', value });
+}
+
+function newConnection(stun) {
+  pc = new RTCPeerConnection({ iceServers: stun ? [{ urls: STUN }] : [] });
+  mic.getTracks().forEach(t => pc.addTrack(t, mic));
+  // Canal négocié d'avance (même identifiant des deux côtés) : rien à ajouter aux codes échangés.
+  control = pc.createDataChannel('control', { negotiated: true, id: 0 });
+  control.onopen = () => control.send(muted ? 'muted' : 'unmuted');
+  control.onmessage = e => {
+    if (e.data === 'bye') send({ ev: 'bye' });
+    else if (e.data === 'muted' || e.data === 'unmuted') send({ ev: 'peerMuted', value: e.data === 'muted' });
+  };
+  pc.ontrack = e => { remote.srcObject = e.streams[0]; remote.play().catch(() => {}); };
+  pc.onconnectionstatechange = () => {
+    send({ ev: 'state', value: pc.connectionState });
+    if (pc.connectionState === 'connected' && !levels) levels = setInterval(reportLevels, 250);
+  };
+}
+
+function gathered() {
+  return new Promise(resolve => {
+    if (pc.iceGatheringState === 'complete') return resolve();
+    const timer = setTimeout(resolve, 8000); // au pire : les adresses déjà trouvées
+    pc.addEventListener('icegatheringstatechange', () => {
+      if (pc.iceGatheringState === 'complete') { clearTimeout(timer); resolve(); }
+    });
+  });
+}
+
+// Niveaux sonores (« vous parlez » / « votre ami parle ») et octets échangés, 4 fois par seconde pendant l'appel seulement.
+async function reportLevels() {
+  if (!pc) return;
+  let local = 0;
+  if (analyser && !muted) {
+    const data = new Uint8Array(analyser.fftSize);
+    analyser.getByteTimeDomainData(data);
+    let sum = 0;
+    for (const v of data) { const x = (v - 128) / 128; sum += x * x; }
+    local = Math.min(1, Math.sqrt(sum / data.length) * 4);
+  }
+  let remoteLevel = 0, received = 0, sent = 0, path = '';
+  const stats = await pc.getStats();
+  const byId = new Map();
+  stats.forEach(s => byId.set(s.id, s));
+  stats.forEach(s => {
+    if (s.type === 'inbound-rtp' && s.kind === 'audio') { remoteLevel = Math.min(1, (s.audioLevel || 0) * 4); received = s.bytesReceived || 0; }
+    if (s.type === 'outbound-rtp' && s.kind === 'audio') sent = s.bytesSent || 0;
+    if (s.type === 'candidate-pair' && s.nominated && s.state === 'succeeded') {
+      const l = byId.get(s.localCandidateId), r = byId.get(s.remoteCandidateId);
+      path = (l ? l.candidateType : '?') + '/' + (r ? r.candidateType : '?');
+    }
+  });
+  send({ ev: 'levels', local, remote: remoteLevel, received, sent, path });
+}
+
+function hangup(tell) {
+  if (levels) { clearInterval(levels); levels = null; }
+  if (tell && control && control.readyState === 'open') { try { control.send('bye'); } catch (e) {} }
+  // Laisse partir le « bye » avant de fermer.
+  setTimeout(() => {
+    if (pc) pc.close();
+    if (mic) mic.getTracks().forEach(t => t.stop());
+    if (ctx) ctx.close();
+    pc = null; mic = null; ctx = null; control = null;
+    send({ ev: 'state', value: 'closed' });
+  }, tell ? 200 : 0);
+}
+
+async function handle(m) {
+  switch (m.cmd) {
+    case 'host':
+      await openMic();
+      newConnection(m.stun);
+      await pc.setLocalDescription(await pc.createOffer());
+      await gathered();
+      send({ ev: 'offer', sdp: pc.localDescription.sdp });
+      break;
+    case 'join':
+      await openMic();
+      newConnection(m.stun);
+      await pc.setRemoteDescription({ type: 'offer', sdp: m.sdp });
+      await pc.setLocalDescription(await pc.createAnswer());
+      await gathered();
+      send({ ev: 'answer', sdp: pc.localDescription.sdp });
+      break;
+    case 'answer':
+      await pc.setRemoteDescription({ type: 'answer', sdp: m.sdp });
+      break;
+    case 'mute':
+      setMuted(!!m.value);
+      break;
+    case 'volume':
+      remote.volume = Math.max(0, Math.min(1, Number(m.value) || 0));
+      break;
+    case 'hangup':
+      hangup(true);
+      break;
+  }
+}
+
+chrome.webview.addEventListener('message', async e => {
+  try {
+    await handle(JSON.parse(e.data));
+  } catch (err) {
+    send({ ev: 'error', name: (err && err.name) || 'Error', message: String((err && err.message) || err) });
+  }
+});
+send({ ev: 'ready' });
+</script>
+</body>
+</html>

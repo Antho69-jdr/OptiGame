@@ -86,6 +86,14 @@
                         <MenuItem Header="Arrêter l'optimisation et restaurer…" Command="{Binding Session.EndNowCommand}"
                                   Visibility="{Binding Session.IsActive, Converter={StaticResource TrayBoolToVisibility}}" />
                         <Separator Visibility="{Binding Session.IsActive, Converter={StaticResource TrayBoolToVisibility}}" />
+                        <!-- Appel vocal en cours (fenêtre fermée pendant les parties) -->
+                        <MenuItem Header="{Binding Call.MicrophoneState}" IsEnabled="False"
+                                  Visibility="{Binding Call.IsInCall, Converter={StaticResource TrayBoolToVisibility}}" />
+                        <MenuItem Header="{Binding Call.MuteLabel}" Command="{Binding Call.ToggleMuteCommand}"
+                                  Visibility="{Binding Call.IsInCall, Converter={StaticResource TrayBoolToVisibility}}" />
+                        <MenuItem Header="Raccrocher" Command="{Binding Call.HangUpCommand}"
+                                  Visibility="{Binding Call.IsInCall, Converter={StaticResource TrayBoolToVisibility}}" />
+                        <Separator Visibility="{Binding Call.IsInCall, Converter={StaticResource TrayBoolToVisibility}}" />
                         <MenuItem Header="Quitter OptiGame" Command="{Binding ExitCommand}" />
                     </ContextMenu>
                 </tb:TaskbarIcon.ContextMenu>

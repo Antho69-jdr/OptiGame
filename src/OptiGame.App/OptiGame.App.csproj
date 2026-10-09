@@ -25,6 +25,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Page de l'appel vocal (Call/CallEngine), servie depuis le dossier de l'appli (Program Files : modifiable par un admin seulement). -->
+    <Content Include="Call\call.html" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\OptiGame.Core\OptiGame.Core.csproj" />
     <ProjectReference Include="..\OptiGame.Platform\OptiGame.Platform.csproj" />
   </ItemGroup>

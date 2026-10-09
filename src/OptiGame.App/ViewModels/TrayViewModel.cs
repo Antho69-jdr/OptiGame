@@ -12,13 +12,16 @@ public sealed record RecentGameItem(Guid Id, string Name, System.Windows.Input.I
     public string Header => $"Jouer à {Name}";
 }
 
-public sealed partial class TrayViewModel(SessionViewModel session, GameSessionManager sessions, IDialogService dialogs, UnsavedChangesGuard unsaved,
+public sealed partial class TrayViewModel(SessionViewModel session, CallViewModel call, GameSessionManager sessions, IDialogService dialogs, UnsavedChangesGuard unsaved,
     IServiceProvider services) : CommunityToolkit.Mvvm.ComponentModel.ObservableObject
 {
     /// <summary>Nombre de jeux récents proposés dans le menu.</summary>
     private const int RecentCount = 5;
 
     public SessionViewModel Session { get; } = session;
+
+    /// <summary>Appel vocal en cours : micro et raccrocher depuis le menu (fenêtre fermée pendant les parties).</summary>
+    public CallViewModel Call { get; } = call;
 
     /// <summary>Jeux joués le plus récemment, relus à chaque ouverture du menu (aucun suivi en tâche de fond).</summary>
     public ObservableCollection<RecentGameItem> RecentGames { get; } = [];

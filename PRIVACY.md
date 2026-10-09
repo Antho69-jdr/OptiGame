@@ -43,6 +43,21 @@ est désactivé.
 Les programmes que vous lancez depuis OptiGame (Steam, Epic Games Launcher, GOG Galaxy, vos jeux) ont leurs propres
 politiques de confidentialité.
 
+
+## Appel vocal (page « Appel »)
+
+L'appel passe **directement entre votre PC et celui de votre ami** (WebRTC, voix chiffrée de bout en bout) : aucun serveur
+d'OptiGame, aucun compte, rien n'est enregistré. Seulement la voix : aucun texte n'est échangé.
+
+- Pour se trouver, les deux PC s'échangent des **codes** que vous copiez vous-même (message privé, par exemple). Un code
+  contient l'adresse réseau de votre PC (adresses locales et, si l'option ci-dessous est cochée, votre adresse IP publique) et
+  une date limite de 15 minutes : ne l'envoyez qu'à la personne que vous appelez.
+- **« Passer par Internet »** (décoché par défaut, à cocher quand votre ami n'est pas sur votre réseau) : OptiGame demande alors
+  au serveur public de découverte d'adresse `stun.cloudflare.com` (protocole STUN) l'adresse sous laquelle Internet voit votre
+  PC. Ce serveur voit votre adresse IP ; votre voix ne passe jamais par lui.
+- OptiGame accède au micro dès que vous créez ou rejoignez un appel (le son reste coupé tant que vous ne l'ouvrez pas) et le libère au raccroché. Le moteur web de
+  Windows (WebView2) qui fait l'appel n'existe que pendant l'appel.
+
 ## Contact
 
 Questions ou remarques : [ouvrez un ticket sur GitHub](https://github.com/Antho69-jdr/OptiGame/issues).
@@ -67,6 +82,11 @@ store artwork and store pages from Epic Games and GOG, GOG game descriptions and
 product number), and driver lookups from NVIDIA, AMD and Windows Update on the
 "Drivers" page. As with any Internet connection, these services see your IP address and handle it under their own privacy
 policies.
+
+Voice calls ("Call" page) go directly between the two PCs (WebRTC, end-to-end encrypted voice), with no OptiGame server, no
+account and no recording; no text is exchanged. The two PCs find each other through codes the users copy themselves; a code
+contains the PC's network addresses and expires after 15 minutes. Only when the user ticks "Passer par Internet" does OptiGame
+ask the public STUN server `stun.cloudflare.com` for the PC's public address (the server sees the IP address, never the voice).
 
 Your game profiles, backups of original settings, FPS measurements, playtime, artwork, settings and log are stored only on
 your PC, in `%LocalAppData%\OptiGame`. IGDB credentials, if entered, are encrypted with Windows DPAPI.

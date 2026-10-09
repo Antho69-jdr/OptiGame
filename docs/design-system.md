@@ -120,7 +120,7 @@ grille, flèches d'une jaquette à l'autre).
   fenêtre est fermée. Détection des jeux en panne (non fermable tant qu'elle dure), restauration ratée au démarrage ou en fin
   de partie, reprise après plantage, partie optimisée partiellement, erreur d'interface ; « Ouvrir le journal » pour les
   erreurs. Mise à jour : même InfoBar (rouge si échec, barre de téléchargement, « Plus tard »).
-- **Raccourcis** : Ctrl+1 … Ctrl+5 (pages, Paramètres en dernier), Ctrl+F (recherche de Mes jeux), F5 (actualiser la page :
+- **Raccourcis** : Ctrl+1 … Ctrl+6 (pages, Paramètres en dernier), Ctrl+F (recherche de Mes jeux), F5 (actualiser la page :
   bibliothèques, analyse, pilotes ; rien ne s'écrit), Échap / Alt+← / bouton « précédent » de la souris (fiche → grille).
   Toute sortie d'une fiche modifiée passe par la garde « Abandonner les modifications ? » (retour, autre jeu depuis le dock,
   Quitter : `UnsavedChangesGuard`).

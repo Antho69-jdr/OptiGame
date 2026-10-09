@@ -449,6 +449,7 @@ public partial class App : Application
         services.AddSingleton<LibraryViewModel>();
         services.AddSingleton<SettingsViewModel>();
         services.AddSingleton<MeasuresViewModel>();
+        services.AddSingleton<CallViewModel>();
         services.AddSingleton<DockViewModel>();
         services.AddSingleton<Dock.DockController>();
         services.AddSingleton<MainViewModel>();

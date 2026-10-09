@@ -19,11 +19,13 @@
         <KeyBinding Modifiers="Control" Key="D3" Command="{Binding NavigateToCommand}" CommandParameter="3" />
         <KeyBinding Modifiers="Control" Key="D4" Command="{Binding NavigateToCommand}" CommandParameter="4" />
         <KeyBinding Modifiers="Control" Key="D5" Command="{Binding NavigateToCommand}" CommandParameter="5" />
+        <KeyBinding Modifiers="Control" Key="D6" Command="{Binding NavigateToCommand}" CommandParameter="6" />
         <KeyBinding Modifiers="Control" Key="NumPad1" Command="{Binding NavigateToCommand}" CommandParameter="1" />
         <KeyBinding Modifiers="Control" Key="NumPad2" Command="{Binding NavigateToCommand}" CommandParameter="2" />
         <KeyBinding Modifiers="Control" Key="NumPad3" Command="{Binding NavigateToCommand}" CommandParameter="3" />
         <KeyBinding Modifiers="Control" Key="NumPad4" Command="{Binding NavigateToCommand}" CommandParameter="4" />
         <KeyBinding Modifiers="Control" Key="NumPad5" Command="{Binding NavigateToCommand}" CommandParameter="5" />
+        <KeyBinding Modifiers="Control" Key="NumPad6" Command="{Binding NavigateToCommand}" CommandParameter="6" />
         <KeyBinding Key="F5" Command="{Binding RefreshCommand}" />
         <KeyBinding Modifiers="Control" Key="F" Command="{Binding FocusSearchCommand}" />
         <KeyBinding Key="Escape" Command="{Binding BackCommand}" />
@@ -38,6 +40,7 @@
         <DataTemplate DataType="{x:Type vm:DiagnosticViewModel}"><views:DiagnosticView /></DataTemplate>
         <DataTemplate DataType="{x:Type vm:DriversViewModel}"><views:DriversView /></DataTemplate>
         <DataTemplate DataType="{x:Type vm:MeasuresViewModel}"><views:MeasuresView /></DataTemplate>
+        <DataTemplate DataType="{x:Type vm:CallViewModel}"><views:CallView /></DataTemplate>
         <DataTemplate DataType="{x:Type vm:SettingsViewModel}"><views:SettingsView /></DataTemplate>
 
         <!-- Entrée de navigation : icône, titre, pastille ; en barre compacte, icône seule (info-bulle + point pour la pastille) -->

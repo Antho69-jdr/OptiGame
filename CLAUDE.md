@@ -84,7 +84,7 @@ src/OptiGame.App/        WPF : composition DI, tray, vues/viewmodels, dialogue d
   Navigation             barre latérale (MainViewModel.NavItems + SettingsItem en pied, pastilles, compacte < 1008) ; page =
                          ViewModel, vue choisie par DataTemplate implicite (jamais ContentTemplate explicite : il s'applique même
                          quand le contenu est null). Coque (docs/design-system.md) : Services/ShellAlerts = alertes persistantes
-                         en InfoBar (erreurs de détection / restauration : JAMAIS seulement en notification), raccourcis Ctrl+1…5,
+                         en InfoBar (erreurs de détection / restauration : JAMAIS seulement en notification), raccourcis Ctrl+1…6,
                          Ctrl+F, F5, Échap/Alt+←, place de la fenêtre dans settings.json (Core/Settings/WindowLayout),
                          UnsavedChangesGuard pour Quitter ; page d'ouverture = `AppSettings.StartPage` (Paramètres › Général, au lancement
                          seulement) ; menu de l'icône de notification : « Jeux récents » (5 derniers joués, installés, relus à
@@ -162,6 +162,21 @@ résumé » (`Core/Measurement/CaptureSummary`, presse-papiers ; deux jeux diff�
 Pages Mesures et Paramètres (refonte, étape 7) : mesures automatiques ajoutées à la liste dès AutoCapture.CaptureAdded ;
 PresentMon se règle dans Paramètres › Mesures (MeasuresViewModel.ChoosePresentMon) ; Paramètres en onglets (SettingsTab,
 sélecteur `Segment` comme la fiche du jeu), une carte `SettingsCard` de Controls/SettingRow par onglet.
+
+Appel vocal pair à pair (page « Appel », Ctrl+5 ; étape 8 de l'audit, VOIX SEULEMENT : pas de texte, choix de l'utilisateur
+le 2026-10-08) : `Core/Call/InviteCode` (SDP non fractionné → JSON + date limite 15 min → deflate → base64url, « OG1I » invitation
+/ « OG1R » réponse, ≈ 1,3-1,5 Ko) et `SafetyWords` (4 mots tirés des deux empreintes DTLS, ordre indifférent) ;
+`App/Call/CallEngine` = WebView2 sur une fenêtre native CACHÉE (HwndSource, jamais une Window : elle deviendrait
+Application.MainWindow), dossier `webview-call` (options ≠ des bandes-annonces), page `Call/call.html` copiée avec l'appli et
+servie sous https://appel.optigame/ (contexte sécurisé exigé pour le micro), micro autorisé pour CETTE origine seule, une seule
+navigation. Canal de données négocié « control » = 2 signaux fixes (bye, muted/unmuted). Moteur créé au début de l'appel,
+détruit au raccroché ; indépendant de la fenêtre (l'appel continue pendant les parties ; menu de notification : micro /
+raccrocher). Micro COUPÉ au départ. Serveur de découverte d'adresse seulement si « Passer par Internet » est coché
+(`AppSettings.CallUseStun`, décoché par défaut, PRIVACY.md) ; pas de relais (TURN) : deux box très restrictives = « Connexion
+impossible ». Vérifié le 2026-10-09 (ui-snapshots `-Only c`, micro SIMULÉ par `CallEngine.UseFakeMedia`, jamais le vrai) : deux
+appels du même processus connectés en direct (host/host), mêmes mots, voix reçue seulement micro ouvert, raccroché transmis,
+8 processus et ≈ 190 Mo privés pour les DEUX appels, 0 processus après ; avec STUN, 2 adresses Internet dans l'invitation.
+Non vérifié : un vrai appel entre deux PC sur deux réseaux (test utilisateur).
 
 Données fictives pour tester l'UI : `$env:OPTIGAME_DATA_DIR='<dossier temporaire>'` redirige tout le dossier de
 données ; `DiagDump -- --import-capture <csv> <libellé> <date ISO>` y ajoute une capture (refusé sans la variable).
