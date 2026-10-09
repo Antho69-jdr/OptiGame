@@ -211,8 +211,10 @@ ami = salon ouvert (code) puis « call » → « ring » chez l'ami : `Call/Inco
 ShowActivated=False, jamais Application.MainWindow) + sonnerie WAV en mémoire (`IncomingCallPresenter`) ; 30 s sans réponse =
 refusé + « Appel manqué » ; déjà en appel = refusé tout de suite. Vérifié le 2026-10-09 avec le serveur LOCAL et des jetons de
 TEST « test:<steamid>:<nom>:<amis> » (acceptés par `LocalCallRelay` seulement) : présence, sonnerie + fenêtre, réponse (mêmes
-mots), refus, appel manqué, ami déconnecté (ui-snapshots `-Only c1,c2,c3,c4,c5`). Connexion avec Steam RÉELLE et serveur v2 :
-à vérifier après déploiement (clé d'API Web de Steam + jeton Cloudflare de l'utilisateur).
+mots), refus, appel manqué, ami déconnecté (ui-snapshots `-Only c1,c2,c3,c4,c5`). Serveur v2 déployé le 2026-10-09 (secrets posés) :
+redirection vers Steam, retour falsifié refusé, jeton faux = 401, appels par code inchangés (1,3 s). Liste d'amis du compte de
+l'utilisateur PRIVÉE (GetFriendList 401) : il n'est vu que des amis dont la liste est publique. Connexion avec Steam RÉELLE :
+à vérifier par l'utilisateur (navigateur, devant le PC).
 
 Données fictives pour tester l'UI : `$env:OPTIGAME_DATA_DIR='<dossier temporaire>'` redirige tout le dossier de
 données ; `DiagDump -- --import-capture <csv> <libellé> <date ISO>` y ajoute une capture (refusé sans la variable).
