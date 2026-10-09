@@ -638,22 +638,15 @@ vit dans Core ; Platform ne fait que lire/écrire le système.
   (`git tag vX.Y.Z origin/main`, `git push origin vX.Y.Z`) : une session LOCALE y est autorisée par l'utilisateur depuis le
   2026-10-05 ; la session cloud ne le peut pas (erreur 403), l'utilisateur le fait alors. L'utilisateur publie le brouillon
   créé par la CI.
-- Signature : SignPath Foundation (gratuit, logiciels libres), choisie par l'utilisateur le 2026-10-06 ; code sous licence MIT
-  (`LICENSE`, installé en LICENSE.txt), politique de signature dans `README.md` et de confidentialité dans `PRIVACY.md`
-  (exigées par signpath.org/terms : mention « Free code signing provided by SignPath.io, certificate by SignPath Foundation »,
-  rôles ; `PRIVACY.md` = liste EXACTE des connexions réseau, à tenir à jour si OptiGame contacte un nouveau service ; adresse
-  fixe `AppReleases.PrivacyPolicy`, ouverte par Paramètres › Données › « Politique de confidentialité » et citée dans les
-  notes de chaque version, qui disent aussi si l'installeur est signé). OptiGame ne collecte AUCUNE donnée (vérifié le
-  2026-10-06 : 9 clients HTTP, aucune télémétrie). Désinstalleur : thème sombre et fond #0E1014 hérités (WizardBackColor,
-  mesuré sur capture). Signés : OptiGame.exe,
-  OptiGame.dll, OptiGame.Core.dll, OptiGame.Platform.dll, puis l'installeur (`.signpath/artifact-configurations/*.xml`, à
-  recopier dans SignPath). JAMAIS les binaires d'autrui : le désinstalleur d'Inno Setup reste non signé (et ISCC refuse un
-  SignTool qui ne signe pas : « the file does not have a digital signature »). CI : `build-installer.ps1 -Step Publish`,
-  signature, `-Step Package`, signature ; seulement pour un tag ET si la variable de dépôt SIGNPATH_ORGANIZATION_ID existe
-  (+ SIGNPATH_PROJECT_SLUG, SIGNPATH_SIGNING_POLICY_SLUG, secret SIGNPATH_API_TOKEN) ; chaque demande attend l'approbation
-  manuelle de l'utilisateur dans SignPath (30 min max). Éditeur affiché par Windows : « SignPath Foundation ». Même signé,
-  SmartScreen avertit tant que la réputation n'est pas faite (EV compris depuis 2024), mais elle passe d'une version à l'autre.
-  Tant que SignPath n'est pas configuré : non signé, SmartScreen avertit au premier lancement (« Informations complémentaires »).
+- Signature : SignPath Foundation, choisie par l'utilisateur le 2026-10-06, candidature REFUSÉE (appris le 2026-10-09) → versions
+  NON SIGNÉES ; README (« Signature du code / Code signing ») et notes de version le disent, plus aucune mention de SignPath côté
+  public. Étapes SignPath de la CI et `.signpath/artifact-configurations/*.xml` gardées, INACTIVES sans la variable de dépôt
+  SIGNPATH_ORGANIZATION_ID (réutilisables par un autre moyen de signer : `build-installer.ps1 -Step Publish`, signature,
+  `-Step Package`, signature). Règles qui restent : code sous licence MIT (`LICENSE`, installé en LICENSE.txt), `PRIVACY.md` =
+  liste EXACTE des connexions réseau (adresse fixe `AppReleases.PrivacyPolicy`, Paramètres › Données), JAMAIS signer les binaires
+  d'autrui (désinstalleur d'Inno Setup ; ISCC refuse un SignTool qui ne signe pas). OptiGame ne collecte AUCUNE donnée (vérifié le
+  2026-10-06). Non signé : SmartScreen avertit au premier lancement ; l'empreinte SHA-256 affichée par GitHub (digest) est
+  vérifiée par OptiGame avant chaque mise à jour.
 
 ## Mises à jour automatiques
 

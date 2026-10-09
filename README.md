@@ -16,27 +16,17 @@ Principes : toute modification est réversible, rien n'est appliqué sans votre 
 Téléchargez `OptiGame-Setup-X.Y.Z.exe` depuis les [versions publiées](https://github.com/Antho69-jdr/OptiGame/releases/latest).
 Windows 10 (1809) ou Windows 11, 64 bits. OptiGame se met ensuite à jour tout seul (réglable dans Paramètres › Mises à jour).
 
-## Signature du code / Code signing policy
+## Signature du code / Code signing
 
-Free code signing provided by [SignPath.io](https://about.signpath.io/), certificate by
-[SignPath Foundation](https://signpath.org/).
+Les versions publiées ne sont **pas signées** pour l'instant : au premier lancement de l'installeur, Windows SmartScreen peut
+afficher un avertissement (« Informations complémentaires » puis « Exécuter quand même »). L'installeur est fabriqué par la
+[CI GitHub Actions](.github/workflows/installer.yml) de ce dépôt, sur les machines de GitHub, à partir du code publié ici ;
+GitHub affiche l'empreinte SHA-256 de chaque fichier sur la page de la version, et OptiGame la vérifie avant d'installer une mise
+à jour. Les programmes tiers inclus gardent la signature de leur éditeur (PresentMon : Intel ; .NET : Microsoft).
 
-OptiGame utilise SignPath Foundation pour signer son code (signature gratuite pour les logiciels libres). Sont signés :
-`OptiGame.exe`, les bibliothèques d'OptiGame (`OptiGame.dll`, `OptiGame.Core.dll`, `OptiGame.Platform.dll`) et l'installeur.
-Ils sont fabriqués par la [CI GitHub Actions](.github/workflows/installer.yml) de ce dépôt, sur les machines de GitHub, à
-partir du code publié ici, et chaque signature est approuvée à la main. Les programmes tiers inclus gardent la signature de
-leur éditeur (PresentMon : Intel ; .NET : Microsoft) ; le désinstalleur (Inno Setup) n'est pas signé. La page de chaque
-version indique si son installeur est signé : la signature est en cours de mise en place, les versions jusqu'à la 1.8.0 ne
-le sont pas.
-
-OptiGame uses SignPath Foundation for code signing. Signed files: `OptiGame.exe`, OptiGame's own libraries and the
-installer, built from this repository by GitHub Actions on GitHub-hosted runners; every signing request is approved
-manually. Releases up to 1.8.0 are not signed yet.
-
-Rôles / Team roles :
-
-- Auteurs et relecteurs (committers and reviewers) : [Antho69-jdr](https://github.com/Antho69-jdr)
-- Approbateurs (approvers) : [Antho69-jdr](https://github.com/Antho69-jdr)
+Releases are currently **not code-signed**: Windows SmartScreen may warn on first run ("More info", then "Run anyway"). The
+installer is built from this repository by GitHub Actions on GitHub-hosted runners; GitHub shows each file's SHA-256 digest on
+the release page, and OptiGame checks it before installing an update.
 
 ## Confidentialité / Privacy policy
 

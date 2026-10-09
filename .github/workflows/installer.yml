@@ -232,11 +232,12 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           $setup = (Get-ChildItem artifacts/installer/OptiGame-Setup-*.exe | Select-Object -First 1).FullName
-          # Page de téléchargement : signature (SignPath Foundation, mention exigée par signpath.org/terms) et confidentialité.
+          # Page de téléchargement : signature et confidentialité. Signature SignPath : candidature REFUSÉE le 2026-10-09, étapes gardées
+          # (inactives sans les variables du dépôt) au cas où un autre moyen de signer les réutiliserait.
           $signing = if ($env:SIGN -eq 'true') {
             "**Installeur signé** : free code signing provided by [SignPath.io](https://about.signpath.io/), certificate by [SignPath Foundation](https://signpath.org/). Windows affiche l'éditeur « SignPath Foundation ». Tant que la réputation de la signature se construit, SmartScreen peut encore avertir (« Informations complémentaires » puis « Exécuter quand même »)."
           } else {
-            "**Installeur non signé** : OptiGame utilise [SignPath Foundation](https://signpath.org/) pour signer son code, signature en cours de mise en place. Windows SmartScreen peut afficher un avertissement (« Informations complémentaires » puis « Exécuter quand même »)."
+            "**Installeur non signé** : Windows SmartScreen peut afficher un avertissement au premier lancement (« Informations complémentaires » puis « Exécuter quand même »). GitHub affiche l'empreinte SHA-256 du fichier ci-dessous."
           }
           $notes = @(
             'Installeur pour Windows 10 (1809) et Windows 11, 64 bits.',
@@ -245,6 +246,6 @@ jobs:
             '',
             'Déjà installé (1.2.0 ou plus récent) ? OptiGame se met à jour tout seul.',
             '',
-            'OptiGame ne collecte aucune donnée : [politique de confidentialité](https://github.com/Antho69-jdr/OptiGame/blob/main/PRIVACY.md) · [politique de signature](https://github.com/Antho69-jdr/OptiGame#signature-du-code--code-signing-policy).'
+            'OptiGame ne collecte aucune donnée : [politique de confidentialité](https://github.com/Antho69-jdr/OptiGame/blob/main/PRIVACY.md) · [signature du code](https://github.com/Antho69-jdr/OptiGame#signature-du-code--code-signing).'
           ) -join "`n"
           gh release create $env:GITHUB_REF_NAME $setup --draft --title "OptiGame $env:GITHUB_REF_NAME" --notes $notes
