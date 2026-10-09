@@ -1,3 +1,5 @@
 * text=auto eol=crlf
 *.png binary
 *.ico binary
+# Fichier tiers gardé tel que publié (empreinte vérifiée) : jamais de conversion des fins de ligne.
+src/OptiGame.App/Call/rnnoise-sync.js -text
