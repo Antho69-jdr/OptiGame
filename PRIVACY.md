@@ -7,7 +7,8 @@ Dernière mise à jour : 9 octobre 2026.
 ## En bref
 
 OptiGame **ne collecte aucune donnée** : pas de compte, pas de statistiques d'utilisation, pas de rapport de plantage envoyé,
-pas de publicité. Rien n'est envoyé au développeur d'OptiGame.
+pas de publicité. Rien n'est envoyé au développeur d'OptiGame, hormis le passage de quelques secondes par son serveur de
+mise en relation quand vous lancez un appel vocal (rien n'y est gardé, voir plus bas).
 
 ## Ce qui reste sur votre PC
 
@@ -46,17 +47,21 @@ politiques de confidentialité.
 
 ## Appel vocal (page « Appel »)
 
-L'appel passe **directement entre votre PC et celui de votre ami** (WebRTC, voix chiffrée de bout en bout) : aucun serveur
-d'OptiGame, aucun compte, rien n'est enregistré. Seulement la voix : aucun texte n'est échangé.
+L'appel passe **directement entre votre PC et celui de votre ami** (WebRTC, voix chiffrée de bout en bout) : aucun compte, rien
+n'est enregistré, la voix ne passe par aucun serveur. Seulement la voix : aucun texte n'est échangé.
 
-- Pour se trouver, les deux PC s'échangent des **codes** que vous copiez vous-même (message privé, par exemple). Un code
-  contient l'adresse réseau de votre PC (adresses locales et, si l'option ci-dessous est cochée, votre adresse IP publique) et
-  une date limite de 15 minutes : ne l'envoyez qu'à la personne que vous appelez.
+- **Mise en relation** : pour se trouver, les deux PC passent quelques secondes par le serveur de mise en relation d'OptiGame
+  (`optigame-call.….workers.dev`, hébergé chez Cloudflare, code source dans `server/call-relay`). Il reçoit le code de l'appel
+  (6 caractères tirés au hasard) et relaie entre les deux PC leurs descriptions de connexion : adresses réseau (locales et, si
+  l'option ci-dessous est cochée, publique) et clés de chiffrement publiques. Il ne garde rien : le salon est effacé dès que les
+  deux PC sont connectés, qu'un des deux part, ou au bout de 2 minutes si personne ne rejoint. Comme tout serveur, il voit
+  l'adresse IP de connexion ; OptiGame n'y écrit aucun journal. Les **mots de contrôle** affichés pendant l'appel permettent de vérifier
+  que personne (pas même ce serveur) ne s'est interposé.
 - **« Passer par Internet »** (décoché par défaut, à cocher quand votre ami n'est pas sur votre réseau) : OptiGame demande alors
   au serveur public de découverte d'adresse `stun.cloudflare.com` (protocole STUN) l'adresse sous laquelle Internet voit votre
   PC. Ce serveur voit votre adresse IP ; votre voix ne passe jamais par lui.
-- OptiGame accède au micro dès que vous créez ou rejoignez un appel (le son reste coupé tant que vous ne l'ouvrez pas) et le libère au raccroché. Le moteur web de
-  Windows (WebView2) qui fait l'appel n'existe que pendant l'appel.
+- OptiGame accède au micro dès que vous créez ou rejoignez un appel (le son reste coupé tant que vous ne l'ouvrez pas) et le
+  libère au raccroché. Le moteur web de Windows (WebView2) qui fait l'appel n'existe que pendant l'appel.
 
 ## Contact
 
@@ -69,7 +74,7 @@ Questions ou remarques : [ouvrez un ticket sur GitHub](https://github.com/Antho6
 Last updated: October 9, 2026.
 
 **OptiGame does not collect any data**: no account, no usage statistics, no crash reports, no advertising. Nothing is sent to
-the OptiGame developer.
+the OptiGame developer, except for the few seconds a voice call spends on its matchmaking server (nothing is kept there, see below).
 
 This program will not transfer any information to other networked systems unless specifically requested by the user or the
 person installing or operating it, except for the connections listed above, which never include personal information:
@@ -83,10 +88,13 @@ product number), and driver lookups from NVIDIA, AMD and Windows Update on the
 "Drivers" page. As with any Internet connection, these services see your IP address and handle it under their own privacy
 policies.
 
-Voice calls ("Call" page) go directly between the two PCs (WebRTC, end-to-end encrypted voice), with no OptiGame server, no
-account and no recording; no text is exchanged. The two PCs find each other through codes the users copy themselves; a code
-contains the PC's network addresses and expires after 15 minutes. Only when the user ticks "Passer par Internet" does OptiGame
-ask the public STUN server `stun.cloudflare.com` for the PC's public address (the server sees the IP address, never the voice).
+Voice calls ("Call" page) go directly between the two PCs (WebRTC, end-to-end encrypted voice), with no account and no
+recording; the voice never goes through a server and no text is exchanged. To find each other, the two PCs spend a few seconds on
+OptiGame's matchmaking server (`optigame-call.….workers.dev`, hosted by Cloudflare, source in `server/call-relay`), which relays
+their connection descriptions (network addresses, public encryption keys) under a random 6-character call code and keeps
+nothing: the room is erased once they are connected, when one leaves, or after 2 minutes. Only when the user ticks "Passer par
+Internet" does OptiGame ask the public STUN server `stun.cloudflare.com` for the PC's public address (the server sees the IP
+address, never the voice).
 
 Your game profiles, backups of original settings, FPS measurements, playtime, artwork, settings and log are stored only on
 your PC, in `%LocalAppData%\OptiGame`. IGDB credentials, if entered, are encrypted with Windows DPAPI.

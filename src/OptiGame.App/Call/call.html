@@ -3,10 +3,11 @@
 <head>
 <meta charset="utf-8">
 <!-- Page d'appel d'OptiGame (Call/CallEngine) : servie depuis le dossier de l'appli sous https://appel.optigame/ (contexte
-     sécurisé, exigé pour le micro). Aucun contenu distant. Réseau : la connexion WebRTC directe vers l'ami et, si l'utilisateur
-     l'a accepté, le serveur public de découverte d'adresse. Seulement la voix : le canal « control » ne porte que deux signaux
-     fixes (raccroché, micro coupé), jamais de texte saisi. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; media-src blob: mediastream:">
+     sécurisé, exigé pour le micro). Aucun contenu distant. Réseau : le serveur de mise en relation (WebSocket, le temps que les
+     deux PC se trouvent), la connexion WebRTC directe vers l'ami et, si l'utilisateur l'a accepté, le serveur public de découverte
+     d'adresse. Seulement la voix : le canal « control » ne porte que deux signaux fixes (raccroché, micro coupé). -->
+<meta http-equiv="Content-Security-Policy"
+      content="default-src 'none'; script-src 'unsafe-inline'; media-src blob: mediastream:; connect-src wss://*.workers.dev ws://localhost:*">
 </head>
 <body>
 <audio id="remote" autoplay></audio>
@@ -14,23 +15,183 @@
 "use strict";
 const send = o => chrome.webview.postMessage(JSON.stringify(o));
 const remote = document.getElementById('remote');
-let pc = null, control = null, mic = null, muted = true, levels = null, ctx = null, analyser = null;
-
 const STUN = 'stun:stun.cloudflare.com:3478';
+const AUDIO = { echoCancellation: true, noiseSuppression: true, autoGainControl: true };
+
+let pc = null, control = null, sender = null, mic = null, muted = true, levels = null, ctx = null, analyser = null, source = null;
+let relay = null, role = null, stun = false, connected = false, closing = false, sdpSent = false;
+let localQueue = [], remoteQueue = [];
+// Périphériques : '' = celui de Windows par défaut, suivi quand il change ; sinon l'identifiant choisi.
+let micChoice = '', speakerChoice = '', defaultIn = null, defaultOut = null;
+
+// ===== Micro et sortie audio =====
+
+async function getMic(choice) {
+  try {
+    return await navigator.mediaDevices.getUserMedia({ audio: choice ? { ...AUDIO, deviceId: { exact: choice } } : AUDIO, video: false });
+  } catch (err) {
+    if (!choice || err.name !== 'OverconstrainedError') throw err;
+    micChoice = '';
+    send({ ev: 'deviceLost', kind: 'input' }); // micro choisi débranché : celui de Windows
+    return navigator.mediaDevices.getUserMedia({ audio: AUDIO, video: false });
+  }
+}
+
+function watchTrack(track) {
+  track.onended = () => { if (!closing) switchMic().catch(reportError); }; // micro débranché pendant l'appel
+}
 
 async function openMic() {
-  mic = await navigator.mediaDevices.getUserMedia({
-    audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
-    video: false,
-  });
+  mic = await getMic(micChoice);
   const track = mic.getAudioTracks()[0];
-  send({ ev: 'mic', label: track ? track.label : '' });
+  watchTrack(track);
   ctx = new AudioContext();
   analyser = ctx.createAnalyser();
   analyser.fftSize = 512;
-  ctx.createMediaStreamSource(mic).connect(analyser);
+  source = ctx.createMediaStreamSource(mic);
+  source.connect(analyser);
   setMuted(true); // micro coupé tant que l'utilisateur ne l'ouvre pas
+  send({ ev: 'mic', label: track ? track.label : '' });
+  await reportDevices();
 }
+
+// Nouveau micro sans couper l'appel : la piste envoyée à l'ami est remplacée.
+async function switchMic() {
+  const fresh = await getMic(micChoice);
+  const track = fresh.getAudioTracks()[0];
+  track.enabled = !muted;
+  watchTrack(track);
+  if (sender) await sender.replaceTrack(track);
+  if (mic) mic.getTracks().forEach(t => { t.onended = null; t.stop(); });
+  mic = fresh;
+  if (source) source.disconnect();
+  source = ctx.createMediaStreamSource(mic);
+  source.connect(analyser);
+  send({ ev: 'mic', label: track.label });
+}
+
+// Sortie : toujours un identifiant précis (celui du périphérique par défaut si « par défaut ») pour forcer le changement.
+async function applySpeaker(list) {
+  if (typeof remote.setSinkId !== 'function') return;
+  const outputs = list.filter(d => d.kind === 'audiooutput');
+  let target = speakerChoice && outputs.find(d => d.deviceId === speakerChoice);
+  if (speakerChoice && !target) { speakerChoice = ''; send({ ev: 'deviceLost', kind: 'output' }); }
+  if (!target) {
+    const def = outputs.find(d => d.deviceId === 'default');
+    target = def && outputs.find(d => d.deviceId !== 'default' && d.deviceId !== 'communications' && d.groupId === def.groupId) || def;
+  }
+  if (target && remote.sinkId !== target.deviceId) await remote.setSinkId(target.deviceId);
+}
+
+function plain(list, kind) {
+  return list.filter(d => d.kind === kind && d.deviceId !== 'default' && d.deviceId !== 'communications')
+             .map(d => ({ id: d.deviceId, label: d.label }));
+}
+
+async function reportDevices() {
+  const list = await navigator.mediaDevices.enumerateDevices();
+  const inDef = list.find(d => d.kind === 'audioinput' && d.deviceId === 'default');
+  const outDef = list.find(d => d.kind === 'audiooutput' && d.deviceId === 'default');
+  const inChanged = defaultIn !== null && inDef && inDef.groupId !== defaultIn;
+  const outChanged = defaultOut !== null && outDef && outDef.groupId !== defaultOut;
+  defaultIn = inDef ? inDef.groupId : '';
+  defaultOut = outDef ? outDef.groupId : '';
+  await applySpeaker(list);
+  send({
+    ev: 'devices', inputs: plain(list, 'audioinput'), outputs: plain(list, 'audiooutput'),
+    defaultInput: inDef ? inDef.label : '', defaultOutput: outDef ? outDef.label : '',
+    mic: micChoice, speaker: speakerChoice,
+  });
+  if (inChanged && !micChoice && mic) await switchMic(); // micro par défaut de Windows changé : suivi
+  if (outChanged && !speakerChoice) send({ ev: 'deviceSwitched', kind: 'output' });
+}
+
+navigator.mediaDevices.addEventListener('devicechange', () => { if (mic && !closing) reportDevices().catch(reportError); });
+
+// ===== Mise en relation =====
+
+function relaySend(message) {
+  if (relay && relay.readyState === WebSocket.OPEN) relay.send(JSON.stringify(message));
+}
+
+function openRelay(url, code, asRole) {
+  role = asRole;
+  relay = new WebSocket(`${url}/v1/rooms/${code}?role=${asRole}`);
+  relay.onmessage = e => onRelay(JSON.parse(e.data)).catch(reportError);
+  relay.onclose = e => { if (!connected && !closing) send({ ev: 'relayClosed', code: e.code }); };
+}
+
+function closeRelay() {
+  if (!relay) return;
+  const r = relay;
+  relay = null;
+  try { r.send(JSON.stringify({ t: 'done' })); } catch (e) { /* déjà fermée */ }
+  setTimeout(() => { try { r.close(1000); } catch (e) { /* déjà fermée */ } }, 500);
+}
+
+async function onRelay(m) {
+  switch (m.t) {
+    case 'waiting':
+      send({ ev: 'waiting', expiresAt: m.expiresAt });
+      break;
+    case 'peer':
+      send({ ev: 'peer' });
+      if (role === 'host') {
+        newConnection();
+        await pc.setLocalDescription(await pc.createOffer());
+        relaySend({ t: 'sdp', type: 'offer', sdp: pc.localDescription.sdp });
+        flushLocal();
+      }
+      break;
+    case 'sdp':
+      if (m.type === 'offer' && role === 'guest' && !pc) {
+        newConnection();
+        await pc.setRemoteDescription({ type: 'offer', sdp: m.sdp });
+        await flushRemote();
+        await pc.setLocalDescription(await pc.createAnswer());
+        relaySend({ t: 'sdp', type: 'answer', sdp: pc.localDescription.sdp });
+        flushLocal();
+        reportFingerprints();
+      } else if (m.type === 'answer' && role === 'host' && pc) {
+        await pc.setRemoteDescription({ type: 'answer', sdp: m.sdp });
+        await flushRemote();
+        reportFingerprints();
+      }
+      break;
+    case 'ice':
+      if (pc && pc.remoteDescription) await pc.addIceCandidate(m.candidate).catch(() => {});
+      else remoteQueue.push(m.candidate);
+      break;
+    case 'error':
+      send({ ev: 'relayError', code: m.code });
+      break;
+    case 'left':
+      if (!connected) send({ ev: 'relayLeft' });
+      break;
+  }
+}
+
+function flushLocal() {
+  sdpSent = true;
+  localQueue.forEach(c => relaySend({ t: 'ice', candidate: c }));
+  localQueue = [];
+}
+
+async function flushRemote() {
+  for (const c of remoteQueue) await pc.addIceCandidate(c).catch(() => {});
+  remoteQueue = [];
+}
+
+function fingerprint(sdp) {
+  const line = (sdp || '').split('\n').find(l => l.startsWith('a=fingerprint:'));
+  return line ? line.substring('a=fingerprint:'.length).trim() : '';
+}
+
+function reportFingerprints() {
+  send({ ev: 'fingerprints', local: fingerprint(pc.localDescription.sdp), remote: fingerprint(pc.remoteDescription.sdp) });
+}
+
+// ===== Connexion directe =====
 
 function setMuted(value) {
   muted = value;
@@ -39,31 +200,30 @@ function setMuted(value) {
   send({ ev: 'muted', value });
 }
 
-function newConnection(stun) {
+function newConnection() {
   pc = new RTCPeerConnection({ iceServers: stun ? [{ urls: STUN }] : [] });
-  mic.getTracks().forEach(t => pc.addTrack(t, mic));
-  // Canal négocié d'avance (même identifiant des deux côtés) : rien à ajouter aux codes échangés.
+  const track = mic.getAudioTracks()[0];
+  sender = pc.addTrack(track, mic);
+  // Canal négocié d'avance (même identifiant des deux côtés).
   control = pc.createDataChannel('control', { negotiated: true, id: 0 });
   control.onopen = () => control.send(muted ? 'muted' : 'unmuted');
   control.onmessage = e => {
     if (e.data === 'bye') send({ ev: 'bye' });
     else if (e.data === 'muted' || e.data === 'unmuted') send({ ev: 'peerMuted', value: e.data === 'muted' });
   };
+  pc.onicecandidate = e => {
+    if (!e.candidate) return;
+    const c = e.candidate.toJSON();
+    if (sdpSent) relaySend({ t: 'ice', candidate: c }); else localQueue.push(c);
+  };
   pc.ontrack = e => { remote.srcObject = e.streams[0]; remote.play().catch(() => {}); };
   pc.onconnectionstatechange = () => {
     send({ ev: 'state', value: pc.connectionState });
-    if (pc.connectionState === 'connected' && !levels) levels = setInterval(reportLevels, 250);
+    if (pc.connectionState === 'connected') {
+      if (!connected) { connected = true; closeRelay(); } // le serveur n'est plus utile
+      if (!levels) levels = setInterval(reportLevels, 250);
+    }
   };
-}
-
-function gathered() {
-  return new Promise(resolve => {
-    if (pc.iceGatheringState === 'complete') return resolve();
-    const timer = setTimeout(resolve, 8000); // au pire : les adresses déjà trouvées
-    pc.addEventListener('icegatheringstatechange', () => {
-      if (pc.iceGatheringState === 'complete') { clearTimeout(timer); resolve(); }
-    });
-  });
 }
 
 // Niveaux sonores (« vous parlez » / « votre ami parle ») et octets échangés, 4 fois par seconde pendant l'appel seulement.
@@ -92,38 +252,34 @@ async function reportLevels() {
   send({ ev: 'levels', local, remote: remoteLevel, received, sent, path });
 }
 
-function hangup(tell) {
+function hangup() {
+  closing = true;
   if (levels) { clearInterval(levels); levels = null; }
-  if (tell && control && control.readyState === 'open') { try { control.send('bye'); } catch (e) {} }
+  if (control && control.readyState === 'open') { try { control.send('bye'); } catch (e) { /* fermé */ } }
+  if (relay) { try { relay.close(1000); } catch (e) { /* fermée */ } relay = null; }
   // Laisse partir le « bye » avant de fermer.
   setTimeout(() => {
     if (pc) pc.close();
-    if (mic) mic.getTracks().forEach(t => t.stop());
+    if (mic) mic.getTracks().forEach(t => { t.onended = null; t.stop(); });
     if (ctx) ctx.close();
     pc = null; mic = null; ctx = null; control = null;
     send({ ev: 'state', value: 'closed' });
-  }, tell ? 200 : 0);
+  }, 200);
+}
+
+function reportError(err) {
+  send({ ev: 'error', name: (err && err.name) || 'Error', message: String((err && err.message) || err) });
 }
 
 async function handle(m) {
   switch (m.cmd) {
     case 'host':
-      await openMic();
-      newConnection(m.stun);
-      await pc.setLocalDescription(await pc.createOffer());
-      await gathered();
-      send({ ev: 'offer', sdp: pc.localDescription.sdp });
-      break;
     case 'join':
+      stun = !!m.stun;
+      micChoice = m.mic || '';
+      speakerChoice = m.speaker || '';
       await openMic();
-      newConnection(m.stun);
-      await pc.setRemoteDescription({ type: 'offer', sdp: m.sdp });
-      await pc.setLocalDescription(await pc.createAnswer());
-      await gathered();
-      send({ ev: 'answer', sdp: pc.localDescription.sdp });
-      break;
-    case 'answer':
-      await pc.setRemoteDescription({ type: 'answer', sdp: m.sdp });
+      openRelay(m.relay, m.code, m.cmd === 'host' ? 'host' : 'guest');
       break;
     case 'mute':
       setMuted(!!m.value);
@@ -131,19 +287,22 @@ async function handle(m) {
     case 'volume':
       remote.volume = Math.max(0, Math.min(1, Number(m.value) || 0));
       break;
+    case 'mic':
+      micChoice = m.id || '';
+      if (mic) await switchMic();
+      await reportDevices();
+      break;
+    case 'speaker':
+      speakerChoice = m.id || '';
+      await reportDevices();
+      break;
     case 'hangup':
-      hangup(true);
+      hangup();
       break;
   }
 }
 
-chrome.webview.addEventListener('message', async e => {
-  try {
-    await handle(JSON.parse(e.data));
-  } catch (err) {
-    send({ ev: 'error', name: (err && err.name) || 'Error', message: String((err && err.message) || err) });
-  }
-});
+chrome.webview.addEventListener('message', e => handle(JSON.parse(e.data)).catch(reportError));
 send({ ev: 'ready' });
 </script>
 </body>

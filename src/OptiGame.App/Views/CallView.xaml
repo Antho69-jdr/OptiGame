@@ -7,8 +7,8 @@
              xmlns:controls="clr-namespace:OptiGame.App.Controls"
              mc:Ignorable="d"
              d:DataContext="{d:DesignInstance vm:CallViewModel}">
-    <!-- Appel vocal pair à pair (CallViewModel) : une carte par étape. Départ = « Appeler » / « Rejoindre » ; puis le code à envoyer ;
-         puis l'appel (micro coupé au départ, niveaux, volume, raccrocher). Aucun texte échangé entre les deux PC. -->
+    <!-- Appel vocal (CallViewModel) : une carte par étape. Départ = « Appeler » (code court) / « Rejoindre » (saisir le code) ; puis
+         le code et son compte à rebours ; puis l'appel (micro coupé au départ, niveaux, volume, micro et sortie, raccrocher). -->
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
     </UserControl.Resources>
@@ -17,7 +17,7 @@
         <StackPanel Margin="32,24,32,32" MaxWidth="900" HorizontalAlignment="Left">
             <TextBlock Style="{StaticResource Text.PageTitle}" Text="Appel" />
             <TextBlock Margin="0,4,0,16" Style="{StaticResource Text.Secondary}"
-                       Text="Parlez avec un ami pendant vos parties, directement entre vos deux PC : ni compte, ni serveur d'OptiGame, voix chiffrée de bout en bout. Seulement la voix." />
+                       Text="Parlez avec un ami pendant vos parties. La voix passe directement entre vos deux PC, chiffrée de bout en bout ; le code sert seulement à vous trouver. Seulement la voix." />
 
             <controls:InfoBar Margin="{StaticResource Margin.StackL}" Severity="{Binding StatusSeverity}" Message="{Binding Status}"
                               Visibility="{Binding HasStatus, Converter={StaticResource BoolToVisibility}}">
@@ -31,21 +31,27 @@
                     <StackPanel>
                         <TextBlock Style="{StaticResource Text.SectionTitle}" Text="Appeler un ami" />
                         <TextBlock Margin="0,4,0,0" Style="{StaticResource Text.Caption}"
-                                   Text="OptiGame prépare une invitation : un code à envoyer à votre ami par message privé. Il vous renverra une réponse à coller ici." />
+                                   Text="OptiGame vous donne un code de 6 caractères à envoyer à votre ami. Il a 2 minutes pour le saisir." />
                         <controls:IconButton Margin="0,12,0,0" HorizontalAlignment="Left" Style="{StaticResource Button.Primary}" Glyph="&#xE717;"
-                                             Label="Créer une invitation" Command="{Binding StartCallCommand}" />
+                                             Label="Obtenir un code" Command="{Binding StartCallCommand}" />
                     </StackPanel>
                 </Border>
 
                 <Border Margin="0,12,0,0" Style="{StaticResource Card}">
                     <StackPanel>
                         <TextBlock Style="{StaticResource Text.SectionTitle}" Text="Rejoindre un ami" />
-                        <Label Margin="0,8,0,0" Style="{StaticResource Text.FieldLabel}" Content="_Invitation reçue (commence par « OG1I »)"
-                               Target="{Binding ElementName=InvitationBox}" />
-                        <TextBox x:Name="InvitationBox" Height="64" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" FontFamily="{StaticResource Font.Mono}"
-                                 Text="{Binding PastedInvitation, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Invitation reçue" />
-                        <controls:IconButton Margin="0,12,0,0" HorizontalAlignment="Left" Style="{StaticResource Button.Secondary}" Glyph="&#xE8FB;"
-                                             Label="Rejoindre" Command="{Binding JoinCallCommand}" />
+                        <Label Margin="0,8,0,0" Style="{StaticResource Text.FieldLabel}" Content="_Code donné par votre ami" Target="{Binding ElementName=CodeBox}" />
+                        <WrapPanel>
+                            <TextBox x:Name="CodeBox" Width="180" Margin="0,0,8,8" FontFamily="{StaticResource Font.Mono}" CharacterCasing="Upper" MaxLength="12"
+                                     Text="{Binding JoinCode, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Code donné par votre ami"
+                                     AutomationProperties.HelpText="Par exemple OG-K7P2Q9">
+                                <TextBox.InputBindings>
+                                    <KeyBinding Key="Return" Command="{Binding JoinCallCommand}" />
+                                </TextBox.InputBindings>
+                            </TextBox>
+                            <controls:IconButton Margin="0,0,0,8" Style="{StaticResource Button.Secondary}" Glyph="&#xE8FB;" Label="Rejoindre"
+                                                 Command="{Binding JoinCallCommand}" />
+                        </WrapPanel>
                     </StackPanel>
                 </Border>
 
@@ -69,28 +75,23 @@
                 </StackPanel>
             </Border>
 
-            <!-- ===== Code à envoyer ===== -->
-            <Border Style="{StaticResource Card}" Visibility="{Binding HasOwnCode, Converter={StaticResource BoolToVisibility}}">
+            <!-- ===== Code à donner ===== -->
+            <Border Style="{StaticResource Card}" Visibility="{Binding IsWaiting, Converter={StaticResource BoolToVisibility}}">
                 <StackPanel>
-                    <TextBlock Style="{StaticResource Text.SectionTitle}" Text="{Binding OwnCodeTitle}" />
-                    <TextBlock Margin="0,4,0,0" Style="{StaticResource Text.Caption}" Text="{Binding OwnCodeHelp}" />
-                    <TextBox Margin="0,8,0,0" MaxHeight="96" IsReadOnly="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"
-                             FontFamily="{StaticResource Font.Mono}" Text="{Binding OwnCode, Mode=OneWay}" AutomationProperties.Name="{Binding OwnCodeTitle}" />
-                    <TextBlock Margin="0,6,0,0" Style="{StaticResource Text.Caption}"
-                               Text="Ce code contient l'adresse réseau de votre PC : ne l'envoyez qu'à votre ami." />
+                    <TextBlock Style="{StaticResource Text.SectionTitle}" Text="Votre code" />
+                    <TextBlock Margin="0,4,0,0" Style="{StaticResource Text.Caption}"
+                               Text="Envoyez-le à votre ami : dès qu'il le saisit dans « Rejoindre un ami », l'appel commence." />
                     <WrapPanel Margin="0,12,0,0">
-                        <controls:IconButton Margin="0,0,8,0" Style="{StaticResource Button.Primary}" Glyph="&#xE8C8;" Label="Copier le code"
-                                             Command="{Binding CopyCodeCommand}" />
-                        <Button Style="{StaticResource Button.Secondary}" Content="Annuler" Command="{Binding HangUpCommand}" />
+                        <TextBox Margin="0,0,12,8" IsReadOnly="True" BorderThickness="0" Background="Transparent" Padding="0"
+                                 FontFamily="{StaticResource Font.Mono}" FontSize="{StaticResource FontSize.Hero}" FontWeight="SemiBold"
+                                 Foreground="{StaticResource Brush.Text}" Text="{Binding Code, Mode=OneWay}" AutomationProperties.Name="Votre code" />
+                        <controls:IconButton Margin="0,0,0,8" VerticalAlignment="Center" Style="{StaticResource Button.Primary}" Glyph="&#xE8C8;"
+                                             Label="Copier" Command="{Binding CopyCodeCommand}" />
                     </WrapPanel>
-
-                    <StackPanel Margin="0,16,0,0" Visibility="{Binding IsWaitingForAnswer, Converter={StaticResource BoolToVisibility}}">
-                        <Label Style="{StaticResource Text.FieldLabel}" Content="_Réponse de votre ami (commence par « OG1R »)" Target="{Binding ElementName=AnswerBox}" />
-                        <TextBox x:Name="AnswerBox" Height="64" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" FontFamily="{StaticResource Font.Mono}"
-                                 Text="{Binding PastedAnswer, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Réponse de votre ami" />
-                        <controls:IconButton Margin="0,12,0,0" HorizontalAlignment="Left" Style="{StaticResource Button.Primary}" Glyph="&#xE717;"
-                                             Label="Commencer l'appel" Command="{Binding AcceptAnswerCommand}" />
-                    </StackPanel>
+                    <TextBlock Style="{StaticResource Text.Body}" Text="{Binding Countdown}" />
+                    <ProgressBar Margin="0,8,0,0" Height="4" IsIndeterminate="True" AutomationProperties.Name="En attente de votre ami" />
+                    <Button Margin="0,12,0,0" HorizontalAlignment="Left" Style="{StaticResource Button.Secondary}" Content="Annuler"
+                            Command="{Binding HangUpCommand}" />
                 </StackPanel>
             </Border>
 
@@ -100,7 +101,7 @@
                     <TextBlock Style="{StaticResource Text.Label}" Text="Mots de contrôle" />
                     <TextBlock Margin="0,4,0,0" Style="{StaticResource Text.Title}" Text="{Binding SafetyWords}" TextWrapping="Wrap" />
                     <TextBlock Margin="0,6,0,0" Style="{StaticResource Text.Caption}"
-                               Text="Votre ami doit voir les mêmes mots : lisez-les-vous au début de l'appel. S'ils diffèrent, raccrochez : quelqu'un s'est interposé avec un code intercepté." />
+                               Text="Votre ami doit voir les mêmes mots : lisez-les-vous au début de l'appel. S'ils diffèrent, raccrochez : quelqu'un s'est interposé." />
                 </StackPanel>
             </Border>
 
@@ -111,13 +112,13 @@
                         <Run Text="En appel" /><Run Text=" · " /><Run Text="{Binding Duration, Mode=OneWay}" />
                     </TextBlock>
                     <TextBlock Margin="0,2,0,0" Style="{StaticResource Text.Caption}">
-                        <Run Text="Connexion " /><Run Text="{Binding ConnectionPath, Mode=OneWay}" /><Run Text=" · micro : " /><Run Text="{Binding Microphone, Mode=OneWay}" />
+                        <Run Text="Connexion " /><Run Text="{Binding ConnectionPath, Mode=OneWay}" />
                     </TextBlock>
 
                     <Grid Margin="0,16,0,0">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto" />
-                            <ColumnDefinition Width="*" MaxWidth="320" />
+                            <ColumnDefinition Width="*" MaxWidth="360" />
                         </Grid.ColumnDefinitions>
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto" />
@@ -143,6 +144,27 @@
                     </WrapPanel>
                     <TextBlock Margin="0,12,0,0" Style="{StaticResource Text.Caption}"
                                Text="L'appel continue fenêtre fermée, même pendant une partie : micro et raccrocher aussi depuis l'icône d'OptiGame dans la zone de notification." />
+                </StackPanel>
+            </Border>
+
+            <!-- ===== Micro et sortie (dès que le micro est ouvert) ===== -->
+            <Border Margin="0,12,0,0" Style="{StaticResource Card}" Visibility="{Binding IsActive, Converter={StaticResource BoolToVisibility}}">
+                <StackPanel>
+                    <TextBlock Style="{StaticResource Text.SectionTitle}" Text="Micro et sortie audio" />
+                    <TextBlock Margin="0,4,0,0" Style="{StaticResource Text.Caption}"
+                               Text="« Par défaut » suit Windows : changez de casque dans Windows, l'appel suit. Un choix précis est gardé pour les prochains appels." />
+                    <WrapPanel Margin="0,8,0,0">
+                        <StackPanel Margin="0,0,16,8">
+                            <Label Style="{StaticResource Text.FieldLabel}" Content="_Micro" Target="{Binding ElementName=MicBox}" />
+                            <ComboBox x:Name="MicBox" Width="340" ItemsSource="{Binding Microphones}" SelectedItem="{Binding SelectedMicrophone}"
+                                      AutomationProperties.Name="Micro" />
+                        </StackPanel>
+                        <StackPanel Margin="0,0,16,8">
+                            <Label Style="{StaticResource Text.FieldLabel}" Content="_Sortie audio" Target="{Binding ElementName=SpeakerBox}" />
+                            <ComboBox x:Name="SpeakerBox" Width="340" ItemsSource="{Binding Speakers}" SelectedItem="{Binding SelectedSpeaker}"
+                                      AutomationProperties.Name="Sortie audio" />
+                        </StackPanel>
+                    </WrapPanel>
                 </StackPanel>
             </Border>
         </StackPanel>

@@ -192,6 +192,12 @@ public sealed class AppSettings
     /// </summary>
     public bool CallUseStun { get; set; }
 
+    /// <summary>Micro de l'appel (identifiant du moteur web) ; null = celui de Windows par défaut, suivi quand il change.</summary>
+    public string? CallMicrophone { get; set; }
+
+    /// <summary>Sortie audio de l'appel ; null = celle de Windows par défaut, suivie quand elle change.</summary>
+    public string? CallSpeaker { get; set; }
+
     public AppSettings Clone() => new()
     {
         Version = Version,
@@ -226,6 +232,8 @@ public sealed class AppSettings
             : null,
         CloseToTrayExplained = CloseToTrayExplained,
         CallUseStun = CallUseStun,
+        CallMicrophone = CallMicrophone,
+        CallSpeaker = CallSpeaker,
     };
 }
 

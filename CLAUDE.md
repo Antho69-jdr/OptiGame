@@ -163,20 +163,30 @@ Pages Mesures et Paramètres (refonte, étape 7) : mesures automatiques ajoutée
 PresentMon se règle dans Paramètres › Mesures (MeasuresViewModel.ChoosePresentMon) ; Paramètres en onglets (SettingsTab,
 sélecteur `Segment` comme la fiche du jeu), une carte `SettingsCard` de Controls/SettingRow par onglet.
 
-Appel vocal pair à pair (page « Appel », Ctrl+5 ; étape 8 de l'audit, VOIX SEULEMENT : pas de texte, choix de l'utilisateur
-le 2026-10-08) : `Core/Call/InviteCode` (SDP non fractionné → JSON + date limite 15 min → deflate → base64url, « OG1I » invitation
-/ « OG1R » réponse, ≈ 1,3-1,5 Ko) et `SafetyWords` (4 mots tirés des deux empreintes DTLS, ordre indifférent) ;
+Appel vocal (page « Appel », Ctrl+5 ; étape 8 de l'audit, VOIX SEULEMENT : pas de texte, choix de l'utilisateur le 2026-10-08).
+Code COURT « OG-K7P2Q9 » (`Core/Call/CallCode` : 6 caractères, alphabet sans 0/O/1/I/L, valable 2 min, compte à rebours) et
+serveur de MISE EN RELATION (choix de l'utilisateur le 2026-10-09, après le 1er essai en vrai : codes de 1 400 caractères trop
+longs, et échange à la main = échec sur son propre réseau) : `server/call-relay/worker.js` (Cloudflare Workers + Durable Object
+par code, plan gratuit, rien de gardé ; salon 2 personnes, hôte attend 2 min, 16 Ko / 200 messages ; protocole JSON {t:waiting|
+peer|left|error} + messages relayés sdp / ice / done), déployé par `scripts\deploy-call-relay.ps1` (API de Cloudflare, jeton
+« Edit Cloudflare Workers », curl.exe) ; adresse dans `Core/Call/CallRelay.DefaultUrl` (wss://*.workers.dev seulement, ou
+ws://localhost en test ; variable OPTIGAME_CALL_RELAY). Les deux PC échangent leurs adresses AU MÊME INSTANT (trickle ICE) :
+c'est ce qui fait passer le pare-feu de Windows (profil Public = entrées bloquées, machine de dev) ; relevé du 1er essai : avec
+l'échange à la main, l'invité tentait la connexion dès sa réponse et abandonnait avant que l'hôte la colle (réussi seulement collé
+en 11 s, en direct host/host). Le serveur est quitté dès la connexion. `SafetyWords` (4 mots tirés des deux empreintes DTLS).
 `App/Call/CallEngine` = WebView2 sur une fenêtre native CACHÉE (HwndSource, jamais une Window : elle deviendrait
-Application.MainWindow), dossier `webview-call` (options ≠ des bandes-annonces), page `Call/call.html` copiée avec l'appli et
-servie sous https://appel.optigame/ (contexte sécurisé exigé pour le micro), micro autorisé pour CETTE origine seule, une seule
-navigation. Canal de données négocié « control » = 2 signaux fixes (bye, muted/unmuted). Moteur créé au début de l'appel,
-détruit au raccroché ; indépendant de la fenêtre (l'appel continue pendant les parties ; menu de notification : micro /
-raccrocher). Micro COUPÉ au départ. Serveur de découverte d'adresse seulement si « Passer par Internet » est coché
-(`AppSettings.CallUseStun`, décoché par défaut, PRIVACY.md) ; pas de relais (TURN) : deux box très restrictives = « Connexion
-impossible ». Vérifié le 2026-10-09 (ui-snapshots `-Only c`, micro SIMULÉ par `CallEngine.UseFakeMedia`, jamais le vrai) : deux
-appels du même processus connectés en direct (host/host), mêmes mots, voix reçue seulement micro ouvert, raccroché transmis,
-8 processus et ≈ 190 Mo privés pour les DEUX appels, 0 processus après ; avec STUN, 2 adresses Internet dans l'invitation.
-Non vérifié : un vrai appel entre deux PC sur deux réseaux (test utilisateur).
+Application.MainWindow), dossier `webview-call`, page `Call/call.html` copiée avec l'appli, servie sous https://appel.optigame/
+(contexte sécurisé exigé pour le micro ; CSP connect-src wss://*.workers.dev ws://localhost:*), micro autorisé pour CETTE origine
+seule. Canal négocié « control » = 2 signaux fixes (bye, muted/unmuted). Micro et sortie : « Par défaut » suit Windows
+(devicechange : nouvelle piste par replaceTrack si le groupId du micro par défaut change, setSinkId sur l'identifiant PRÉCIS de la
+sortie par défaut, sinon le moteur ne bascule pas — changement de casque constaté sans effet par l'utilisateur), choix gardé
+(`AppSettings.CallMicrophone` / `CallSpeaker`), périphérique débranché = retour au défaut. Moteur créé au début de l'appel,
+détruit au raccroché ; l'appel continue pendant les parties (menu de notification : micro / raccrocher). Micro COUPÉ au départ.
+STUN seulement si « Passer par Internet » est coché (`CallUseStun`) ; pas de relais TURN. Vérifié le 2026-10-09 (ui-snapshots
+`-Only c`, micro SIMULÉ `CallEngine.UseFakeMedia`, serveur local `App/Call/LocalCallRelay` = même protocole) : connexion en ≈ 1 s
+par le code, mots identiques, voix seulement micro ouvert, micro changé en cours d'appel sans coupure, raccroché transmis, code
+inconnu / expiré signalés, 8 processus et ≈ 220 Mo privés pour DEUX appels, 0 après. Serveur Cloudflare : à vérifier une fois
+déployé (compte de l'utilisateur).
 
 Données fictives pour tester l'UI : `$env:OPTIGAME_DATA_DIR='<dossier temporaire>'` redirige tout le dossier de
 données ; `DiagDump -- --import-capture <csv> <libellé> <date ISO>` y ajoute une capture (refusé sans la variable).

@@ -1,5 +1,7 @@
+using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Text.Json;
+using System.Windows.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using OptiGame.App.Call;
@@ -8,105 +10,110 @@ using OptiGame.Core;
 using OptiGame.Core.Call;
 using OptiGame.Core.Logging;
 using OptiGame.Core.Settings;
-using OptiGame.Core.Text;
 
 namespace OptiGame.App.ViewModels;
 
 /// <summary>Étape d'un appel vocal.</summary>
 public enum CallPhase
 {
-    /// <summary>Pas d'appel : démarrer ou rejoindre.</summary>
+    /// <summary>Pas d'appel : appeler ou rejoindre.</summary>
     Idle,
-    /// <summary>Hôte : micro ouvert, recherche des adresses, invitation en préparation.</summary>
+    /// <summary>Micro ouvert, salon en cours d'ouverture sur le serveur de mise en relation.</summary>
     Preparing,
-    /// <summary>Hôte : invitation à envoyer, réponse de l'ami attendue.</summary>
-    InvitationReady,
-    /// <summary>Invité : réponse en préparation.</summary>
-    Joining,
-    /// <summary>Invité : réponse à renvoyer, l'appel commence quand l'hôte l'a collée.</summary>
-    AnswerReady,
-    /// <summary>Hôte : réponse collée, connexion en cours.</summary>
+    /// <summary>Hôte : code affiché, l'ami a 2 minutes pour le saisir.</summary>
+    Waiting,
+    /// <summary>Les deux PC sont sur le serveur et s'échangent leurs adresses.</summary>
     Connecting,
     Connected,
 }
 
+/// <summary>Micro ou sortie audio proposé ; Id vide = celui de Windows par défaut (suivi quand il change).</summary>
+public sealed record CallDevice(string Id, string Label)
+{
+    public override string ToString() => Label;
+}
+
 /// <summary>
-/// Page « Appel » : appel vocal pair à pair avec UN ami, sans serveur d'OptiGame ni compte. L'hôte crée une invitation (code à
-/// copier), l'ami la colle et renvoie une réponse, l'hôte la colle : la voix passe ensuite directement, chiffrée, entre les deux
-/// PC. Micro COUPÉ au départ ; mots de contrôle à comparer de vive voix. Pas de texte échangé. L'appel continue fenêtre fermée
-/// (parties) : le moteur (<see cref="CallEngine"/>) n'appartient pas à la fenêtre. Singleton.
+/// Page « Appel » : appel vocal avec UN ami, voix directe et chiffrée entre les deux PC. L'hôte obtient un code court
+/// (« OG-K7P2Q9 », 2 minutes) ; l'ami le saisit ; le serveur de mise en relation (<see cref="CallRelay"/>) leur fait échanger leurs
+/// adresses au même instant puis s'efface. Micro COUPÉ au départ ; mots de contrôle à comparer de vive voix ; micro et sortie au
+/// choix (par défaut : ceux de Windows, suivis quand ils changent). Pas de texte. L'appel continue fenêtre fermée (parties) : le
+/// moteur (<see cref="CallEngine"/>) n'appartient pas à la fenêtre. Singleton.
 /// </summary>
 public sealed partial class CallViewModel : ObservableObject, IDisposable
 {
-    /// <summary>Hôte : la connexion doit s'établir dans ce délai une fois la réponse collée.</summary>
+    /// <summary>Une fois l'ami arrivé, la connexion directe doit s'établir dans ce délai.</summary>
     private static readonly TimeSpan ConnectTimeout = TimeSpan.FromSeconds(30);
 
     private readonly AppPaths _paths;
     private readonly AppSettingsStore _settings;
     private readonly FileLog _log;
+    private readonly DispatcherTimer _ticker;
     private CallEngine? _engine;
     private CancellationTokenSource? _timeout;
-    private string? _offerSdp;
+    private bool _isHost;
+    private string _rawCode = "";
+    private DateTimeOffset _expiresAt;
     private DateTime _connectedAt;
     private long _received;
     private long _sent;
     private string _path = "";
     private int _generation;
+    private int _codeRetries;
+    private bool _updatingDevices;
 
     public CallViewModel(AppPaths paths, AppSettingsStore settings, FileLog log)
     {
         _paths = paths;
         _settings = settings;
         _log = log;
+        _ticker = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
+        _ticker.Tick += (_, _) => UpdateCountdown();
     }
 
+    /// <summary>Serveur de mise en relation (remplacé par la variable OPTIGAME_CALL_RELAY pour les essais) ; null = pas en place.</summary>
+    internal Uri? Relay { get; set; } = CallRelay.Resolve(Environment.GetEnvironmentVariable(CallRelay.OverrideVariable));
+
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(IsIdle), nameof(IsWorking), nameof(HasOwnCode), nameof(IsWaitingForAnswer), nameof(IsInCall), nameof(IsActive),
-        nameof(OwnCodeTitle), nameof(OwnCodeHelp), nameof(WorkingText), nameof(ShowsSafetyWords))]
-    [NotifyCanExecuteChangedFor(nameof(StartCallCommand), nameof(JoinCallCommand), nameof(AcceptAnswerCommand), nameof(HangUpCommand), nameof(ToggleMuteCommand), nameof(CopyCodeCommand))]
+    [NotifyPropertyChangedFor(nameof(IsIdle), nameof(IsWorking), nameof(IsWaiting), nameof(IsInCall), nameof(IsActive), nameof(WorkingText),
+        nameof(ShowsSafetyWords))]
+    [NotifyCanExecuteChangedFor(nameof(StartCallCommand), nameof(JoinCallCommand), nameof(HangUpCommand), nameof(ToggleMuteCommand), nameof(CopyCodeCommand))]
     private CallPhase _phase;
 
     public bool IsIdle => Phase == CallPhase.Idle;
 
-    public bool IsWorking => Phase is CallPhase.Preparing or CallPhase.Joining or CallPhase.Connecting;
+    public bool IsWorking => Phase is CallPhase.Preparing or CallPhase.Connecting;
 
-    public bool HasOwnCode => Phase is CallPhase.InvitationReady or CallPhase.AnswerReady;
-
-    /// <summary>Hôte, invitation prête : champ « réponse de votre ami ».</summary>
-    public bool IsWaitingForAnswer => Phase == CallPhase.InvitationReady;
+    /// <summary>Hôte : code à donner, compte à rebours.</summary>
+    public bool IsWaiting => Phase == CallPhase.Waiting;
 
     public bool IsInCall => Phase == CallPhase.Connected;
 
-    /// <summary>Un appel est engagé (de la préparation au raccroché) : « Raccrocher » / « Annuler », micro ouvert par le moteur.</summary>
+    /// <summary>Un appel est engagé (de la préparation au raccroché) : micro ouvert par le moteur, « Annuler » / « Raccrocher ».</summary>
     public bool IsActive => Phase != CallPhase.Idle;
 
-    public bool ShowsSafetyWords => SafetyWords.Length > 0 && Phase is CallPhase.AnswerReady or CallPhase.Connecting or CallPhase.Connected;
-
-    public string OwnCodeTitle => Phase == CallPhase.AnswerReady ? "Votre réponse" : "Votre invitation";
-
-    public string OwnCodeHelp => Phase == CallPhase.AnswerReady
-        ? "Envoyez ce code à votre ami (message privé). L'appel commence dès qu'il l'a collé. Valable 15 minutes."
-        : "Envoyez ce code à votre ami (message privé), puis collez ci-dessous la réponse qu'il vous renverra. Valable 15 minutes.";
+    public bool ShowsSafetyWords => SafetyWords.Length > 0 && Phase is CallPhase.Connecting or CallPhase.Connected;
 
     public string WorkingText => Phase switch
     {
-        CallPhase.Preparing => "Préparation de l'invitation…",
-        CallPhase.Joining => "Préparation de votre réponse…",
+        CallPhase.Preparing when _isHost => "Création du code…",
+        CallPhase.Preparing => "Recherche de l'appel de votre ami…",
         CallPhase.Connecting => "Connexion à votre ami…",
         _ => "",
     };
 
-    /// <summary>Code à envoyer à l'ami (invitation ou réponse) ; contient l'adresse réseau de ce PC.</summary>
+    /// <summary>Code à donner à l'ami (hôte) : « OG-K7P2Q9 ».</summary>
     [ObservableProperty]
-    private string _ownCode = "";
+    private string _code = "";
 
+    /// <summary>« Valable encore 1:43 ».</summary>
+    [ObservableProperty]
+    private string _countdown = "";
+
+    /// <summary>Code saisi par l'invité.</summary>
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(JoinCallCommand))]
-    private string _pastedInvitation = "";
-
-    [ObservableProperty]
-    [NotifyCanExecuteChangedFor(nameof(AcceptAnswerCommand))]
-    private string _pastedAnswer = "";
+    private string _joinCode = "";
 
     /// <summary>Message de la page (erreur, fin d'appel, code copié…) ; vide = aucun.</summary>
     [ObservableProperty]
@@ -148,24 +155,29 @@ public sealed partial class CallViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private double _volume = 100;
 
-    /// <summary>Niveau de votre voix (0 à 1), 0 micro coupé.</summary>
     [ObservableProperty]
     private double _localLevel;
 
-    /// <summary>Niveau de la voix de l'ami (0 à 1).</summary>
     [ObservableProperty]
     private double _remoteLevel;
 
     [ObservableProperty]
     private string _duration = "";
 
-    /// <summary>Nom du micro utilisé (celui de communication par défaut de Windows).</summary>
-    [ObservableProperty]
-    private string _microphone = "";
-
     /// <summary>« directe, même réseau » / « directe, par Internet ».</summary>
     [ObservableProperty]
     private string _connectionPath = "";
+
+    /// <summary>Micros proposés (le premier = celui de Windows par défaut), connus une fois le micro ouvert.</summary>
+    public ObservableCollection<CallDevice> Microphones { get; } = [];
+
+    public ObservableCollection<CallDevice> Speakers { get; } = [];
+
+    [ObservableProperty]
+    private CallDevice? _selectedMicrophone;
+
+    [ObservableProperty]
+    private CallDevice? _selectedSpeaker;
 
     /// <summary>Serveur public de découverte d'adresse (consentement, réglage gardé) : nécessaire hors du réseau local.</summary>
     public bool UseStun
@@ -184,69 +196,65 @@ public sealed partial class CallViewModel : ObservableObject, IDisposable
 
     internal string PathForTests => _path;
 
-    /// <summary>Hôte : micro, adresses, puis invitation à copier.</summary>
+    /// <summary>Hôte : micro, salon sur le serveur, puis code à donner.</summary>
     [RelayCommand(CanExecute = nameof(IsIdle))]
-    private async Task StartCallAsync()
+    private Task StartCallAsync()
     {
-        Begin(CallPhase.Preparing);
-        var generation = _generation;
-        if (await StartEngineAsync(generation) is not { } engine) return;
-        engine.Send(new { cmd = "host", stun = UseStun });
+        _codeRetries = 0;
+        return OpenAsync(host: true, CallCode.Create());
     }
 
-    private bool CanJoin() => IsIdle && PastedInvitation.Trim().Length > 0;
+    private bool CanJoin() => IsIdle && JoinCode.Trim().Length > 0;
 
-    /// <summary>Invité : invitation collée → réponse à renvoyer.</summary>
+    /// <summary>Invité : code saisi → connexion.</summary>
     [RelayCommand(CanExecute = nameof(CanJoin))]
-    private async Task JoinCallAsync()
+    private Task JoinCallAsync()
     {
-        string offer;
+        string code;
         try
         {
-            offer = InviteCode.Read(PastedInvitation, InviteKind.Invitation, DateTimeOffset.Now);
+            code = CallCode.Parse(JoinCode);
         }
         catch (FormatException ex)
         {
             ShowStatus(ex.Message, Severity.Warning);
+            return Task.CompletedTask;
+        }
+        return OpenAsync(host: false, code);
+    }
+
+    private async Task OpenAsync(bool host, string code)
+    {
+        if (Relay is not { } relay)
+        {
+            ShowStatus("Le serveur de mise en relation des appels n'est pas encore en place : l'appel sera disponible dans une prochaine version.", Severity.Warning);
             return;
         }
-        Begin(CallPhase.Joining);
-        _offerSdp = offer;
+        _isHost = host;
+        Begin();
+        _rawCode = code;
         var generation = _generation;
         if (await StartEngineAsync(generation) is not { } engine) return;
-        engine.Send(new { cmd = "join", sdp = offer, stun = UseStun });
+        var settings = _settings.Get();
+        engine.Send(new
+        {
+            cmd = host ? "host" : "join",
+            relay = relay.GetLeftPart(UriPartial.Authority),
+            code,
+            stun = settings.CallUseStun,
+            mic = settings.CallMicrophone ?? "",
+            speaker = settings.CallSpeaker ?? "",
+        });
+        ArmTimeout(TimeSpan.FromSeconds(20), "Le serveur de mise en relation ne répond pas : vérifiez votre connexion à Internet, puis recommencez.");
     }
 
-    private bool CanAcceptAnswer() => Phase == CallPhase.InvitationReady && PastedAnswer.Trim().Length > 0;
-
-    /// <summary>Hôte : réponse de l'ami collée → connexion.</summary>
-    [RelayCommand(CanExecute = nameof(CanAcceptAnswer))]
-    private void AcceptAnswer()
-    {
-        string answer;
-        try
-        {
-            answer = InviteCode.Read(PastedAnswer, InviteKind.Answer, DateTimeOffset.Now);
-        }
-        catch (FormatException ex)
-        {
-            ShowStatus(ex.Message, Severity.Warning);
-            return;
-        }
-        SafetyWords = Core.Call.SafetyWords.For(InviteCode.Fingerprint(_offerSdp ?? ""), InviteCode.Fingerprint(answer));
-        ClearStatus();
-        Phase = CallPhase.Connecting;
-        _engine?.Send(new { cmd = "answer", sdp = answer });
-        ArmTimeout(ConnectTimeout);
-    }
-
-    [RelayCommand(CanExecute = nameof(HasOwnCode))]
+    [RelayCommand(CanExecute = nameof(IsWaiting))]
     private void CopyCode()
     {
         try
         {
-            System.Windows.Clipboard.SetText(OwnCode);
-            ShowStatus("Code copié : collez-le dans un message privé à votre ami.", Severity.Success);
+            System.Windows.Clipboard.SetText(Code);
+            ShowStatus("Code copié : envoyez-le à votre ami.", Severity.Success);
         }
         catch (System.Runtime.InteropServices.COMException ex)
         {
@@ -262,13 +270,9 @@ public sealed partial class CallViewModel : ObservableObject, IDisposable
         _engine?.Send(new { cmd = "mute", value = IsMuted });
     }
 
-    /// <summary>Raccrocher (ou annuler un appel en préparation) : l'ami est prévenu, le micro et le moteur sont libérés.</summary>
+    /// <summary>Raccrocher (ou annuler) : l'ami est prévenu, le micro et le moteur sont libérés.</summary>
     [RelayCommand(CanExecute = nameof(IsActive))]
-    private void HangUp()
-    {
-        var wasConnected = Phase == CallPhase.Connected;
-        End(wasConnected ? "Appel terminé." : "", Severity.Info, tellPeer: true);
-    }
+    private void HangUp() => End(Phase == CallPhase.Connected ? "Appel terminé." : "", Severity.Info, tellPeer: true);
 
     [RelayCommand]
     private void OpenMicrophoneSettings()
@@ -285,23 +289,39 @@ public sealed partial class CallViewModel : ObservableObject, IDisposable
 
     partial void OnVolumeChanged(double value) => _engine?.Send(new { cmd = "volume", value = Math.Clamp(value, 0, 100) / 100 });
 
-    private void Begin(CallPhase phase)
+    partial void OnSelectedMicrophoneChanged(CallDevice? value)
+    {
+        if (_updatingDevices || value is null) return;
+        _settings.Update(s => s.CallMicrophone = value.Id.Length == 0 ? null : value.Id);
+        _engine?.Send(new { cmd = "mic", id = value.Id });
+        _log.Info($"Appel : micro choisi « {value.Label} ».");
+    }
+
+    partial void OnSelectedSpeakerChanged(CallDevice? value)
+    {
+        if (_updatingDevices || value is null) return;
+        _settings.Update(s => s.CallSpeaker = value.Id.Length == 0 ? null : value.Id);
+        _engine?.Send(new { cmd = "speaker", id = value.Id });
+        _log.Info($"Appel : sortie audio choisie « {value.Label} ».");
+    }
+
+    private void Begin()
     {
         _generation++;
         ClearStatus();
-        OwnCode = "";
+        CanOpenMicrophoneSettings = false;
+        Code = "";
+        Countdown = "";
         SafetyWords = "";
-        PastedAnswer = "";
         IsMuted = true;
         PeerMuted = false;
         LocalLevel = RemoteLevel = 0;
         Duration = "";
-        Microphone = "";
         ConnectionPath = "";
         _received = _sent = 0;
         _path = "";
-        _offerSdp = null;
-        Phase = phase;
+        Phase = CallPhase.Preparing;
+        OnPropertyChanged(nameof(WorkingText));
     }
 
     private async Task<CallEngine?> StartEngineAsync(int generation)
@@ -338,23 +358,43 @@ public sealed partial class CallViewModel : ObservableObject, IDisposable
         if (generation != _generation || !message.TryGetProperty("ev", out var evProperty)) return;
         switch (evProperty.GetString())
         {
-            case "mic":
-                Microphone = Text(message, "label");
+            case "devices":
+                OnDevices(message);
                 break;
-            case "offer" when Phase == CallPhase.Preparing:
-                _offerSdp = Text(message, "sdp");
-                OwnCode = InviteCode.Create(InviteKind.Invitation, _offerSdp, DateTimeOffset.Now);
-                _log.Info($"Appel : invitation prête ({Candidates(_offerSdp)}, {OwnCode.Length} caractères).");
-                Phase = CallPhase.InvitationReady;
-                ArmTimeout(InviteCode.Lifetime);
+            case "deviceLost":
+                var input = Text(message, "kind") == "input";
+                _settings.Update(s => { if (input) s.CallMicrophone = null; else s.CallSpeaker = null; });
+                ShowStatus(input ? "Le micro choisi n'est plus branché : celui de Windows par défaut le remplace."
+                    : "La sortie audio choisie n'est plus branchée : celle de Windows par défaut la remplace.", Severity.Warning);
                 break;
-            case "answer" when Phase == CallPhase.Joining:
-                var answer = Text(message, "sdp");
-                OwnCode = InviteCode.Create(InviteKind.Answer, answer, DateTimeOffset.Now);
-                SafetyWords = Core.Call.SafetyWords.For(InviteCode.Fingerprint(_offerSdp ?? ""), InviteCode.Fingerprint(answer));
-                _log.Info($"Appel : réponse prête ({Candidates(answer)}, {OwnCode.Length} caractères).");
-                Phase = CallPhase.AnswerReady;
-                ArmTimeout(InviteCode.Lifetime);
+            case "waiting" when Phase == CallPhase.Preparing && _isHost:
+                _timeout?.Cancel();
+                _expiresAt = DateTimeOffset.FromUnixTimeMilliseconds((long)Number(message, "expiresAt"));
+                Code = CallCode.Display(_rawCode);
+                Phase = CallPhase.Waiting;
+                UpdateCountdown();
+                _ticker.Start();
+                _log.Info("Appel : code créé, en attente de l'ami.");
+                break;
+            case "peer":
+                _ticker.Stop();
+                Countdown = "";
+                Phase = CallPhase.Connecting;
+                _log.Info($"Appel : {(_isHost ? "l'ami est arrivé" : "appel trouvé")}, connexion.");
+                ArmTimeout(ConnectTimeout, null);
+                break;
+            case "fingerprints":
+                SafetyWords = Core.Call.SafetyWords.For(Text(message, "local"), Text(message, "remote"));
+                break;
+            case "relayError":
+                OnRelayError(Text(message, "code"));
+                break;
+            case "relayLeft":
+                End(_isHost ? "Votre ami a annulé." : "Votre ami a annulé l'appel.", Severity.Info, tellPeer: false);
+                break;
+            case "relayClosed":
+                _log.Warn($"Appel : serveur de mise en relation fermé (code {Number(message, "code")}, étape {Phase}).");
+                End("Le serveur de mise en relation est injoignable : vérifiez votre connexion à Internet, puis recommencez.", Severity.Error, tellPeer: false);
                 break;
             case "state":
                 OnConnectionState(Text(message, "value"));
@@ -376,6 +416,63 @@ public sealed partial class CallViewModel : ObservableObject, IDisposable
                 OnPageError(Text(message, "name"), Text(message, "message"));
                 break;
         }
+    }
+
+    private void OnRelayError(string code)
+    {
+        _log.Warn($"Appel : refus du serveur de mise en relation ({code}, étape {Phase}).");
+        if (code == "busy" && _isHost && Phase == CallPhase.Preparing && _codeRetries++ < 3)
+        {
+            // Code déjà pris (rare) : un autre, sans rien dire.
+            End("", Severity.Info, tellPeer: false);
+            _ = OpenAsync(host: true, CallCode.Create());
+            return;
+        }
+        End(code switch
+        {
+            "unknown" => "Ce code n'existe pas ou a expiré : demandez-en un nouveau à votre ami.",
+            "busy" => "Quelqu'un d'autre a déjà rejoint cet appel.",
+            "expired" when Phase == CallPhase.Waiting => "Personne n'a rejoint en 2 minutes : le code a expiré.",
+            "expired" => "La connexion a pris trop de temps. Recommencez.",
+            _ => "Le serveur de mise en relation a refusé l'appel. Recommencez dans un instant.",
+        }, code == "expired" && Phase == CallPhase.Waiting ? Severity.Info : Severity.Warning, tellPeer: false);
+    }
+
+    private void OnDevices(JsonElement message)
+    {
+        var settings = _settings.Get();
+        _updatingDevices = true;
+        try
+        {
+            Fill(Microphones, message, "inputs", "defaultInput", "Par défaut");
+            Fill(Speakers, message, "outputs", "defaultOutput", "Par défaut");
+            SelectedMicrophone = Microphones.FirstOrDefault(d => d.Id == (settings.CallMicrophone ?? "")) ?? Microphones.FirstOrDefault();
+            SelectedSpeaker = Speakers.FirstOrDefault(d => d.Id == (settings.CallSpeaker ?? "")) ?? Speakers.FirstOrDefault();
+        }
+        finally
+        {
+            _updatingDevices = false;
+        }
+    }
+
+    private static void Fill(ObservableCollection<CallDevice> target, JsonElement message, string listName, string defaultName, string defaultLabel)
+    {
+        var current = Text(message, defaultName);
+        var devices = new List<CallDevice> { new("", current.Length > 0 ? $"{defaultLabel} : {WithoutDefaultPrefix(current)}" : defaultLabel) };
+        if (message.TryGetProperty(listName, out var list) && list.ValueKind == JsonValueKind.Array)
+        {
+            devices.AddRange(list.EnumerateArray().Select(d => new CallDevice(Text(d, "id"), Text(d, "label"))).Where(d => d.Id.Length > 0));
+        }
+        if (target.SequenceEqual(devices)) return;
+        target.Clear();
+        foreach (var device in devices) target.Add(device);
+    }
+
+    // Le moteur nomme l'entrée par défaut « Par défaut - Casque (…) » : seul le nom du périphérique est gardé.
+    private static string WithoutDefaultPrefix(string label)
+    {
+        var dash = label.IndexOf(" - ", StringComparison.Ordinal);
+        return dash is > 0 and < 20 ? label[(dash + 3)..] : label;
     }
 
     private void OnConnectionState(string state)
@@ -407,6 +504,16 @@ public sealed partial class CallViewModel : ObservableObject, IDisposable
           "par exemple le partage de connexion d'un téléphone."
         : "Connexion impossible. Si votre ami n'est pas sur le même réseau que vous, cochez « Passer par Internet » des deux côtés, " +
           "puis recommencez.";
+
+    private void UpdateCountdown()
+    {
+        if (Phase != CallPhase.Waiting) return;
+        var left = _expiresAt - DateTimeOffset.UtcNow;
+        if (left < TimeSpan.Zero) left = TimeSpan.Zero;
+        Countdown = $"Valable encore {left:m\\:ss}";
+        // Le serveur ferme le salon à l'échéance ; s'il ne l'a pas dit 5 s après, le code est tenu pour expiré ici.
+        if (left == TimeSpan.Zero && DateTimeOffset.UtcNow > _expiresAt.AddSeconds(5)) OnRelayError("expired");
+    }
 
     private void OnLevels(JsonElement message)
     {
@@ -442,16 +549,14 @@ public sealed partial class CallViewModel : ObservableObject, IDisposable
             case "NotReadableError":
                 End("Le micro est inaccessible (utilisé par un autre programme en mode exclusif, ou désactivé).", Severity.Error, tellPeer: false);
                 break;
-            case "InvalidAccessError" or "OperationError" or "InvalidStateError":
-                End("Ce code ne correspond pas à cet appel (une ancienne invitation ?). Recommencez depuis le début.", Severity.Error, tellPeer: false);
-                break;
             default:
                 End("L'appel s'est arrêté sur une erreur (détails dans le journal).", Severity.Error, tellPeer: false);
                 break;
         }
     }
 
-    private void ArmTimeout(TimeSpan delay)
+    /// <summary>Délai d'une étape ; null = message de connexion impossible.</summary>
+    private void ArmTimeout(TimeSpan delay, string? message)
     {
         _timeout?.Cancel();
         _timeout = new CancellationTokenSource();
@@ -462,8 +567,7 @@ public sealed partial class CallViewModel : ObservableObject, IDisposable
         {
             if (generation != _generation || Phase != phase) return;
             _log.Warn($"Appel : délai dépassé (étape {phase}).");
-            End(phase == CallPhase.Connecting ? FailureMessage() : "Le code a expiré (15 minutes) : recommencez quand votre ami est prêt.",
-                phase == CallPhase.Connecting ? Severity.Error : Severity.Info, tellPeer: false);
+            End(message ?? FailureMessage(), Severity.Error, tellPeer: false);
         }, token, TaskContinuationOptions.OnlyOnRanToCompletion, TaskScheduler.FromCurrentSynchronizationContext());
     }
 
@@ -471,18 +575,19 @@ public sealed partial class CallViewModel : ObservableObject, IDisposable
     private void End(string status, Severity severity, bool tellPeer)
     {
         _timeout?.Cancel();
+        _ticker.Stop();
         _generation++;
         if (Phase == CallPhase.Connected)
         {
-            _log.Info($"Appel terminé après {Duration} ({FrenchText.Count((int)(_received / 1024), "Ko reçu", "Ko reçus")}, {_sent / 1024} Ko envoyés).");
+            _log.Info($"Appel terminé après {Duration} ({_received / 1024} Ko reçus, {_sent / 1024} Ko envoyés).");
         }
         var engine = _engine;
         _engine = null;
         if (engine is not null)
         {
+            engine.Send(new { cmd = "hangup" });
             if (tellPeer)
             {
-                engine.Send(new { cmd = "hangup" });
                 // Le « raccroché » part avant la destruction du moteur.
                 _ = Task.Delay(600).ContinueWith(_ => engine.Dispose(), TaskScheduler.FromCurrentSynchronizationContext());
             }
@@ -491,10 +596,8 @@ public sealed partial class CallViewModel : ObservableObject, IDisposable
                 engine.Dispose();
             }
         }
-        CanOpenMicrophoneSettings = false;
-        OwnCode = "";
-        PastedInvitation = "";
-        PastedAnswer = "";
+        Code = "";
+        Countdown = "";
         SafetyWords = "";
         IsMuted = true;
         PeerMuted = false;
@@ -518,18 +621,10 @@ public sealed partial class CallViewModel : ObservableObject, IDisposable
     private static double Number(JsonElement message, string name) =>
         message.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.Number ? value.GetDouble() : 0;
 
-    /// <summary>« 3 adresses (2 locales, 1 Internet) » : pour le journal, sans les adresses elles-mêmes.</summary>
-    private static string Candidates(string sdp)
-    {
-        var lines = sdp.Split('\n').Where(l => l.StartsWith("a=candidate:", StringComparison.Ordinal)).ToList();
-        var host = lines.Count(l => l.Contains(" typ host", StringComparison.Ordinal));
-        var reflexive = lines.Count(l => l.Contains(" typ srflx", StringComparison.Ordinal));
-        return $"{FrenchText.Count(lines.Count, "adresse", "adresses")} : {host} locale(s), {reflexive} Internet";
-    }
-
     /// <summary>Fermeture d'OptiGame : l'ami est prévenu si possible, le micro libéré.</summary>
     public void Dispose()
     {
+        _ticker.Stop();
         if (_engine is { } engine)
         {
             engine.Send(new { cmd = "hangup" });

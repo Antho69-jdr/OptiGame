@@ -2,52 +2,57 @@ using OptiGame.Core.Call;
 
 namespace OptiGame.Core.Tests.Call;
 
-/// <summary>Codes d'appel et mots de contrôle. L'offre ci-dessous a la forme d'une vraie offre de WebView2 (relevée le 2026-10-09).</summary>
+/// <summary>Codes d'appel, serveur de mise en relation et mots de contrôle.</summary>
 public sealed class CallCodeTests
 {
-    private const string Sdp = "v=0\r\no=- 4611731400430051336 2 IN IP4 127.0.0.1\r\ns=-\r\nt=0 0\r\na=group:BUNDLE 0\r\n" +
-        "m=application 9 UDP/DTLS/SCTP webrtc-datachannel\r\nc=IN IP4 0.0.0.0\r\n" +
-        "a=candidate:1 1 udp 2113937151 0a1b2c3d-1111-2222-3333-444455556666.local 54321 typ host generation 0\r\n" +
-        "a=ice-ufrag:abcd\r\na=ice-pwd:0123456789abcdef01234567\r\n" +
-        "a=fingerprint:sha-256 12:34:56:78:9A:BC:DE:F0:12:34:56:78:9A:BC:DE:F0:12:34:56:78:9A:BC:DE:F0:12:34:56:78:9A:BC:DE:F0\r\n" +
-        "a=setup:actpass\r\na=mid:0\r\na=sctp-port:5000\r\n";
-
-    private static readonly DateTimeOffset Now = new(2026, 10, 9, 12, 0, 0, TimeSpan.Zero);
-
     [Fact]
-    public void A_code_round_trips_and_is_shorter_than_the_description()
+    public void A_code_has_six_unambiguous_characters()
     {
-        var code = InviteCode.Create(InviteKind.Invitation, Sdp, Now);
-        Assert.StartsWith("OG1I", code);
-        Assert.True(code.Length < Sdp.Length);
-        // Collé avec des retours à la ligne (messagerie qui coupe les longues lignes) : relu quand même.
-        var pasted = string.Join("\n", code.Chunk(60).Select(c => new string(c)));
-        Assert.Equal(Sdp, InviteCode.Read(pasted, InviteKind.Invitation, Now.AddMinutes(5)));
+        for (var i = 0; i < 200; i++)
+        {
+            var code = CallCode.Create();
+            Assert.Equal(6, code.Length);
+            Assert.All(code, c => Assert.Contains(c, CallCode.Alphabet));
+        }
+        foreach (var ambiguous in "0O1IL") Assert.DoesNotContain(ambiguous, CallCode.Alphabet);
+        Assert.Equal("OG-K7P2Q9", CallCode.Display("K7P2Q9"));
     }
 
-    [Fact]
-    public void Wrong_kind_expired_or_damaged_codes_are_refused_with_a_reason()
-    {
-        var invitation = InviteCode.Create(InviteKind.Invitation, Sdp, Now);
-        Assert.Contains("RÉPONSE", Assert.Throws<FormatException>(() => InviteCode.Read(invitation, InviteKind.Answer, Now)).Message);
-        Assert.Contains("expiré", Assert.Throws<FormatException>(() => InviteCode.Read(invitation, InviteKind.Invitation, Now.AddMinutes(16))).Message);
-        Assert.Contains("abîmé", Assert.Throws<FormatException>(() => InviteCode.Read(invitation[..^20], InviteKind.Invitation, Now)).Message);
-        Assert.Contains("OG1", Assert.Throws<FormatException>(() => InviteCode.Read("bonjour", InviteKind.Invitation, Now)).Message);
-        Assert.Throws<FormatException>(() => InviteCode.Read("OG1I" + new string('A', InviteCode.MaxLength), InviteKind.Invitation, Now));
-    }
+    [Theory]
+    [InlineData("OG-K7P2Q9")]
+    [InlineData("og-k7p2q9")]
+    [InlineData(" K7P 2Q9 ")]
+    [InlineData("OGK7P2Q9")]
+    [InlineData("k7p-2q9")]
+    public void Pasted_or_typed_codes_are_read(string text) => Assert.Equal("K7P2Q9", CallCode.Parse(text));
+
+    [Theory]
+    [InlineData("OG-K7P2Q")]
+    [InlineData("bonjour")]
+    [InlineData("OG-K7P2Q90")]
+    [InlineData("OG-K0P2Q9")]
+    public void Other_text_is_refused_with_a_reason(string text) => Assert.NotEmpty(Assert.Throws<FormatException>(() => CallCode.Parse(text)).Message);
 
     [Fact]
-    public void A_code_from_a_clock_far_in_the_future_is_refused()
+    public void Only_safe_relay_addresses_are_accepted()
     {
-        var future = InviteCode.Create(InviteKind.Answer, Sdp, Now.AddHours(2));
-        Assert.Contains("date impossible", Assert.Throws<FormatException>(() => InviteCode.Read(future, InviteKind.Answer, Now)).Message);
+        Assert.NotNull(CallRelay.Resolve("wss://optigame-call.exemple.workers.dev/"));
+        Assert.NotNull(CallRelay.Resolve("ws://localhost:51234"));
+        Assert.Null(CallRelay.Resolve("ws://optigame-call.exemple.workers.dev")); // non chiffré
+        Assert.Null(CallRelay.Resolve("wss://exemple.com"));
+        Assert.Null(CallRelay.Resolve("ws://192.168.1.10:8080"));
+        Assert.Null(CallRelay.Resolve("wss://x.workers.dev:8443"));
+        Assert.Equal("ws://localhost:51234/v1/rooms/K7P2Q9?role=guest",
+            CallRelay.Room(CallRelay.Resolve("ws://localhost:51234")!, "K7P2Q9", host: false).AbsoluteUri);
+        Assert.Equal("wss://a.workers.dev/v1/rooms/K7P2Q9?role=host", CallRelay.Room(new Uri("wss://a.workers.dev/"), "K7P2Q9", host: true).AbsoluteUri);
     }
 
     [Fact]
     public void Fingerprint_is_read_from_the_description()
     {
-        Assert.StartsWith("sha-256 12:34:56", InviteCode.Fingerprint(Sdp));
-        Assert.Null(InviteCode.Fingerprint("v=0\r\n"));
+        const string sdp = "v=0\r\nm=audio 9 UDP/TLS/RTP/SAVPF 111\r\na=fingerprint:sha-256 12:34:56:78\r\na=setup:actpass\r\n";
+        Assert.Equal("sha-256 12:34:56:78", CallCode.Fingerprint(sdp));
+        Assert.Null(CallCode.Fingerprint("v=0\r\n"));
     }
 
     [Fact]

@@ -5,8 +5,8 @@ namespace OptiGame.Core.Call;
 
 /// <summary>
 /// Mots de contrôle de l'appel : 4 mots tirés des empreintes de chiffrement (DTLS) des deux PC. Chacun lit les siens à l'autre (vocal,
-/// message ailleurs) : identiques = la connexion est bien directe entre vous ; différents = quelqu'un s'est interposé avec un code
-/// intercepté → raccrocher. L'ordre des empreintes ne compte pas : les deux côtés obtiennent les mêmes mots.
+/// message ailleurs) : identiques = la connexion est bien directe entre vous ; différents = quelqu'un s'est interposé (code
+/// intercepté, serveur de mise en relation compromis) → raccrocher. L'ordre des empreintes ne compte pas : les deux côtés obtiennent les mêmes mots.
 /// </summary>
 public static class SafetyWords
 {

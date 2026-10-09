@@ -387,46 +387,63 @@ internal static class PageSnapshots
                 }));
             }
 
-            // Appel vocal de bout en bout entre deux appels de ce processus (micro SIMULÉ par le moteur : jamais le vrai micro),
-            // sans serveur de découverte d'adresse : invitation → réponse → connexion → voix reçue → raccroché.
+            // Appel vocal de bout en bout entre deux appels de ce processus (micro SIMULÉ par le moteur : jamais le vrai micro), par une
+            // copie locale du serveur de mise en relation (même protocole ; code valable 8 s ici pour tester l'expiration).
             var host = main.Call;
             CallViewModel? guest = null;
+            Call.LocalCallRelay? relay = null;
             int WebProcesses() => System.Diagnostics.Process.GetProcessesByName("msedgewebview2").Length;
             var webBaseline = WebProcesses();
             long WebMemory() => System.Diagnostics.Process.GetProcessesByName("msedgewebview2").Sum(p => { using (p) return p.PrivateMemorySize64; });
             var webMemoryBaseline = WebMemory();
-            pages.Add(("c1-appel-depart", async () => { main.Navigate(host); await Settle(800); }));
-            pages.Add(("c2-appel-invitation", async () =>
+            CallViewModel NewGuest() => new(services.GetRequiredService<Core.AppPaths>(), services.GetRequiredService<Core.Settings.AppSettingsStore>(),
+                services.GetRequiredService<Core.Logging.FileLog>()) { Relay = relay!.Url };
+            pages.Add(("c1-appel-depart", async () =>
             {
                 Call.CallEngine.UseFakeMedia = true;
+                relay = new Call.LocalCallRelay(TimeSpan.FromSeconds(8));
+                host.Relay = relay.Url;
                 host.UseStun = false;
+                main.Navigate(host);
+                await Settle(800);
+            }));
+            pages.Add(("c2-appel-code", async () =>
+            {
                 main.Navigate(host);
                 await host.StartCallCommand.ExecuteAsync(null);
                 await WaitUntil(() => host.Phase != CallPhase.Preparing, 30_000);
-                Log($"Appel, hôte : {host.Phase}, invitation de {host.OwnCode.Length} caractères, moteur : {WebProcesses() - webBaseline} processus. {host.Status}");
+                Log($"Appel, hôte : {host.Phase}, code « {host.Code} », {host.Countdown}, moteur : {WebProcesses() - webBaseline} processus. {host.Status}");
             }));
             pages.Add(("c3-appel-en-cours", async () =>
             {
-                guest = new CallViewModel(services.GetRequiredService<Core.AppPaths>(), services.GetRequiredService<Core.Settings.AppSettingsStore>(),
-                    services.GetRequiredService<Core.Logging.FileLog>());
-                guest.PastedInvitation = host.OwnCode;
+                guest = NewGuest();
+                guest.JoinCode = host.Code.ToLowerInvariant(); // saisi en minuscules : accepté
+                var joined = DateTime.Now;
                 await guest.JoinCallCommand.ExecuteAsync(null);
-                await WaitUntil(() => guest.Phase != CallPhase.Joining, 30_000);
-                Log($"Appel, invité : {guest.Phase}, réponse de {guest.OwnCode.Length} caractères. {guest.Status}");
-                host.PastedAnswer = guest.OwnCode;
-                host.AcceptAnswerCommand.Execute(null);
                 await WaitUntil(() => host.Phase is CallPhase.Connected or CallPhase.Idle && guest.Phase is CallPhase.Connected or CallPhase.Idle, 40_000);
-                Log($"Appel : hôte {host.Phase}, invité {guest.Phase} ; mots {(host.SafetyWords == guest.SafetyWords && host.SafetyWords.Length > 0 ? "identiques" : "DIFFÉRENTS")} ({host.SafetyWords}).");
+                Log($"Appel : hôte {host.Phase}, invité {guest.Phase} en {(DateTime.Now - joined).TotalSeconds:0.0} s, {relay!.Relayed} messages relayés ; " +
+                    $"mots {(host.SafetyWords == guest.SafetyWords && host.SafetyWords.Length > 0 ? "identiques" : "DIFFÉRENTS")} ({host.SafetyWords}). {host.Status}{guest.Status}");
                 var silent = guest.BytesReceived;
                 await Settle(2000);
-                Log($"Micros coupés : l'invité a reçu {guest.BytesReceived - silent} octets en 2 s, niveau de l'hôte entendu {guest.RemoteLevel:0.00}.");
+                Log($"Micros coupés : l'invité a reçu {guest.BytesReceived - silent} octets en 2 s.");
                 host.ToggleMuteCommand.Execute(null);
                 guest.ToggleMuteCommand.Execute(null);
                 var start = guest.BytesReceived;
                 await Settle(3000);
-                Log($"Micros ouverts : l'invité a reçu {guest.BytesReceived - start} octets en 3 s, niveau de l'hôte entendu {guest.RemoteLevel:0.00}, " +
-                    $"niveau local de l'hôte {host.LocalLevel:0.00}, ami muet vu par l'hôte : {host.PeerMuted}, chemin {host.PathForTests}, durée {host.Duration}, " +
-                    $"micro « {host.Microphone} », moteurs : {WebProcesses() - webBaseline} processus, {(WebMemory() - webMemoryBaseline) / 1048576} Mo privés (deux appels).");
+                Log($"Micros ouverts : l'invité a reçu {guest.BytesReceived - start} octets en 3 s, niveau local de l'hôte {host.LocalLevel:0.00}, " +
+                    $"ami muet vu par l'hôte : {host.PeerMuted}, chemin {host.PathForTests}, durée {host.Duration}, " +
+                    $"moteurs : {WebProcesses() - webBaseline} processus, {(WebMemory() - webMemoryBaseline) / 1048576} Mo privés (deux appels).");
+                Log($"Périphériques de l'hôte : micros [{string.Join(" | ", host.Microphones)}], sorties [{string.Join(" | ", host.Speakers)}].");
+                // Changement de micro pendant l'appel : la voix doit continuer d'arriver.
+                if (host.Microphones.Count > 1)
+                {
+                    host.SelectedMicrophone = host.Microphones[^1];
+                    var before = guest.BytesReceived;
+                    await Settle(3000);
+                    Log($"Micro changé pour « {host.SelectedMicrophone} » : l'invité a reçu {guest.BytesReceived - before} octets en 3 s. {host.Status}");
+                    host.SelectedMicrophone = host.Microphones[0];
+                }
+                if (host.Speakers.Count > 1) host.SelectedSpeaker = host.Speakers[0];
                 guest.Volume = 40;
             }));
             pages.Add(("c4-appel-raccroche", async () =>
@@ -439,25 +456,26 @@ internal static class PageSnapshots
                 Log($"Après le raccroché : {WebProcesses() - webBaseline} processus du moteur restants.");
                 guest?.Dispose();
             }));
-            pages.Add(("c5-appel-code-invalide", async () =>
+            pages.Add(("c5-appel-code-inconnu", async () =>
             {
-                host.PastedInvitation = "OG1R" + new string('A', 40);
+                guest = NewGuest();
+                guest.JoinCode = "OG-K7P2Q";
+                await guest.JoinCallCommand.ExecuteAsync(null);
+                Log($"Code incomplet : « {guest.Status} »");
+                host.JoinCode = "OG-ZZZZZZ";
                 await host.JoinCallCommand.ExecuteAsync(null);
-                Log($"Code invalide : « {host.Status} »");
-                await Settle(500);
+                await WaitUntil(() => host.Phase == CallPhase.Idle && host.HasStatus, 20_000);
+                Log($"Code inconnu : « {host.Status} »");
+                guest.Dispose();
             }));
-            // « Passer par Internet » : l'invitation doit contenir l'adresse vue d'Internet (serveur public de découverte d'adresse).
-            pages.Add(("c6-appel-par-internet", async () =>
+            pages.Add(("c6-appel-code-expire", async () =>
             {
-                host.UseStun = true;
+                host.JoinCode = "";
                 await host.StartCallCommand.ExecuteAsync(null);
-                await WaitUntil(() => host.Phase != CallPhase.Preparing, 30_000);
-                var sdp = host.OwnCode.Length > 0 ? Core.Call.InviteCode.Read(host.OwnCode, Core.Call.InviteKind.Invitation, DateTimeOffset.Now) : "";
-                Log($"Par Internet : {host.Phase}, invitation de {host.OwnCode.Length} caractères, " +
-                    $"{sdp.Split('\n').Count(l => l.Contains(" typ srflx", StringComparison.Ordinal))} adresse(s) Internet.");
-                host.HangUpCommand.Execute(null);
-                host.UseStun = false;
-                await Settle(1500);
+                await WaitUntil(() => host.Phase == CallPhase.Waiting, 20_000);
+                await WaitUntil(() => host.Phase == CallPhase.Idle, 20_000);
+                Log($"Code non saisi (8 s ici) : « {host.Status} »");
+                relay?.Dispose();
             }));
 
             foreach (var (name, open) in pages.Where(p => Wanted(p.Name)))
