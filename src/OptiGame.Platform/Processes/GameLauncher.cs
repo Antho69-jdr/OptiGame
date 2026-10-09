@@ -86,6 +86,23 @@ public sealed class GameLauncher(FileLog log)
         log.Info($"Critiques de la presse ouvertes dans le navigateur : {uri.AbsoluteUri}");
     }
 
+    /// <summary>
+    /// Bande-annonce hors Steam (GOG, IGDB), dans le navigateur par défaut : seules les adresses produites par
+    /// <see cref="Core.Library.WebVideo"/> (page YouTube d'une vidéo, lecteur fast.wistia.net de GOG).
+    /// </summary>
+    public void OpenWebVideo(string url)
+    {
+        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri) || uri.Scheme != Uri.UriSchemeHttps
+            || !(Core.Library.WebVideo.Normalize(url) == url
+                 || (uri.Host == "www.youtube.com" && uri.AbsolutePath == "/watch"
+                     && Core.Library.WebVideo.YouTube(System.Web.HttpUtility.ParseQueryString(uri.Query)["v"]) == url)))
+        {
+            throw new ArgumentException($"Adresse de vidéo refusée : {url}", nameof(url));
+        }
+        OpenInBrowser(uri.AbsoluteUri);
+        log.Info($"Bande-annonce ouverte dans le navigateur : {uri.AbsoluteUri}");
+    }
+
     /// <summary>Page du projet OptiGame sur GitHub (politique de confidentialité…), dans le navigateur par défaut.</summary>
     public void OpenProjectPage(Uri page)
     {

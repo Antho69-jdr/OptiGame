@@ -30,6 +30,7 @@ public sealed partial class GamePageViewModel(
     Action togglePin,
     Action<string> openStorePage,
     Action<string> openPressPage,
+    Action<string> openWebVideo,
     Func<string, Task<string?>> loadTrailerThumbnail,
     bool isGameRunning,
     Action<Core.Rating.GraphicsPreset?> setPlayedPreset,
@@ -225,13 +226,14 @@ public sealed partial class GamePageViewModel(
         else if (storeProduct is { } product) await openProductPage(product);
     }
 
-    // ---- À propos du jeu (magasin Steam : description, avis des joueurs, presse) ----
+    // ---- À propos du jeu (magasin Steam, sinon GOG, sinon IGDB : description, avis des joueurs, presse) ----
 
-    /// <summary>Présentation du jeu ; null tant qu'elle n'est pas lue, ou jeu hors Steam (la carte est alors masquée).</summary>
+    /// <summary>Présentation du jeu ; null tant qu'elle n'est pas lue, ou si aucune source n'a rien (la carte est alors masquée).</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasAbout), nameof(AboutSummary), nameof(AboutDetails), nameof(HasAboutDetails), nameof(HasPlayerScore),
         nameof(PlayerScoreText), nameof(PlayerScoreCaption), nameof(HasFewReviews), nameof(FewReviewsText), nameof(HasPressScore),
-        nameof(PressScoreText), nameof(HasPressLink), nameof(Trailers), nameof(HasTrailer), nameof(HasSeveralTrailers))]
+        nameof(PressScoreText), nameof(HasPressLink), nameof(Trailers), nameof(HasTrailer), nameof(HasSeveralTrailers),
+        nameof(PressScoreCaption), nameof(AboutSourceText), nameof(WebVideos), nameof(HasWebVideos))]
     private Core.Library.GameAbout? _about;
 
     partial void OnAboutChanged(Core.Library.GameAbout? value)
@@ -290,15 +292,52 @@ public sealed partial class GamePageViewModel(
 
     public bool HasAboutDetails => AboutDetails.Count > 0;
 
-    /// <summary>Avis des joueurs notés par Steam (assez d'avis pour un qualificatif).</summary>
-    public bool HasPlayerScore => About?.Players is { IsRated: true };
+    /// <summary>Avis des joueurs : notés par Steam (assez d'avis pour un qualificatif), ou note moyenne sur GOG / IGDB.</summary>
+    public bool HasPlayerScore => About?.Players is { IsRated: true } || About?.Community is not null;
 
-    public string PlayerScoreText => About?.Players is { IsRated: true } players ? $"{players.Percent}{Core.Text.FrenchText.NarrowNoBreakSpace}%" : "";
+    /// <summary>« 82 % » (Steam), « 4,4 / 5 » (GOG), « 86 / 100 » (IGDB).</summary>
+    public string PlayerScoreText => About switch
+    {
+        { Players: { IsRated: true } players } => $"{players.Percent}{Core.Text.FrenchText.NarrowNoBreakSpace}%",
+        { Community: { } rating } => $"{Core.Library.GogStoreAbout.Format(rating.Value)} / {rating.Scale}",
+        _ => "",
+    };
 
-    /// <summary>« Évaluations très positives · 418 369 avis sur Steam, toutes langues ».</summary>
-    public string PlayerScoreCaption => About?.Players is { IsRated: true } players
-        ? $"Évaluations {players.Label} · {Core.Text.FrenchText.Number(players.Total)} avis sur Steam, toutes langues"
-        : "";
+    /// <summary>« Évaluations très positives · 418 369 avis sur Steam, toutes langues », « Note des joueurs sur GOG · 3 372 avis ».</summary>
+    public string PlayerScoreCaption => About switch
+    {
+        { Players: { IsRated: true } players } =>
+            $"Évaluations {players.Label} · {Core.Text.FrenchText.Number(players.Total)} avis sur Steam, toutes langues",
+        { Source: Core.Library.AboutSource.Gog, Community: { } gog } =>
+            $"Note des joueurs sur GOG · {Core.Text.FrenchText.Number(gog.Count)} avis d'acheteurs",
+        { Community: { } igdb } => $"Note des membres d'IGDB · {Core.Text.FrenchText.Count(igdb.Count, "vote", "votes")}",
+        _ => "",
+    };
+
+    /// <summary>« Note de la presse, publiée par Steam » ou « Note de la presse · moyenne de 9 critiques (IGDB) ».</summary>
+    public string PressScoreCaption => About?.Press is { Critics: { } critics }
+        ? $"Note de la presse · moyenne de {Core.Text.FrenchText.Count(critics, "critique", "critiques")} (IGDB)"
+        : "Note de la presse, publiée par Steam";
+
+    /// <summary>« Description et avis : magasin Steam. »… ; IGDB : textes en anglais, dit clairement.</summary>
+    public string AboutSourceText => About?.Source switch
+    {
+        Core.Library.AboutSource.Gog => "Description et note : magasin GOG.",
+        Core.Library.AboutSource.Igdb => "Description et notes : IGDB, en anglais (pas de version française).",
+        _ => "Description et avis : magasin Steam.",
+    };
+
+    // ---- Bandes-annonces hors Steam : ouvertes dans le navigateur (aucun lecteur dans OptiGame) ----
+
+    public IReadOnlyList<Core.Library.WebVideo> WebVideos => About?.BrowserVideos ?? [];
+
+    public bool HasWebVideos => WebVideos.Count > 0;
+
+    [RelayCommand]
+    private void OpenWebVideo(Core.Library.WebVideo? video)
+    {
+        if (video is not null) openWebVideo(video.Url);
+    }
 
     /// <summary>Quelques avis, trop peu pour que Steam donne un qualificatif.</summary>
     public bool HasFewReviews => About?.Players is { IsRated: false };

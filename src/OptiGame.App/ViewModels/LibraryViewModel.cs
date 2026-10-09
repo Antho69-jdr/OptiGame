@@ -1031,6 +1031,7 @@ public sealed partial class LibraryViewModel : ObservableObject
             togglePin: () => _store.SetPinned(id, _store.Find(id)?.DockOrder is null),
             openStorePage: OpenStorePage,
             openPressPage: OpenPressPage,
+            openWebVideo: OpenWebVideo,
             loadTrailerThumbnail: url => _storeAbout.ThumbnailAsync(url),
             isGameRunning: _sessions.Current is not null,
             setPlayedPreset: preset =>
@@ -1094,41 +1095,80 @@ public sealed partial class LibraryViewModel : ObservableObject
         {
             _log.Error($"Appid Steam de « {profile.Name} » introuvable", ex);
         }
-        if (page.SteamAppId is { } appId) await LoadAboutAsync(page, appId);
+        await LoadAboutAsync(page, AboutSources(page.SteamAppId, profile));
     }
 
     /// <summary>
-    /// Présentation du jeu (magasin Steam) : celle du cache tout de suite, puis à jour (réseau, au plus une fois par semaine et
-    /// par jeu, seulement fiche ouverte) ; pendant une partie, la mise à jour attend la fin de la partie.
+    /// Sources de la présentation d'un jeu, dans l'ordre : magasin Steam (en français) ; sinon magasin GOG pour un jeu GOG (en
+    /// français si l'éditeur l'a traduite) ; sinon, ou si GOG n'a rien, IGDB (en anglais, seulement avec les identifiants IGDB).
     /// </summary>
-    private async Task LoadAboutAsync(GamePageViewModel page, string appId)
+    private List<(Core.Library.AboutSource Source, string Id)> AboutSources(string? steamAppId, GameProfile profile)
     {
+        if (steamAppId is not null) return [(Core.Library.AboutSource.Steam, steamAppId)];
+        var sources = new List<(Core.Library.AboutSource, string)>();
+        if (Core.Library.StorePages.FromProfile(profile) is { Store: Core.Library.GameSource.Gog } gog) sources.Add((Core.Library.AboutSource.Gog, gog.Id));
+        if (profile.IgdbGameId is { } igdbId && _storeAbout.CanUseIgdb)
+        {
+            sources.Add((Core.Library.AboutSource.Igdb, igdbId.ToString(System.Globalization.CultureInfo.InvariantCulture)));
+        }
+        return sources;
+    }
+
+    /// <summary>
+    /// Présentation du jeu : celle du cache tout de suite, puis à jour (réseau, au plus une fois par semaine et par jeu, seulement
+    /// fiche ouverte) ; pendant une partie, la mise à jour attend la fin de la partie. Première source qui a quelque chose à dire.
+    /// </summary>
+    private async Task LoadAboutAsync(GamePageViewModel page, IReadOnlyList<(Core.Library.AboutSource Source, string Id)> sources)
+    {
+        if (sources.Count == 0) return;
         try
         {
-            page.About = await Task.Run(() => _storeAbout.Cached(appId));
+            foreach (var (source, id) in sources)
+            {
+                if (await Task.Run(() => _storeAbout.Cached(source, id)) is not { } cached) continue;
+                page.About = cached;
+                break;
+            }
             if (_gate.InGame)
             {
-                _gate.RunOrDefer("store-about", () => { if (OpenGame == page) _ = RefreshAboutAsync(page, appId); });
+                _gate.RunOrDefer("store-about", () => { if (OpenGame == page) _ = RefreshAboutAsync(page, sources); });
                 return;
             }
-            await RefreshAboutAsync(page, appId);
+            await RefreshAboutAsync(page, sources);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            _log.Error($"Présentation Steam de « {page.Name} » illisible", ex);
+            _log.Error($"Présentation de « {page.Name} » illisible", ex);
         }
     }
 
-    private async Task RefreshAboutAsync(GamePageViewModel page, string appId)
+    private async Task RefreshAboutAsync(GamePageViewModel page, IReadOnlyList<(Core.Library.AboutSource Source, string Id)> sources)
     {
         try
         {
-            var about = await _storeAbout.GetAsync(appId);
-            if (OpenGame == page && about is not null) page.About = about;
+            foreach (var (source, id) in sources)
+            {
+                if (await _storeAbout.GetAsync(source, id) is not { } about) continue;
+                if (OpenGame == page) page.About = about;
+                return;
+            }
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            _log.Error($"Présentation Steam de « {page.Name} » non enregistrée", ex);
+            _log.Error($"Présentation de « {page.Name} » non enregistrée", ex);
+        }
+    }
+
+    private void OpenWebVideo(string url)
+    {
+        try
+        {
+            _launcher.OpenWebVideo(url);
+        }
+        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException or ArgumentException)
+        {
+            _log.Error($"Ouverture de la bande-annonce impossible ({url})", ex);
+            _dialogs.ShowError("Impossible d'ouvrir la bande-annonce", "Le navigateur n'a pas pu ouvrir la vidéo.", ex.Message);
         }
     }
 

@@ -4,37 +4,6 @@ using System.Text.RegularExpressions;
 
 namespace OptiGame.Core.Library;
 
-/// <summary>Paragraphe de la description d'un jeu (texte seul ; un titre de section est mis en valeur).</summary>
-public sealed record GameAboutBlock(string Text, bool IsHeading);
-
-/// <summary>
-/// Avis des joueurs sur Steam, toutes langues. <paramref name="Score"/> = review_score de Steam (1 à 9) ; 0 = trop peu d'avis
-/// pour un qualificatif (Steam affiche alors « 3 évaluations »).
-/// </summary>
-public sealed record PlayerReviews(int Score, string Label, int Positive, int Total)
-{
-    public bool IsRated => Score > 0 && Total > 0;
-
-    /// <summary>Part des avis positifs, arrondie à l'unité la plus proche.</summary>
-    public int Percent => Total > 0 ? (int)Math.Round(Positive * 100.0 / Total, MidpointRounding.AwayFromZero) : 0;
-}
-
-/// <summary>Note de la presse publiée par Steam (Metacritic), sur 100, et sa page.</summary>
-public sealed record PressScore(int Score, string? Url);
-
-/// <summary>
-/// Bande-annonce publiée sur le magasin Steam : flux HLS en H.264 (décodage matériel le plus répandu) et vignette, toutes deux
-/// en https sur *.steamstatic.com.
-/// </summary>
-public sealed record GameTrailer(string Name, string ThumbnailUrl, string HlsUrl);
-
-/// <summary>Présentation d'un jeu sur sa fiche : description, avis des joueurs, note de la presse, bandes-annonces.</summary>
-public sealed record GameAbout(string Summary, IReadOnlyList<GameAboutBlock> Details, PressScore? Press, PlayerReviews? Players,
-    IReadOnlyList<GameTrailer> Trailers)
-{
-    public bool IsEmpty => Summary.Length == 0 && Details.Count == 0 && Press is null && Players is null && Trailers.Count == 0;
-}
-
 /// <summary>Ce que appdetails dit d'un jeu (sans les avis, qui viennent d'appreviews).</summary>
 public sealed record SteamDetails(string Summary, IReadOnlyList<GameAboutBlock> Details, PressScore? Press, IReadOnlyList<GameTrailer> Trailers);
 

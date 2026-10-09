@@ -423,6 +423,16 @@ vit dans Core ; Platform ne fait que lire/écrire le système.
   lecteur, double-clic ; Échap pour sortir) : `ContainsFullScreenElementChanged` → le contrôle WebView2 est DÉPLACÉ (pas recréé)
   dans une fenêtre sans bord agrandie sur l'écran d'OptiGame, puis remis dans la fiche ; Alt+F4 le remet avant destruction de
   la fenêtre (Closing). Vérifié (ui-snapshots `-Only 6h`, fenêtre hors écran) : lecture continue, 5,4 → 8,5 → 11,5 s.
+  Jeux hors Steam (`LibraryViewModel.AboutSources`, même cache, clés « gog:<produit> » / « igdb:<numéro> ») : jeu GOG
+  (`StorePages.FromProfile`) → `Core/Library/GogStoreAbout` : `api.gog.com/products/<id>?expand=description,videos&locale=fr-FR`
+  (description.full en HTML, parfois en ANGLAIS malgré fr-FR ; encarts `<p class="module">` = publicité de GOG, retirés ; vidéos
+  YouTube « embed » ou fast.wistia.net ; produit inconnu = 404) + `reviews.gog.com/v1/products/<id>/averageRating?reviewer=
+  verified_owner` ({value sur 5, count} ; aucun avis = 0/0). Sinon, ou si GOG n'a rien : IGDB (`Core/Library/IgdbAbout`,
+  `IgdbClient.AboutAsync`, `profile.IgdbGameId`, seulement avec identifiants) : summary ANGLAIS seulement (dit dans la carte),
+  rating ≥ 10 votes, aggregated_rating ≥ 3 critiques (Void Crew : 1 seule, masquée), vidéos YouTube (noms en double numérotés).
+  Vérifié le 2026-10-08 (échantillons dans les tests). Vidéos hors Steam = NAVIGATEUR (`GameLauncher.OpenWebVideo`, adresses de
+  `Core/Library/WebVideo` seulement : youtube.com/watch?v=<11>, fast.wistia.net/embed/iframe/<id>). Aucun jeu GOG installé sur
+  la machine de dev : carte GOG vue avec un profil FICTIF ajouté à la copie de données des captures (retiré ensuite).
 - Jeux Steam possédés non installés + genres/types (« Mes jeux » ; `Core/Library/SteamBinaryCache` + `SteamOwnedGames`,
   `Platform/Library/SteamOwnedLibrary`, `DiagDump -- --steam-owned`) : caches BINAIRES du client, format non documenté par
   Valve (SteamDB) : `appcache\appinfo.vdf` v29 (magic 0x07564429, clés = index d'une table de noms en fin de fichier ;

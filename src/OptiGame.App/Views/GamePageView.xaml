@@ -343,11 +343,31 @@
                                             <TextBlock Style="{StaticResource Text.Stat}" Text="{Binding PressScoreText}" />
                                             <TextBlock Margin="4,0,0,5" VerticalAlignment="Bottom" Style="{StaticResource Text.Secondary}" Text="/ 100" />
                                         </WrapPanel>
-                                        <TextBlock Style="{StaticResource Text.Secondary}" Text="Note de la presse, publiée par Steam" />
+                                        <TextBlock Style="{StaticResource Text.Secondary}" Text="{Binding PressScoreCaption}" TextWrapping="Wrap" />
                                     </StackPanel>
                                 </WrapPanel>
                                 <TextBlock Margin="0,0,0,8" Style="{StaticResource Text.Secondary}" Text="{Binding FewReviewsText}" TextWrapping="Wrap"
                                            Visibility="{Binding HasFewReviews, Converter={StaticResource BoolToVisibility}}" />
+
+                                <!-- Bandes-annonces hors Steam (GOG, IGDB) : ouvertes dans le navigateur, aucun lecteur dans OptiGame -->
+                                <StackPanel Margin="0,0,0,12" Visibility="{Binding HasWebVideos, Converter={StaticResource BoolToVisibility}}">
+                                    <TextBlock Style="{StaticResource Text.Caption}" Text="Bandes-annonces, dans votre navigateur :" />
+                                    <ItemsControl Margin="0,4,0,0" ItemsSource="{Binding WebVideos}" Focusable="False">
+                                        <ItemsControl.ItemsPanel>
+                                            <ItemsPanelTemplate>
+                                                <WrapPanel />
+                                            </ItemsPanelTemplate>
+                                        </ItemsControl.ItemsPanel>
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <controls:IconButton Margin="0,4,8,0" Style="{StaticResource Button.Secondary}" Glyph="&#xE768;" Label="{Binding Name}"
+                                                                     Command="{Binding DataContext.OpenWebVideoCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                                     CommandParameter="{Binding}"
+                                                                     AutomationProperties.HelpText="Ouvre la vidéo dans le navigateur." />
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </StackPanel>
 
                                 <!-- Bande-annonce : vignette seule tant qu'on ne clique pas ; moteur web créé au clic, détruit en quittant -->
                                 <StackPanel Margin="0,4,0,16" Visibility="{Binding HasTrailer, Converter={StaticResource BoolToVisibility}}">
@@ -389,8 +409,9 @@
                                 </Expander>
                                 <WrapPanel Margin="0,12,0,0">
                                     <TextBlock Margin="0,0,8,0" VerticalAlignment="Center" Style="{StaticResource Text.Caption}"
-                                               Text="Description et avis : magasin Steam." />
-                                    <Button Style="{StaticResource Button.Ghost}" Content="Voir sur Steam" Command="{Binding OpenStorePageCommand}" />
+                                               Text="{Binding AboutSourceText}" />
+                                    <Button Style="{StaticResource Button.Ghost}" Content="{Binding StorePageLabel}" Command="{Binding OpenStorePageCommand}"
+                                            Visibility="{Binding HasStorePage, Converter={StaticResource BoolToVisibility}}" />
                                     <Button Style="{StaticResource Button.Ghost}" Content="Voir les critiques" Command="{Binding OpenPressPageCommand}"
                                             Visibility="{Binding HasPressLink, Converter={StaticResource BoolToVisibility}}"
                                             AutomationProperties.HelpText="Ouvre les critiques de la presse dans le navigateur." />

@@ -2,7 +2,7 @@
 
 *English version below.*
 
-Dernière mise à jour : 7 octobre 2026.
+Dernière mise à jour : 9 octobre 2026.
 
 ## En bref
 
@@ -28,15 +28,15 @@ confidentialité.
 | Magasin Steam (`store.steampowered.com`) | estimation de la note d'un jeu Steam de votre bibliothèque ; description, avis des joueurs et note de la presse quand vous ouvrez la fiche d'un jeu Steam (au plus une fois par semaine et par jeu, jamais pendant une partie) | le numéro du jeu sur Steam |
 | Images et vidéos du magasin Steam (`shared.akamai.steamstatic.com`, `video.akamai.steamstatic.com`) | vignette de la bande-annonce à l'ouverture de la fiche d'un jeu Steam (téléchargée une fois) ; la vidéo **seulement** quand vous cliquez sur « Lire » | l'adresse de l'image ou de la vidéo |
 | PCGamingWiki (`www.pcgamingwiki.com`) | estimation de la note d'un jeu hors Steam | le nom du jeu |
-| IGDB / Twitch (`api.igdb.com`, `id.twitch.tv`, `images.igdb.com`) | jaquettes, fonds et genres, **seulement** si vous avez saisi vos identifiants IGDB | le nom des jeux, vos identifiants IGDB |
+| IGDB / Twitch (`api.igdb.com`, `id.twitch.tv`, `images.igdb.com`) | jaquettes, fonds et genres, et présentation d'un jeu hors Steam et hors GOG quand vous ouvrez sa fiche (résumé, notes, liste de vidéos), **seulement** si vous avez saisi vos identifiants IGDB | le nom des jeux ou leur numéro sur IGDB, vos identifiants IGDB |
 | Images Epic Games / GOG (`cdn1.epicgames.com`, `images.gog.com`) | jaquettes des jeux possédés non installés | l'adresse de l'image |
-| Epic Games / GOG (`store-content.ak.epicgames.com`, `api.gog.com`) | bouton « Voir sur Epic Games / GOG » | l'identifiant du jeu dans le magasin |
+| Epic Games / GOG (`store-content.ak.epicgames.com`, `api.gog.com`, `reviews.gog.com`) | bouton « Voir sur Epic Games / GOG » ; description et note d'un jeu GOG quand vous ouvrez sa fiche (au plus une fois par semaine, jamais pendant une partie) | l'identifiant du jeu dans le magasin |
 | NVIDIA (`www.nvidia.com`, `gfwsl.geforce.com`, `*.download.nvidia.com`) | page « Pilotes » | le modèle de carte graphique et la version de Windows |
 | AMD (`www.amd.com`, `drivers.amd.com`) | page « Pilotes » | le modèle de chipset |
 | Windows Update (Microsoft) | page « Pilotes » | la recherche de pilotes est faite par Windows lui-même |
 
-Les pages web (magasins, critiques de la presse, PCGamingWiki, cette politique) s'ouvrent dans votre navigateur, seulement quand
-vous cliquez. Les bandes-annonces sont lues dans OptiGame par le moteur web de Windows (WebView2), créé au clic sur « Lire » et
+Les pages web (magasins, critiques de la presse, bandes-annonces des jeux hors Steam, PCGamingWiki, cette politique) s'ouvrent dans votre navigateur, seulement quand
+vous cliquez. Les bandes-annonces de Steam sont lues dans OptiGame par le moteur web de Windows (WebView2), créé au clic sur « Lire » et
 fermé ensuite ; il ne charge que la vidéo de Steam, et son filtre de réputation (qui enverrait l'adresse de la page à Microsoft)
 est désactivé.
 
@@ -51,7 +51,7 @@ Questions ou remarques : [ouvrez un ticket sur GitHub](https://github.com/Antho6
 
 # OptiGame privacy policy
 
-Last updated: October 7, 2026.
+Last updated: October 9, 2026.
 
 **OptiGame does not collect any data**: no account, no usage statistics, no crash reports, no advertising. Nothing is sent to
 the OptiGame developer.
@@ -61,8 +61,10 @@ person installing or operating it, except for the connections listed above, whic
 update checks on GitHub (can be turned off in Settings › Updates), game requirements lookups on the Steam store and
 PCGamingWiki (Steam game number or game name), descriptions and review scores from the Steam store when a Steam game page is
 opened (Steam game number), trailer thumbnails and, only when the user clicks Play, trailer videos from Steam's media servers
-(played by the Windows web engine, WebView2, closed afterwards), game artwork and genres from IGDB (only if the user enters IGDB credentials),
-store artwork and store pages from Epic Games and GOG, and driver lookups from NVIDIA, AMD and Windows Update on the
+(played by the Windows web engine, WebView2, closed afterwards), game artwork, genres and descriptions from IGDB (only if the user
+enters IGDB credentials; game name or IGDB game number),
+store artwork and store pages from Epic Games and GOG, GOG game descriptions and ratings when a GOG game page is opened (GOG
+product number), and driver lookups from NVIDIA, AMD and Windows Update on the
 "Drivers" page. As with any Internet connection, these services see your IP address and handle it under their own privacy
 policies.
 

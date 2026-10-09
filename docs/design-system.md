@@ -150,6 +150,10 @@ grille, flèches d'une jaquette à l'autre).
     « À propos du jeu » (jeux Steam : % d'avis positifs + qualificatif de Steam, note de la presse sur 100, bande-annonce,
     description courte, « Lire la description complète » replié, titres de section en gras, colonne de texte limitée à 760 ; source citée + « Voir
     sur Steam » / « Voir les critiques » ; carte absente tant que rien n'est lu). Aucune valeur colorée : chiffres en `Text.Stat`.
+    Hors Steam, même carte : jeu GOG = « 4,4 / 5 » + « Note des joueurs sur GOG · 3 372 avis d'acheteurs », description de GOG,
+    « Voir sur GOG » ; sinon IGDB = « 86 / 100 » + « Note des membres d'IGDB · 96 votes », presse « moyenne de N critiques
+    (IGDB) », et la ligne de source dit « en anglais ». Leurs vidéos = boutons `Button.Secondary` (icône lecture + nom) sous
+    « Bandes-annonces, dans votre navigateur : » (aucun lecteur dans OptiGame).
   - **Optimisation** : « Réglages de partie » (case « Optimiser ce jeu pendant les parties », réglages grisés sinon,
     avertissements en ligne, « Ce qui se passera » toujours visible) → barre **Enregistrer** ; « Réglages permanents (Windows
     et pilote) » → **Appliquer…** confirmé et **Restaurer l'original…**, état relu, jamais stocké.

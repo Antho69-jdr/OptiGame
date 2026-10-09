@@ -83,6 +83,9 @@ public sealed class IgdbClient(AppSettingsStore settings, FileLog log)
     public async Task<IReadOnlyList<IgdbBackground>> BackgroundsAsync(long gameId, CancellationToken cancellation = default) =>
         Igdb.ParseBackgrounds(await PostGamesAsync(Igdb.BackgroundsQuery(gameId), cancellation));
 
+    /// <summary>Présentation d'un jeu (résumé, notes, vidéos : <see cref="Core.Library.IgdbAbout"/>) : réponse brute de /games.</summary>
+    public Task<string> AboutAsync(long gameId, CancellationToken cancellation = default) => PostGamesAsync(Core.Library.IgdbAbout.Query(gameId), cancellation);
+
     /// <summary>Vérifie les identifiants (obtention d'un jeton et une petite recherche).</summary>
     public async Task<string> TestAsync(CancellationToken cancellation = default)
     {
