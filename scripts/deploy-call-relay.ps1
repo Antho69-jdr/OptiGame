@@ -2,8 +2,8 @@
 # d'OptiGame, par l'API de Cloudflare (aucun outil à installer : curl.exe de Windows). Plan gratuit : rien ne peut être facturé.
 #   .\scripts\deploy-call-relay.ps1
 # Clé d'accès : jeton d'API Cloudflare au modèle « Edit Cloudflare Workers », demandé à l'écran (jamais écrit sur le disque) ou
-# lu dans $env:CLOUDFLARE_API_TOKEN. Affiche à la fin l'adresse wss://… à mettre dans Core/Call/CallRelay.DefaultUrl.
-param([string]$Name = 'optigame-call')
+# lu dans $env:CLOUDFLARE_API_TOKEN ; jeton de compte : -AccountId <ID>. Affiche à la fin l'adresse wss://… à mettre dans Core/Call/CallRelay.DefaultUrl.
+param([string]$Name = 'optigame-call', [string]$AccountId = $env:CLOUDFLARE_ACCOUNT_ID)
 $ErrorActionPreference = 'Stop'
 $repo = Split-Path -Parent $PSScriptRoot
 $worker = Join-Path $repo 'server\call-relay\worker.js'
@@ -24,10 +24,22 @@ function Call-Api([string]$Method, [string]$Path, $Body) {
     return $response.result
 }
 
-$accounts = @(Call-Api 'GET' '/accounts' $null)
-if ($accounts.Count -ne 1) { throw "Le jeton donne accès à $($accounts.Count) comptes : limitez-le à un seul compte." }
-$account = $accounts[0].id
-Write-Host "Compte : $($accounts[0].name)"
+# Jeton de compte (« cfat_… », Gérer le compte › Jetons d'API du compte) : il ne peut pas lister les comptes, l'ID est donné
+# (-AccountId, ou CLOUDFLARE_ACCOUNT_ID ; il figure dans l'adresse du tableau de bord). Jeton d'utilisateur : compte trouvé seul.
+if ($AccountId) {
+    $account = $AccountId
+    $verify = Call-Api 'GET' "/accounts/$account/tokens/verify" $null
+    # Un jeton à date de début future est « actif » pour la vérification, mais refusé partout ailleurs (constaté le 2026-10-09).
+    if ($verify.not_before -and ([datetime]$verify.not_before).ToUniversalTime() -gt (Get-Date).ToUniversalTime()) {
+        throw "Ce jeton n'est utilisable qu'à partir du $(([datetime]$verify.not_before).ToLocalTime()) : retirez sa date de début, ou attendez."
+    }
+}
+else {
+    $accounts = @(Call-Api 'GET' '/accounts' $null)
+    if ($accounts.Count -ne 1) { throw "Le jeton donne accès à $($accounts.Count) comptes : limitez-le à un seul compte, ou donnez -AccountId." }
+    $account = $accounts[0].id
+}
+Write-Host "Compte : $account"
 
 $subdomain = (Call-Api 'GET' "/accounts/$account/workers/subdomain" $null).subdomain
 if (-not $subdomain) { throw 'Aucun sous-domaine workers.dev : ouvrez une fois « Workers et Pages » dans le tableau de bord Cloudflare pour le choisir.' }
