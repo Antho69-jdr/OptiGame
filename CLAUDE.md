@@ -378,9 +378,24 @@ vit dans Core ; Platform ne fait que lire/écrire le système.
     ResolutionSizeX/Y, FullscreenMode, bUseVSync, FrameRateLimit (> 500 = sans limite), upscaling si ResolutionScalingMethod /
     UpscalingMethod + <méthode>Mode / QualityOption. Unity = écran SEULEMENT (`<exe>_Data\app.info` → HKCU\Software\<éditeur>\
     <jeu>, « Screenmanager … _h<hash> ») : UnityGraphicsQuality NON lu (Void Crew : 1 alors qu'il est en Ultra ; ses vrais
-    réglages sont dans son propre Settings.json). Overwatch, Scrap Mechanic, Star Citizen, Portal 2 : rien de lisible. Les
+    réglages sont dans son propre Settings.json). Les
     conseils s'en servent : cause du plafond (V-Sync / limite lue), upscaling déjà actif (mode plus rapide plutôt
     qu'« activez »), estimation avec upscaling si déjà activé.
+  - Base de définitions par DONNÉES (étape 4 de l'audit du 2026-10-07, lecture seule ; `Core/InGame/Definitions/games.json`
+    embarqué, `Core/InGame/GameConfigs`, lu EN PREMIER par `InGameSettingsReader.ReadDefined`) : par jeu, exe, chemin à repères
+    ({LocalLow} = dossier connu LocalAppDataLow, {LocalAppData}, {AppData}, {Documents}, {ExeDir}), format, clés → libellé du
+    menu, rôle (preset, width, height, displayMode, vsync, frameLimit, upscaler, upscalerMode), valeurs connues (une valeur
+    absente = « valeur 7, inconnue », JAMAIS devinée), conditions `when` / `unlimitedWhen`, champ `verified` obligatoire (test).
+    `InGameSettings.Options` = liste « Les 12 réglages lus dans le jeu » (fiche, sous « Mon réglage dans le jeu » ;
+    ui-snapshots `-Only 6,6j`), `DiagDump -- --ingame-settings` les affiche. Sens des valeurs vérifié SANS l'utilisateur, en
+    lisant le code du jeu quand il est en .NET (Unity Mono : métadonnées et chaînes de `<jeu>_Data\Managed\Assembly-CSharp.dll`
+    par System.Reflection.Metadata, rien n'est exécuté). Void Crew (2026-10-09) : `%UserProfile%\AppData\LocalLow\Hutlihut Games
+    ApS\Void Crew\Settings.json`, SettingsPreset 0-3 = Bas / Moyen / Élevé / PERSONNALISÉ (pas Ultra), VSync 0 = V-Sync, 1 = sans
+    limite, 2 = limite fixe (TargetFramerate), ScreenMode = plein écran / sans bordure / fenêtré, AntiAlias = — / FXAA / TAA / SMAA,
+    UpscaleKind NONE / DLSS / FSR3, UpscaleQuality (listes DLSS) Qualité / Équilibré / Performance / Ultra performance ; Ssao,
+    EnvironmentQuality, DepthOfField, VfxQuality : sens non trouvé → non affichés. Le fichier contient aussi le nom du micro :
+    retiré de l'échantillon des tests. Star Citizen, Overwatch, Scrap Mechanic, Portal 2 : à suivre (relevés dans
+    docs/audit-fonctionnalites-2026-10-07.md § 3).
   - Qualité ÉCRITE dans un jeu Unreal (carte « Qualité graphique (fichier du jeu) », onglet Optimisation ;
     `Core/InGame/UnrealQuality` + `IniText`, `Platform/InGame/IniFileAccessor` = kind `ini-value`, Path « fichier|section »,
     `App/Services/InGameQualityService`) : tous les `sg.*` lus (hors ResolutionQuality / LandscapeQuality) mis au niveau choisi,

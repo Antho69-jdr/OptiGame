@@ -1,0 +1,45 @@
+{
+  "version": 1,
+  "games": [
+    {
+      "id": "void-crew",
+      "name": "Void Crew",
+      "exe": "Void Crew.exe",
+      "path": "{LocalLow}\\Hutlihut Games ApS\\Void Crew\\Settings.json",
+      "format": "json",
+      "verified": "2026-10-09 : fichier réel ; sens des valeurs = listes du menu dans Void Crew_Data\\Managed\\Assembly-CSharp.dll (SettingScreen, SettingQualityPreset, SettingUpscaling…), lues sans exécuter le jeu. Occlusion ambiante, qualité de l'environnement, profondeur de champ et effets visuels : sens non trouvé, non affichés.",
+      "settings": [
+        { "key": "SettingsPreset", "label": "Préréglage", "role": "preset",
+          "values": { "0": "Bas", "1": "Moyen", "2": "Élevé", "3": "Personnalisé" },
+          "presets": { "0": "Low", "1": "Medium", "2": "High" } },
+        { "key": "ScreenWidth", "role": "width" },
+        { "key": "ScreenHeight", "role": "height" },
+        { "key": "ScreenMode", "label": "Mode d'affichage", "role": "displayMode",
+          "values": { "0": "Plein écran", "1": "Plein écran fenêtré", "2": "Fenêtré" },
+          "displayModes": { "0": "Fullscreen", "1": "Borderless", "2": "Windowed" } },
+        { "key": "VSync", "label": "Limite d'images", "role": "vsync",
+          "values": { "0": "Synchronisation verticale", "1": "Sans limite", "2": "Limite fixe" },
+          "on": [ "0" ] },
+        { "key": "TargetFramerate", "label": "Limite de FPS", "role": "frameLimit", "unit": "FPS",
+          "when": { "VSync": [ "2" ] }, "unlimitedWhen": { "VSync": [ "1" ] } },
+        { "key": "UpscaleKind", "label": "Upscaling", "role": "upscaler",
+          "values": { "NONE": "Aucun", "DLSS": "DLSS", "FSR3": "FSR 3" }, "off": [ "NONE" ] },
+        { "key": "UpscaleQuality", "label": "Mode de l'upscaling", "role": "upscalerMode",
+          "values": { "0": "Qualité", "1": "Équilibré", "2": "Performance", "3": "Ultra performance" },
+          "when": { "UpscaleKind": [ "DLSS" ] } },
+        { "key": "AntiAlias", "label": "Anticrénelage",
+          "values": { "0": "Désactivé", "1": "FXAA", "2": "TAA", "3": "SMAA" } },
+        { "key": "TextureQuality", "label": "Textures",
+          "values": { "0": "Bas", "1": "Moyen", "2": "Élevé" } },
+        { "key": "ModelDetail", "label": "Détail des modèles",
+          "values": { "0": "Bas", "1": "Moyen", "2": "Élevé" } },
+        { "key": "ShadowQuality", "label": "Ombres",
+          "values": { "0": "Bas", "1": "Moyen", "2": "Élevé" } },
+        { "key": "VolumetricRendering", "label": "Rendu volumétrique",
+          "values": { "0": "Désactivé", "1": "Bas", "2": "Élevé" } },
+        { "key": "Bloom", "label": "Halo lumineux (bloom)",
+          "values": { "0": "Bas", "1": "Moyen", "2": "Élevé" } }
+      ]
+    }
+  ]
+}

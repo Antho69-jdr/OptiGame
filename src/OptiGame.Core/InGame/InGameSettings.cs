@@ -24,6 +24,7 @@ public enum InGameDisplayMode
 /// <param name="Upscaler">Upscaling choisi, ex. « DLSS Qualité » ; null = aucun ou inconnu.</param>
 /// <param name="QualityLevel">Niveau médian des groupes de qualité (Unreal), dans <paramref name="Scale"/>.</param>
 /// <param name="QualityKeys">Clés des groupes de qualité trouvées (« sg.ShadowQuality »…) : celles qu'OptiGame peut régler.</param>
+/// <param name="Options">Chaque réglage lu, dans les mots du jeu (jeux de la base <see cref="GameConfigs"/>).</param>
 public sealed record InGameSettings(
     string Engine,
     string SourceName,
@@ -40,7 +41,8 @@ public sealed record InGameSettings(
     string? Upscaler = null,
     int? QualityLevel = null,
     UnrealSettings.QualityScale? Scale = null,
-    IReadOnlyList<string>? QualityKeys = null)
+    IReadOnlyList<string>? QualityKeys = null,
+    IReadOnlyList<InGameOption>? Options = null)
 {
     /// <summary>« qualité Moyen, 3440×1440, plein écran fenêtré, V-Sync activée, sans limite de FPS, DLSS Qualité ».</summary>
     public string Summary()

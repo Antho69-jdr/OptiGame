@@ -192,6 +192,27 @@ internal static class PageSnapshots
                 pages.Add(("6-fiche-du-jeu", async () => { main.Navigate(library); library.ShowGame(game.Id); await Settle(4000); }));
                 pages.Add(("6b-fiche-optimisation", async () => { library.OpenGame!.SelectedTab = GameTab.Optimization; await Settle(1500); }));
                 pages.Add(("6c-fiche-proprietes", async () => { library.OpenGame!.SelectedTab = GameTab.Properties; await Settle(800); }));
+                // Réglages lus dans le jeu (base de définitions), liste dépliée.
+                pages.Add(("6j-fiche-reglages-du-jeu", async () =>
+                {
+                    library.OpenGame!.SelectedTab = GameTab.Overview;
+                    await Settle(800);
+                    static IEnumerable<DependencyObject> All(DependencyObject root)
+                    {
+                        for (var i = 0; i < VisualTreeHelper.GetChildrenCount(root); i++)
+                        {
+                            var child = VisualTreeHelper.GetChild(root, i);
+                            yield return child;
+                            foreach (var d in All(child)) yield return d;
+                        }
+                    }
+                    foreach (var expander in All(window).OfType<System.Windows.Controls.Expander>()
+                                 .Where(e => e.Header is string h && h.Contains("dans le jeu", StringComparison.Ordinal)))
+                    {
+                        expander.IsExpanded = true;
+                    }
+                    await Settle(800);
+                }));
                 // Bas de la fiche : le fil d'Ariane flotte toujours en haut à gauche.
                 pages.Add(("6i-fiche-defilee", async () =>
                 {

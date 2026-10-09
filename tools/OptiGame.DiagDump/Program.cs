@@ -237,7 +237,8 @@ if (args.Length == 1 && args[0] == "--ingame-settings")
         Console.WriteLine(settings is null
             ? $"{profile.Name} : rien de lisible (autre moteur, ou jeu jamais lancé)"
             : $"{profile.Name} : {settings.Description(DateTime.Now)}\n    {settings.SourcePath}" +
-              (settings.PresetDetail is { } detail ? $"\n    {detail}" : ""));
+              (settings.PresetDetail is { } detail ? $"\n    {detail}" : "") +
+              string.Concat((settings.Options ?? []).Select(o => $"\n    {o.Label} : {o.Value}")));
     }
     return;
 }

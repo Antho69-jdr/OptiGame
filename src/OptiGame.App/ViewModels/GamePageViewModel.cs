@@ -111,8 +111,15 @@ public sealed partial class GamePageViewModel(
     /// La qualité lue sert de réglage « Automatique ».
     /// </summary>
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(PresetCaption), nameof(PresetText))]
+    [NotifyPropertyChangedFor(nameof(PresetCaption), nameof(PresetText), nameof(InGameOptions), nameof(HasInGameOptions), nameof(InGameOptionsHeader))]
     private Core.InGame.InGameSettings? _inGame;
+
+    /// <summary>Chaque réglage lu, dans les mots du jeu (jeux de la base de définitions : Void Crew…).</summary>
+    public IReadOnlyList<Core.InGame.InGameOption> InGameOptions => InGame?.Options ?? [];
+
+    public bool HasInGameOptions => InGameOptions.Count > 0;
+
+    public string InGameOptionsHeader => $"Les {Core.Text.FrenchText.Count(InGameOptions.Count, "réglage lu", "réglages lus")} dans le jeu";
 
     partial void OnInGameChanged(Core.InGame.InGameSettings? value)
     {
@@ -148,6 +155,9 @@ public sealed partial class GamePageViewModel(
             "choisissez « Automatique » pour suivre le jeu.",
         { Preset: not null } read => read.Description(DateTime.Now) +
             " « Automatique » suit ce fichier ; choisissez un réglage seulement si le jeu nomme ses niveaux autrement.",
+        { PresetDetail: { } detail } read => read.Description(DateTime.Now) + (PlayedPreset?.Value is null
+            ? $" Le jeu est réglé avec son {detail} : indiquez le niveau le plus proche pour un conseil précis."
+            : $" Le jeu est réglé avec son {detail} : c'est le niveau choisi ci-dessus qui sert."),
         { } read => read.Description(DateTime.Now) + (PlayedPreset?.Value is null
             ? " La qualité de ce jeu n'est pas lisible : indiquez votre réglage pour un conseil précis."
             : " La qualité de ce jeu n'est pas lisible : c'est le réglage choisi ci-dessus qui sert."),

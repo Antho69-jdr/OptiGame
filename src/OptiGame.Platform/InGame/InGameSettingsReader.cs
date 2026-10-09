@@ -8,6 +8,7 @@ namespace OptiGame.Platform.InGame;
 /// <summary>
 /// Retrouve et lit les réglages d'un jeu d'après son exe, en lecture seule (rien n'est jamais écrit ici) :
 /// <list type="bullet">
+/// <item>Jeux de la base de définitions (Core/InGame/Definitions/games.json : Void Crew…) : en premier.</item>
 /// <item>Unreal Engine : exe dans &lt;projet&gt;\Binaries\Win64\ (PUBG : TslGame, ARC Raiders : PioneerGame) → GameUserSettings.ini de
 /// %LocalAppData%\&lt;projet&gt;\Saved\Config\ (ou Documents\My Games\&lt;projet&gt;\…), le plus récent des dossiers de plateforme.</item>
 /// <item>Unity : &lt;exe&gt;_Data\app.info → HKCU\Software\&lt;éditeur&gt;\&lt;jeu&gt;.</item>
@@ -22,13 +23,66 @@ public static class InGameSettingsReader
     {
         try
         {
-            return ReadUnreal(exePath) ?? ReadUnity(exePath);
+            return ReadDefined(exePath) ?? ReadUnreal(exePath) ?? ReadUnity(exePath);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Security.SecurityException or ArgumentException)
         {
             return null;
         }
     }
+
+    /// <summary>
+    /// Jeu de la base de définitions (<see cref="GameConfigs"/>) : son fichier, au chemin de la définition, interprété par elle. Un
+    /// fichier qui n'a pas le format annoncé (mise à jour du jeu) est ignoré, jamais lu « à peu près ».
+    /// </summary>
+    private static InGameSettings? ReadDefined(string exePath)
+    {
+        if (GameConfigs.For(exePath) is not { } definition || DefinitionPath(definition.Path, exePath) is not { } path || !File.Exists(path)) return null;
+        try
+        {
+            var values = GameConfigs.ReadValues(definition.Format, File.ReadAllText(path));
+            return GameConfigs.Interpret(definition, values, Path.GetFileName(path), path, File.GetLastWriteTime(path));
+        }
+        catch (FormatException)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>Chemin d'une définition, repères remplacés ; null si un repère est inconnu.</summary>
+    public static string? DefinitionPath(string template, string exePath)
+    {
+        var folders = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["{LocalLow}"] = LocalLow(),
+            ["{LocalAppData}"] = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            ["{AppData}"] = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+            ["{Documents}"] = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
+            ["{ExeDir}"] = Path.GetDirectoryName(exePath),
+        };
+        var start = template.IndexOf('{');
+        var end = template.IndexOf('}');
+        if (start != 0 || end < 0 || !folders.TryGetValue(template[..(end + 1)], out var root) || string.IsNullOrEmpty(root)) return null;
+        return Path.GetFullPath(root + template[(end + 1)..]);
+    }
+
+    /// <summary>%UserProfile%\AppData\LocalLow, demandé à Windows (dossier connu LocalAppDataLow).</summary>
+    private static string? LocalLow()
+    {
+        var id = new Guid("A520A1A4-1780-4FF6-BD18-167343C5AF16");
+        if (SHGetKnownFolderPath(ref id, 0, IntPtr.Zero, out var pointer) != 0) return null;
+        try
+        {
+            return Marshal.PtrToStringUni(pointer);
+        }
+        finally
+        {
+            Marshal.FreeCoTaskMem(pointer);
+        }
+    }
+
+    [DllImport("shell32.dll")]
+    private static extern int SHGetKnownFolderPath(ref Guid id, uint flags, IntPtr token, out IntPtr path);
 
     /// <summary>Réglage du jeu au moment d'une mesure : celui choisi dans OptiGame, sinon celui lu dans le jeu (noté avec la capture).</summary>
     public static Core.Rating.GraphicsPreset? PresetForCapture(Core.Profiles.GameProfile? profile) =>

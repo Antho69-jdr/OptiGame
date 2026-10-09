@@ -6,6 +6,8 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="OptiGame.Core.Tests" />
+    <!-- Base des réglages des jeux (InGame/GameConfigs) : données, pas de code ; nom de ressource OptiGame.Core.InGame.Definitions.games.json -->
+    <EmbeddedResource Include="InGame/Definitions/games.json" LogicalName="OptiGame.Core.InGame.Definitions.games.json" />
   </ItemGroup>
 
 </Project>

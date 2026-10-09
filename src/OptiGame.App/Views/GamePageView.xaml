@@ -254,6 +254,24 @@
                                 </StackPanel>
                                 <TextBlock Margin="0,6,0,0" Style="{StaticResource Text.Caption}"
                                            Text="{Binding PresetCaption}" />
+                                <!-- Chaque réglage lu dans le fichier du jeu, dans ses mots (base de définitions : Void Crew…) -->
+                                <Expander Margin="0,8,0,0" Style="{StaticResource Expander.Disclosure}" Header="{Binding InGameOptionsHeader}"
+                                          Visibility="{Binding HasInGameOptions, Converter={StaticResource BoolToVisibility}}">
+                                    <ItemsControl Margin="0,6,0,0" MaxWidth="520" HorizontalAlignment="Left" ItemsSource="{Binding InGameOptions}" Focusable="False">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Grid Margin="0,2">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="220" />
+                                                        <ColumnDefinition Width="*" />
+                                                    </Grid.ColumnDefinitions>
+                                                    <TextBlock Style="{StaticResource Text.Secondary}" Text="{Binding Label}" />
+                                                    <TextBlock Grid.Column="1" Style="{StaticResource Text.Body}" Text="{Binding Value}" />
+                                                </Grid>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </Expander>
                             </StackPanel>
                         </Border>
 
