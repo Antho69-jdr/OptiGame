@@ -127,3 +127,14 @@ public sealed class MicHotkeyMatcher(MicHotkey hotkey)
         return -1;
     }
 }
+
+/// <summary>Suppression du bruit de fond de la voix pendant les appels.</summary>
+public enum NoiseSuppression
+{
+    /// <summary>Filtre RNNoise (réseau de neurones spécialisé dans la voix), sur ce PC : clavier, ventilateur, bruits de fond.</summary>
+    Strong,
+    /// <summary>Suppression intégrée au moteur web (plus légère, moins efficace).</summary>
+    Standard,
+    /// <summary>Aucune (micro de studio, casque à réduction de bruit).</summary>
+    Off,
+}

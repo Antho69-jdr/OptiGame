@@ -405,6 +405,16 @@ internal static class PageSnapshots
             pages.Add(("c1-appel-depart", async () =>
             {
                 Call.CallEngine.UseFakeMedia = true;
+                // Micro simulé : un souffle (bruit blanc) au lieu du bip du moteur, pour mesurer la suppression du bruit.
+                Call.CallEngine.FakeAudioFile = Path.Combine(output, "souffle-de-test.wav");
+                using (var wav = new BinaryWriter(File.Create(Call.CallEngine.FakeAudioFile)))
+                {
+                    const int rate = 48000, seconds = 5;
+                    var random = new Random(1);
+                    wav.Write("RIFF"u8); wav.Write(36 + rate * seconds * 2); wav.Write("WAVEfmt "u8); wav.Write(16); wav.Write((short)1); wav.Write((short)1);
+                    wav.Write(rate); wav.Write(rate * 2); wav.Write((short)2); wav.Write((short)16); wav.Write("data"u8); wav.Write(rate * seconds * 2);
+                    for (var i = 0; i < rate * seconds; i++) wav.Write((short)((random.NextDouble() * 2 - 1) * 0.2 * short.MaxValue));
+                }
                 relay = new Call.LocalCallRelay(TimeSpan.FromSeconds(8));
                 // OPTIGAME_CALL_RELAY donné : le VRAI serveur (code valable 2 min, l'étape c6 attend alors en vain).
                 var realRelay = Environment.GetEnvironmentVariable(Core.Call.CallRelay.OverrideVariable);
@@ -451,6 +461,28 @@ internal static class PageSnapshots
                     Log($"Micro changé pour « {host.SelectedMicrophone} » : l'invité a reçu {guest.BytesReceived - before} octets en 3 s. {host.Status}");
                     host.SelectedMicrophone = host.Microphones[0];
                 }
+                // Suppression du bruit : le son de test du moteur (un bip) est un « bruit » que le filtre doit fortement atténuer.
+                async Task<(double Peak, double Kbps)> Listen(int milliseconds)
+                {
+                    var sum = 0.0;
+                    var samples = 0;
+                    var bytes = guest.BytesReceived;
+                    var end = DateTime.Now.AddMilliseconds(milliseconds);
+                    while (DateTime.Now < end)
+                    {
+                        sum += guest.RemoteLevel;
+                        samples++;
+                        await Task.Delay(100);
+                    }
+                    return (sum / Math.Max(1, samples), (guest.BytesReceived - bytes) * 8 / (milliseconds / 1000.0) / 1000);
+                }
+                host.SelectedNoise = host.NoiseOptions.First(o => o.Mode == Core.Call.NoiseSuppression.Off);
+                await Settle(1500);
+                var off = await Listen(4000);
+                host.SelectedNoise = host.NoiseOptions.First(o => o.Mode == Core.Call.NoiseSuppression.Strong);
+                await Settle(1500);
+                var strong = await Listen(4000);
+                Log($"Souffle entendu par l'invité (niveau moyen) : sans filtre {off.Peak:0.000}, filtre fort {strong.Peak:0.000} ; débit {off.Kbps:0} puis {strong.Kbps:0} kbit/s ; filtre : {host.NoiseFrames} trames, voix {host.NoiseVoice:0.00}. {host.Status}");
                 if (host.Speakers.Count > 1) host.SelectedSpeaker = host.Speakers[0];
                 // Raccourci du micro : F13 (aucun programme ne s'en sert) simulée au clavier, lue par l'entrée brute comme en jeu.
                 const int F13 = 0x7C;

@@ -187,6 +187,34 @@ public sealed partial class CallViewModel : ObservableObject, IDisposable
 
     public ObservableCollection<CallDevice> Speakers { get; } = [];
 
+    /// <summary>Choix de la suppression du bruit (gardé ; appliqué tout de suite pendant un appel).</summary>
+    public IReadOnlyList<NoiseOption> NoiseOptions { get; } =
+    [
+        new(NoiseSuppression.Strong, "Forte (recommandée)"),
+        new(NoiseSuppression.Standard, "Standard"),
+        new(NoiseSuppression.Off, "Aucune"),
+    ];
+
+    public NoiseOption SelectedNoise
+    {
+        get => NoiseOptions.First(o => o.Mode == _settings.Get().CallNoiseSuppression);
+        set
+        {
+            if (value is null || value.Mode == _settings.Get().CallNoiseSuppression) return;
+            _settings.Update(s => s.CallNoiseSuppression = value.Mode);
+            _engine?.Send(new { cmd = "noise", mode = NoiseMode(value.Mode) });
+            _log.Info($"Appel : suppression du bruit « {value.Label} ».");
+            OnPropertyChanged();
+        }
+    }
+
+    private static string NoiseMode(NoiseSuppression mode) => mode switch
+    {
+        NoiseSuppression.Strong => "strong",
+        NoiseSuppression.Standard => "standard",
+        _ => "off",
+    };
+
     [ObservableProperty]
     private CallDevice? _selectedMicrophone;
 
@@ -209,6 +237,11 @@ public sealed partial class CallViewModel : ObservableObject, IDisposable
     internal long BytesReceived => _received;
 
     internal string PathForTests => _path;
+
+    /// <summary>Trames traitées par le filtre de bruit et probabilité de voix de la dernière seconde (vérifications).</summary>
+    internal long NoiseFrames { get; private set; }
+
+    internal double NoiseVoice { get; private set; }
 
     /// <summary>Hôte : micro, salon sur le serveur, puis code à donner.</summary>
     [RelayCommand(CanExecute = nameof(IsIdle))]
@@ -260,6 +293,7 @@ public sealed partial class CallViewModel : ObservableObject, IDisposable
             stun = settings.CallUseStun,
             mic = settings.CallMicrophone ?? "",
             speaker = settings.CallSpeaker ?? "",
+            noise = NoiseMode(settings.CallNoiseSuppression),
         });
         ArmTimeout(TimeSpan.FromSeconds(20), "Le serveur de mise en relation ne répond pas : vérifiez votre connexion à Internet, puis recommencez.");
     }
@@ -496,6 +530,20 @@ public sealed partial class CallViewModel : ObservableObject, IDisposable
         if (generation != _generation || !message.TryGetProperty("ev", out var evProperty)) return;
         switch (evProperty.GetString())
         {
+            case "noise":
+                if (message.TryGetProperty("filter", out var filter) && filter.ValueKind == JsonValueKind.False
+                    && _settings.Get().CallNoiseSuppression == NoiseSuppression.Strong)
+                {
+                    ShowStatus("Le filtre de bruit n'a pas pu démarrer sur ce PC : la suppression standard est utilisée.", Severity.Warning);
+                }
+                break;
+            case "noiseStats":
+                NoiseFrames = (long)Number(message, "frames");
+                NoiseVoice = Number(message, "vad");
+                break;
+            case "noiseUnavailable":
+                _log.Warn($"Appel : filtre de bruit indisponible ({Text(message, "message")}).");
+                break;
             case "devices":
                 OnDevices(message);
                 break;
@@ -778,4 +826,10 @@ public sealed partial class CallViewModel : ObservableObject, IDisposable
             _engine = null;
         }
     }
+}
+
+/// <summary>Choix de suppression du bruit proposé.</summary>
+public sealed record NoiseOption(NoiseSuppression Mode, string Label)
+{
+    public override string ToString() => Label;
 }

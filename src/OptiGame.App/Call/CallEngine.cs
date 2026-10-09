@@ -24,6 +24,9 @@ internal sealed class CallEngine : IDisposable
     /// </summary>
     public static bool UseFakeMedia { get; set; }
 
+    /// <summary>Son lu par le micro simulé (fichier WAV) ; null = le bip du moteur.</summary>
+    public static string? FakeAudioFile { get; set; }
+
     private readonly FileLog _log;
     private readonly TaskCompletionSource _ready = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private HwndSource? _window;
@@ -68,6 +71,7 @@ internal sealed class CallEngine : IDisposable
 
         var arguments = "--autoplay-policy=no-user-gesture-required";
         if (UseFakeMedia) arguments += " --use-fake-device-for-media-stream --use-fake-ui-for-media-stream";
+        if (UseFakeMedia && FakeAudioFile is not null) arguments += $" --use-file-for-fake-audio-capture=\"{FakeAudioFile}\"";
         var environment = await CoreWebView2Environment.CreateAsync(null, dataFolder, new CoreWebView2EnvironmentOptions(arguments));
         _controller = await environment.CreateCoreWebView2ControllerAsync(_window.Handle);
         _controller.Bounds = new System.Drawing.Rectangle(0, 0, 1, 1);

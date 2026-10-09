@@ -189,6 +189,19 @@ inconnu / expiré signalés, 8 processus et ≈ 220 Mo privés pour DEUX appels,
 `wss://optigame-call.antho-b-69.workers.dev` (compte Cloudflare de l'utilisateur, JETON DE COMPTE « cfat_… » : il ne liste pas les
 comptes → `-AccountId a21125c3894c640606d3b7705ad60c16` ; un jeton à date de début future passe tokens/verify mais est refusé
 ailleurs). Vérifié avec `$env:OPTIGAME_CALL_RELAY` + ui-snapshots `-Only c1,c2,c3,c4,c5` : connecté en 1,6 s, mêmes résultats.
+Qualité de la voix (retour du 1er vrai appel du 2026-10-09 : « qualité vocale et suppression du bruit à revoir », latence
+excellente en local ; débit mesuré ≈ 26 kbit/s, réglage par défaut du moteur) : Opus mono 96 kbit/s (fmtp de SA propre description
+réécrite avant setLocalDescription : maxaveragebitrate=96000, usedtx=0, useinbandfec=1, stereo=0 ; + sender.setParameters
+maxBitrate / priorité haute à la connexion) ; mesuré ≈ 80-96 kbit/s en parlant, ≈ 1-2 kbit/s micro coupé ou silence filtré.
+Suppression du bruit (`AppSettings.CallNoiseSuppression` Forte / Standard / Aucune, réglable pendant l'appel) : Forte = RNNoise
+(Xiph/Mozilla, BSD) compilé en WebAssembly, `Call/rnnoise-sync.js` = fichier du paquet npm @jitsi/rnnoise-wasm 0.2.1 TEL QUEL
+(intégrité sha512 du registre vérifiée, SHA-256 05a553f5…b62f95f ; Apache 2.0 ; licences dans installer/THIRD-PARTY-NOTICES.txt),
+exécuté par `Call/noise-worklet.js` (AudioWorklet, trames de 480 échantillons à 48 kHz, +10 ms) ; CSP de la page : script-src
+'self' 'wasm-unsafe-eval'. Chaîne : micro (AEC + AGC du moteur ; sa suppression seulement en Standard) → filtre → piste ENVOYÉE
+fixe (MediaStreamDestination : changer de micro ou de filtre ne touche plus la connexion ; « couper » = piste envoyée désactivée,
+le micro reste ouvert pour l'annulation d'écho). Filtre chargé SEULEMENT si Forte (≈ 70 Mo par appel ; ≈ 360 Mo pour deux appels
+de test). Vérifié (ui-snapshots `-Only c1,c2,c3`, micro simulé lisant un souffle WAV `CallEngine.FakeAudioFile`) : souffle entendu
+0,34 sans filtre → 0,000 avec, filtre chargé en plein appel ; le bip du moteur (son tonal) n'est PAS retiré (RNNoise vise les bruits).
 Raccourci du micro en jeu (`Core/Call/MicHotkey` + `MicHotkeyMatcher`, `Platform/Input/RawKeyboardListener`) : touche ou combinaison
 choisie dans la page (saisie dans la fenêtre, Échap annule ; `AppSettings.CallMicKey` = « ctrl+alt+0x4D », `CallMicKeyMode` Basculer
 / Appuyer pour parler). Lue par l'ENTRÉE BRUTE (RegisterRawInputDevices, RIDEV_INPUTSINK, fenêtre de messages sur un thread dédié)

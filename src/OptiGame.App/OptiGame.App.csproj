@@ -27,6 +27,9 @@
   <ItemGroup>
     <!-- Page de l'appel vocal (Call/CallEngine), servie depuis le dossier de l'appli (Program Files : modifiable par un admin seulement). -->
     <Content Include="Call\call.html" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <!-- Suppression du bruit de la voix : filtre RNNoise en WebAssembly (paquet @jitsi/rnnoise-wasm 0.2.1, fichier tel que publié). -->
+    <Content Include="Call\noise-worklet.js" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="Call\rnnoise-sync.js" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

@@ -201,6 +201,9 @@ public sealed class AppSettings
     /// <summary>Raccourci du micro pendant les appels (Call.MicHotkey.Serialize) ; null = aucun.</summary>
     public string? CallMicKey { get; set; }
 
+    /// <summary>Suppression du bruit de la voix ; absente d'un ancien settings.json = forte (filtre RNNoise).</summary>
+    public Call.NoiseSuppression CallNoiseSuppression { get; set; } = Call.NoiseSuppression.Strong;
+
     /// <summary>Effet du raccourci : basculer (par défaut) ou appuyer pour parler.</summary>
     public Call.MicHotkeyMode CallMicKeyMode { get; set; } = Call.MicHotkeyMode.Toggle;
 
@@ -253,6 +256,7 @@ public sealed class AppSettings
         CallMicrophone = CallMicrophone,
         CallSpeaker = CallSpeaker,
         CallMicKey = CallMicKey,
+        CallNoiseSuppression = CallNoiseSuppression,
         CallMicKeyMode = CallMicKeyMode,
         CallSteamTokenProtected = CallSteamTokenProtected,
         CallSteamName = CallSteamName,

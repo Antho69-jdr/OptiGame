@@ -321,13 +321,18 @@
                 </StackPanel>
             </Border>
 
-            <!-- ===== Micro et sortie (dès que le micro est ouvert) ===== -->
-            <Border Margin="0,12,0,0" Style="{StaticResource Card}" Visibility="{Binding IsActive, Converter={StaticResource BoolToVisibility}}">
+            <!-- ===== Micro, sortie audio et suppression du bruit (les périphériques sont connus une fois le micro ouvert) ===== -->
+            <Border Margin="0,12,0,0" Style="{StaticResource Card}">
                 <StackPanel>
-                    <TextBlock Style="{StaticResource Text.SectionTitle}" Text="Micro et sortie audio" />
-                    <TextBlock Margin="0,4,0,0" Style="{StaticResource Text.Caption}"
-                               Text="« Par défaut » suit Windows : changez de casque dans Windows, l'appel suit. Un choix précis est gardé pour les prochains appels." />
-                    <WrapPanel Margin="0,8,0,0">
+                    <TextBlock Style="{StaticResource Text.SectionTitle}" Text="Micro et son" />
+                    <StackPanel Margin="0,8,0,0">
+                        <Label Style="{StaticResource Text.FieldLabel}" Content="Suppression du _bruit" Target="{Binding ElementName=NoiseBox}" />
+                        <ComboBox x:Name="NoiseBox" Width="340" HorizontalAlignment="Left" ItemsSource="{Binding NoiseOptions}" SelectedItem="{Binding SelectedNoise}"
+                                  AutomationProperties.Name="Suppression du bruit" />
+                        <TextBlock Margin="0,4,0,0" Style="{StaticResource Text.Caption}"
+                                   Text="Forte : un filtre spécialisé dans la voix retire le clavier, le ventilateur et les bruits de fond, sur votre PC (rien n'est envoyé ailleurs). Aucune : pour un micro de studio ou un casque qui filtre déjà." />
+                    </StackPanel>
+                    <WrapPanel Margin="0,12,0,0" Visibility="{Binding IsActive, Converter={StaticResource BoolToVisibility}}">
                         <StackPanel Margin="0,0,16,8">
                             <Label Style="{StaticResource Text.FieldLabel}" Content="_Micro" Target="{Binding ElementName=MicBox}" />
                             <ComboBox x:Name="MicBox" Width="340" ItemsSource="{Binding Microphones}" SelectedItem="{Binding SelectedMicrophone}"
@@ -339,6 +344,8 @@
                                       AutomationProperties.Name="Sortie audio" />
                         </StackPanel>
                     </WrapPanel>
+                    <TextBlock Margin="0,4,0,0" Style="{StaticResource Text.Caption}"
+                               Text="« Par défaut » suit Windows : changez de casque dans Windows, l'appel suit. Le choix du micro et de la sortie apparaît pendant un appel et est gardé pour les suivants." />
                 </StackPanel>
             </Border>
         </StackPanel>

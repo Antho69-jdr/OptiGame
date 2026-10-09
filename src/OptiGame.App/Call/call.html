@@ -7,7 +7,7 @@
      deux PC se trouvent), la connexion WebRTC directe vers l'ami et, si l'utilisateur l'a accepté, le serveur public de découverte
      d'adresse. Seulement la voix : le canal « control » ne porte que deux signaux fixes (raccroché, micro coupé). -->
 <meta http-equiv="Content-Security-Policy"
-      content="default-src 'none'; script-src 'unsafe-inline'; media-src blob: mediastream:; connect-src wss://*.workers.dev ws://localhost:*">
+      content="default-src 'none'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'; media-src blob: mediastream:; connect-src wss://*.workers.dev ws://localhost:*">
 </head>
 <body>
 <audio id="remote" autoplay></audio>
@@ -16,24 +16,32 @@
 const send = o => chrome.webview.postMessage(JSON.stringify(o));
 const remote = document.getElementById('remote');
 const STUN = 'stun:stun.cloudflare.com:3478';
-const AUDIO = { echoCancellation: true, noiseSuppression: true, autoGainControl: true };
+// Voix : Opus mono à 96 kbit/s (le moteur vise ~32 par défaut), correction d'erreurs, jamais coupé dans les silences (DTX : débuts
+// de phrase hachés). Négligeable même pendant une partie en ligne.
+const OPUS = { maxaveragebitrate: '96000', stereo: '0', 'sprop-stereo': '0', useinbandfec: '1', usedtx: '0', maxplaybackrate: '48000' };
+const BITRATE = 96000;
+const NOISE_MODES = ['strong', 'standard', 'off'];
+// Suppression du bruit : 'strong' = filtre RNNoise (noise-worklet.js), 'standard' = celle du moteur web, 'off' = aucune.
+const AUDIO = mode => ({ echoCancellation: true, noiseSuppression: mode === 'standard', autoGainControl: true, channelCount: 1 });
 
 let pc = null, control = null, sender = null, mic = null, muted = true, levels = null, ctx = null, analyser = null, source = null;
+let suppressor = null, outbound = null, sendTrack = null, noiseMode = 'strong';
 let relay = null, role = null, stun = false, connected = false, closing = false, sdpSent = false;
 let localQueue = [], remoteQueue = [];
 // Périphériques : '' = celui de Windows par défaut, suivi quand il change ; sinon l'identifiant choisi.
 let micChoice = '', speakerChoice = '', defaultIn = null, defaultOut = null;
 
-// ===== Micro et sortie audio =====
+// ===== Micro, filtre et sortie audio =====
 
 async function getMic(choice) {
+  const audio = AUDIO(noiseMode);
   try {
-    return await navigator.mediaDevices.getUserMedia({ audio: choice ? { ...AUDIO, deviceId: { exact: choice } } : AUDIO, video: false });
+    return await navigator.mediaDevices.getUserMedia({ audio: choice ? { ...audio, deviceId: { exact: choice } } : audio, video: false });
   } catch (err) {
     if (!choice || err.name !== 'OverconstrainedError') throw err;
     micChoice = '';
     send({ ev: 'deviceLost', kind: 'input' }); // micro choisi débranché : celui de Windows
-    return navigator.mediaDevices.getUserMedia({ audio: AUDIO, video: false });
+    return navigator.mediaDevices.getUserMedia({ audio, video: false });
   }
 }
 
@@ -41,33 +49,93 @@ function watchTrack(track) {
   track.onended = () => { if (!closing) switchMic().catch(reportError); }; // micro débranché pendant l'appel
 }
 
+// Chaîne : micro → filtre (si disponible) → piste envoyée à l'ami (+ mesure du niveau, après le filtre). La piste envoyée ne
+// change jamais : changer de micro ou de filtre ne touche pas à la connexion.
 async function openMic() {
   mic = await getMic(micChoice);
   const track = mic.getAudioTracks()[0];
   watchTrack(track);
-  ctx = new AudioContext();
+  ctx = new AudioContext({ sampleRate: 48000 });
   analyser = ctx.createAnalyser();
   analyser.fftSize = 512;
-  source = ctx.createMediaStreamSource(mic);
-  source.connect(analyser);
+  outbound = ctx.createMediaStreamDestination();
+  outbound.channelCount = 1;
+  if (noiseMode === 'strong') await loadSuppressor(); // ≈ 70 Mo : chargé seulement si le filtre fort est choisi
+  applyNoise();
+  connectSource();
+  sendTrack = outbound.stream.getAudioTracks()[0];
   setMuted(true); // micro coupé tant que l'utilisateur ne l'ouvre pas
   send({ ev: 'mic', label: track ? track.label : '' });
   await reportDevices();
 }
 
-// Nouveau micro sans couper l'appel : la piste envoyée à l'ami est remplacée.
+// Filtre RNNoise (noise-worklet.js) : chargé à la demande ; indisponible = la suppression du moteur web prend le relais.
+async function loadSuppressor() {
+  if (suppressor) return;
+  try {
+    await ctx.audioWorklet.addModule('noise-worklet.js');
+    suppressor = new AudioWorkletNode(ctx, 'noise-suppressor', { numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [1] });
+    suppressor.port.onmessage = e => send({ ev: 'noiseStats', frames: e.data.frames, vad: e.data.vad });
+    suppressor.connect(outbound);
+    suppressor.connect(analyser);
+  } catch (err) {
+    suppressor = null;
+    if (noiseMode === 'strong') noiseMode = 'standard';
+    send({ ev: 'noiseUnavailable', message: String((err && err.message) || err) });
+  }
+}
+
+function connectSource() {
+  if (source) source.disconnect();
+  source = ctx.createMediaStreamSource(mic);
+  if (suppressor) {
+    source.connect(suppressor);
+  } else {
+    source.connect(outbound);
+    source.connect(analyser);
+  }
+}
+
+function applyNoise() {
+  if (suppressor) suppressor.port.postMessage({ enabled: noiseMode === 'strong' });
+  send({ ev: 'noise', mode: noiseMode, filter: !!suppressor });
+}
+
+// Nouveau micro (ou autre réglage de suppression du moteur) sans couper l'appel.
 async function switchMic() {
   const fresh = await getMic(micChoice);
   const track = fresh.getAudioTracks()[0];
-  track.enabled = !muted;
   watchTrack(track);
-  if (sender) await sender.replaceTrack(track);
   if (mic) mic.getTracks().forEach(t => { t.onended = null; t.stop(); });
   mic = fresh;
-  if (source) source.disconnect();
-  source = ctx.createMediaStreamSource(mic);
-  source.connect(analyser);
+  connectSource();
   send({ ev: 'mic', label: track.label });
+}
+
+// Préférences Opus écrites dans sa propre description : c'est ce que l'autre PC respecte en envoyant.
+function tuneOpus(sdp) {
+  const rtpmap = sdp.match(/a=rtpmap:(\d+) opus\/48000\/2/i);
+  if (!rtpmap) return sdp;
+  const pt = rtpmap[1];
+  const fmtp = new RegExp(`a=fmtp:${pt} ([^\\r\\n]*)`);
+  const merge = current => {
+    const params = new Map(current.split(';').filter(Boolean).map(p => p.split('=').map(s => s.trim())));
+    for (const [key, value] of Object.entries(OPUS)) params.set(key, value);
+    return [...params].map(([key, value]) => `${key}=${value}`).join(';');
+  };
+  return fmtp.test(sdp)
+    ? sdp.replace(fmtp, (line, current) => `a=fmtp:${pt} ${merge(current)}`)
+    : sdp.replace(rtpmap[0], `${rtpmap[0]}\r\na=fmtp:${pt} ${merge('')}`);
+}
+
+async function raiseBitrate() {
+  if (!sender) return;
+  const params = sender.getParameters();
+  if (!params.encodings || params.encodings.length === 0) params.encodings = [{}];
+  params.encodings[0].maxBitrate = BITRATE;
+  params.encodings[0].priority = 'high';
+  params.encodings[0].networkPriority = 'high';
+  await sender.setParameters(params).catch(() => {});
 }
 
 // Sortie : toujours un identifiant précis (celui du périphérique par défaut si « par défaut ») pour forcer le changement.
@@ -140,7 +208,8 @@ async function onRelay(m) {
       send({ ev: 'peer' });
       if (role === 'host') {
         newConnection();
-        await pc.setLocalDescription(await pc.createOffer());
+        const offer = await pc.createOffer();
+        await pc.setLocalDescription({ type: 'offer', sdp: tuneOpus(offer.sdp) });
         relaySend({ t: 'sdp', type: 'offer', sdp: pc.localDescription.sdp });
         flushLocal();
       }
@@ -150,7 +219,8 @@ async function onRelay(m) {
         newConnection();
         await pc.setRemoteDescription({ type: 'offer', sdp: m.sdp });
         await flushRemote();
-        await pc.setLocalDescription(await pc.createAnswer());
+        const answer = await pc.createAnswer();
+        await pc.setLocalDescription({ type: 'answer', sdp: tuneOpus(answer.sdp) });
         relaySend({ t: 'sdp', type: 'answer', sdp: pc.localDescription.sdp });
         flushLocal();
         reportFingerprints();
@@ -197,15 +267,14 @@ function reportFingerprints() {
 
 function setMuted(value) {
   muted = value;
-  if (mic) mic.getAudioTracks().forEach(t => t.enabled = !value);
+  if (sendTrack) sendTrack.enabled = !value; // la piste envoyée : le micro reste ouvert pour l'annulation d'écho
   if (control && control.readyState === 'open') control.send(value ? 'muted' : 'unmuted');
   send({ ev: 'muted', value });
 }
 
 function newConnection() {
   pc = new RTCPeerConnection({ iceServers: stun ? [{ urls: STUN }] : [] });
-  const track = mic.getAudioTracks()[0];
-  sender = pc.addTrack(track, mic);
+  sender = pc.addTrack(sendTrack, outbound.stream);
   // Canal négocié d'avance (même identifiant des deux côtés).
   control = pc.createDataChannel('control', { negotiated: true, id: 0 });
   control.onopen = () => control.send(muted ? 'muted' : 'unmuted');
@@ -222,7 +291,7 @@ function newConnection() {
   pc.onconnectionstatechange = () => {
     send({ ev: 'state', value: pc.connectionState });
     if (pc.connectionState === 'connected') {
-      if (!connected) { connected = true; closeRelay(); } // le serveur n'est plus utile
+      if (!connected) { connected = true; closeRelay(); raiseBitrate(); } // le serveur n'est plus utile
       if (!levels) levels = setInterval(reportLevels, 250);
     }
   };
@@ -299,6 +368,7 @@ async function handle(m) {
       stun = !!m.stun;
       micChoice = m.mic || '';
       speakerChoice = m.speaker || '';
+      noiseMode = NOISE_MODES.includes(m.noise) ? m.noise : 'strong';
       await openMic();
       openRelay(m.relay, m.code, m.cmd === 'host' ? 'host' : 'guest');
       break;
@@ -315,6 +385,12 @@ async function handle(m) {
       micChoice = m.id || '';
       if (mic) await switchMic();
       await reportDevices();
+      break;
+    case 'noise':
+      noiseMode = NOISE_MODES.includes(m.mode) ? m.mode : 'strong';
+      if (noiseMode === 'strong') await loadSuppressor();
+      applyNoise();
+      if (mic) await switchMic(); // suppression du moteur web : réglée à l'ouverture du micro
       break;
     case 'speaker':
       speakerChoice = m.id || '';
