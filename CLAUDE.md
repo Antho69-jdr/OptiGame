@@ -394,8 +394,19 @@ vit dans Core ; Platform ne fait que lire/écrire le système.
     limite, 2 = limite fixe (TargetFramerate), ScreenMode = plein écran / sans bordure / fenêtré, AntiAlias = — / FXAA / TAA / SMAA,
     UpscaleKind NONE / DLSS / FSR3, UpscaleQuality (listes DLSS) Qualité / Équilibré / Performance / Ultra performance ; Ssao,
     EnvironmentQuality, DepthOfField, VfxQuality : sens non trouvé → non affichés. Le fichier contient aussi le nom du micro :
-    retiré de l'échantillon des tests. Star Citizen, Overwatch, Scrap Mechanic, Portal 2 : à suivre (relevés dans
-    docs/audit-fonctionnalites-2026-10-07.md § 3).
+    retiré de l'échantillon des tests. Star Citizen (2026-10-09, format « xml-attributes ») : `{ExeDir}\..\user\client\0\
+    Profiles\default\attributes.xml` (`<Attr name value>`, SEULEMENT les valeurs changées : clés absentes non supposées) ;
+    clé → variable du moteur dans Data.p4k (ZIP, entrées zstd méthode 100, XML binaire « CryXmlB ») › Data\Libs\Config\Profiles\
+    default\attributes.xml ; sens = aides intégrées à Bin64\StarCitizen.exe : sys_spec « 0=custom, 1=low, 2=med, 3=high, 4=very
+    high », r_WindowMode « 0=windowed/1=borderless/2=fullscreen » (le journal écrit pourtant « Borderless » avec 2 : la
+    définition du jeu fait foi), r.TSR.UpscalingPreset 0 aucun / 1 auto / 2 Qualité / 3 Équilibré / 4 Performance / 5 Ultra
+    performance, r.TSR.UpscalingModel 0 CNN (préréglage E) / 1 Transformer (K), r_HDRDisplayOutput et r_MotionBlur 0/1 ;
+    sous-réglages sys_spec_* = sections [1]…[5] de Engine\Config\CVarGroups\sys_spec_*.cfg (3 par défaut ; libellé du niveau 5
+    non trouvé). Overwatch, Scrap Mechanic (C++ : l'ordre des clés GRAPHICS_* dans l'exe n'est PAS celui du menu, non utilisé),
+    Portal 2 : à suivre (relevés dans docs/audit-fonctionnalites-2026-10-07.md § 3).
+  - Projet de tests Core : `<None Include="**\Samples\**" Exclude="$(DefaultItemExcludes)">` ; sans l'exclusion, les
+    échantillons déjà copiés dans bin y étaient recopiés un niveau plus bas à chaque compilation (348 017 fichiers le 2026-10-09,
+    `dotnet test` bloqué plusieurs minutes sans rien afficher).
   - Qualité ÉCRITE dans un jeu Unreal (carte « Qualité graphique (fichier du jeu) », onglet Optimisation ;
     `Core/InGame/UnrealQuality` + `IniText`, `Platform/InGame/IniFileAccessor` = kind `ini-value`, Path « fichier|section »,
     `App/Services/InGameQualityService`) : tous les `sg.*` lus (hors ResolutionQuality / LandscapeQuality) mis au niveau choisi,

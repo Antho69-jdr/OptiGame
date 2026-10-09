@@ -22,7 +22,9 @@
 
   <ItemGroup>
     <!-- Vraies réponses de services externes, gardées telles quelles pour valider les formats -->
-    <None Include="**\Samples\**" CopyToOutputDirectory="PreserveNewest" />
+    <!-- Sans l'exclusion de bin et obj, les échantillons déjà copiés en sortie y étaient recopiés un niveau plus bas à chaque
+         compilation (bin\Debug\net10.0\bin\Debug\…) : 348 017 fichiers le 2026-10-09, compilation bloquée. -->
+    <None Include="**\Samples\**" Exclude="$(DefaultItemExcludes)" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

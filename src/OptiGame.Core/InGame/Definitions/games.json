@@ -40,6 +40,48 @@
         { "key": "Bloom", "label": "Halo lumineux (bloom)",
           "values": { "0": "Bas", "1": "Moyen", "2": "Élevé" } }
       ]
+    },
+    {
+      "id": "star-citizen",
+      "name": "Star Citizen",
+      "exe": "StarCitizen.exe",
+      "path": "{ExeDir}\\..\\user\\client\\0\\Profiles\\default\\attributes.xml",
+      "format": "xml-attributes",
+      "verified": "2026-10-09 : fichier réel (LIVE) ; clé → variable du moteur dans Data.p4k › Data\\Libs\\Config\\Profiles\\default\\attributes.xml ; sens = aides intégrées à Bin64\\StarCitizen.exe (sys_spec « 0=custom, 1=low, 2=med, 3=high, 4=very high », r_WindowMode « 0=windowed/1=borderless/2=fullscreen », r.TSR.UpscalingPreset, r.TSR.UpscalingModel, r_HDRDisplayOutput, r_MotionBlur) ; niveaux des sous-réglages = sections [1]…[5] de Engine\\Config\\CVarGroups\\sys_spec_*.cfg (3 par défaut). Clés absentes du fichier (V-Sync, technique d'upscaling) : non supposées. Niveau 5 : libellé non trouvé.",
+      "settings": [
+        { "key": "SysSpec", "label": "Qualité générale", "role": "preset",
+          "values": { "0": "Personnalisée", "1": "Bas", "2": "Moyen", "3": "Élevé", "4": "Très élevé" },
+          "presets": { "1": "Low", "2": "Medium", "3": "High", "4": "Ultra" } },
+        { "key": "Width", "role": "width" },
+        { "key": "Height", "role": "height" },
+        { "key": "WindowMode", "label": "Mode d'affichage", "role": "displayMode",
+          "values": { "0": "Fenêtré", "1": "Sans bordure", "2": "Plein écran" },
+          "displayModes": { "0": "Windowed", "1": "Borderless", "2": "Fullscreen" } },
+        { "key": "Upscaling", "label": "Upscaling",
+          "values": { "0": "Aucun préréglage", "1": "Automatique", "2": "Qualité", "3": "Équilibré", "4": "Performance", "5": "Ultra performance" } },
+        { "key": "UpscalingModel", "label": "Modèle DLSS",
+          "values": { "0": "Réseau convolutif (préréglage E)", "1": "Transformer (préréglage K)" } },
+        { "key": "HDR", "label": "HDR", "values": { "0": "Désactivé", "1": "Activé" } },
+        { "key": "MotionBlur", "label": "Flou de mouvement", "values": { "0": "Désactivé", "1": "Activé" } },
+        { "key": "SysSpec_ShadowMaps", "label": "Ombres", "values": { "1": "Bas", "2": "Moyen", "3": "Élevé", "4": "Très élevé" } },
+        { "key": "SysSpec_ShadowScreenSpace", "label": "Ombres en espace écran", "values": { "1": "Bas", "2": "Moyen", "3": "Élevé", "4": "Très élevé" } },
+        { "key": "SysSpec_Shading", "label": "Ombrage", "values": { "1": "Bas", "2": "Moyen", "3": "Élevé", "4": "Très élevé" } },
+        { "key": "SysSpec_TextureQuality", "label": "Qualité des textures", "values": { "1": "Bas", "2": "Moyen", "3": "Élevé", "4": "Très élevé" } },
+        { "key": "SysSpec_TextureDetail", "label": "Détail des textures", "values": { "1": "Bas", "2": "Moyen", "3": "Élevé", "4": "Très élevé" } },
+        { "key": "SysSpec_TextureFiltering", "label": "Filtrage des textures", "values": { "1": "Bas", "2": "Moyen", "3": "Élevé", "4": "Très élevé" } },
+        { "key": "SysSpec_TextureGround", "label": "Textures du sol", "values": { "1": "Bas", "2": "Moyen", "3": "Élevé", "4": "Très élevé" } },
+        { "key": "SysSpec_ObjectDetail", "label": "Détail des objets", "values": { "1": "Bas", "2": "Moyen", "3": "Élevé", "4": "Très élevé" } },
+        { "key": "SysSpec_ObjectViewDistance", "label": "Distance d'affichage des objets", "values": { "1": "Bas", "2": "Moyen", "3": "Élevé", "4": "Très élevé" } },
+        { "key": "SysSpec_Particles", "label": "Particules", "values": { "1": "Bas", "2": "Moyen", "3": "Élevé", "4": "Très élevé" } },
+        { "key": "SysSpec_PostProcessing", "label": "Post-traitement", "values": { "1": "Bas", "2": "Moyen", "3": "Élevé", "4": "Très élevé" } },
+        { "key": "SysSpec_Fog", "label": "Brouillard", "values": { "1": "Bas", "2": "Moyen", "3": "Élevé", "4": "Très élevé" } },
+        { "key": "SysSpec_GasCloud", "label": "Nuages de gaz", "values": { "1": "Bas", "2": "Moyen", "3": "Élevé", "4": "Très élevé" } },
+        { "key": "SysSpec_PlanetVolumetricClouds", "label": "Nuages volumétriques des planètes", "values": { "1": "Bas", "2": "Moyen", "3": "Élevé", "4": "Très élevé" } },
+        { "key": "SysSpec_PlanetTerrainVirtualTextures", "label": "Textures du terrain des planètes", "values": { "1": "Bas", "2": "Moyen", "3": "Élevé", "4": "Très élevé" } },
+        { "key": "SysSpec_WaterSim", "label": "Simulation de l'eau", "values": { "1": "Bas", "2": "Moyen", "3": "Élevé", "4": "Très élevé" } },
+        { "key": "SysSpec_WaterCaustics", "label": "Reflets de l'eau (caustiques)", "values": { "1": "Bas", "2": "Moyen", "3": "Élevé", "4": "Très élevé" } },
+        { "key": "SysSpec_VideoComms", "label": "Communications vidéo", "values": { "1": "Bas", "2": "Moyen", "3": "Élevé", "4": "Très élevé" } }
+      ]
     }
   ]
 }

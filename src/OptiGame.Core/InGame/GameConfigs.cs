@@ -15,7 +15,7 @@ public sealed record InGameOption(string Label, string Value);
 /// </summary>
 /// <param name="Path">Emplacement, avec des repères résolus par Platform : {LocalLow}, {LocalAppData}, {AppData}, {Documents},
 /// {ExeDir}.</param>
-/// <param name="Format">« json » (valeurs au premier niveau).</param>
+/// <param name="Format">« json » (valeurs au premier niveau), « xml-attributes » (éléments &lt;Attr name value&gt;).</param>
 public sealed record GameConfigDefinition(string Id, string Name, string Exe, string Path, string Format, string Verified,
     IReadOnlyList<GameConfigSetting> Settings);
 
@@ -84,6 +84,22 @@ public static class GameConfigs
                 catch (JsonException ex)
                 {
                     throw new FormatException($"Fichier JSON illisible : {ex.Message}", ex);
+                }
+                break;
+            case "xml-attributes":
+                // Star Citizen (attributes.xml) : <Attributes Version="35"><Attr name="Width" value="3440"/>…
+                try
+                {
+                    var root = System.Xml.Linq.XDocument.Parse(text).Root ?? throw new FormatException("Fichier XML vide.");
+                    foreach (var attr in root.Elements("Attr"))
+                    {
+                        if (attr.Attribute("name")?.Value is { Length: > 0 } name && attr.Attribute("value")?.Value is { } value) values[name] = value;
+                    }
+                    if (values.Count == 0) throw new FormatException("Aucun élément <Attr name value>.");
+                }
+                catch (System.Xml.XmlException ex)
+                {
+                    throw new FormatException($"Fichier XML illisible : {ex.Message}", ex);
                 }
                 break;
             default:

@@ -66,6 +66,33 @@ public sealed class GameConfigsTests
     }
 
     [Fact]
+    public void Star_citizen_settings_from_its_attributes_file()
+    {
+        var definition = GameConfigs.For(@"A:\Jeux\Roberts Space Industries\StarCitizen\LIVE\Bin64\StarCitizen.exe")!;
+        Assert.Equal("xml-attributes", definition.Format);
+        var values = GameConfigs.ReadValues(definition.Format, Sample("starcitizen-attributes.xml"));
+        var settings = GameConfigs.Interpret(definition, values, "attributes.xml", "attributes.xml", new DateTime(2026, 9, 29, 23, 19, 0))!;
+
+        Assert.Equal(GraphicsPreset.Low, settings.Preset); // sys_spec 1 = low (aide de StarCitizen.exe)
+        Assert.Equal((3440, 1440), (settings.Width, settings.Height));
+        Assert.Equal(InGameDisplayMode.Fullscreen, settings.DisplayMode); // r_WindowMode 2 = fullscreen
+        Assert.Null(settings.VSync); // absente du fichier : jamais supposée
+        Assert.Contains(new InGameOption("Upscaling", "Qualité"), settings.Options!);
+        Assert.Contains(new InGameOption("Modèle DLSS", "Transformer (préréglage K)"), settings.Options!);
+        Assert.Contains(new InGameOption("Distance d'affichage des objets", "Élevé"), settings.Options!);
+        Assert.Contains(new InGameOption("Filtrage des textures", "Moyen"), settings.Options!);
+        Assert.Contains(new InGameOption("Flou de mouvement", "Désactivé"), settings.Options!);
+        Assert.DoesNotContain(settings.Options!, o => o.Value.Contains("inconnue")); // toutes les valeurs du vrai fichier sont connues
+    }
+
+    [Fact]
+    public void Xml_attributes_without_any_attr_is_refused()
+    {
+        Assert.Throws<FormatException>(() => GameConfigs.ReadValues("xml-attributes", "<Attributes Version=\"35\"/>"));
+        Assert.Throws<FormatException>(() => GameConfigs.ReadValues("xml-attributes", "{\"a\":1}"));
+    }
+
+    [Fact]
     public void Unknown_values_are_shown_never_guessed_and_conditions_apply()
     {
         var definition = GameConfigs.For("Void Crew.exe")!;
