@@ -82,7 +82,19 @@ public sealed partial class CallViewModel : ObservableObject, IDisposable
         friends.FriendRequest += OnFriendRequest;
         friends.FriendAccepted += OnFriendAccepted;
         friends.PropertyChanged += (_, e) => { if (e.PropertyName == nameof(SteamFriendsService.Contacts)) RefreshContacts(); };
+        friends.OnlineFriends.CollectionChanged += (_, _) => RefreshOffline();
         RefreshContacts();
+        // Avant la 1.15.2, micro et sortie étaient gardés par l'identifiant interne du moteur web (64 caractères hexadécimaux) :
+        // désormais par leur nom. Un ancien identifiant est oublié (retour au périphérique par défaut).
+        if (IsEngineId(settings.Get().CallMicrophone) || IsEngineId(settings.Get().CallSpeaker))
+        {
+            settings.Update(s =>
+            {
+                if (IsEngineId(s.CallMicrophone)) s.CallMicrophone = null;
+                if (IsEngineId(s.CallSpeaker)) s.CallSpeaker = null;
+            });
+        }
+        RefreshDevices();
     }
 
     /// <summary>Serveur de mise en relation (remplacé par la variable OPTIGAME_CALL_RELAY pour les essais) ; null = pas en place.</summary>
@@ -90,7 +102,7 @@ public sealed partial class CallViewModel : ObservableObject, IDisposable
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsIdle), nameof(IsWorking), nameof(IsWaiting), nameof(IsInCall), nameof(IsActive), nameof(WorkingText),
-        nameof(ShowsSafetyWords), nameof(ShowsMeter))]
+        nameof(ShowsSafetyWords), nameof(ShowsMeter), nameof(CallHeader))]
     [NotifyCanExecuteChangedFor(nameof(StartCallCommand), nameof(JoinCallCommand), nameof(HangUpCommand), nameof(ToggleMuteCommand), nameof(CopyCodeCommand))]
     private CallPhase _phase;
 
@@ -176,6 +188,7 @@ public sealed partial class CallViewModel : ObservableObject, IDisposable
     private double _remoteLevel;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CallHeader))]
     private string _duration = "";
 
     /// <summary>« directe, même réseau » / « directe, par Internet ».</summary>
@@ -640,14 +653,51 @@ public sealed partial class CallViewModel : ObservableObject, IDisposable
         }, code == "expired" && Phase == CallPhase.Waiting ? Severity.Info : Severity.Warning, tellPeer: false);
     }
 
+    // Périphériques : lus dans Windows (choisissables à tout moment, Paramètres › Audio) et complétés par ceux que le moteur web voit
+    // pendant un appel (mêmes noms ; micros simulés des vérifications). Désignés par leur NOM : le moteur web retrouve le même.
+    private List<string> _engineInputs = [];
+    private List<string> _engineOutputs = [];
+    private string _engineDefaultInput = "";
+    private string _engineDefaultOutput = "";
+
     private void OnDevices(JsonElement message)
     {
+        _engineInputs = Names(message, "inputs");
+        _engineOutputs = Names(message, "outputs");
+        _engineDefaultInput = VoiceQualityAdvisor.DeviceName(Text(message, "defaultInput"));
+        _engineDefaultOutput = VoiceQualityAdvisor.DeviceName(Text(message, "defaultOutput"));
+        RefreshDevices();
+    }
+
+    private static List<string> Names(JsonElement message, string listName) =>
+        message.TryGetProperty(listName, out var list) && list.ValueKind == JsonValueKind.Array
+            ? list.EnumerateArray().Select(d => Text(d, "label")).Where(l => l.Length > 0).ToList()
+            : [];
+
+    private static bool IsEngineId(string? value) => value is { Length: >= 40 } && value.All(Uri.IsHexDigit);
+
+    /// <summary>Listes relues (Windows + moteur web) ; la sélection suit les réglages gardés.</summary>
+    public void RefreshDevices()
+    {
+        List<string> windowsInputs = [], windowsOutputs = [];
+        string? defaultInput = null, defaultOutput = null;
+        try
+        {
+            windowsInputs = Platform.Audio.AudioEndpoints.Capture().Select(d => d.Name).ToList();
+            windowsOutputs = Platform.Audio.AudioEndpoints.Render().Select(d => d.Name).ToList();
+            defaultInput = Platform.Audio.AudioEndpoints.DefaultCaptureName();
+            defaultOutput = Platform.Audio.AudioEndpoints.DefaultRenderName();
+        }
+        catch (Exception ex) when (ex is System.Runtime.InteropServices.COMException or InvalidCastException)
+        {
+            _log.Warn($"Appel : périphériques audio de Windows illisibles ({ex.Message}).");
+        }
         var settings = _settings.Get();
         _updatingDevices = true;
         try
         {
-            Fill(Microphones, message, "inputs", "defaultInput", "Par défaut");
-            Fill(Speakers, message, "outputs", "defaultOutput", "Par défaut");
+            Fill(Microphones, windowsInputs.Concat(_engineInputs), defaultInput ?? _engineDefaultInput);
+            Fill(Speakers, windowsOutputs.Concat(_engineOutputs), defaultOutput ?? _engineDefaultOutput);
             SelectedMicrophone = Microphones.FirstOrDefault(d => d.Id == (settings.CallMicrophone ?? "")) ?? Microphones.FirstOrDefault();
             SelectedSpeaker = Speakers.FirstOrDefault(d => d.Id == (settings.CallSpeaker ?? "")) ?? Speakers.FirstOrDefault();
         }
@@ -657,24 +707,13 @@ public sealed partial class CallViewModel : ObservableObject, IDisposable
         }
     }
 
-    private static void Fill(ObservableCollection<CallDevice> target, JsonElement message, string listName, string defaultName, string defaultLabel)
+    private static void Fill(ObservableCollection<CallDevice> target, IEnumerable<string> names, string? defaultName)
     {
-        var current = Text(message, defaultName);
-        var devices = new List<CallDevice> { new("", current.Length > 0 ? $"{defaultLabel} : {WithoutDefaultPrefix(current)}" : defaultLabel) };
-        if (message.TryGetProperty(listName, out var list) && list.ValueKind == JsonValueKind.Array)
-        {
-            devices.AddRange(list.EnumerateArray().Select(d => new CallDevice(Text(d, "id"), Text(d, "label"))).Where(d => d.Id.Length > 0));
-        }
+        var devices = new List<CallDevice> { new("", string.IsNullOrEmpty(defaultName) ? "Par défaut" : $"Par défaut : {defaultName}") };
+        devices.AddRange(names.Distinct(StringComparer.Ordinal).Select(n => new CallDevice(n, n)));
         if (target.SequenceEqual(devices)) return;
         target.Clear();
         foreach (var device in devices) target.Add(device);
-    }
-
-    // Le moteur nomme l'entrée par défaut « Par défaut - Casque (…) » : seul le nom du périphérique est gardé.
-    private static string WithoutDefaultPrefix(string label)
-    {
-        var dash = label.IndexOf(" - ", StringComparison.Ordinal);
-        return dash is > 0 and < 20 ? label[(dash + 3)..] : label;
     }
 
     private void OnConnectionState(string state)
@@ -807,6 +846,8 @@ public sealed partial class CallViewModel : ObservableObject, IDisposable
         PeerMuted = false;
         LocalLevel = RemoteLevel = 0;
         Phase = CallPhase.Idle;
+        CallPeerName = "";
+        InCallTab = 0;
         ResetMeter();
         if (status.Length > 0) ShowStatus(status, severity);
         else ClearStatus();

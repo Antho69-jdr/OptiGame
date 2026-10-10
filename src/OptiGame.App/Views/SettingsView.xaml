@@ -24,6 +24,7 @@
                     <RadioButton Style="{StaticResource Segment}" GroupName="SettingsTabs" IsChecked="{Binding IsGamesTab}" Content="Mes jeux" />
                     <RadioButton Style="{StaticResource Segment}" GroupName="SettingsTabs" IsChecked="{Binding IsDockTab}" Content="Dock" />
                     <RadioButton Style="{StaticResource Segment}" GroupName="SettingsTabs" IsChecked="{Binding IsMeasuresTab}" Content="Mesures" />
+                    <RadioButton Style="{StaticResource Segment}" GroupName="SettingsTabs" IsChecked="{Binding IsAudioTab}" Content="Audio" />
                     <RadioButton Style="{StaticResource Segment}" GroupName="SettingsTabs" IsChecked="{Binding IsUpdatesTab}" Content="Mises à jour" />
                     <RadioButton Style="{StaticResource Segment}" GroupName="SettingsTabs" IsChecked="{Binding IsDataTab}" Content="Données" />
                 </WrapPanel>
@@ -294,6 +295,97 @@
                         <controls:SettingRow Glyph="&#xE7B8;" Header="PresentMon" Description="{Binding Measures.PresentMonPath, TargetNullValue='Introuvable : version console d''Intel (PresentMon-x.y.z-x64.exe).'}">
                             <Button Style="{StaticResource Button.Secondary}" Content="Parcourir…" Command="{Binding Measures.ChoosePresentMonCommand}"
                                     AutomationProperties.Name="Choisir PresentMon…" />
+                        </controls:SettingRow>
+                    </StackPanel>
+                </Border>
+
+                <!-- ===== Audio : voix des appels de la page Amis (DataContext = CallViewModel) ===== -->
+                <Border Style="{StaticResource SettingsCard}" Visibility="{Binding IsAudioTab, Converter={StaticResource BoolToVisibility}}">
+                    <StackPanel Margin="{StaticResource Margin.SettingsCardContent}" DataContext="{Binding Call}">
+                        <controls:SettingRow Glyph="&#xE720;" Header="Micro"
+                                             Description="« Par défaut » suit Windows : changez de micro dans Windows, l'appel suit.">
+                            <ComboBox Width="300" ItemsSource="{Binding Microphones}" SelectedItem="{Binding SelectedMicrophone}" AutomationProperties.Name="Micro" />
+                        </controls:SettingRow>
+                        <controls:SettingRow Glyph="&#xE767;" Header="Sortie audio" Description="Où vous entendez vos amis. « Par défaut » suit Windows.">
+                            <ComboBox Width="300" ItemsSource="{Binding Speakers}" SelectedItem="{Binding SelectedSpeaker}" AutomationProperties.Name="Sortie audio" />
+                        </controls:SettingRow>
+                        <controls:SettingRow Glyph="&#xE9D9;" Header="Qualité de la voix envoyée"
+                                             Description="Automatique : le plus haut débit qui apporte encore quelque chose avec votre micro.">
+                            <ComboBox Width="300" ItemsSource="{Binding QualityOptions}" SelectedItem="{Binding SelectedQuality}"
+                                      AutomationProperties.Name="Qualité de la voix envoyée" />
+                            <controls:SettingRow.Details>
+                                <TextBlock Style="{StaticResource Text.Caption}"
+                                           Text="La bande de votre voix est mesurée pendant que vous parlez (appel ou test du micro), puis gardée pour ce micro. Au-delà, plus de débit n'améliore rien : un micro de casque coupe souvent vers 8 kHz, un micro de bureau capte jusqu'à 20 kHz." />
+                            </controls:SettingRow.Details>
+                        </controls:SettingRow>
+                        <TextBlock Margin="52,0,0,8" Style="{StaticResource Text.Caption}" Foreground="{StaticResource Brush.Text}" TextWrapping="Wrap"
+                                   Text="{Binding AutoQualityText}" Visibility="{Binding HasAutoQualityText, Converter={StaticResource BoolToVisibility}}" />
+                        <controls:SettingRow Glyph="&#xE995;" Header="Suppression du bruit"
+                                             Description="Forte : un filtre spécialisé dans la voix retire clavier, ventilateur et bruits de fond, sur votre PC.">
+                            <ComboBox Width="300" ItemsSource="{Binding NoiseOptions}" SelectedItem="{Binding SelectedNoise}" AutomationProperties.Name="Suppression du bruit" />
+                        </controls:SettingRow>
+                        <controls:SettingRow Glyph="&#xE9E9;" Header="Seuil du micro"
+                                             Description="Votre micro ne s'ouvre que lorsque vous parlez assez fort : une voix en fond, plus faible, est coupée.">
+                            <StackPanel>
+                                <ComboBox Width="300" ItemsSource="{Binding GateOptions}" SelectedItem="{Binding SelectedGate}" AutomationProperties.Name="Seuil du micro" />
+                                <Grid Width="300" Margin="0,8,0,0" Visibility="{Binding IsManualGate, Converter={StaticResource BoolToVisibility}}">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <Slider VerticalAlignment="Center" Minimum="-80" Maximum="-10" SmallChange="1" LargeChange="5" Value="{Binding GateThreshold}"
+                                            AutomationProperties.Name="Seuil du micro, en décibels" />
+                                    <TextBlock Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center" Style="{StaticResource Text.Body}"
+                                               Text="{Binding GateThreshold, StringFormat={}{0:0} dB}" />
+                                </Grid>
+                            </StackPanel>
+                        </controls:SettingRow>
+                        <controls:SettingRow Glyph="&#xE1D6;" Header="Tester mon micro"
+                                             Description="Ouvre votre micro sans appel pour voir son niveau, régler le seuil et mesurer sa qualité ; rien n'est envoyé.">
+                            <StackPanel Width="300">
+                                <Button HorizontalAlignment="Right" Style="{StaticResource Button.Secondary}" Content="{Binding MicTestLabel}"
+                                        Command="{Binding ToggleMicTestCommand}" />
+                                <StackPanel Margin="0,8,0,0" Visibility="{Binding IsTestingMic, Converter={StaticResource BoolToVisibility}}">
+                                    <ProgressBar Height="8" Maximum="1" Value="{Binding MicMeter, Mode=OneWay}" AutomationProperties.Name="Niveau de votre micro" />
+                                    <TextBlock Margin="0,4,0,0" Style="{StaticResource Text.Caption}" Text="{Binding MeterText}" TextWrapping="Wrap" />
+                                </StackPanel>
+                            </StackPanel>
+                        </controls:SettingRow>
+                        <controls:SettingRow Glyph="&#xE765;" Header="Raccourci du micro en jeu"
+                                             Description="Fonctionne jeu au premier plan, pendant un appel seulement. La touche n'est pas retirée au jeu.">
+                            <StackPanel HorizontalAlignment="Right">
+                                <TextBlock HorizontalAlignment="Right" Style="{StaticResource Text.BodyStrong}" Text="{Binding MicKeyLabel}"
+                                           Visibility="{Binding IsCapturingMicKey, Converter={StaticResource InverseBoolToVisibility}}" />
+                                <TextBlock HorizontalAlignment="Right" Style="{StaticResource Text.BodyStrong}" AutomationProperties.LiveSetting="Assertive"
+                                           Text="Appuyez sur la touche voulue… (Échap pour annuler)"
+                                           Visibility="{Binding IsCapturingMicKey, Converter={StaticResource BoolToVisibility}}" />
+                                <WrapPanel Margin="0,6,0,0" HorizontalAlignment="Right">
+                                    <Button x:Name="ChooseKeyButton" Margin="0,0,8,0" Style="{StaticResource Button.Secondary}" Content="Choisir une touche…"
+                                            Command="{Binding ChooseMicKeyCommand}" />
+                                    <Button Margin="0,0,8,0" Style="{StaticResource Button.Secondary}" Content="Annuler" Command="{Binding CancelMicKeyCaptureCommand}"
+                                            Visibility="{Binding IsCapturingMicKey, Converter={StaticResource BoolToVisibility}}" />
+                                    <Button Style="{StaticResource Button.Ghost}" Content="Retirer" Command="{Binding ClearMicKeyCommand}"
+                                            Visibility="{Binding HasMicKey, Converter={StaticResource BoolToVisibility}}" />
+                                </WrapPanel>
+                            </StackPanel>
+                            <controls:SettingRow.Details>
+                                <StackPanel>
+                                    <RadioButton GroupName="MicKeyMode" IsChecked="{Binding IsToggleMode}"
+                                                 Content="Basculer : une pression coupe ou ouvre le micro (petit son de confirmation)" />
+                                    <RadioButton Margin="0,6,0,0" GroupName="MicKeyMode" IsChecked="{Binding IsPushToTalk}"
+                                                 Content="Appuyer pour parler : micro ouvert tant que la touche est enfoncée" />
+                                    <TextBlock Margin="0,6,0,0" Style="{StaticResource Text.Caption}"
+                                               Text="Choisissez une touche que le jeu n'utilise pas (F13 à F24, Pause, pavé numérique…) ou une combinaison (Ctrl + Alt + M)." />
+                                </StackPanel>
+                            </controls:SettingRow.Details>
+                        </controls:SettingRow>
+                        <controls:SettingRow Glyph="&#xE774;" Header="Passer par Internet"
+                                             Description="Pour appeler un ami qui n'est pas sur votre réseau : à cocher des deux côtés.">
+                            <CheckBox IsChecked="{Binding UseStun}" Content="Activé" AutomationProperties.Name="Passer par Internet" />
+                            <controls:SettingRow.Details>
+                                <TextBlock Style="{StaticResource Text.Caption}"
+                                           Text="Un serveur public de découverte d'adresse voit alors votre adresse IP, rien d'autre ; votre voix ne passe jamais par lui. Décoché : seulement entre deux PC du même réseau." />
+                            </controls:SettingRow.Details>
                         </controls:SettingRow>
                     </StackPanel>
                 </Border>

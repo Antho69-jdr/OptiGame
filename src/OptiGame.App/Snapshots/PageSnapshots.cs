@@ -175,6 +175,7 @@ internal static class PageSnapshots
                 ("5b-parametres-mes-jeux", async () => { main.Settings.SelectedTab = SettingsTab.Games; main.Navigate(main.Settings); await Settle(800); }),
                 ("5c-parametres-dock", async () => { main.Settings.SelectedTab = SettingsTab.Dock; main.Navigate(main.Settings); await Settle(800); }),
                 ("5d-parametres-mesures", async () => { main.Settings.SelectedTab = SettingsTab.Measures; main.Navigate(main.Settings); await Settle(800); }),
+                ("5d2-parametres-audio", async () => { main.Settings.IsAudioTab = true; main.Navigate(main.Settings); await Settle(1200); }),
                 ("5e-parametres-mises-a-jour", async () => { main.Settings.SelectedTab = SettingsTab.Updates; main.Navigate(main.Settings); await Settle(800); }),
                 ("5f-parametres-donnees", async () => { main.Settings.SelectedTab = SettingsTab.Data; main.Navigate(main.Settings); await Settle(800); }),
             };
@@ -631,6 +632,22 @@ internal static class PageSnapshots
                 await WaitUntil(() => host.Phase is CallPhase.Connected or CallPhase.Idle && caller.Phase is CallPhase.Connected or CallPhase.Idle, 30_000);
                 Log($"Répondu : hôte {host.Phase}, appelant {caller.Phase}, mots {(host.SafetyWords == caller.SafetyWords ? "identiques" : "DIFFÉRENTS")}, " +
                     $"fenêtre d'appel entrant {(Application.Current.Windows.OfType<Call.IncomingCallWindow>().Any() ? "ENCORE là" : "fermée")}. {host.Status}{caller.Status}");
+                Log($"En-tête : « {host.CallHeader} ».");
+                await Settle(1500);
+            }));
+            pages.Add(("c5d2-appel-onglet-peripheriques", async () =>
+            {
+                host.IsDevicesTab = true;
+                await Settle(800);
+            }));
+            pages.Add(("c5d3-appel-onglet-son", async () =>
+            {
+                host.IsSoundTab = true;
+                await Settle(1500);
+            }));
+            pages.Add(("c5d4-appel-raccroche", async () =>
+            {
+                if (caller is null) return;
                 caller.HangUpCommand.Execute(null);
                 await WaitUntil(() => host.Phase == CallPhase.Idle, 15_000);
             }));

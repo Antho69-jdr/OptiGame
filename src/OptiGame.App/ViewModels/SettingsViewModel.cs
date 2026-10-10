@@ -30,8 +30,9 @@ public sealed partial class SettingsViewModel : ObservableObject
 
     public SettingsViewModel(AutoStartService autoStart, IDialogService dialogs, AppPaths paths, AppSettingsStore settings, IgdbClient igdb,
         UpdateService updates, MeasuresViewModel measures, ShellAlerts alerts, TrayViewModel tray, ProfileStore profiles,
-        GameLauncher launcher)
+        GameLauncher launcher, CallViewModel call)
     {
+        Call = call;
         _launcher = launcher;
         Updates = updates;
         Measures = measures;
@@ -63,7 +64,7 @@ public sealed partial class SettingsViewModel : ObservableObject
     // ---- Onglets (sélecteur comme sur la fiche du jeu ; le dernier choisi est gardé tant qu'OptiGame tourne) ----
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(IsGeneralTab), nameof(IsGamesTab), nameof(IsDockTab), nameof(IsMeasuresTab), nameof(IsUpdatesTab), nameof(IsDataTab))]
+    [NotifyPropertyChangedFor(nameof(IsGeneralTab), nameof(IsGamesTab), nameof(IsDockTab), nameof(IsMeasuresTab), nameof(IsAudioTab), nameof(IsUpdatesTab), nameof(IsDataTab))]
     private SettingsTab _selectedTab = SettingsTab.General;
 
     public bool IsGeneralTab
@@ -89,6 +90,20 @@ public sealed partial class SettingsViewModel : ObservableObject
         get => SelectedTab == SettingsTab.Measures;
         set { if (value) SelectedTab = SettingsTab.Measures; }
     }
+
+    public bool IsAudioTab
+    {
+        get => SelectedTab == SettingsTab.Audio;
+        set
+        {
+            if (!value) return;
+            SelectedTab = SettingsTab.Audio;
+            Call.RefreshDevices(); // micros et sorties relus à l'ouverture de l'onglet (casque branché entre-temps)
+        }
+    }
+
+    /// <summary>Onglet Audio : réglages de la voix des appels (ceux de la page Amis), lus et écrits par le ViewModel de l'appel.</summary>
+    public CallViewModel Call { get; }
 
     public bool IsUpdatesTab
     {
@@ -646,6 +661,7 @@ public enum SettingsTab
     Games,
     Dock,
     Measures,
+    Audio,
     Updates,
     Data,
 }

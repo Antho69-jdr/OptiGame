@@ -55,6 +55,7 @@ public sealed partial class CallViewModel
         if (friend is null || !IsIdle) return Task.CompletedTask;
         _codeRetries = 0;
         _outgoing = friend;
+        CallPeerName = friend.DisplayName;
         _ringSent = false;
         NotifyWaitingTexts();
         _log.Info("Appel : appel d'un ami Steam.");
@@ -93,6 +94,7 @@ public sealed partial class CallViewModel
         ClearIncoming();
         if (!IsIdle) End("", Severity.Info, tellPeer: true); // un code en attente : abandonné pour répondre
         JoinCode = Core.Call.CallCode.Display(call.Code);
+        CallPeerName = call.From.DisplayName;
         _log.Info("Appel : appel d'un ami accepté.");
         return JoinCallAsync();
     }
@@ -223,8 +225,71 @@ public sealed partial class CallViewModel
         if (contact is not null) Friends.RemoveContact(contact.SteamId);
     }
 
+    // ===== Page Amis : appel en cours et amis hors ligne =====
+
+    /// <summary>Ami de l'appel en cours (appelé ou qui appelle) ; vide = aucun.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CallHeader))]
+    private string _callPeerName = "";
+
+    /// <summary>« En appel avec Gaming · 3:12 », « Ça sonne chez Gaming… », « Connexion à Gaming… ».</summary>
+    public string CallHeader => Phase switch
+    {
+        CallPhase.Connected => $"En appel avec {PeerOrFriend} · {Duration}",
+        CallPhase.Waiting => $"Ça sonne chez {PeerOrFriend}…",
+        CallPhase.Preparing or CallPhase.Connecting => $"Connexion à {PeerOrFriend}…",
+        _ => "",
+    };
+
+    private string PeerOrFriend => CallPeerName.Length > 0 ? CallPeerName : "votre ami";
+
+    /// <summary>Onglet du panneau d'appel : l'appel lui-même, les périphériques (et le volume de l'ami), ou le son envoyé.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsCallTab), nameof(IsDevicesTab), nameof(IsSoundTab))]
+    private int _inCallTab;
+
+    public bool IsCallTab
+    {
+        get => InCallTab == 0;
+        set { if (value) InCallTab = 0; }
+    }
+
+    public bool IsDevicesTab
+    {
+        get => InCallTab == 1;
+        set
+        {
+            if (!value) return;
+            InCallTab = 1;
+            RefreshDevices();
+        }
+    }
+
+    public bool IsSoundTab
+    {
+        get => InCallTab == 2;
+        set { if (value) InCallTab = 2; }
+    }
+
+    /// <summary>Amis OptiGame qui n'ont pas OptiGame ouvert en ce moment (grisés, « Retirer »).</summary>
+    public System.Collections.ObjectModel.ObservableCollection<Core.Call.CallContact> OfflineContacts { get; } = [];
+
+    public bool HasOfflineContacts => OfflineContacts.Count > 0;
+
+    private void RefreshOffline()
+    {
+        var online = Friends.OnlineFriends.Select(f => f.Id).ToHashSet();
+        OfflineContacts.Clear();
+        foreach (var contact in Friends.Contacts.Where(c => !online.Contains(c.SteamId)).OrderBy(c => c.Name, StringComparer.CurrentCultureIgnoreCase))
+        {
+            OfflineContacts.Add(contact);
+        }
+        OnPropertyChanged(nameof(HasOfflineContacts));
+    }
+
     private void RefreshContacts()
     {
+        RefreshOffline();
         ContactItems.Clear();
         foreach (var contact in Friends.Contacts.OrderBy(c => c.Name, StringComparer.CurrentCultureIgnoreCase)) ContactItems.Add(contact);
         OnPropertyChanged(nameof(ContactsHeader));

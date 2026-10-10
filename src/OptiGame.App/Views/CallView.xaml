@@ -7,17 +7,18 @@
              xmlns:controls="clr-namespace:OptiGame.App.Controls"
              mc:Ignorable="d"
              d:DataContext="{d:DesignInstance vm:CallViewModel}">
-    <!-- Appel vocal (CallViewModel) : une carte par étape. Départ = « Appeler » (code court) / « Rejoindre » (saisir le code) ; puis
-         le code et son compte à rebours ; puis l'appel (micro coupé au départ, niveaux, volume, micro et sortie, raccrocher). -->
+    <!-- Page « Amis » (CallViewModel) : appel en cours (onglets Appel / Périphériques / Son), appel entrant, demandes d'ami, puis la
+         liste des amis (connexion avec Steam, en ligne avec « Appeler », hors ligne, ajout). Les réglages permanents de la voix sont
+         dans Paramètres › Audio ; pendant un appel, les plus utiles sont repris ici. -->
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
     </UserControl.Resources>
 
     <ScrollViewer VerticalScrollBarVisibility="Auto">
         <StackPanel Margin="32,24,32,32" MaxWidth="900" HorizontalAlignment="Left">
-            <TextBlock Style="{StaticResource Text.PageTitle}" Text="Appel" />
+            <TextBlock Style="{StaticResource Text.PageTitle}" Text="Amis" />
             <TextBlock Margin="0,4,0,16" Style="{StaticResource Text.Secondary}"
-                       Text="Parlez avec un ami pendant vos parties. La voix passe directement entre vos deux PC, chiffrée de bout en bout ; le code sert seulement à vous trouver. Seulement la voix." />
+                       Text="Appelez vos amis pendant vos parties. La voix passe directement entre vos deux PC, chiffrée de bout en bout." />
 
             <controls:InfoBar Margin="{StaticResource Margin.StackL}" Severity="{Binding StatusSeverity}" Message="{Binding Status}"
                               Visibility="{Binding HasStatus, Converter={StaticResource BoolToVisibility}}">
@@ -25,7 +26,7 @@
                         Visibility="{Binding CanOpenMicrophoneSettings, Converter={StaticResource BoolToVisibility}}" />
             </controls:InfoBar>
 
-            <!-- ===== Appel entrant d'un ami Steam (aussi en petite fenêtre, Call/IncomingCallWindow) ===== -->
+            <!-- ===== Appel entrant (aussi en petite fenêtre, Call/IncomingCallWindow) ===== -->
             <Border Margin="{StaticResource Margin.StackL}" Style="{StaticResource Card}"
                     Visibility="{Binding HasIncomingCall, Converter={StaticResource BoolToVisibility}}">
                 <StackPanel>
@@ -60,67 +61,164 @@
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
 
-            <!-- ===== Départ ===== -->
-            <StackPanel Visibility="{Binding IsIdle, Converter={StaticResource BoolToVisibility}}">
-                <!-- Amis Steam : connexion, amis qui ont OptiGame ouvert, « Appeler » -->
-                <Border Margin="0,0,0,12" Style="{StaticResource Card}" DataContext="{Binding Friends}">
-                    <StackPanel>
-                        <TextBlock Style="{StaticResource Text.SectionTitle}" Text="Amis Steam" />
-                        <StackPanel Visibility="{Binding IsSignedIn, Converter={StaticResource InverseBoolToVisibility}}">
-                            <TextBlock Margin="0,4,0,0" Style="{StaticResource Text.Caption}"
-                                       Text="Connectez-vous avec Steam pour voir vos amis Steam qui ont OptiGame ouvert et les appeler en un clic, sans code. La connexion se fait sur la page officielle de Steam, dans votre navigateur : OptiGame ne voit jamais votre mot de passe." />
-                            <WrapPanel Margin="0,12,0,0">
-                                <controls:IconButton Margin="0,0,8,0" Style="{StaticResource Button.Primary}" Glyph="&#xE77B;" Label="Se connecter avec Steam"
-                                                     Command="{Binding DataContext.SignInSteamCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                     Visibility="{Binding IsSigningIn, Converter={StaticResource InverseBoolToVisibility}}" />
-                                <TextBlock Margin="0,0,12,0" VerticalAlignment="Center" Style="{StaticResource Text.Body}"
-                                           Text="Terminez la connexion dans votre navigateur…" AutomationProperties.LiveSetting="Polite"
-                                           Visibility="{Binding IsSigningIn, Converter={StaticResource BoolToVisibility}}" />
-                                <Button Style="{StaticResource Button.Secondary}" Content="Annuler"
-                                        Command="{Binding DataContext.CancelSteamSignInCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                        Visibility="{Binding IsSigningIn, Converter={StaticResource BoolToVisibility}}" />
-                            </WrapPanel>
-                        </StackPanel>
-                        <StackPanel Visibility="{Binding IsSignedIn, Converter={StaticResource BoolToVisibility}}">
-                            <WrapPanel Margin="0,4,0,0">
-                                <TextBlock Margin="0,0,12,0" VerticalAlignment="Center" Style="{StaticResource Text.Caption}">
-                                    <Run Text="Connecté : " /><Run Text="{Binding MyName, Mode=OneWay}" /><Run Text=" · " /><Run Text="{Binding StateText, Mode=OneWay}" />
-                                </TextBlock>
-                                <Button Style="{StaticResource Button.Ghost}" Content="Se déconnecter"
-                                        Command="{Binding DataContext.SignOutSteamCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" />
-                            </WrapPanel>
-                            <CheckBox Margin="0,8,0,0" IsChecked="{Binding IsVisible}" Content="Visible de mes amis Steam qui ont OptiGame (ils peuvent m'appeler)" />
-                            <ItemsControl Margin="0,12,0,0" ItemsSource="{Binding OnlineFriends}" AutomationProperties.Name="Amis Steam en ligne">
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate>
-                                        <Grid Margin="0,0,0,8">
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="Auto" />
-                                                <ColumnDefinition Width="*" />
-                                                <ColumnDefinition Width="Auto" />
-                                            </Grid.ColumnDefinitions>
-                                            <Border Width="32" Height="32" CornerRadius="16" Background="{DynamicResource Brush.AccentSoft}">
-                                                <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" Style="{StaticResource Text.BodyStrong}" Text="{Binding Initial}" />
-                                            </Border>
-                                            <TextBlock Grid.Column="1" Margin="12,0" VerticalAlignment="Center" Style="{StaticResource Text.Body}" Text="{Binding DisplayName}" />
-                                            <controls:IconButton Grid.Column="2" Style="{StaticResource Button.Secondary}" Glyph="&#xE717;" Label="Appeler"
-                                                                 Command="{Binding DataContext.CallFriendCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                                 CommandParameter="{Binding}" AutomationProperties.Name="{Binding DisplayName, StringFormat=Appeler {0}}" />
-                                        </Grid>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
-                            <TextBlock Style="{StaticResource Text.Caption}" Text="Aucun de vos amis Steam n'a OptiGame ouvert en ce moment."
-                                       Visibility="{Binding ShowsNoFriends, Converter={StaticResource BoolToVisibility}}" />
-                            <TextBlock Margin="0,6,0,0" Style="{StaticResource Text.Caption}" TextWrapping="Wrap"
-                                       Text="Votre liste d'amis Steam est privée : seuls vos amis dont la liste est publique vous voient. Sans rien changer dans Steam, ajoutez vos amis ici : ils n'ont qu'à accepter."
-                                       Visibility="{Binding ShowsPrivateListHint, Converter={StaticResource BoolToVisibility}}" />
+            <!-- ===== Appel en cours (ou qui se prépare) ===== -->
+            <Border Margin="{StaticResource Margin.StackL}" Style="{StaticResource Card}" Visibility="{Binding IsActive, Converter={StaticResource BoolToVisibility}}">
+                <StackPanel>
+                    <TextBlock Style="{StaticResource Text.SectionTitle}" Text="{Binding CallHeader}" AutomationProperties.LiveSetting="Polite" />
 
-                            <!-- Amis OptiGame : demande d'ami à une personne connue de Steam, acceptée par elle -->
-                            <Button Margin="0,12,0,0" HorizontalAlignment="Left" Style="{StaticResource Button.Secondary}" Content="Ajouter un ami…"
-                                    Command="{Binding DataContext.ToggleAddFriendCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" />
-                            <StackPanel Margin="0,8,0,0"
-                                        Visibility="{Binding DataContext.IsAddingFriend, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BoolToVisibility}}">
+                    <!-- Avant la connexion : progression et « Annuler » -->
+                    <StackPanel Visibility="{Binding IsInCall, Converter={StaticResource InverseBoolToVisibility}}">
+                        <ProgressBar Margin="0,12,0,0" Height="4" IsIndeterminate="True" AutomationProperties.Name="{Binding CallHeader}" />
+                        <Button Margin="0,12,0,0" HorizontalAlignment="Left" Style="{StaticResource Button.Secondary}" Content="Annuler"
+                                Command="{Binding HangUpCommand}" />
+                    </StackPanel>
+
+                    <!-- Connecté : mots de contrôle, onglets, boutons -->
+                    <StackPanel Visibility="{Binding IsInCall, Converter={StaticResource BoolToVisibility}}">
+                        <TextBlock Margin="0,4,0,0" Style="{StaticResource Text.Caption}" TextWrapping="Wrap"
+                                   Visibility="{Binding ShowsSafetyWords, Converter={StaticResource BoolToVisibility}}">
+                            <Run Text="Mots de contrôle : " /><Run Text="{Binding SafetyWords, Mode=OneWay}" FontWeight="SemiBold" />
+                            <Run Text=" — votre ami doit voir les mêmes. Sinon, raccrochez." />
+                        </TextBlock>
+                        <TextBlock Margin="0,2,0,0" Style="{StaticResource Text.Caption}">
+                            <Run Text="Connexion " /><Run Text="{Binding ConnectionPath, Mode=OneWay}" />
+                        </TextBlock>
+
+                        <Border Margin="0,12,0,0" HorizontalAlignment="Left" Padding="3" CornerRadius="{StaticResource Radius.Control}"
+                                Background="{StaticResource Brush.Control}">
+                            <WrapPanel>
+                                <RadioButton Style="{StaticResource Segment}" GroupName="InCallTabs" IsChecked="{Binding IsCallTab}" Content="Appel" />
+                                <RadioButton Style="{StaticResource Segment}" GroupName="InCallTabs" IsChecked="{Binding IsDevicesTab}" Content="Périphériques" />
+                                <RadioButton Style="{StaticResource Segment}" GroupName="InCallTabs" IsChecked="{Binding IsSoundTab}" Content="Son" />
+                            </WrapPanel>
+                        </Border>
+
+                        <!-- Onglet Appel : niveaux -->
+                        <Grid Margin="0,16,0,0" Visibility="{Binding IsCallTab, Converter={StaticResource BoolToVisibility}}">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" MaxWidth="360" />
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+                            <TextBlock Grid.Row="0" Margin="0,0,16,8" VerticalAlignment="Center" Style="{StaticResource Text.Body}" Text="{Binding MicrophoneState}" />
+                            <ProgressBar Grid.Row="0" Grid.Column="1" Margin="0,0,0,8" Height="6" VerticalAlignment="Center" Maximum="1" Value="{Binding LocalLevel, Mode=OneWay}"
+                                         AutomationProperties.Name="Niveau de votre voix" />
+                            <TextBlock Grid.Row="1" Margin="0,0,16,0" VerticalAlignment="Center" Style="{StaticResource Text.Body}" Text="{Binding PeerState}" />
+                            <ProgressBar Grid.Row="1" Grid.Column="1" Height="6" VerticalAlignment="Center" Maximum="1" Value="{Binding RemoteLevel, Mode=OneWay}"
+                                         AutomationProperties.Name="Niveau de la voix de votre ami" />
+                        </Grid>
+
+                        <!-- Onglet Périphériques : micro, sortie, volume de l'ami -->
+                        <StackPanel Margin="0,16,0,0" Visibility="{Binding IsDevicesTab, Converter={StaticResource BoolToVisibility}}">
+                            <WrapPanel>
+                                <StackPanel Margin="0,0,16,8">
+                                    <Label Style="{StaticResource Text.FieldLabel}" Content="_Micro" Target="{Binding ElementName=MicBox}" />
+                                    <ComboBox x:Name="MicBox" Width="320" ItemsSource="{Binding Microphones}" SelectedItem="{Binding SelectedMicrophone}"
+                                              AutomationProperties.Name="Micro" />
+                                </StackPanel>
+                                <StackPanel Margin="0,0,16,8">
+                                    <Label Style="{StaticResource Text.FieldLabel}" Content="_Sortie audio" Target="{Binding ElementName=SpeakerBox}" />
+                                    <ComboBox x:Name="SpeakerBox" Width="320" ItemsSource="{Binding Speakers}" SelectedItem="{Binding SelectedSpeaker}"
+                                              AutomationProperties.Name="Sortie audio" />
+                                </StackPanel>
+                            </WrapPanel>
+                            <Label Style="{StaticResource Text.FieldLabel}" Content="_Volume de votre ami" Target="{Binding ElementName=VolumeSlider}" />
+                            <Slider x:Name="VolumeSlider" Width="320" HorizontalAlignment="Left" Minimum="0" Maximum="100" SmallChange="5" LargeChange="10"
+                                    Value="{Binding Volume}" AutomationProperties.Name="Volume de votre ami" />
+                        </StackPanel>
+
+                        <!-- Onglet Son : ce que vous envoyez -->
+                        <StackPanel Margin="0,16,0,0" Visibility="{Binding IsSoundTab, Converter={StaticResource BoolToVisibility}}">
+                            <WrapPanel>
+                                <StackPanel Margin="0,0,16,8">
+                                    <Label Style="{StaticResource Text.FieldLabel}" Content="_Qualité de la voix envoyée" Target="{Binding ElementName=QualityBox}" />
+                                    <ComboBox x:Name="QualityBox" Width="320" ItemsSource="{Binding QualityOptions}" SelectedItem="{Binding SelectedQuality}"
+                                              AutomationProperties.Name="Qualité de la voix envoyée" />
+                                </StackPanel>
+                                <StackPanel Margin="0,0,16,8">
+                                    <Label Style="{StaticResource Text.FieldLabel}" Content="Suppression du _bruit" Target="{Binding ElementName=NoiseBox}" />
+                                    <ComboBox x:Name="NoiseBox" Width="320" ItemsSource="{Binding NoiseOptions}" SelectedItem="{Binding SelectedNoise}"
+                                              AutomationProperties.Name="Suppression du bruit" />
+                                </StackPanel>
+                                <StackPanel Margin="0,0,16,8">
+                                    <Label Style="{StaticResource Text.FieldLabel}" Content="Seuil du mi_cro" Target="{Binding ElementName=GateBox}" />
+                                    <ComboBox x:Name="GateBox" Width="320" ItemsSource="{Binding GateOptions}" SelectedItem="{Binding SelectedGate}"
+                                              AutomationProperties.Name="Seuil du micro" />
+                                </StackPanel>
+                            </WrapPanel>
+                            <TextBlock Margin="0,0,0,6" Style="{StaticResource Text.Caption}" Foreground="{StaticResource Brush.Text}" Text="{Binding AutoQualityText}"
+                                       TextWrapping="Wrap" Visibility="{Binding HasAutoQualityText, Converter={StaticResource BoolToVisibility}}" />
+                            <Grid Width="320" HorizontalAlignment="Left" Visibility="{Binding IsManualGate, Converter={StaticResource BoolToVisibility}}">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <Slider VerticalAlignment="Center" Minimum="-80" Maximum="-10" SmallChange="1" LargeChange="5" Value="{Binding GateThreshold}"
+                                        AutomationProperties.Name="Seuil du micro, en décibels" />
+                                <TextBlock Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center" Style="{StaticResource Text.Body}"
+                                           Text="{Binding GateThreshold, StringFormat={}{0:0} dB}" />
+                            </Grid>
+                            <ProgressBar Width="320" Margin="0,10,0,0" HorizontalAlignment="Left" Height="8" Maximum="1" Value="{Binding MicMeter, Mode=OneWay}"
+                                         AutomationProperties.Name="Niveau de votre micro" />
+                            <TextBlock Margin="0,4,0,0" Style="{StaticResource Text.Caption}" Text="{Binding MeterText}" />
+                        </StackPanel>
+
+                        <WrapPanel Margin="0,16,0,0">
+                            <controls:IconButton Margin="0,0,8,0" Style="{StaticResource Button.Primary}" Glyph="{Binding MuteGlyph}" Label="{Binding MuteLabel}"
+                                                 Command="{Binding ToggleMuteCommand}" />
+                            <controls:IconButton Style="{StaticResource Button.DangerFilled}" Glyph="&#xE778;" Label="Raccrocher" Command="{Binding HangUpCommand}" />
+                        </WrapPanel>
+                        <TextBlock Margin="0,12,0,0" Style="{StaticResource Text.Caption}"
+                                   Text="L'appel continue fenêtre fermée, même pendant une partie : micro et raccrocher aussi depuis l'icône d'OptiGame dans la zone de notification, et par votre raccourci (Paramètres › Audio)." />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <!-- ===== Liste des amis ===== -->
+            <Border Style="{StaticResource Card}" DataContext="{Binding Friends}">
+                <StackPanel>
+                    <!-- Pas connecté avec Steam -->
+                    <StackPanel Visibility="{Binding IsSignedIn, Converter={StaticResource InverseBoolToVisibility}}">
+                        <TextBlock Style="{StaticResource Text.SectionTitle}" Text="Connectez-vous avec Steam" />
+                        <TextBlock Margin="0,4,0,0" Style="{StaticResource Text.Caption}" TextWrapping="Wrap"
+                                   Text="Pour voir vos amis Steam qui ont OptiGame ouvert et les appeler en un clic. La connexion se fait sur la page officielle de Steam, dans votre navigateur : OptiGame ne voit jamais votre mot de passe." />
+                        <WrapPanel Margin="0,12,0,0">
+                            <controls:IconButton Margin="0,0,8,0" Style="{StaticResource Button.Primary}" Glyph="&#xE77B;" Label="Se connecter avec Steam"
+                                                 Command="{Binding DataContext.SignInSteamCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                 Visibility="{Binding IsSigningIn, Converter={StaticResource InverseBoolToVisibility}}" />
+                            <TextBlock Margin="0,0,12,0" VerticalAlignment="Center" Style="{StaticResource Text.Body}"
+                                       Text="Terminez la connexion dans votre navigateur…" AutomationProperties.LiveSetting="Polite"
+                                       Visibility="{Binding IsSigningIn, Converter={StaticResource BoolToVisibility}}" />
+                            <Button Style="{StaticResource Button.Secondary}" Content="Annuler"
+                                    Command="{Binding DataContext.CancelSteamSignInCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                    Visibility="{Binding IsSigningIn, Converter={StaticResource BoolToVisibility}}" />
+                        </WrapPanel>
+                    </StackPanel>
+
+                    <!-- Connecté -->
+                    <StackPanel Visibility="{Binding IsSignedIn, Converter={StaticResource BoolToVisibility}}">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource Text.SectionTitle}" Text="{Binding OnlineFriends.Count, StringFormat={}En ligne ({0})}" />
+                                <TextBlock Margin="0,2,0,0" Style="{StaticResource Text.Caption}">
+                                    <Run Text="{Binding MyName, Mode=OneWay}" /><Run Text=" · " /><Run Text="{Binding StateText, Mode=OneWay}" />
+                                </TextBlock>
+                            </StackPanel>
+                            <controls:IconButton Grid.Column="1" VerticalAlignment="Top" Style="{StaticResource Button.Secondary}" Glyph="&#xE8FA;" Label="Ajouter un ami…"
+                                                 Command="{Binding DataContext.ToggleAddFriendCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+                        </Grid>
+
+                        <!-- Ajouter un ami : personnes connues du client Steam -->
+                        <Border Margin="0,12,0,0" Padding="12" CornerRadius="{StaticResource Radius.Control}" Background="{StaticResource Brush.Control}"
+                                Visibility="{Binding DataContext.IsAddingFriend, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BoolToVisibility}}">
+                            <StackPanel>
                                 <Label Style="{StaticResource Text.FieldLabel}" Content="_Rechercher parmi les personnes que votre Steam connaît" Target="{Binding ElementName=FriendSearchBox}" />
                                 <TextBox x:Name="FriendSearchBox" Width="320" HorizontalAlignment="Left"
                                          Text="{Binding DataContext.FriendSearch, RelativeSource={RelativeSource AncestorType=UserControl}, UpdateSourceTrigger=PropertyChanged}"
@@ -147,240 +245,77 @@
                                         </DataTemplate>
                                     </ItemsControl.ItemTemplate>
                                 </ItemsControl>
-                                <TextBlock Margin="0,4,0,0" Style="{StaticResource Text.Caption}"
-                                           Text="Ce sont les personnes que votre Steam a croisées (amis, groupes, discussions). La demande ne lui arrive que s'il a OptiGame ouvert et connecté à Steam." />
+                                <TextBlock Margin="0,4,0,0" Style="{StaticResource Text.Caption}" TextWrapping="Wrap"
+                                           Text="Ce sont les personnes que votre Steam a croisées (amis, groupes, discussions). La demande ne lui arrive que s'il a OptiGame ouvert et connecté à Steam ; il n'a qu'à accepter." />
                             </StackPanel>
-                            <Expander Margin="0,12,0,0" Style="{StaticResource Expander.Disclosure}"
-                                      Header="{Binding DataContext.ContactsHeader, RelativeSource={RelativeSource AncestorType=UserControl}}">
-                                <ItemsControl Margin="0,6,0,0" ItemsSource="{Binding DataContext.ContactItems, RelativeSource={RelativeSource AncestorType=UserControl}}">
-                                    <ItemsControl.ItemTemplate>
-                                        <DataTemplate>
-                                            <Grid Margin="0,0,0,4">
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="*" />
-                                                    <ColumnDefinition Width="Auto" />
-                                                </Grid.ColumnDefinitions>
-                                                <TextBlock VerticalAlignment="Center" Style="{StaticResource Text.Body}" Text="{Binding Name}" />
-                                                <Button Grid.Column="1" Style="{StaticResource Button.Ghost}" Content="Retirer" CommandParameter="{Binding}"
-                                                        Command="{Binding DataContext.RemoveContactCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                        AutomationProperties.Name="{Binding Name, StringFormat=Retirer {0} de mes amis OptiGame}" />
-                                            </Grid>
-                                        </DataTemplate>
-                                    </ItemsControl.ItemTemplate>
-                                </ItemsControl>
-                            </Expander>
+                        </Border>
+
+                        <!-- En ligne -->
+                        <ItemsControl Margin="0,12,0,0" ItemsSource="{Binding OnlineFriends}" AutomationProperties.Name="Amis en ligne">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid Margin="0,0,0,8">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <Border Width="32" Height="32" CornerRadius="16" Background="{DynamicResource Brush.AccentSoft}">
+                                            <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" Style="{StaticResource Text.BodyStrong}" Text="{Binding Initial}" />
+                                        </Border>
+                                        <TextBlock Grid.Column="1" Margin="12,0" VerticalAlignment="Center" Style="{StaticResource Text.Body}" Text="{Binding DisplayName}" />
+                                        <controls:IconButton Grid.Column="2" Style="{StaticResource Button.Primary}" Glyph="&#xE717;" Label="Appeler"
+                                                             Command="{Binding DataContext.CallFriendCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                             CommandParameter="{Binding}" AutomationProperties.Name="{Binding DisplayName, StringFormat=Appeler {0}}" />
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <TextBlock Style="{StaticResource Text.Caption}" Text="Aucun de vos amis n'a OptiGame ouvert en ce moment."
+                                   Visibility="{Binding ShowsNoFriends, Converter={StaticResource BoolToVisibility}}" />
+                        <TextBlock Margin="0,6,0,0" Style="{StaticResource Text.Caption}" TextWrapping="Wrap"
+                                   Text="Votre liste d'amis Steam est privée : seuls vos amis dont la liste est publique vous voient. Sans rien changer dans Steam, ajoutez vos amis ici : ils n'ont qu'à accepter."
+                                   Visibility="{Binding ShowsPrivateListHint, Converter={StaticResource BoolToVisibility}}" />
+
+                        <!-- Hors ligne : amis OptiGame qui n'ont pas OptiGame ouvert -->
+                        <StackPanel Margin="0,16,0,0"
+                                    Visibility="{Binding DataContext.HasOfflineContacts, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BoolToVisibility}}">
+                            <TextBlock Style="{StaticResource Text.Label}" Text="Hors ligne" />
+                            <ItemsControl Margin="0,6,0,0" ItemsSource="{Binding DataContext.OfflineContacts, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                          AutomationProperties.Name="Amis hors ligne">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Grid Margin="0,0,0,6">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <Border Width="32" Height="32" CornerRadius="16" Background="{StaticResource Brush.Control}">
+                                                <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" Style="{StaticResource Text.Caption}" Text="{Binding Initial}" />
+                                            </Border>
+                                            <TextBlock Grid.Column="1" Margin="12,0" VerticalAlignment="Center" Style="{StaticResource Text.Secondary}" Text="{Binding Name}" />
+                                            <Button Grid.Column="2" Style="{StaticResource Button.Ghost}" Content="Retirer" CommandParameter="{Binding}"
+                                                    Command="{Binding DataContext.RemoveContactCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                    AutomationProperties.Name="{Binding Name, StringFormat=Retirer {0} de mes amis OptiGame}" />
+                                        </Grid>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
                         </StackPanel>
-                        <TextBlock Margin="0,8,0,0" Style="{StaticResource Text.Caption}" Foreground="{StaticResource Brush.Warning}" TextWrapping="Wrap"
-                                   Text="{Binding Message}" Visibility="{Binding HasMessage, Converter={StaticResource BoolToVisibility}}" />
+
+                        <Grid Margin="0,16,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <CheckBox IsChecked="{Binding IsVisible}" Content="Visible de mes amis (ils peuvent m'appeler)" />
+                            <Button Grid.Column="1" Style="{StaticResource Button.Ghost}" Content="Se déconnecter de Steam"
+                                    Command="{Binding DataContext.SignOutSteamCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+                        </Grid>
                     </StackPanel>
-                </Border>
-
-                <Border Style="{StaticResource Card}">
-                    <StackPanel>
-                        <TextBlock Style="{StaticResource Text.SectionTitle}" Text="Appeler un ami" />
-                        <TextBlock Margin="0,4,0,0" Style="{StaticResource Text.Caption}"
-                                   Text="OptiGame vous donne un code de 6 caractères à envoyer à votre ami. Il a 2 minutes pour le saisir." />
-                        <controls:IconButton Margin="0,12,0,0" HorizontalAlignment="Left" Style="{StaticResource Button.Primary}" Glyph="&#xE717;"
-                                             Label="Obtenir un code" Command="{Binding StartCallCommand}" />
-                    </StackPanel>
-                </Border>
-
-                <Border Margin="0,12,0,0" Style="{StaticResource Card}">
-                    <StackPanel>
-                        <TextBlock Style="{StaticResource Text.SectionTitle}" Text="Rejoindre un ami" />
-                        <Label Margin="0,8,0,0" Style="{StaticResource Text.FieldLabel}" Content="_Code donné par votre ami" Target="{Binding ElementName=CodeBox}" />
-                        <WrapPanel>
-                            <TextBox x:Name="CodeBox" Width="180" Margin="0,0,8,8" FontFamily="{StaticResource Font.Mono}" CharacterCasing="Upper" MaxLength="12"
-                                     Text="{Binding JoinCode, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Code donné par votre ami"
-                                     AutomationProperties.HelpText="Par exemple OG-K7P2Q9">
-                                <TextBox.InputBindings>
-                                    <KeyBinding Key="Return" Command="{Binding JoinCallCommand}" />
-                                </TextBox.InputBindings>
-                            </TextBox>
-                            <controls:IconButton Margin="0,0,0,8" Style="{StaticResource Button.Secondary}" Glyph="&#xE8FB;" Label="Rejoindre"
-                                                 Command="{Binding JoinCallCommand}" />
-                        </WrapPanel>
-                    </StackPanel>
-                </Border>
-
-                <Border Margin="0,12,0,0" Style="{StaticResource Card}">
-                    <StackPanel>
-                        <CheckBox IsChecked="{Binding UseStun}" Content="Passer par Internet (ami sur un autre réseau)"
-                                  AutomationProperties.HelpText="À cocher des deux côtés quand vous n'êtes pas sur le même réseau." />
-                        <TextBlock Margin="28,4,0,0" Style="{StaticResource Text.Caption}"
-                                   Text="À cocher des deux côtés quand votre ami n'est pas chez vous. Un serveur public de découverte d'adresse voit alors votre adresse IP, rien d'autre ; votre voix ne passe jamais par lui. Décoché : seulement entre deux PC du même réseau." />
-                    </StackPanel>
-                </Border>
-            </StackPanel>
-
-            <!-- ===== Préparation / connexion ===== -->
-            <Border Style="{StaticResource Card}" Visibility="{Binding IsWorking, Converter={StaticResource BoolToVisibility}}">
-                <StackPanel>
-                    <TextBlock Style="{StaticResource Text.BodyStrong}" Text="{Binding WorkingText}" AutomationProperties.LiveSetting="Polite" />
-                    <ProgressBar Margin="0,12,0,0" Height="4" IsIndeterminate="True" AutomationProperties.Name="{Binding WorkingText}" />
-                    <Button Margin="0,12,0,0" HorizontalAlignment="Left" Style="{StaticResource Button.Secondary}" Content="Annuler"
-                            Command="{Binding HangUpCommand}" />
-                </StackPanel>
-            </Border>
-
-            <!-- ===== Code à donner ===== -->
-            <Border Style="{StaticResource Card}" Visibility="{Binding IsWaiting, Converter={StaticResource BoolToVisibility}}">
-                <StackPanel>
-                    <TextBlock Style="{StaticResource Text.SectionTitle}" Text="{Binding WaitingTitle}" />
-                    <TextBlock Margin="0,4,0,0" Style="{StaticResource Text.Caption}"
-                               Text="{Binding WaitingHelp}" />
-                    <WrapPanel Margin="0,12,0,0">
-                        <TextBox Margin="0,0,12,8" IsReadOnly="True" BorderThickness="0" Background="Transparent" Padding="0"
-                                 FontFamily="{StaticResource Font.Mono}" FontSize="{StaticResource FontSize.Hero}" FontWeight="SemiBold"
-                                 Foreground="{StaticResource Brush.Text}" Text="{Binding Code, Mode=OneWay}" AutomationProperties.Name="Votre code" />
-                        <controls:IconButton Margin="0,0,0,8" VerticalAlignment="Center" Style="{StaticResource Button.Primary}" Glyph="&#xE8C8;"
-                                             Label="Copier" Command="{Binding CopyCodeCommand}" />
-                    </WrapPanel>
-                    <TextBlock Style="{StaticResource Text.Body}" Text="{Binding Countdown}" />
-                    <ProgressBar Margin="0,8,0,0" Height="4" IsIndeterminate="True" AutomationProperties.Name="En attente de votre ami" />
-                    <Button Margin="0,12,0,0" HorizontalAlignment="Left" Style="{StaticResource Button.Secondary}" Content="Annuler"
-                            Command="{Binding HangUpCommand}" />
-                </StackPanel>
-            </Border>
-
-            <!-- ===== Mots de contrôle ===== -->
-            <Border Margin="0,12,0,0" Style="{StaticResource Card}" Visibility="{Binding ShowsSafetyWords, Converter={StaticResource BoolToVisibility}}">
-                <StackPanel>
-                    <TextBlock Style="{StaticResource Text.Label}" Text="Mots de contrôle" />
-                    <TextBlock Margin="0,4,0,0" Style="{StaticResource Text.Title}" Text="{Binding SafetyWords}" TextWrapping="Wrap" />
-                    <TextBlock Margin="0,6,0,0" Style="{StaticResource Text.Caption}"
-                               Text="Votre ami doit voir les mêmes mots : lisez-les-vous au début de l'appel. S'ils diffèrent, raccrochez : quelqu'un s'est interposé." />
-                </StackPanel>
-            </Border>
-
-            <!-- ===== En appel ===== -->
-            <Border Margin="0,12,0,0" Style="{StaticResource Card}" Visibility="{Binding IsInCall, Converter={StaticResource BoolToVisibility}}">
-                <StackPanel>
-                    <TextBlock Style="{StaticResource Text.SectionTitle}" AutomationProperties.LiveSetting="Polite">
-                        <Run Text="En appel" /><Run Text=" · " /><Run Text="{Binding Duration, Mode=OneWay}" />
-                    </TextBlock>
-                    <TextBlock Margin="0,2,0,0" Style="{StaticResource Text.Caption}">
-                        <Run Text="Connexion " /><Run Text="{Binding ConnectionPath, Mode=OneWay}" />
-                    </TextBlock>
-
-                    <Grid Margin="0,16,0,0">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto" />
-                            <ColumnDefinition Width="*" MaxWidth="360" />
-                        </Grid.ColumnDefinitions>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                        </Grid.RowDefinitions>
-                        <TextBlock Grid.Row="0" Margin="0,0,16,8" VerticalAlignment="Center" Style="{StaticResource Text.Body}" Text="{Binding MicrophoneState}" />
-                        <ProgressBar Grid.Row="0" Grid.Column="1" Margin="0,0,0,8" Height="6" VerticalAlignment="Center" Maximum="1" Value="{Binding LocalLevel, Mode=OneWay}"
-                                     AutomationProperties.Name="Niveau de votre voix" />
-                        <TextBlock Grid.Row="1" Margin="0,0,16,8" VerticalAlignment="Center" Style="{StaticResource Text.Body}" Text="{Binding PeerState}" />
-                        <ProgressBar Grid.Row="1" Grid.Column="1" Margin="0,0,0,8" Height="6" VerticalAlignment="Center" Maximum="1" Value="{Binding RemoteLevel, Mode=OneWay}"
-                                     AutomationProperties.Name="Niveau de la voix de votre ami" />
-                        <Label Grid.Row="2" Margin="0,0,16,0" Padding="0" VerticalAlignment="Center" Style="{StaticResource Text.FieldLabel}"
-                               Content="_Volume de votre ami" Target="{Binding ElementName=VolumeSlider}" />
-                        <Slider x:Name="VolumeSlider" Grid.Row="2" Grid.Column="1" VerticalAlignment="Center" Minimum="0" Maximum="100" SmallChange="5" LargeChange="10"
-                                Value="{Binding Volume}" AutomationProperties.Name="Volume de votre ami" />
-                    </Grid>
-
-                    <WrapPanel Margin="0,16,0,0">
-                        <controls:IconButton Margin="0,0,8,0" Style="{StaticResource Button.Primary}" Glyph="{Binding MuteGlyph}" Label="{Binding MuteLabel}"
-                                             Command="{Binding ToggleMuteCommand}" />
-                        <controls:IconButton Style="{StaticResource Button.DangerFilled}" Glyph="&#xE778;" Label="Raccrocher" Command="{Binding HangUpCommand}" />
-                    </WrapPanel>
-                    <TextBlock Margin="0,12,0,0" Style="{StaticResource Text.Caption}"
-                               Text="L'appel continue fenêtre fermée, même pendant une partie : micro et raccrocher aussi depuis l'icône d'OptiGame dans la zone de notification." />
-                </StackPanel>
-            </Border>
-
-            <!-- ===== Raccourci du micro (en jeu) : réglable à tout moment ===== -->
-            <Border Margin="0,12,0,0" Style="{StaticResource Card}">
-                <StackPanel>
-                    <TextBlock Style="{StaticResource Text.SectionTitle}" Text="Raccourci du micro en jeu" />
-                    <TextBlock Margin="0,4,0,0" Style="{StaticResource Text.Caption}"
-                               Text="Fonctionne jeu au premier plan, pendant un appel seulement. La touche n'est pas retirée au jeu : choisissez-en une qu'il n'utilise pas (F13 à F24, Pause, pavé numérique…) ou une combinaison (Ctrl + Alt + M)." />
-                    <WrapPanel Margin="0,12,0,0">
-                        <TextBlock Margin="0,0,16,8" VerticalAlignment="Center" Style="{StaticResource Text.BodyStrong}" Text="{Binding MicKeyLabel}"
-                                   Visibility="{Binding IsCapturingMicKey, Converter={StaticResource InverseBoolToVisibility}}" />
-                        <TextBlock Margin="0,0,16,8" VerticalAlignment="Center" Style="{StaticResource Text.BodyStrong}" AutomationProperties.LiveSetting="Assertive"
-                                   Text="Appuyez sur la touche ou la combinaison voulue… (Échap pour annuler)"
-                                   Visibility="{Binding IsCapturingMicKey, Converter={StaticResource BoolToVisibility}}" />
-                        <Button x:Name="ChooseKeyButton" Margin="0,0,8,8" Style="{StaticResource Button.Secondary}" Content="Choisir une touche…"
-                                Command="{Binding ChooseMicKeyCommand}" />
-                        <Button Margin="0,0,8,8" Style="{StaticResource Button.Secondary}" Content="Annuler" Command="{Binding CancelMicKeyCaptureCommand}"
-                                Visibility="{Binding IsCapturingMicKey, Converter={StaticResource BoolToVisibility}}" />
-                        <Button Margin="0,0,8,8" Style="{StaticResource Button.Ghost}" Content="Retirer" Command="{Binding ClearMicKeyCommand}"
-                                Visibility="{Binding HasMicKey, Converter={StaticResource BoolToVisibility}}" />
-                    </WrapPanel>
-                    <RadioButton Margin="0,4,0,0" GroupName="MicKeyMode" IsChecked="{Binding IsToggleMode}"
-                                 Content="Basculer : une pression coupe ou ouvre le micro (petit son de confirmation)" />
-                    <RadioButton Margin="0,6,0,0" GroupName="MicKeyMode" IsChecked="{Binding IsPushToTalk}"
-                                 Content="Appuyer pour parler : micro ouvert tant que la touche est enfoncée" />
-                </StackPanel>
-            </Border>
-
-            <!-- ===== Micro, sortie audio et suppression du bruit (les périphériques sont connus une fois le micro ouvert) ===== -->
-            <Border Margin="0,12,0,0" Style="{StaticResource Card}">
-                <StackPanel>
-                    <TextBlock Style="{StaticResource Text.SectionTitle}" Text="Micro et son" />
-                    <StackPanel Margin="0,8,0,0">
-                        <Label Style="{StaticResource Text.FieldLabel}" Content="Suppression du _bruit" Target="{Binding ElementName=NoiseBox}" />
-                        <ComboBox x:Name="NoiseBox" Width="340" HorizontalAlignment="Left" ItemsSource="{Binding NoiseOptions}" SelectedItem="{Binding SelectedNoise}"
-                                  AutomationProperties.Name="Suppression du bruit" />
-                        <TextBlock Margin="0,4,0,0" Style="{StaticResource Text.Caption}"
-                                   Text="Forte : un filtre spécialisé dans la voix retire le clavier, le ventilateur et les bruits de fond, sur votre PC (rien n'est envoyé ailleurs). Aucune : pour un micro de studio ou un casque qui filtre déjà." />
-                    </StackPanel>
-                    <WrapPanel Margin="0,12,0,0">
-                        <StackPanel Margin="0,0,16,8">
-                            <Label Style="{StaticResource Text.FieldLabel}" Content="_Qualité de la voix envoyée" Target="{Binding ElementName=QualityBox}" />
-                            <ComboBox x:Name="QualityBox" Width="340" ItemsSource="{Binding QualityOptions}" SelectedItem="{Binding SelectedQuality}"
-                                      AutomationProperties.Name="Qualité de la voix envoyée" />
-                        </StackPanel>
-                        <StackPanel Margin="0,0,16,8">
-                            <Label Style="{StaticResource Text.FieldLabel}" Content="Seuil du mi_cro" Target="{Binding ElementName=GateBox}" />
-                            <ComboBox x:Name="GateBox" Width="340" ItemsSource="{Binding GateOptions}" SelectedItem="{Binding SelectedGate}"
-                                      AutomationProperties.Name="Seuil du micro" />
-                        </StackPanel>
-                    </WrapPanel>
-                    <TextBlock Margin="0,0,0,6" Style="{StaticResource Text.Caption}" Foreground="{StaticResource Brush.Text}" Text="{Binding AutoQualityText}"
-                               Visibility="{Binding HasAutoQualityText, Converter={StaticResource BoolToVisibility}}" AutomationProperties.LiveSetting="Polite" />
-                    <TextBlock Style="{StaticResource Text.Caption}"
-                               Text="Débit automatique : le plus haut qui apporte encore quelque chose avec votre micro (mesuré pendant que vous parlez, gardé pour ce micro). Seuil : votre micro ne s'ouvre que lorsque vous parlez assez fort ; une voix en fond, plus faible au micro, est coupée." />
-                    <Grid Margin="0,8,0,0" Visibility="{Binding IsManualGate, Converter={StaticResource BoolToVisibility}}">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" MaxWidth="340" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
-                        <Slider VerticalAlignment="Center" Minimum="-80" Maximum="-10" SmallChange="1" LargeChange="5" Value="{Binding GateThreshold}"
-                                AutomationProperties.Name="Seuil du micro, en décibels" />
-                        <TextBlock Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center" Style="{StaticResource Text.Body}"
-                                   Text="{Binding GateThreshold, StringFormat={}{0:0} dB}" />
-                    </Grid>
-                    <!-- Mesure du niveau (appel ou test) : barre = votre voix après la suppression du bruit ; texte = seuil et état -->
-                    <StackPanel Margin="0,12,0,0" Visibility="{Binding ShowsMeter, Converter={StaticResource BoolToVisibility}}">
-                        <ProgressBar Height="8" Width="340" HorizontalAlignment="Left" Maximum="1" Value="{Binding MicMeter, Mode=OneWay}"
-                                     AutomationProperties.Name="Niveau de votre micro" />
-                        <TextBlock Margin="0,4,0,0" Style="{StaticResource Text.Caption}" Text="{Binding MeterText}" AutomationProperties.LiveSetting="Off" />
-                    </StackPanel>
-                    <Button Margin="0,12,0,0" HorizontalAlignment="Left" Style="{StaticResource Button.Secondary}" Content="{Binding MicTestLabel}"
-                            Command="{Binding ToggleMicTestCommand}" Visibility="{Binding IsIdle, Converter={StaticResource BoolToVisibility}}"
-                            AutomationProperties.HelpText="Ouvre votre micro sans appel pour voir son niveau et régler le seuil ; rien n'est envoyé." />
-                    <WrapPanel Margin="0,12,0,0" Visibility="{Binding IsActive, Converter={StaticResource BoolToVisibility}}">
-                        <StackPanel Margin="0,0,16,8">
-                            <Label Style="{StaticResource Text.FieldLabel}" Content="_Micro" Target="{Binding ElementName=MicBox}" />
-                            <ComboBox x:Name="MicBox" Width="340" ItemsSource="{Binding Microphones}" SelectedItem="{Binding SelectedMicrophone}"
-                                      AutomationProperties.Name="Micro" />
-                        </StackPanel>
-                        <StackPanel Margin="0,0,16,8">
-                            <Label Style="{StaticResource Text.FieldLabel}" Content="_Sortie audio" Target="{Binding ElementName=SpeakerBox}" />
-                            <ComboBox x:Name="SpeakerBox" Width="340" ItemsSource="{Binding Speakers}" SelectedItem="{Binding SelectedSpeaker}"
-                                      AutomationProperties.Name="Sortie audio" />
-                        </StackPanel>
-                    </WrapPanel>
-                    <TextBlock Margin="0,4,0,0" Style="{StaticResource Text.Caption}"
-                               Text="« Par défaut » suit Windows : changez de casque dans Windows, l'appel suit. Le choix du micro et de la sortie apparaît pendant un appel et est gardé pour les suivants." />
+                    <TextBlock Margin="0,8,0,0" Style="{StaticResource Text.Caption}" Foreground="{StaticResource Brush.Warning}" TextWrapping="Wrap"
+                               Text="{Binding Message}" Visibility="{Binding HasMessage, Converter={StaticResource BoolToVisibility}}" />
                 </StackPanel>
             </Border>
         </StackPanel>

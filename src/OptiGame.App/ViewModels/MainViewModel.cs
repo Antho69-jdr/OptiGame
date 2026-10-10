@@ -14,12 +14,12 @@ namespace OptiGame.App.ViewModels;
 public sealed partial class MainViewModel : ObservableObject
 {
     // Glyphes Segoe Fluent Icons : manette, diagnostic, composant (pilotes ; le téléchargement E896 reste à la mise à jour),
-    // courbe, téléphone (appel), engrenage.
+    // courbe, personnes (amis), engrenage.
     private const string GamesGlyph = "";
     private const string DiagnosticGlyph = "";
     private const string DriversGlyph = "";
     private const string MeasuresGlyph = "";
-    private const string CallGlyph = "";
+    private const string CallGlyph = ""; // personnes (page Amis)
     private const string SettingsGlyph = "";
 
     private readonly DriversViewModel _drivers;
@@ -53,7 +53,7 @@ public sealed partial class MainViewModel : ObservableObject
             new NavItem("Diagnostic", DiagnosticGlyph, diagnostic, this),
             new NavItem("Pilotes", DriversGlyph, drivers, this),
             new NavItem("Mesures", MeasuresGlyph, measures, this),
-            new NavItem("Appel", CallGlyph, call, this),
+            new NavItem("Amis", CallGlyph, call, this),
         ];
         SettingsItem = new NavItem("Paramètres", SettingsGlyph, settings, this);
         // Page d'ouverture choisie dans Paramètres › Général (Mes jeux par défaut).

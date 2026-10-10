@@ -32,6 +32,41 @@ public static class AudioEndpoints
 
     public static IReadOnlyList<AudioEndpoint> Render() => List(0);
 
+    /// <summary>Micro par défaut de Windows (rôle « console », celui que le moteur web prend par défaut) ; null s'il n'y en a pas.</summary>
+    public static string? DefaultCaptureName() => DefaultName(1);
+
+    /// <summary>Sortie par défaut de Windows ; null s'il n'y en a pas.</summary>
+    public static string? DefaultRenderName() => DefaultName(0);
+
+    private static string? DefaultName(int dataFlow)
+    {
+        var enumerator = (IMMDeviceEnumerator)new MMDeviceEnumerator();
+        try
+        {
+            if (enumerator.GetDefaultAudioEndpoint(dataFlow, 0 /* eConsole */, out var device) != 0) return null;
+            try
+            {
+                if (device.OpenPropertyStore(0, out var store) != 0) return null;
+                try
+                {
+                    return ReadString(store, FriendlyName);
+                }
+                finally
+                {
+                    Marshal.ReleaseComObject(store);
+                }
+            }
+            finally
+            {
+                Marshal.ReleaseComObject(device);
+            }
+        }
+        finally
+        {
+            Marshal.ReleaseComObject(enumerator);
+        }
+    }
+
     private static IReadOnlyList<AudioEndpoint> List(int dataFlow)
     {
         var result = new List<AudioEndpoint>();
@@ -156,6 +191,7 @@ public static class AudioEndpoints
     private interface IMMDeviceEnumerator
     {
         [PreserveSig] int EnumAudioEndpoints(int dataFlow, int stateMask, out IMMDeviceCollection devices);
+        [PreserveSig] int GetDefaultAudioEndpoint(int dataFlow, int role, out IMMDevice device);
     }
 
     [ComImport, Guid("0BD7A1BE-7A1A-44DB-8397-CC5392387B5E"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]

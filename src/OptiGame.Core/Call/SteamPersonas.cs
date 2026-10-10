@@ -6,7 +6,12 @@ namespace OptiGame.Core.Call;
 public sealed record SteamPersona(string SteamId, string Name);
 
 /// <summary>Ami OptiGame accepté des deux côtés, gardé sur ce PC (settings.json) : jamais sur le serveur.</summary>
-public sealed record CallContact(string SteamId, string Name);
+public sealed record CallContact(string SteamId, string Name)
+{
+    /// <summary>Initiale affichée à la place de l'avatar (jamais écrite dans settings.json).</summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public string Initial => Name.Length > 0 ? Name[..1].ToUpperInvariant() : "?";
+}
 
 /// <summary>
 /// Noms connus du client Steam : bloc « friends » de userdata\&lt;compte&gt;\config\localconfig.vdf. Ce n'est PAS la liste d'amis

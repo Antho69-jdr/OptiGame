@@ -163,7 +163,7 @@ Pages Mesures et Paramètres (refonte, étape 7) : mesures automatiques ajoutée
 PresentMon se règle dans Paramètres › Mesures (MeasuresViewModel.ChoosePresentMon) ; Paramètres en onglets (SettingsTab,
 sélecteur `Segment` comme la fiche du jeu), une carte `SettingsCard` de Controls/SettingRow par onglet.
 
-Appel vocal (page « Appel », Ctrl+5 ; étape 8 de l'audit, VOIX SEULEMENT : pas de texte, choix de l'utilisateur le 2026-10-08).
+Appel vocal (page « Amis » depuis la 1.15.2, ex-« Appel », Ctrl+5 ; étape 8 de l'audit, VOIX SEULEMENT : pas de texte, choix de l'utilisateur le 2026-10-08).
 Code COURT « OG-K7P2Q9 » (`Core/Call/CallCode` : 6 caractères, alphabet sans 0/O/1/I/L, valable 2 min, compte à rebours) et
 serveur de MISE EN RELATION (choix de l'utilisateur le 2026-10-09, après le 1er essai en vrai : codes de 1 400 caractères trop
 longs, et échange à la main = échec sur son propre réseau) : `server/call-relay/worker.js` (Cloudflare Workers + Durable Object
@@ -222,6 +222,17 @@ machine de dev : Yeti Nano, Arctis 7 Chat, Iriun TOUS à 48 kHz (le format ne le
 médiane silence ≥ 6 dB, la bande s'arrête au 1er trou > 1,5 kHz (moyenne = claquements larges ; sans l'arrêt, des pics au-dessus
 de 17 kHz donnaient 20 kHz) ; gardée par micro (`CallMicBandwidths`) dès 5 s de parole, débit réenvoyé pendant l'appel s'il change.
 Vérifié (micro simulé « de casque » : 60 sons de 200 Hz à 7,5 kHz + souffle) : 8 kHz mesurés → 48 kbit/s, appliqués à l'appel.
+Réorganisation (demande du 2026-10-10, 1.15.2) : page « AMIS » (nav Ctrl+5, glyphe E716 ; vue `Views/CallView`, ViewModel
+`CallViewModel` inchangés de nom) = appel en cours (en-tête `CallHeader` « En appel avec X · 3:12 » ; onglets `InCallTab` Appel /
+Périphériques (micro, sortie, volume de l'ami) / Son (qualité, bruit, seuil, niveau)), appel entrant, demandes d'ami, liste (en ligne
++ « Appeler », hors ligne = `OfflineContacts` avec « Retirer », ajout, visibilité, déconnexion Steam). PLUS de code à donner ou à
+saisir dans l'interface : les salons à code servent toujours en interne aux appels d'amis (et aux vérifications). Réglages
+permanents dans Paramètres › AUDIO (`SettingsTab.Audio`, `SettingsViewModel.Call`) : micro / sortie (lus dans WINDOWS par
+`AudioEndpoints.Capture/Render` + `DefaultCaptureName/DefaultRenderName`, donc choisissables hors appel ; complétés par ce que le
+moteur voit pendant un appel), qualité, bruit, seuil, test du micro, raccourci (saisie par `SettingsView.OnPreviewKeyDown`), « Passer
+par Internet ». Micro et sortie gardés par leur NOM (= libellé du moteur web) et non plus par l'identifiant du moteur (ancien
+identifiant de 64 caractères hexadécimaux oublié au démarrage) ; la page retrouve le périphérique par son libellé (une 1re
+ouverture du micro par défaut révèle les libellés). Captures : `-Only 5d2` (Paramètres › Audio), `c5d`, `c5d2`, `c5d3`.
 Raccourci du micro en jeu (`Core/Call/MicHotkey` + `MicHotkeyMatcher`, `Platform/Input/RawKeyboardListener`) : touche ou combinaison
 choisie dans la page (saisie dans la fenêtre, Échap annule ; `AppSettings.CallMicKey` = « ctrl+alt+0x4D », `CallMicKeyMode` Basculer
 / Appuyer pour parler). Lue par l'ENTRÉE BRUTE (RegisterRawInputDevices, RIDEV_INPUTSINK, fenêtre de messages sur un thread dédié)

@@ -35,16 +35,23 @@ let micChoice = '', speakerChoice = '', defaultIn = null, defaultOut = null;
 
 // ===== Micro, filtre et sortie audio =====
 
+// Micro choisi = son NOM (celui de Windows, choisi aussi hors appel dans Paramètres › Audio) ; '' = celui de Windows par défaut.
+// Les noms ne sont connus du moteur qu'une fois le micro autorisé : une première ouverture du micro par défaut les révèle.
 async function getMic(choice) {
   const audio = AUDIO(noiseMode);
-  try {
-    return await navigator.mediaDevices.getUserMedia({ audio: choice ? { ...audio, deviceId: { exact: choice } } : audio, video: false });
-  } catch (err) {
-    if (!choice || err.name !== 'OverconstrainedError') throw err;
+  if (choice) {
+    let list = await navigator.mediaDevices.enumerateDevices();
+    if (!list.some(d => d.kind === 'audioinput' && d.label)) {
+      const probe = await navigator.mediaDevices.getUserMedia({ audio, video: false });
+      probe.getTracks().forEach(t => t.stop());
+      list = await navigator.mediaDevices.enumerateDevices();
+    }
+    const device = list.find(d => d.kind === 'audioinput' && d.deviceId !== 'default' && d.deviceId !== 'communications' && d.label === choice);
+    if (device) return navigator.mediaDevices.getUserMedia({ audio: { ...audio, deviceId: { exact: device.deviceId } }, video: false });
     micChoice = '';
     send({ ev: 'deviceLost', kind: 'input' }); // micro choisi débranché : celui de Windows
-    return navigator.mediaDevices.getUserMedia({ audio, video: false });
   }
+  return navigator.mediaDevices.getUserMedia({ audio, video: false });
 }
 
 function watchTrack(track) {
@@ -219,7 +226,7 @@ async function raiseBitrate() {
 async function applySpeaker(list) {
   if (typeof remote.setSinkId !== 'function') return;
   const outputs = list.filter(d => d.kind === 'audiooutput');
-  let target = speakerChoice && outputs.find(d => d.deviceId === speakerChoice);
+  let target = speakerChoice && outputs.find(d => d.deviceId !== 'default' && d.deviceId !== 'communications' && d.label === speakerChoice);
   if (speakerChoice && !target) { speakerChoice = ''; send({ ev: 'deviceLost', kind: 'output' }); }
   if (!target) {
     const def = outputs.find(d => d.deviceId === 'default');
@@ -232,7 +239,7 @@ async function applySpeaker(list) {
 
 function plain(list, kind) {
   return list.filter(d => d.kind === kind && d.deviceId !== 'default' && d.deviceId !== 'communications')
-             .map(d => ({ id: d.deviceId, label: d.label }));
+             .map(d => ({ id: d.label, label: d.label })); // désignés par leur nom (le même que dans Windows)
 }
 
 async function reportDevices() {

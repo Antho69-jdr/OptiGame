@@ -15,6 +15,7 @@ public partial class SettingsView : UserControl
         // Abonné seulement tant que la vue est affichée (le ViewModel, unique, ne doit pas garder en vie une vue retirée).
         Loaded += (_, _) => Attach(DataContext as SettingsViewModel);
         Unloaded += (_, _) => Attach(null);
+        PreviewKeyDown += OnPreviewKeyDown;
     }
 
     private void Attach(SettingsViewModel? vm)
@@ -30,6 +31,23 @@ public partial class SettingsView : UserControl
             _attached.SecretSaved += OnSecretSaved;
             _attached.DockGameMoved += OnDockGameMoved;
         }
+    }
+
+    // Saisie du raccourci du micro (onglet Audio) : la touche pressée (avec Ctrl / Alt / Maj) va au ViewModel de l'appel, pas au bouton.
+    private void OnPreviewKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+    {
+        if (DataContext is not SettingsViewModel { Call: { IsCapturingMicKey: true } call }) return;
+        var key = e.Key switch
+        {
+            System.Windows.Input.Key.System => e.SystemKey,
+            System.Windows.Input.Key.ImeProcessed => e.ImeProcessedKey,
+            _ => e.Key,
+        };
+        var modifiers = System.Windows.Input.Keyboard.Modifiers;
+        call.CaptureMicKey(System.Windows.Input.KeyInterop.VirtualKeyFromKey(key), modifiers.HasFlag(System.Windows.Input.ModifierKeys.Control),
+            modifiers.HasFlag(System.Windows.Input.ModifierKeys.Alt), modifiers.HasFlag(System.Windows.Input.ModifierKeys.Shift));
+        e.Handled = true;
+        if (!call.IsCapturingMicKey) ChooseKeyButton.Focus();
     }
 
     /// <summary>Secret enregistré (chiffré) : le champ est vidé, l'indication « un secret est enregistré » prend le relais.</summary>

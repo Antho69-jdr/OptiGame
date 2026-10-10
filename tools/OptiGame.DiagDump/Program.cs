@@ -569,6 +569,7 @@ if (args.Length == 1 && args[0] == "--audio-devices")
         Console.WriteLine($"{title} :");
         foreach (var d in list) Console.WriteLine($"  {d.Name} — {d.SampleRate} Hz, {d.BitsPerSample} bits, {d.Channels} canal(aux), forme {d.FormFactor}");
     }
+    Console.WriteLine($"Par défaut : micro « {OptiGame.Platform.Audio.AudioEndpoints.DefaultCaptureName()} », sortie « {OptiGame.Platform.Audio.AudioEndpoints.DefaultRenderName()} »");
     return;
 }
 
