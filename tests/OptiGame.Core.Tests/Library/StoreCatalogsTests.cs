@@ -76,4 +76,36 @@ public sealed class StoreCatalogsTests
     [Fact]
     public void Titles_are_compared_without_symbols() =>
         Assert.Equal(StoreCatalogs.NameKey("The Sims 3"), StoreCatalogs.NameKey("The Sims™ 3"));
+
+    // Commandes exactes des raccourcis des lanceurs (StoreLaunchers), titres DIFFÉRENTS du catalogue : seul l'identifiant relie.
+    private static InstalledGame Installed(GameSource store, string name, string arguments) =>
+        new(name, store, @"D:\Jeux\X", [], LauncherPath: @"C:\Lanceur.exe", LaunchArguments: arguments);
+
+    [Fact]
+    public void Installed_epic_game_matches_its_catalog_line_by_identifier()
+    {
+        var installed = Installed(GameSource.Epic, "AbsoluteDrift",
+            StoreLaunchers.Quoted(StoreLaunchers.EpicUri("4b5461ca8d1c488787b5200b420de066", "bd46d4ce259349e5bd8b3ded20274737", "Daisy", "launch")));
+        var owned = new StoreOwnedGame(GameSource.Epic, "4b5461ca8d1c488787b5200b420de066:bd46d4ce259349e5bd8b3ded20274737:Daisy", "Absolute Drift", [], null);
+        var other = new StoreOwnedGame(GameSource.Epic, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb:Other", "Autre jeu", [], null);
+
+        Assert.True(StoreCatalogs.IsSameGame(installed, owned));
+        Assert.False(StoreCatalogs.IsSameGame(installed, other));
+    }
+
+    [Fact]
+    public void Installed_gog_game_matches_its_catalog_line_by_identifier()
+    {
+        var installed = Installed(GameSource.Gog, "Rites of War", StoreLaunchers.GogRunArguments("1207666553", @"D:\GOG Games\Rites of War"));
+
+        Assert.True(StoreCatalogs.IsSameGame(installed, new StoreOwnedGame(GameSource.Gog, "gog_1207666553", "WARHAMMER 40,000: Rites of War", [], null)));
+        Assert.False(StoreCatalogs.IsSameGame(installed, new StoreOwnedGame(GameSource.Gog, "gog_120766655", "Autre", [], null)));
+    }
+
+    [Fact]
+    public void Same_title_matches_whatever_the_store()
+    {
+        var installed = Installed(GameSource.Gog, "The Sims™ 3", "/command=runGame /gameId=1 /path=\"D:\\X\"");
+        Assert.True(StoreCatalogs.IsSameGame(installed, new StoreOwnedGame(GameSource.Epic, "a:b:c", "The Sims 3", [], null)));
+    }
 }

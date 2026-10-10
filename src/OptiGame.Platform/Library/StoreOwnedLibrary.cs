@@ -22,19 +22,22 @@ public sealed class StoreOwnedLibrary(FileLog log)
     public static string GalaxyDatabasePath => Path.Combine(ProgramData, "GOG.com", "Galaxy", "storage", "galaxy-2.0.db");
 
     /// <summary>Jeux possédés et non installés (Epic, GOG). Fichiers et SQLite : hors du thread UI.</summary>
-    public IReadOnlyList<StoreOwnedGame> ReadNotInstalled()
+    public IReadOnlyList<StoreOwnedGame> ReadNotInstalled() => Read().NotInstalled;
+
+    /// <summary>Jeu Epic ou GOG installé, avec sa ligne du catalogue (nom, genres, jaquette) quand elle est retrouvée.</summary>
+    public sealed record InstalledStoreGame(InstalledGame Game, StoreOwnedGame? Owned);
+
+    public sealed record StoreLibrary(IReadOnlyList<StoreOwnedGame> NotInstalled, IReadOnlyList<InstalledStoreGame> Installed);
+
+    /// <summary>Jeux possédés non installés ET jeux installés (Epic, GOG), en une lecture. Hors du thread UI.</summary>
+    public StoreLibrary Read()
     {
         var owned = ReadOwned();
-
-        // Installés : Epic par identifiant de catalogue, GOG par identifiant (et tous par titre, par prudence).
         var installed = StoreLibraries.ScanInstalled().ToList();
-        var installedNames = installed.Select(g => StoreCatalogs.NameKey(g.Name)).ToHashSet();
-        var installedKeys = installed.Select(g => g.LaunchArguments ?? "").ToList();
-        return owned
-            .Where(g => !installedNames.Contains(StoreCatalogs.NameKey(g.Name)))
-            .Where(g => g.Store != GameSource.Epic || !installedKeys.Any(a => a.Contains(g.Key.Replace(":", "%3A"), StringComparison.Ordinal)))
-            .Where(g => g.Store != GameSource.Gog || !installedKeys.Any(a => a.Contains($"/gameId={g.Key[4..]} ", StringComparison.Ordinal)))
-            .ToList();
+        // Installé = possédé (titre, identifiant) : écarté des non installés, et relié à sa ligne du catalogue (jaquette, genres).
+        return new StoreLibrary(
+            owned.Where(g => !installed.Any(i => StoreCatalogs.IsSameGame(i, g))).ToList(),
+            installed.Select(i => new InstalledStoreGame(i, owned.FirstOrDefault(g => g.Store == i.Source && StoreCatalogs.IsSameGame(i, g)))).ToList());
     }
 
     private readonly Lock _gate = new();

@@ -367,7 +367,7 @@
                             <TextBlock VerticalAlignment="Center" Style="{StaticResource Text.SectionTitle}" Text="{Binding InstalledNotAddedHeader}" />
                         </DockPanel>
                         <TextBlock Margin="2,0,0,12" Style="{StaticResource Text.Caption}" TextWrapping="Wrap"
-                                   Text="Trouvés dans vos bibliothèques Steam. Clic ou Entrée : l'ajouter à Mes jeux (rien n'est modifié sur le PC)." />
+                                   Text="Trouvés dans vos bibliothèques Steam, Epic Games et GOG. Clic ou Entrée : l'ajouter à Mes jeux (rien n'est modifié sur le PC)." />
                         <ItemsControl ItemsSource="{Binding VisibleInstalledNotAdded}" Focusable="False" KeyboardNavigation.TabNavigation="Once"
                                       AutomationProperties.Name="Jeux installés, pas encore dans Mes jeux">
                             <ItemsControl.ItemsPanel>
@@ -402,7 +402,7 @@
                                                     </StackPanel>
                                                 </Button>
                                                 <Button Margin="0,6,0,0" Style="{StaticResource Button.Secondary}" HorizontalAlignment="Stretch" Focusable="False"
-                                                        Content="{Binding StorePageLabel}"
+                                                        Content="{Binding StorePageLabel}" Visibility="{Binding HasStorePage, Converter={StaticResource BoolToVisibility}}"
                                                         Command="{Binding Owner.OpenOwnedStorePageCommand}"
                                                         CommandParameter="{Binding}" />
                                             </StackPanel>
@@ -412,7 +412,8 @@
                                                 <MenuItem FontWeight="SemiBold" Header="Ajouter à Mes jeux" Command="{Binding AddInstalledCommand}"
                                                           CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
                                                 <MenuItem Header="{Binding PlacementTarget.DataContext.StorePageLabel, RelativeSource={RelativeSource AncestorType=ContextMenu}}" Command="{Binding OpenOwnedStorePageCommand}"
-                                                          CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                                                          CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                          Visibility="{Binding PlacementTarget.DataContext.HasStorePage, RelativeSource={RelativeSource AncestorType=ContextMenu}, Converter={StaticResource BoolToVisibility}}" />
                                             </ContextMenu>
                                         </controls:CoverTile.ContextMenu>
                                     </controls:CoverTile>

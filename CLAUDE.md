@@ -471,7 +471,10 @@ vit dans Core ; Platform ne fait que lire/écrire le système.
   installés ; un jeu installé sans profil n'apparaissait NULLE PART — écarté des non installés, bandeau proposé une seule fois et
   seulement à un Mes jeux vide) : `LibraryViewModel.InstalledNotAdded`, en couleur, hors de la case « non installés », jeux
   entièrement installés connus des caches du client comme jeux possédés (outils écartés : « SaveSync » sur la machine de dev),
-  « Ajouter à Mes jeux » = `NewSteamGamesViewModel.AddGame` (même ajout que le bandeau). Lecture de Steam robuste
+  « Ajouter à Mes jeux » = `NewSteamGamesViewModel.AddGame` (même ajout que le bandeau) ; AUSSI les jeux Epic / GOG installés
+  sans profil (`StoreOwnedLibrary.Read` : non installés + installés en UNE lecture, reliés au catalogue par `StoreCatalogs.IsSameGame`
+  = titre ou identifiant ; profil « Lanceur » comme la recherche des jeux installés ; non vérifié en vrai : aucun jeu Epic / GOG
+  installé sur la machine de dev). Lecture de Steam robuste
   (`GameLibraryScanner.ScanSteamApps`) : bibliothèque ou manifeste illisible = ignoré et noté, ancien format de libraryfolders.vdf
   (`Core/Library/SteamLibraryFolders`), SteamPath de HKCU sinon InstallPath de HKLM\SOFTWARE\WOW6432Node\Valve\Steam (OptiGame
   élevé avec un AUTRE compte administrateur) ; journal « Steam : dossier, bibliothèques, N jeux installés, problèmes » à chaque

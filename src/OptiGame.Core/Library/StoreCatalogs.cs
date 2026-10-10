@@ -101,6 +101,22 @@ public static class StoreCatalogs
     /// <summary>« The Sims™ 3 » et « The Sims 3 » → « thesims3 » (comparaison des titres entre sources).</summary>
     public static string NameKey(string name) => string.Concat(name.Where(char.IsLetterOrDigit).Select(char.ToLowerInvariant));
 
+    /// <summary>
+    /// Jeu installé (manifeste Epic, registre de GOG) = ce jeu du catalogue : même titre, sinon Epic par identifiant de catalogue
+    /// (« ns:item:app » dans la commande de lancement), GOG par identifiant (« /gameId=… »).
+    /// </summary>
+    public static bool IsSameGame(InstalledGame installed, StoreOwnedGame owned)
+    {
+        if (NameKey(installed.Name) == NameKey(owned.Name)) return true;
+        var arguments = installed.LaunchArguments ?? "";
+        return owned.Store switch
+        {
+            GameSource.Epic => arguments.Contains(owned.Key.Replace(":", "%3A"), StringComparison.Ordinal),
+            GameSource.Gog => owned.Key.Length > 4 && arguments.Contains($"/gameId={owned.Key[4..]} ", StringComparison.Ordinal),
+            _ => false,
+        };
+    }
+
     private static string? Text(JsonElement element, string name) =>
         element.TryGetProperty(name, out var v) && v.ValueKind == JsonValueKind.String ? v.GetString() : null;
 

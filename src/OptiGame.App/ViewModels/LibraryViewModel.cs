@@ -432,6 +432,11 @@ public sealed partial class LibraryViewModel : ObservableObject
     [RelayCommand]
     private async Task AddInstalledAsync(OwnedGameCardViewModel? card)
     {
+        if (card?.InstalledStore is { } storeGame)
+        {
+            AddStoreGame(storeGame, card.Name);
+            return;
+        }
         if (card?.InstalledApp is not { } app) return;
         InstalledGame game;
         try
@@ -444,6 +449,35 @@ public sealed partial class LibraryViewModel : ObservableObject
             return;
         }
         NewGames.AddGame(game); // succès : GameAdded recharge les cartes et les bibliothèques
+    }
+
+    /// <summary>Jeu Epic ou GOG : lancé par son lanceur, comme ses raccourcis (même profil que « Rechercher des jeux installés »).</summary>
+    private void AddStoreGame(InstalledGame game, string name)
+    {
+        if (game.Candidates.FirstOrDefault() is not { } exe)
+        {
+            _dialogs.ShowError($"{name} n'a pas été ajouté", $"Aucun fichier .exe n'a été trouvé dans {game.Folder}. Ajoutez-le avec « Ajouter des jeux » puis « Choisir un fichier .exe… ».");
+            return;
+        }
+        try
+        {
+            _store.Save(new GameProfile
+            {
+                Name = name,
+                ExePath = exe.Path,
+                LaunchMode = game.LauncherPath is null ? LaunchMode.Automatic : LaunchMode.Launcher,
+                LauncherPath = game.LauncherPath,
+                LaunchArguments = game.LaunchArguments,
+            });
+        }
+        catch (ProfileValidationException ex)
+        {
+            _dialogs.ShowError($"{name} n'a pas été ajouté", ex.Message);
+            return;
+        }
+        _log.Info($"Jeu {Core.Library.StoreCatalogs.Label(game.Source)} ajouté : {name} ({exe.Path}).");
+        ReloadCards();
+        _ = FetchMissingArtworkAsync();
     }
 
     [RelayCommand]
@@ -618,7 +652,8 @@ public sealed partial class LibraryViewModel : ObservableObject
                     .Where(g => !installed.Contains(g.AppId) && !byProfile.ContainsValue(g.AppId))
                     .Select(g => OwnedGameCardViewModel.FromSteam(g, Platform.Library.SteamOwnedLibrary.CoverPath(g.AppId)))
                     .ToList() ?? [];
-                cards.AddRange(_storeLibrary.ReadNotInstalled()
+                var stores = _storeLibrary.Read();
+                cards.AddRange(stores.NotInstalled
                     .Where(g => !profileNames.Contains(Core.Library.StoreCatalogs.NameKey(g.Name))) // déjà dans « Mes jeux »
                     .Select(g => OwnedGameCardViewModel.FromStore(g, _storeCovers.TryGetCached(g.CoverUrl))));
 
@@ -639,6 +674,19 @@ public sealed partial class LibraryViewModel : ObservableObject
                 }
                 var report = scan.Describe() + $", {pending.Count} pas encore dans Mes jeux" +
                              (skipped.Count > 0 ? $" ; écartés (pas des jeux possédés selon Steam) : {string.Join(", ", skipped)}" : "");
+
+                // Jeux Epic et GOG installés sans profil (même trou que Steam) : déjà dans Mes jeux = un de ses exe a un profil, ou même nom.
+                foreach (var store in stores.Installed)
+                {
+                    var name = store.Owned?.Name ?? store.Game.Name;
+                    if (profileNames.Contains(Core.Library.StoreCatalogs.NameKey(name)) || profileNames.Contains(Core.Library.StoreCatalogs.NameKey(store.Game.Name)) ||
+                        store.Game.Candidates.Any(c => profiles.Any(p => p.Matches(c.Path))))
+                    {
+                        continue;
+                    }
+                    pending.Add(OwnedGameCardViewModel.FromInstalledStore(store.Game, store.Owned, _storeCovers.TryGetCached(store.Owned?.CoverUrl)));
+                }
+                report += $" ; Epic Games et GOG : {stores.Installed.Count} jeu(x) installé(s)";
                 return (owned, byProfile, cards, pending, report);
             });
         }
@@ -689,7 +737,7 @@ public sealed partial class LibraryViewModel : ObservableObject
         OnPropertyChanged(nameof(UninstalledToggleText));
         NotifyCounts();
         ApplyFilters(keepShownCount: true);
-        if (ShowUninstalled) _ = FetchStoreCoversAsync();
+        if (ShowUninstalled || InstalledNotAdded.Any(c => c.CoverPath is null && c.CoverUrl is not null)) _ = FetchStoreCoversAsync();
     }
 
     /// <summary>
@@ -758,12 +806,12 @@ public sealed partial class LibraryViewModel : ObservableObject
             {
                 if (_gate.InGame)
                 {
-                    _gate.RunOrDefer("store-covers", () => { if (ShowUninstalled) _ = FetchStoreCoversAsync(); }); // la suite à la fin de la partie
+                    _gate.RunOrDefer("store-covers", () => _ = FetchStoreCoversAsync()); // la suite à la fin de la partie
                     break;
                 }
-                var batch = VisibleUninstalled
-                    .Concat(_uninstalledFiltered)
-                    .Concat(UninstalledGames)
+                // Les installés à ajouter d'abord (toujours affichés), puis les non installés seulement si leur section l'est.
+                var batch = VisibleInstalledNotAdded
+                    .Concat(ShowUninstalled ? VisibleUninstalled.Concat(_uninstalledFiltered).Concat(UninstalledGames) : [])
                     .Where(c => c.CoverPath is null && c.CoverUrl is not null && !tried.Contains(c))
                     .Distinct()
                     .Take(4)
@@ -1820,10 +1868,21 @@ public sealed partial class OwnedGameCardViewModel : ObservableObject
             InstalledApp = app,
         };
 
+    /// <summary>Jeu Epic ou GOG installé sans profil ; <paramref name="owned"/> = sa ligne du catalogue (nom, genres, jaquette) si retrouvée.</summary>
+    public static OwnedGameCardViewModel FromInstalledStore(InstalledGame game, Core.Library.StoreOwnedGame? owned, string? cachedCover) =>
+        new(game.Source, owned?.Key ?? game.Folder, LibraryViewModel.CleanName(owned?.Name ?? game.Name), owned?.Genres ?? [],
+            new HashSet<Core.Library.GameKind>(), cachedCover, owned?.CoverUrl)
+        {
+            InstalledStore = game,
+        };
+
     /// <summary>Jeu Steam installé mais pas dans Mes jeux (section « Installés, pas encore dans Mes jeux ») ; null = non installé.</summary>
     public GameLibraryScanner.SteamApp? InstalledApp { get; private init; }
 
-    public bool IsInstalled => InstalledApp is not null;
+    /// <summary>Jeu Epic ou GOG installé mais pas dans Mes jeux (exécutables déjà classés par la lecture).</summary>
+    public InstalledGame? InstalledStore { get; private init; }
+
+    public bool IsInstalled => InstalledApp is not null || InstalledStore is not null;
 
     public static OwnedGameCardViewModel FromStore(Core.Library.StoreOwnedGame game, string? cachedCover) =>
         new(game.Store, game.Key, game.Name, game.Genres, new HashSet<Core.Library.GameKind>(), cachedCover, game.CoverUrl);
