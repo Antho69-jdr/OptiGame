@@ -232,6 +232,23 @@ if (args.Length >= 1 && args[0] == "--background")
 if (args.Length >= 1 && args[0] == "--ingame-settings")
 {
     var withoutDefinitions = args.Contains("--no-definitions");
+    // --timing : temps de lecture de chaque jeu, deux fois (la 2e profite du cache de la dÃ©tection automatique).
+    if (args.Contains("--timing"))
+    {
+        var all = new OptiGame.Core.Profiles.ProfileStore(new JsonStateStore<OptiGame.Core.Profiles.ProfilesDocument>(AppPaths.Default.Profiles)).GetAll();
+        for (var pass = 1; pass <= 2; pass++)
+        {
+            var total = System.Diagnostics.Stopwatch.StartNew();
+            foreach (var profile in all)
+            {
+                var watch = System.Diagnostics.Stopwatch.StartNew();
+                var read = OptiGame.Platform.InGame.InGameSettingsReader.Read(profile.ExePath);
+                Console.WriteLine($"  passage {pass} : {profile.Name} {watch.ElapsedMilliseconds} ms ({read?.Engine ?? "rien"})");
+            }
+            Console.WriteLine($"passage {pass} : {total.ElapsedMilliseconds} ms pour {all.Count} jeux");
+        }
+        return;
+    }
     var profiles = new OptiGame.Core.Profiles.ProfileStore(
         new JsonStateStore<OptiGame.Core.Profiles.ProfilesDocument>(AppPaths.Default.Profiles));
     foreach (var profile in profiles.GetAll())
