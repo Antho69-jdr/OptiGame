@@ -95,6 +95,7 @@ public sealed partial class CallViewModel : ObservableObject, IDisposable
             });
         }
         RefreshDevices();
+        ApplyQuality(); // débit automatique affiché dès l'ouverture (Paramètres › Audio)
     }
 
     /// <summary>Serveur de mise en relation (remplacé par la variable OPTIGAME_CALL_RELAY pour les essais) ; null = pas en place.</summary>
@@ -485,6 +486,7 @@ public sealed partial class CallViewModel : ObservableObject, IDisposable
         _settings.Update(s => s.CallMicrophone = value.Id.Length == 0 ? null : value.Id);
         _engine?.Send(new { cmd = "mic", id = value.Id });
         _log.Info($"Appel : micro choisi « {value.Label} ».");
+        if (_engine is null) ApplyQuality(); // hors appel : débit du micro choisi (en appel, le moteur redonne le micro ouvert)
     }
 
     partial void OnSelectedSpeakerChanged(CallDevice? value)
@@ -667,6 +669,7 @@ public sealed partial class CallViewModel : ObservableObject, IDisposable
         _engineDefaultInput = VoiceQualityAdvisor.DeviceName(Text(message, "defaultInput"));
         _engineDefaultOutput = VoiceQualityAdvisor.DeviceName(Text(message, "defaultOutput"));
         RefreshDevices();
+        ApplyQuality(); // débit automatique affiché dès l'ouverture (Paramètres › Audio)
     }
 
     private static List<string> Names(JsonElement message, string listName) =>

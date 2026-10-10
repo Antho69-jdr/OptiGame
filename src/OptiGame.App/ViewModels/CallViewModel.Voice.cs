@@ -126,10 +126,12 @@ public sealed partial class CallViewModel
         int kbps;
         if (settings.CallVoiceQuality == VoiceQuality.Auto)
         {
-            var advice = VoiceQualityAdvisor.Recommend(SampleRateOf(_micName),
-                settings.CallMicBandwidths.TryGetValue(_micName, out var hz) ? hz : null);
+            // Micro de l'appel ; hors appel, celui choisi (ou celui de Windows par défaut) : le débit s'affiche aussi dans Paramètres › Audio.
+            var name = _micName.Length > 0 ? _micName : CurrentMicName();
+            var advice = VoiceQualityAdvisor.Recommend(SampleRateOf(name),
+                settings.CallMicBandwidths.TryGetValue(name, out var hz) ? hz : null);
             kbps = advice.Kbps;
-            AutoQualityText = _micName.Length == 0 ? "" : advice.Reason;
+            AutoQualityText = advice.Reason;
         }
         else
         {
@@ -140,6 +142,20 @@ public sealed partial class CallViewModel
         _sentKbps = kbps;
         _engine?.Send(new { cmd = "quality", kbps });
         if (_micName.Length > 0) _log.Info($"Appel : débit de la voix {kbps} kbit/s ({(settings.CallVoiceQuality == VoiceQuality.Auto ? "automatique" : "choisi")}).");
+    }
+
+    /// <summary>Micro choisi dans les réglages, sinon celui de Windows par défaut ; vide si inconnu.</summary>
+    private string CurrentMicName()
+    {
+        if (_settings.Get().CallMicrophone is { Length: > 0 } chosen) return chosen;
+        try
+        {
+            return Platform.Audio.AudioEndpoints.DefaultCaptureName() ?? "";
+        }
+        catch (Exception ex) when (ex is System.Runtime.InteropServices.COMException or InvalidCastException)
+        {
+            return "";
+        }
     }
 
     /// <summary>Fréquence d'échantillonnage du micro dans Windows (format partagé), retrouvé par son nom ; null si inconnu.</summary>

@@ -29,7 +29,11 @@ public static class VoiceQualityAdvisor
             (null, { } m) => m,
             _ => null,
         };
-        if (bandwidth is null) return new(DefaultKbps, null, "Micro pas encore mesuré : débit haut en attendant (parlez quelques secondes).");
+        // Un format large (48 kHz) ne dit rien de ce que le micro capte : seul un format étroit (casque Bluetooth à 16 kHz) décide sans mesure.
+        if (bandwidth is null || (measuredBandwidthHz is null && limit >= 16_000))
+        {
+            return new(DefaultKbps, null, $"Débit automatique : {DefaultKbps} kbit/s, en attendant de mesurer ce micro (parlez quelques secondes en appel ou avec « Tester mon micro »).");
+        }
 
         var kbps = bandwidth switch
         {
@@ -43,7 +47,7 @@ public static class VoiceQualityAdvisor
         var source = measuredBandwidthHz is null ? $"votre micro est réglé à {sampleRate / 1000.0:0.#} kHz dans Windows"
             : $"votre micro capte la voix jusqu'à {khz:0.#} kHz";
         var tail = kbps >= 128 ? "le débit haut en profite" : "plus de débit n'apporterait rien";
-        return new(kbps, bandwidth, $"{char.ToUpperInvariant(source[0])}{source[1..]} : {kbps} kbit/s, {tail}.");
+        return new(kbps, bandwidth, $"Débit automatique : {kbps} kbit/s. {char.ToUpperInvariant(source[0])}{source[1..]} : {tail}.");
     }
 
     /// <summary>Nom d'un micro sans le préfixe du moteur web pour le micro par défaut (« Par défaut - Microphone (Yeti Nano) »).</summary>
