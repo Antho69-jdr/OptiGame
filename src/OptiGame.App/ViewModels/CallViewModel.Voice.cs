@@ -287,7 +287,7 @@ public sealed partial class CallViewModel
         NoiseFrames = (long)Number(message, "frames");
         var open = !message.TryGetProperty("open", out var openValue) || openValue.ValueKind != JsonValueKind.False;
         GateOpen = open;
-        FilterCpu = Number(message, "cpu");
+
         FilterEngine = Text(message, "engine");
         MeterText = hasThreshold
             ? $"Niveau {Db(db)} · seuil {Db(threshold.GetDouble())} · {(open ? "le son passe" : "coupé (sous le seuil)")}"
@@ -297,9 +297,7 @@ public sealed partial class CallViewModel
     /// <summary>Dernier état du seuil (vérifications).</summary>
     internal bool GateOpen { get; private set; } = true;
 
-    /// <summary>Part d'un cœur prise par le filtre de bruit, et filtre réellement actif (« dfn », « rnnoise », « none ») : vérifications.</summary>
-    internal double FilterCpu { get; private set; }
-
+    /// <summary>Filtre de bruit réellement actif (« dfn », « rnnoise », « none ») : vérifications.</summary>
     internal string FilterEngine { get; private set; } = "";
 
     private static string Db(double db) => db <= -79.5 ? "silence" : $"{Math.Round(db):0} dB".Replace("-", "−");

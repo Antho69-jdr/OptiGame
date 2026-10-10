@@ -212,6 +212,22 @@ maintien 250 ms, fermeture 60 ms ; automatique = entre le fond (minimum qui remo
 module se charge si filtre fort OU seuil. Mesures 10/s (`voiceStats`) → barre de niveau + « Niveau −32 dB · seuil −45 dB · le son
 passe » ; « Tester mon micro » (hors appel, aucun réseau : commande « test », moteur à part `_testEngine`, arrêté au début d'un
 appel). Vérifié : seuil −10 dB sur un souffle à −19 dB → coupé (0,001), −40 dB → passe.
+Suppression « MAXIMALE » (`NoiseSuppression.Maximum`, demande du 2026-10-10 : filtre plus fort ; nom du filtre JAMAIS dans
+l'interface) = DeepFilterNet 3 (MIT OU Apache-2.0) : AUCUNE version WebAssembly officielle publiée, et le paquet npm qui l'emballe
+télécharge son moteur depuis le serveur de son auteur (écarté) → compilé par NOTRE CI `.github/workflows/deepfilter-wasm.yml`
+depuis github.com/Rikorose/DeepFilterNet au commit d375b2d8 (Rust 1.81.0, wasm-pack 0.13.1, `--target web --features wasm` ;
+le Cargo.lock du projet est en retard sur ses manifestes : `cargo update --workspace` puis `cargo fetch --locked`, différence au
+journal ; wasm-pack ne transmet pas `-- --locked`). Fichiers dans `Call/dfn/` tels que produits (SHA-256 : df_bg.wasm
+c38c684557a6…cb63616 ; df.js 6bc5244f49fa…e6a22 ; DeepFilterNet3_onnx.tar.gz c94d91f70911…c331aec = modèle du dépôt),
+`COMMIT.txt` ; la CI les reproduit à l'identique (même empreinte sur deux exécutions). Le moteur (9,6 Mo) est le moteur d'inférence
+lui-même : sans le modèle intégré (`default-model`), même taille → modèle passé à part. Chargement : la page lit les octets
+(17 ms) et les TRANSMET au fil audio, qui les compile (`WebAssembly.compile`, 10 ms) — un WebAssembly.Module compilé par la page
+n'arrive PAS à l'AudioWorklet (« messageerror » silencieux, constaté) ; `df_create` ≈ 0,7 s dans le fil audio (le son envoyé est
+coupé pendant ce temps, une fois), RNNoise en attendant ; trames de 480 (vérifié par `df_get_frame_length`). CSP : connect-src
+'self' (lecture des fichiers). Vérifié le 2026-10-10 (ui-snapshots `-Only c1,c2,c3`) : actif en 1,3 s, souffle 0,000, +48-58 Mo ;
+processeur des moteurs web (deux appels, temps processeur de Windows) 23-33 % d'un cœur quel que soit le filtre : écart avec
+« Forte » non mesurable (l'horloge du fil audio, à la milliseconde, ne mesure pas un calcul de moins d'1 ms). Qualité sur une VRAIE
+voix : à juger par l'utilisateur (le micro simulé n'a que du souffle et des sons purs).
 3e retour (2026-10-10) : seuil manuel ≈ −30 dB « marche mieux » que l'automatique (→ manuel −30 par défaut, automatique resserré à
 6-10 dB sous la voix) ; 96 / 128 / 192 « imperceptibles » → débit AUTOMATIQUE par défaut (`VoiceQuality.Auto`,
 `Core/Call/VoiceQualityAdvisor`) : bande de la voix = min(format du micro dans Windows / 2, bande MESURÉE) → 32 / 48 / 64 / 96 /

@@ -7,7 +7,8 @@
 //    « Maximale » : filtre DeepFilterNet 3 (réseau plus grand, MIT / Apache-2.0) compilé en WebAssembly par la CI depuis le code
 //    officiel (dfn/, .github/workflows/deepfilter-wasm.yml) ; octets du moteur et du modèle transmis par la page, moteur compilé
 //    ICI sans bloquer le son (un WebAssembly.Module compilé par la page n'arrive pas : « messageerror » silencieux, constaté le
-//    2026-10-10), filtre créé à la trame suivante ; RNNoise en attendant. Son coût est mesuré et envoyé avec les mesures.
+//    2026-10-10), filtre créé à la trame suivante ; RNNoise en attendant. Coût mesuré par les vérifications (temps processeur
+//    des processus du moteur web : l'horloge du fil audio, à la milliseconde, est trop grossière).
 // 2. Seuil du micro (« noise gate ») : le son ne passe qu'au-dessus d'un niveau ; une voix en fond, plus faible que la vôtre au
 //    micro, est coupée. Automatique : seuil placé entre le fond (minimum suivi lentement) et votre voix (niveau des trames où
 //    RNNoise reconnaît de la voix) ; manuel : seuil choisi en dBFS. Ouverture immédiate, maintien 250 ms, fermeture en 60 ms.
@@ -37,7 +38,7 @@ class VoiceProcessor extends AudioWorkletProcessor {
     this.dfn = 0; // état du filtre (pointeur dans la mémoire du module), 0 = pas encore créé
     this.dfnFailed = false;
     this.dfnFrame = new Float32Array(FRAME);
-    this.costMs = 0; // temps passé dans le filtre depuis la dernière mesure envoyée
+
     this.gateMode = 'off';
     this.manualThreshold = -30;
     this.floor = -60; // fond sonore (dBFS)
@@ -101,12 +102,9 @@ class VoiceProcessor extends AudioWorkletProcessor {
     let vad = 1;
     if (this.denoise && this.engine === 'dfn' && this.ensureDfn()) {
       for (let j = 0; j < FRAME; j++) this.dfnFrame[j] = this.input[j] / SCALE;
-      const started = Date.now();
       const out = df_process_frame(this.dfn, this.dfnFrame);
-      this.costMs += Date.now() - started;
       for (let j = 0; j < FRAME; j++) this.input[j] = out[j] * SCALE;
     } else if (this.denoise) {
-      const started = Date.now();
       if (!this.rnn) {
         this.rnn = createRNNWasmModuleSync();
         this.state = this.rnn._rnnoise_create();
@@ -116,7 +114,6 @@ class VoiceProcessor extends AudioWorkletProcessor {
       heap.set(this.input, this.framePtr >> 2);
       vad = this.rnn._rnnoise_process_frame(this.state, this.framePtr, this.framePtr);
       this.input.set(heap.subarray(this.framePtr >> 2, (this.framePtr >> 2) + FRAME));
-      this.costMs += Date.now() - started;
     }
     let energy = 0;
     for (let j = 0; j < FRAME; j++) { const x = this.input[j] / SCALE; energy += x * x; }
@@ -145,10 +142,9 @@ class VoiceProcessor extends AudioWorkletProcessor {
       this.port.postMessage({
         frames: this.frames, db: this.peak, vad: this.vadSum / REPORT_FRAMES, open: this.openFrames > 0,
         threshold: this.gateMode === 'off' ? null : this.threshold(),
-        // Part d'un cœur du processeur prise par le filtre (ms de calcul par 100 ms de son).
-        cpu: this.costMs / (REPORT_FRAMES * 10), engine: this.denoise ? (this.engine === 'dfn' && this.dfn ? 'dfn' : 'rnnoise') : 'none',
+        engine: this.denoise ? (this.engine === 'dfn' && this.dfn ? 'dfn' : 'rnnoise') : 'none',
       });
-      this.costMs = 0;
+
       this.peak = -100;
       this.vadSum = 0;
       this.openFrames = 0;

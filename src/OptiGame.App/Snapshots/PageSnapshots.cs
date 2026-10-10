@@ -502,7 +502,22 @@ internal static class PageSnapshots
                 host.SelectedNoise = host.NoiseOptions.First(o => o.Mode == Core.Call.NoiseSuppression.Strong);
                 await Settle(1500);
                 var strong = await Listen(4000);
-                var strongCpu = host.FilterCpu;
+                // Processeur : temps processeur de TOUS les processus du moteur web (les deux appels) sur 5 s, en part d'un cœur ; la
+                // différence entre deux filtres de l'hôte est le coût de son filtre.
+                static TimeSpan WebCpuTime() => System.Diagnostics.Process.GetProcessesByName("msedgewebview2")
+                    .Aggregate(TimeSpan.Zero, (total, p) => { using (p) { try { return total + p.TotalProcessorTime; } catch (InvalidOperationException) { return total; } } });
+                async Task<double> FilterCpu()
+                {
+                    var before = WebCpuTime();
+                    await Task.Delay(5000);
+                    return (WebCpuTime() - before).TotalMilliseconds / 5000.0;
+                }
+                var strongCpu = await FilterCpu();
+                host.SelectedNoise = host.NoiseOptions.First(o => o.Mode == Core.Call.NoiseSuppression.Off);
+                await Settle(1500);
+                var offCpu = await FilterCpu();
+                host.SelectedNoise = host.NoiseOptions.First(o => o.Mode == Core.Call.NoiseSuppression.Strong);
+                await Settle(1500);
                 Log($"Souffle entendu par l'invité (niveau moyen) : sans filtre {off.Peak:0.000}, filtre fort {strong.Peak:0.000} ; débit {off.Kbps:0} puis {strong.Kbps:0} kbit/s ; filtre : {host.NoiseFrames} trames, voix {host.NoiseVoice:0.00}. {host.Status}");
                 // Suppression « Maximale » (DeepFilterNet 3) : chargement, effet sur le souffle, processeur et mémoire.
                 var memoryBefore = WebMemory();
@@ -512,8 +527,9 @@ internal static class PageSnapshots
                 var maxLoad = DateTime.Now - maxStarted;
                 await Settle(1500);
                 var maximum = await Listen(4000);
+                var maximumCpu = await FilterCpu();
                 Log($"Suppression maximale : active {host.FilterEngine == "dfn"} en {maxLoad.TotalSeconds:0.0} s ; souffle entendu {maximum.Peak:0.000} (forte {strong.Peak:0.000}) ; " +
-                    $"processeur {host.FilterCpu:P1} d'un cœur (forte {strongCpu:P1}) ; mémoire des moteurs web +{(WebMemory() - memoryBefore) / 1048576.0:0} Mo. {host.Status}");
+                    $"moteurs web (deux appels) : {maximumCpu:P0} d'un cœur avec la maximale, {strongCpu:P0} avec la forte, {offCpu:P0} sans filtre ; mémoire des moteurs web +{(WebMemory() - memoryBefore) / 1048576.0:0} Mo. {host.Status}");
                 // Débit réel (souffle non filtré = le codeur prend tout ce qu'on lui donne) et seuil manuel.
                 host.SelectedNoise = host.NoiseOptions.First(o => o.Mode == Core.Call.NoiseSuppression.Off);
                 host.SelectedQuality = host.QualityOptions.First(o => o.Value == Core.Call.VoiceQuality.High);

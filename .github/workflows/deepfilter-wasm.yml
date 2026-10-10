@@ -37,17 +37,14 @@ jobs:
 
       - name: Compilation (module ES « web » importable par l'AudioWorklet, fonctionnalité wasm)
         run: |
-          # Le Cargo.lock du projet ne suit pas tout à fait ses manifestes : seuls SES paquets sont mis à jour (dépendances
-          # externes inchangées, différence affichée ci-dessous), puis tout est vérifié.
+          # Le Cargo.lock du projet ne suit pas tout à fait ses manifestes (refusé par --locked) : il est complété pour SES paquets
+          # (cargo update --workspace : quelques dépendances ajoutées ou retirées, versions des autres gardées ; différence affichée
+          # ci-dessous, empreintes de crates.io vérifiées par cargo), puis tout est vérifié.
           cargo update --workspace
           git diff --stat -- Cargo.lock
           git diff -- Cargo.lock | grep -E "^[-+](name|version|checksum)" || true
           cargo fetch --locked
-          # Sans la copie du modèle intégrée au moteur (8 Mo) : la version WebAssembly reçoit toujours le modèle à part (df_create),
-          # la copie ne sert qu'à DfParams::default, jamais appelé par wasm.rs. Seule cette ligne du Cargo.toml change :
-          sed -i '/^wasm = \[/,/^\]/{/"default-model",/d}' libDF/Cargo.toml
-          git diff -- libDF/Cargo.toml
-          wasm-pack build libDF --release --target web --no-default-features --features wasm
+          wasm-pack build libDF --release --target web --features wasm
 
       - name: Fichiers et empreintes
         run: |
