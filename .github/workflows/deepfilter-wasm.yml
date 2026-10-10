@@ -37,6 +37,11 @@ jobs:
 
       - name: Compilation (module ES « web » importable par l'AudioWorklet, fonctionnalité wasm)
         run: |
+          # Le Cargo.lock du projet ne suit pas tout à fait ses manifestes : seuls SES paquets sont mis à jour (dépendances
+          # externes inchangées, différence affichée ci-dessous), puis tout est vérifié.
+          cargo update --workspace
+          git diff --stat -- Cargo.lock
+          git diff -- Cargo.lock | grep -E "^[-+](name|version|checksum)" || true
           cargo fetch --locked
           wasm-pack build libDF --release --target web --features wasm
 
