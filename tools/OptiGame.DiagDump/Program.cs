@@ -601,6 +601,8 @@ if (args.Length == 1 && args[0] == "--disks")
 // dotnet run --project tools/OptiGame.DiagDump -- --games [dossier…] : recherche des jeux installés.
 if (args.Length > 0 && args[0] == "--games")
 {
+    Console.WriteLine(OptiGame.Platform.Library.GameLibraryScanner.ScanSteamApps().Describe());
+    Console.WriteLine();
     foreach (var game in services.GetRequiredService<IGameLibraryScanner>().Scan(args.Skip(1).ToList()))
     {
         Console.WriteLine($"[{game.Source}] {game.Name} — {game.Folder}");

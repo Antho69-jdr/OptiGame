@@ -45,54 +45,110 @@ public sealed class GameLibraryScanner : IGameLibraryScanner
             .ToList();
     }
 
-    public static IReadOnlyList<string> SteamLibraries()
-    {
-        using var steamKey = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(@"Software\Valve\Steam");
-        var steamPath = steamKey?.GetValue("SteamPath") as string;
-        if (string.IsNullOrWhiteSpace(steamPath))
-        {
-            return [];
-        }
+    public static IReadOnlyList<string> SteamLibraries() => SteamLibraries(SteamPath(), null);
 
-        steamPath = Path.GetFullPath(steamPath.Replace('/', '\\'));
+    /// <summary>
+    /// Bibliothèques Steam existantes : le dossier de Steam puis celles de libraryfolders.vdf. Un fichier illisible ou un dossier
+    /// inaccessible n'empêche jamais de lire les autres (constaté chez un utilisateur : aucun jeu installé trouvé) ; chaque
+    /// problème est noté dans <paramref name="problems"/>.
+    /// </summary>
+    private static IReadOnlyList<string> SteamLibraries(string? steamPath, List<string>? problems)
+    {
+        if (steamPath is null) return [];
         var libraries = new List<string> { steamPath };
         var vdfPath = Path.Combine(steamPath, "steamapps", "libraryfolders.vdf");
-        if (File.Exists(vdfPath))
+        try
         {
-            var root = Vdf.Parse(File.ReadAllText(vdfPath))["libraryfolders"];
-            libraries.AddRange(root?.Children.Values.Select(l => l.GetString("path")).OfType<string>() ?? []);
+            if (File.Exists(vdfPath)) libraries.AddRange(SteamLibraryFolders.Paths(Vdf.Parse(File.ReadAllText(vdfPath))));
+            else problems?.Add("libraryfolders.vdf absent : seule la bibliothèque du dossier de Steam est lue");
+        }
+        catch (Exception ex) when (ex is FormatException or IOException or UnauthorizedAccessException)
+        {
+            problems?.Add($"libraryfolders.vdf illisible ({ex.Message}) : seule la bibliothèque du dossier de Steam est lue");
         }
 
-        return libraries
-            .Select(p => Path.GetFullPath(p).TrimEnd('\\'))
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .Where(Directory.Exists)
-            .ToList();
+        var existing = new List<string>();
+        foreach (var library in libraries)
+        {
+            string full;
+            try
+            {
+                full = Path.GetFullPath(library).TrimEnd('\\');
+            }
+            catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException)
+            {
+                problems?.Add($"bibliothèque « {library} » : chemin non valide");
+                continue;
+            }
+            if (existing.Contains(full, StringComparer.OrdinalIgnoreCase)) continue;
+            if (Directory.Exists(full)) existing.Add(full);
+            else problems?.Add($"bibliothèque {full} introuvable (disque débranché ?)");
+        }
+        return existing;
     }
 
     /// <summary>Jeu Steam installé, d'après son manifeste appmanifest_*.acf (StateFlags : bit 4 = entièrement installé).</summary>
-    public sealed record SteamApp(string AppId, string Name, string InstallDir, string Folder, int? StateFlags = null);
+    public sealed record SteamApp(string AppId, string Name, string InstallDir, string Folder, int? StateFlags = null)
+    {
+        /// <summary>Entièrement installé (pas en cours de téléchargement) ; manifeste sans StateFlags = supposé installé.</summary>
+        public bool IsFullyInstalled => StateFlags is not { } flags || (flags & 4) != 0;
+    }
+
+    /// <summary>Ce que la lecture de Steam a trouvé, pour le journal (« Steam : … »).</summary>
+    public sealed record SteamScan(string? SteamPath, IReadOnlyList<string> Libraries, IReadOnlyList<SteamApp> Apps, IReadOnlyList<string> Problems)
+    {
+        public string Describe() => SteamPath is null
+            ? "Steam introuvable (ni SteamPath dans HKCU, ni InstallPath dans HKLM)"
+            : $"Steam : {SteamPath}, {Libraries.Count} bibliothèque(s) ({string.Join(", ", Libraries)}), {Apps.Count} jeu(x) installé(s)"
+              + (Problems.Count > 0 ? " ; " + string.Join(" ; ", Problems) : "");
+    }
 
     /// <summary>Jeux Steam de toutes les bibliothèques (hors redistribuables), dossier d'installation existant.</summary>
-    public static IReadOnlyList<SteamApp> SteamApps() => SteamApps(SteamLibraries());
+    public static IReadOnlyList<SteamApp> SteamApps() => ScanSteamApps().Apps;
 
-    public static IReadOnlyList<SteamApp> SteamApps(IEnumerable<string> libraries)
+    public static SteamScan ScanSteamApps()
+    {
+        var problems = new List<string>();
+        var steamPath = SteamPath();
+        var libraries = SteamLibraries(steamPath, problems);
+        return new SteamScan(steamPath, libraries, SteamApps(libraries, problems), problems);
+    }
+
+    public static IReadOnlyList<SteamApp> SteamApps(IEnumerable<string> libraries) => SteamApps(libraries, null);
+
+    private static IReadOnlyList<SteamApp> SteamApps(IEnumerable<string> libraries, List<string>? problems)
     {
         var apps = new List<SteamApp>();
         foreach (var library in libraries)
         {
             var steamapps = Path.Combine(library, "steamapps");
-            if (!Directory.Exists(steamapps)) continue;
+            List<string> manifests;
+            try
+            {
+                if (!Directory.Exists(steamapps))
+                {
+                    problems?.Add($"{library} : pas de dossier steamapps");
+                    continue;
+                }
+                manifests = Directory.EnumerateFiles(steamapps, "appmanifest_*.acf").ToList();
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                problems?.Add($"{steamapps} illisible ({ex.Message})");
+                continue;
+            }
 
-            foreach (var manifest in Directory.EnumerateFiles(steamapps, "appmanifest_*.acf"))
+            var unreadable = 0;
+            foreach (var manifest in manifests)
             {
                 VdfNode? app;
                 try
                 {
                     app = Vdf.Parse(File.ReadAllText(manifest))["AppState"];
                 }
-                catch (Exception ex) when (ex is FormatException or IOException)
+                catch (Exception ex) when (ex is FormatException or IOException or UnauthorizedAccessException)
                 {
+                    unreadable++;
                     continue;
                 }
 
@@ -105,6 +161,7 @@ public sealed class GameLibraryScanner : IGameLibraryScanner
                 var flags = int.TryParse(app?.GetString("StateFlags"), out var f) ? f : (int?)null;
                 if (Directory.Exists(folder)) apps.Add(new SteamApp(appId, name, installDir, folder, flags));
             }
+            if (unreadable > 0) problems?.Add($"{steamapps} : {unreadable} manifeste(s) illisible(s)");
         }
         return apps;
     }
@@ -120,13 +177,26 @@ public sealed class GameLibraryScanner : IGameLibraryScanner
     public static string? SteamAppIdFor(Core.Profiles.GameProfile profile, IReadOnlyList<SteamApp> apps) =>
         profile.SteamAppId is { } id && Core.Launching.LaunchPlanner.IsValidSteamAppId(id) ? id : FindSteamAppId(profile.ExePath, apps);
 
-    /// <summary>Dossier d'installation de Steam (HKCU\Software\Valve\Steam\SteamPath), ou null.</summary>
+    /// <summary>
+    /// Dossier d'installation de Steam : HKCU\Software\Valve\Steam\SteamPath, sinon HKLM\SOFTWARE\WOW6432Node\Valve\Steam\InstallPath
+    /// (écrit par l'installeur de Steam, vérifié sur la machine de dev). Le second sert quand OptiGame, élevé avec un AUTRE compte
+    /// administrateur, lit le HKCU de ce compte, où Steam n'a jamais tourné. Null si aucun n'existe.
+    /// </summary>
     public static string? SteamPath()
     {
-        using var steamKey = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(@"Software\Valve\Steam");
-        return steamKey?.GetValue("SteamPath") is string path && path.Length > 0 && Directory.Exists(path)
-            ? Path.GetFullPath(path.Replace('/', '\\'))
-            : null;
+        using var userKey = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(@"Software\Valve\Steam");
+        using var machineKey = Microsoft.Win32.Registry.LocalMachine.OpenSubKey(@"SOFTWARE\WOW6432Node\Valve\Steam");
+        foreach (var value in new[] { userKey?.GetValue("SteamPath"), machineKey?.GetValue("InstallPath") })
+        {
+            if (value is not string path || path.Length == 0) continue;
+            try
+            {
+                var full = Path.GetFullPath(path.Replace('/', '\\')).TrimEnd('\\');
+                if (Directory.Exists(full)) return full;
+            }
+            catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException) { }
+        }
+        return null;
     }
 
     /// <summary>Chemin de steam.exe (HKCU\Software\Valve\Steam\SteamExe, vérifié sur la machine de dev), ou null.</summary>

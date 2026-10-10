@@ -350,6 +350,7 @@ public sealed partial class LibraryViewModel : ObservableObject
         _searchVersion++; // une recherche en attente est appliquée maintenant
         GamesView.Refresh();
         ShowUninstalledList(keepShownCount);
+        ShowInstalledNotAdded();
         OnPropertyChanged(nameof(IsFiltered));
         NotifyCounts();
     }
@@ -398,6 +399,58 @@ public sealed partial class LibraryViewModel : ObservableObject
     }
 
     public ObservableCollection<OwnedGameCardViewModel> UninstalledGames { get; } = [];
+
+    /// <summary>
+    /// Jeux Steam INSTALLÉS qui n'ont pas de profil. Sans cette section, ils n'apparaissaient nulle part (carte Trello n° 1 : un
+    /// utilisateur ne voyait que ses jeux non installés) : le bandeau ne les propose qu'une fois, et seulement à un Mes jeux vide.
+    /// Affichée en couleur, sans dépendre de « Afficher les jeux non installés ».
+    /// </summary>
+    public ObservableCollection<OwnedGameCardViewModel> InstalledNotAdded { get; } = [];
+
+    /// <summary>Ceux que les filtres retiennent (une poignée : pas de pages).</summary>
+    public ObservableCollection<OwnedGameCardViewModel> VisibleInstalledNotAdded { get; } = [];
+
+    public bool HasVisibleInstalledNotAdded => VisibleInstalledNotAdded.Count > 0;
+
+    public string InstalledNotAddedHeader => $"Installés, pas encore dans Mes jeux · {VisibleInstalledNotAdded.Count}";
+
+    private string _lastSteamReport = "";
+
+    private void ShowInstalledNotAdded()
+    {
+        VisibleInstalledNotAdded.Clear();
+        foreach (var card in InstalledNotAdded.Where(game => Matches(game.Name, game.Store, game.Genres, game.Kinds))
+                     .OrderBy(game => game.Name, StringComparer.CurrentCultureIgnoreCase))
+        {
+            VisibleInstalledNotAdded.Add(card);
+        }
+        OnPropertyChanged(nameof(HasVisibleInstalledNotAdded));
+        OnPropertyChanged(nameof(InstalledNotAddedHeader));
+    }
+
+    /// <summary>« Ajouter à Mes jeux » : exécutable le plus probable cherché dans son dossier (hors du thread UI), comme le bandeau.</summary>
+    [RelayCommand]
+    private async Task AddInstalledAsync(OwnedGameCardViewModel? card)
+    {
+        if (card?.InstalledApp is not { } app) return;
+        InstalledGame game;
+        try
+        {
+            game = await Task.Run(() => GameLibraryScanner.ToInstalledGame(app));
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            _dialogs.ShowError($"{card.Name} n'a pas été ajouté", $"Le dossier {app.Folder} n'a pas pu être lu.", ex.Message);
+            return;
+        }
+        NewGames.AddGame(game); // succès : GameAdded recharge les cartes et les bibliothèques
+    }
+
+    [RelayCommand]
+    private async Task AddAllInstalledAsync()
+    {
+        foreach (var card in VisibleInstalledNotAdded.ToList()) await AddInstalledAsync(card);
+    }
 
 
     /// <summary>Afficher les jeux possédés mais non installés (mémorisé) ; leurs jaquettes Epic et GOG sont alors téléchargées.</summary>
@@ -537,9 +590,11 @@ public sealed partial class LibraryViewModel : ObservableObject
         Platform.Library.SteamOwnedSnapshot? snapshot = null;
         Dictionary<Guid, uint> profileApps = [];
         List<OwnedGameCardViewModel> uninstalled = [];
+        List<OwnedGameCardViewModel> notAdded = [];
+        string steamReport = "";
         try
         {
-            (snapshot, profileApps, uninstalled) = await Task.Run(() =>
+            (snapshot, profileApps, uninstalled, notAdded, steamReport) = await Task.Run(() =>
             {
                 Platform.Library.SteamOwnedSnapshot? owned = null;
                 try
@@ -550,7 +605,8 @@ public sealed partial class LibraryViewModel : ObservableObject
                 {
                     _log.Warn($"Bibliothèque Steam illisible (caches du client) : {ex.Message}");
                 }
-                var apps = Platform.Library.GameLibraryScanner.SteamApps();
+                var scan = Platform.Library.GameLibraryScanner.ScanSteamApps();
+                var apps = scan.Apps;
                 var installed = apps.Select(a => uint.TryParse(a.AppId, out var id) ? id : 0).ToHashSet();
                 var byProfile = profiles
                     .Select(p => (p.Id, AppId: Platform.Library.GameLibraryScanner.SteamAppIdFor(p, apps)))
@@ -565,7 +621,25 @@ public sealed partial class LibraryViewModel : ObservableObject
                 cards.AddRange(_storeLibrary.ReadNotInstalled()
                     .Where(g => !profileNames.Contains(Core.Library.StoreCatalogs.NameKey(g.Name))) // déjà dans « Mes jeux »
                     .Select(g => OwnedGameCardViewModel.FromStore(g, _storeCovers.TryGetCached(g.CoverUrl))));
-                return (owned, byProfile, cards);
+
+                // Jeux Steam installés sans profil : sinon visibles NULLE PART (ni dans Mes jeux, ni parmi les non installés).
+                // Seulement des jeux : ceux que les caches du client connaissent comme jeux possédés (outils, logiciels écartés).
+                var pending = new List<OwnedGameCardViewModel>();
+                var skipped = new List<string>();
+                foreach (var app in apps.Where(a => a.IsFullyInstalled).DistinctBy(a => a.AppId))
+                {
+                    if (!uint.TryParse(app.AppId, out var id) || byProfile.ContainsValue(id)) continue;
+                    var game = owned?.Games.GetValueOrDefault(id);
+                    if (owned is not null && game is null)
+                    {
+                        skipped.Add(app.Name);
+                        continue;
+                    }
+                    pending.Add(OwnedGameCardViewModel.FromInstalledSteam(app, game, Platform.Library.SteamOwnedLibrary.CoverPath(id)));
+                }
+                var report = scan.Describe() + $", {pending.Count} pas encore dans Mes jeux" +
+                             (skipped.Count > 0 ? $" ; écartés (pas des jeux possédés selon Steam) : {string.Join(", ", skipped)}" : "");
+                return (owned, byProfile, cards, pending, report);
             });
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException)
@@ -576,6 +650,19 @@ public sealed partial class LibraryViewModel : ObservableObject
         if (version != _libraryVersion) return;
         _log.Info($"Bibliothèques des magasins lues en {watch.ElapsedMilliseconds} ms ({uninstalled.Count} jeux non installés) — " +
                   $"mémoire : {MemoryUsage.Now().Describe()}");
+        // Ce que Steam a donné (dossier, bibliothèques, problèmes), une fois par changement : sert à comprendre un jeu introuvable.
+        if (steamReport != _lastSteamReport)
+        {
+            _lastSteamReport = steamReport;
+            _log.Info(steamReport);
+        }
+        InstalledNotAdded.Clear();
+        foreach (var card in notAdded)
+        {
+            card.Owner = this;
+            InstalledNotAdded.Add(card);
+        }
+        ShowInstalledNotAdded();
 
         foreach (var card in Games)
         {
@@ -593,7 +680,7 @@ public sealed partial class LibraryViewModel : ObservableObject
         }
         ApplyTags(rebuildFilters: false);
         // Genres IGDB des jeux qui n'en ont pas encore (tous magasins), en tâche de fond : ApplyTags à leur arrivée.
-        _tags.Request(Games.Select(c => c.Name).Concat(UninstalledGames.Select(c => c.Name)));
+        _tags.Request(Games.Select(c => c.Name).Concat(UninstalledGames.Select(c => c.Name)).Concat(InstalledNotAdded.Select(c => c.Name)));
 
         RebuildGenreOptions();
 
@@ -616,7 +703,7 @@ public sealed partial class LibraryViewModel : ObservableObject
             var tags = card.StoreTags.With(_tags.Find(card.Name));
             (card.Genres, card.Kinds) = (tags.Genres, tags.Kinds);
         }
-        foreach (var card in UninstalledGames) card.ApplyTags(_tags.Find(card.Name));
+        foreach (var card in UninstalledGames.Concat(InstalledNotAdded)) card.ApplyTags(_tags.Find(card.Name));
         OnPropertyChanged(nameof(ShowsTagsHint));
         if (!rebuildFilters) return;
         RebuildGenreOptions();
@@ -634,7 +721,7 @@ public sealed partial class LibraryViewModel : ObservableObject
     private void RebuildGenreOptions()
     {
         var selected = SelectedGenre?.Name;
-        var genres = Games.SelectMany(c => c.Genres).Concat(UninstalledGames.SelectMany(c => c.Genres))
+        var genres = Games.SelectMany(c => c.Genres).Concat(UninstalledGames.SelectMany(c => c.Genres)).Concat(InstalledNotAdded.SelectMany(c => c.Genres))
             .Distinct()
             .OrderBy(g => g, StringComparer.CurrentCultureIgnoreCase)
             .ToList();
@@ -1724,6 +1811,20 @@ public sealed partial class OwnedGameCardViewModel : ObservableObject
             game.Genres.Select(Core.Library.SteamTaxonomy.Genre).OfType<string>().ToList(), Core.Library.SteamTaxonomy.Kinds(game.Categories),
             coverPath, null);
 
+    /// <summary>Jeu Steam installé sans profil ; <paramref name="owned"/> (caches du client) donne genres et types s'il est connu.</summary>
+    public static OwnedGameCardViewModel FromInstalledSteam(GameLibraryScanner.SteamApp app, Core.Library.OwnedSteamGame? owned, string? coverPath) =>
+        new(GameSource.Steam, app.AppId, LibraryViewModel.CleanName(owned?.Name ?? app.Name),
+            owned?.Genres.Select(Core.Library.SteamTaxonomy.Genre).OfType<string>().ToList() ?? [],
+            owned is null ? new HashSet<Core.Library.GameKind>() : Core.Library.SteamTaxonomy.Kinds(owned.Categories), coverPath, null)
+        {
+            InstalledApp = app,
+        };
+
+    /// <summary>Jeu Steam installé mais pas dans Mes jeux (section « Installés, pas encore dans Mes jeux ») ; null = non installé.</summary>
+    public GameLibraryScanner.SteamApp? InstalledApp { get; private init; }
+
+    public bool IsInstalled => InstalledApp is not null;
+
     public static OwnedGameCardViewModel FromStore(Core.Library.StoreOwnedGame game, string? cachedCover) =>
         new(game.Store, game.Key, game.Name, game.Genres, new HashSet<Core.Library.GameKind>(), cachedCover, game.CoverUrl);
 
@@ -1751,7 +1852,7 @@ public sealed partial class OwnedGameCardViewModel : ObservableObject
     public void RefreshCoverImage() => OnPropertyChanged(nameof(CoverImage));
 
     public System.Windows.Media.ImageSource? CoverImage =>
-        Converters.ImageLoader.Load(CoverPath, Converters.ImageLoader.PixelsFor(Converters.ImageLoader.GridCoverWidth), gray: true);
+        Converters.ImageLoader.Load(CoverPath, Converters.ImageLoader.PixelsFor(Converters.ImageLoader.GridCoverWidth), gray: !IsInstalled);
 
     public string Initials { get; }
 
@@ -1765,8 +1866,9 @@ public sealed partial class OwnedGameCardViewModel : ObservableObject
     /// <summary>« Non installé · Steam » sous la jaquette, avec les genres s'il y en a.</summary>
     public string CaptionText => GenresText.Length > 0 ? $"{StoreLabel} · {GenresText}" : StoreLabel;
 
-    public string AccessibleName => $"{Name}, non installé, {StoreLabel}" + (GenresText.Length > 0 ? $", {GenresText}" : "") +
-                                    $". Entrée : {InstallLabel.ToLowerInvariant()}";
+    public string AccessibleName => IsInstalled
+        ? $"{Name}, installé, pas encore dans Mes jeux, {StoreLabel}" + (GenresText.Length > 0 ? $", {GenresText}" : "") + ". Entrée : ajouter à Mes jeux"
+        : $"{Name}, non installé, {StoreLabel}" + (GenresText.Length > 0 ? $", {GenresText}" : "") + $". Entrée : {InstallLabel.ToLowerInvariant()}";
 
     /// <summary>Epic Games et GOG : produit du magasin (« Voir sur … »), lu dans la clé du jeu possédé.</summary>
     public Core.Library.StoreProduct? Product => Core.Library.StorePages.FromOwned(Store, Key, Name);

@@ -359,6 +359,68 @@
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
 
+                    <!-- Jeux Steam installés sans profil : en couleur, toujours affichés (sinon visibles nulle part) ; Entrée ou clic = ajouter -->
+                    <StackPanel Margin="0,8,0,0" Visibility="{Binding HasVisibleInstalledNotAdded, Converter={StaticResource BoolToVisibility}}">
+                        <DockPanel Margin="2,0,0,2">
+                            <Button DockPanel.Dock="Right" Style="{StaticResource Button.Secondary}" Content="Tout ajouter"
+                                    Command="{Binding AddAllInstalledCommand}" AutomationProperties.Name="Ajouter tous ces jeux à Mes jeux" />
+                            <TextBlock VerticalAlignment="Center" Style="{StaticResource Text.SectionTitle}" Text="{Binding InstalledNotAddedHeader}" />
+                        </DockPanel>
+                        <TextBlock Margin="2,0,0,12" Style="{StaticResource Text.Caption}" TextWrapping="Wrap"
+                                   Text="Trouvés dans vos bibliothèques Steam. Clic ou Entrée : l'ajouter à Mes jeux (rien n'est modifié sur le PC)." />
+                        <ItemsControl ItemsSource="{Binding VisibleInstalledNotAdded}" Focusable="False" KeyboardNavigation.TabNavigation="Once"
+                                      AutomationProperties.Name="Jeux installés, pas encore dans Mes jeux">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <WrapPanel />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="{x:Type vm:OwnedGameCardViewModel}">
+                                    <controls:CoverTile Image="{Binding CoverImage, IsAsync=True}" Initials="{Binding Initials}" Title="{Binding Name}"
+                                                        Caption="{Binding CaptionText}" AutomationProperties.Name="{Binding AccessibleName}"
+                                                        Command="{Binding DataContext.AddInstalledCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                        CommandParameter="{Binding}"
+                                                        Tag="{Binding DataContext, RelativeSource={RelativeSource AncestorType=UserControl}}">
+                                        <controls:CoverTile.TopLeft>
+                                            <StackPanel Orientation="Horizontal">
+                                                <ContentControl Content="{Binding Store}" ContentTemplate="{StaticResource StoreBadge}" Focusable="False" IsTabStop="False"
+                                                                ToolTip="{Binding StoreLabel}" />
+                                                <Border Style="{StaticResource Badge.Overlay}">
+                                                    <TextBlock Text="Installé" />
+                                                </Border>
+                                            </StackPanel>
+                                        </controls:CoverTile.TopLeft>
+                                        <controls:CoverTile.Actions>
+                                            <StackPanel>
+                                                <Button Style="{StaticResource Button.Primary}" HorizontalAlignment="Stretch" Focusable="False"
+                                                        Command="{Binding Owner.AddInstalledCommand}"
+                                                        CommandParameter="{Binding}">
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <TextBlock Style="{StaticResource Text.Icon}" FontSize="{StaticResource IconSize.Small}" Text="&#xE710;" />
+                                                        <TextBlock Margin="8,0,0,0" Text="Ajouter à Mes jeux" />
+                                                    </StackPanel>
+                                                </Button>
+                                                <Button Margin="0,6,0,0" Style="{StaticResource Button.Secondary}" HorizontalAlignment="Stretch" Focusable="False"
+                                                        Content="{Binding StorePageLabel}"
+                                                        Command="{Binding Owner.OpenOwnedStorePageCommand}"
+                                                        CommandParameter="{Binding}" />
+                                            </StackPanel>
+                                        </controls:CoverTile.Actions>
+                                        <controls:CoverTile.ContextMenu>
+                                            <ContextMenu DataContext="{Binding PlacementTarget.Tag, RelativeSource={RelativeSource Self}}">
+                                                <MenuItem FontWeight="SemiBold" Header="Ajouter à Mes jeux" Command="{Binding AddInstalledCommand}"
+                                                          CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                                                <MenuItem Header="{Binding PlacementTarget.DataContext.StorePageLabel, RelativeSource={RelativeSource AncestorType=ContextMenu}}" Command="{Binding OpenOwnedStorePageCommand}"
+                                                          CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                                            </ContextMenu>
+                                        </controls:CoverTile.ContextMenu>
+                                    </controls:CoverTile>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+
                     <!-- Jeux possédés, non installés (Steam, Epic Games, GOG) : jaquettes atténuées ; Entrée ou clic = installer -->
                     <StackPanel Margin="0,8,0,0">
                         <StackPanel.Visibility>

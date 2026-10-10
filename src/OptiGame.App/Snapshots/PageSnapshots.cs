@@ -62,6 +62,24 @@ internal static class PageSnapshots
             var pages = new List<(string Name, Func<Task> Open)>
             {
                 ("1-mes-jeux", async () => { main.Navigate(library); await Settle(4000); }),
+                // Jeu Steam installé sans profil (seulement si la copie des données en a un) : « Ajouter à Mes jeux » le fait passer dans la grille.
+                ("1a-mes-jeux-ajout-installe", async () =>
+                {
+                    main.Navigate(library);
+                    await WaitUntil(() => library.VisibleInstalledNotAdded.Count > 0, 8000);
+                    if (library.VisibleInstalledNotAdded.FirstOrDefault() is not { } card)
+                    {
+                        Log("Installés, pas encore dans Mes jeux : aucun dans ces données.");
+                        return;
+                    }
+                    var before = library.Games.Count;
+                    await library.AddInstalledCommand.ExecuteAsync(card);
+                    await WaitUntil(() => library.Games.Count == before + 1 && library.VisibleInstalledNotAdded.All(c => c.Key != card.Key), 15_000);
+                    var added = library.Games.FirstOrDefault(g => g.Name == card.Name);
+                    Log($"Ajouté depuis « Installés, pas encore dans Mes jeux » : {card.Name} → Mes jeux {before} → {library.Games.Count} jeux, " +
+                        $"encore dans la section : {library.VisibleInstalledNotAdded.Any(c => c.Key == card.Key)}, fiche : {(added is null ? "ABSENTE" : "présente")}.");
+                    await Settle(800);
+                }),
                 ("1b-mes-jeux-aucun-resultat", async () => { main.Navigate(library); library.SearchText = "zzzz"; await Settle(1200); }),
                 ("1c-mes-jeux-epic", async () =>
                 {

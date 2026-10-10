@@ -139,11 +139,20 @@ public sealed partial class NewSteamGamesViewModel : ObservableObject
     [RelayCommand]
     private void Add(NewGameProposalViewModel? proposal)
     {
-        if (proposal?.Game is not { SteamAppId: { } appId } game) return;
+        if (proposal?.Game is { } game) AddGame(game);
+    }
+
+    /// <summary>
+    /// Ajoute un jeu Steam installé à « Mes jeux » (bandeau, ou section « Installés, pas encore dans Mes jeux ») avec son
+    /// exécutable le plus probable ; faux si rien n'a été ajouté (message affiché).
+    /// </summary>
+    public bool AddGame(InstalledGame game)
+    {
+        if (game.SteamAppId is not { } appId) return false;
         if (game.Candidates.FirstOrDefault() is not { } exe)
         {
             _dialogs.ShowError($"{game.Name} n'a pas été ajouté", $"Aucun fichier .exe n'a été trouvé dans {game.Folder}. Ajoutez-le avec « Ajouter des jeux » puis « Choisir un fichier .exe… ».");
-            return;
+            return false;
         }
 
         var profile = new GameProfile { Name = LibraryViewModel.CleanName(game.Name), ExePath = exe.Path, SteamAppId = appId };
@@ -154,11 +163,12 @@ public sealed partial class NewSteamGamesViewModel : ObservableObject
         catch (ProfileValidationException ex)
         {
             _dialogs.ShowError($"{game.Name} n'a pas été ajouté", ex.Message);
-            return;
+            return false;
         }
-        _log.Info($"Nouveau jeu Steam ajouté : {profile.Name} ({exe.Path}).");
-        Forget(proposal, appId);
+        _log.Info($"Jeu Steam ajouté : {profile.Name} ({exe.Path}).");
+        Forget(appId);
         GameAdded?.Invoke(this, profile.Id);
+        return true;
     }
 
     [RelayCommand]
@@ -166,18 +176,18 @@ public sealed partial class NewSteamGamesViewModel : ObservableObject
     {
         if (proposal?.Game.SteamAppId is not { } appId) return;
         _log.Info($"Nouveau jeu Steam ignoré : {proposal.Game.Name} ({appId}).");
-        Forget(proposal, appId);
+        Forget(appId);
     }
 
-    /// <summary>Jamais reproposé.</summary>
-    private void Forget(NewGameProposalViewModel proposal, string appId)
+    /// <summary>Jamais reproposé dans le bandeau (il reste dans « Installés, pas encore dans Mes jeux » tant qu'il n'est pas ajouté).</summary>
+    private void Forget(string appId)
     {
         _settings.Update(s =>
         {
             s.SteamKnownAppIds ??= [];
             if (!s.SteamKnownAppIds.Contains(appId)) s.SteamKnownAppIds.Add(appId);
         });
-        Proposals.Remove(proposal);
+        foreach (var proposal in Proposals.Where(p => p.Game.SteamAppId == appId).ToList()) Proposals.Remove(proposal);
         NotifyProposals();
     }
 }

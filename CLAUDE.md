@@ -467,6 +467,15 @@ vit dans Core ; Platform ne fait que lire/écrire le système.
   FileSystemWatcher sur `steamapps\appmanifest_*.acf` de chaque bibliothèque, 3 s après la dernière écriture ; proposé si
   `StateFlags` a le bit 4 (entièrement installé ; 1026 = téléchargement en cours), sans profil et absent de
   `settings.SteamKnownAppIds` (null = premier passage : l'existant est mémorisé, pas proposé). Ajouté ou ignoré = mémorisé.
+  Section « Installés, pas encore dans Mes jeux » (carte Trello n° 1, 2026-10-10 : un utilisateur ne voyait que ses jeux NON
+  installés ; un jeu installé sans profil n'apparaissait NULLE PART — écarté des non installés, bandeau proposé une seule fois et
+  seulement à un Mes jeux vide) : `LibraryViewModel.InstalledNotAdded`, en couleur, hors de la case « non installés », jeux
+  entièrement installés connus des caches du client comme jeux possédés (outils écartés : « SaveSync » sur la machine de dev),
+  « Ajouter à Mes jeux » = `NewSteamGamesViewModel.AddGame` (même ajout que le bandeau). Lecture de Steam robuste
+  (`GameLibraryScanner.ScanSteamApps`) : bibliothèque ou manifeste illisible = ignoré et noté, ancien format de libraryfolders.vdf
+  (`Core/Library/SteamLibraryFolders`), SteamPath de HKCU sinon InstallPath de HKLM\SOFTWARE\WOW6432Node\Valve\Steam (OptiGame
+  élevé avec un AUTRE compte administrateur) ; journal « Steam : dossier, bibliothèques, N jeux installés, problèmes » à chaque
+  changement, aussi dans `DiagDump -- --games`. Capture : ui-snapshots `-Only 1a` (ajout, si la copie des données a un tel jeu).
 - Genres et types de Mes jeux, TOUS magasins (`Core/Library/GameTaxonomy` = vocabulaire français commun, `GameTags`) : genres et
   catégories du magasin Steam, genres + thèmes de GOG Galaxy (`originalMeta` = noms IGDB, relevé le 2026-10-06 :
   `DiagDump -- --galaxy-meta`), complétés pour tous par IGDB (`App/Services/GameTagService`, `Platform/Library/GameTagCache` =
