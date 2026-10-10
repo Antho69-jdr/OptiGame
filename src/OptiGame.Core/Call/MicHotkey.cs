@@ -137,6 +137,11 @@ public enum NoiseSuppression
     Standard,
     /// <summary>Aucune (micro de studio, casque à réduction de bruit).</summary>
     Off,
+    /// <summary>
+    /// Filtre DeepFilterNet 3 (réseau de neurones plus grand), sur ce PC : retire aussi les bruits changeants, une partie de l'écho
+    /// de la pièce et des voix lointaines ; plus de processeur et de mémoire. Nommé « Maximale » dans l'interface.
+    /// </summary>
+    Maximum,
 }
 
 /// <summary>Débit de la voix envoyée (Opus mono) : chacun choisit ce qu'il envoie.</summary>

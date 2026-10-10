@@ -3,3 +3,7 @@
 *.ico binary
 # Fichier tiers gardé tel que publié (empreinte vérifiée) : jamais de conversion des fins de ligne.
 src/OptiGame.App/Call/rnnoise-sync.js -text
+# Filtre DeepFilterNet compilé par la CI (.github/workflows/deepfilter-wasm.yml) : fichiers gardés tels que produits (empreintes vérifiées).
+src/OptiGame.App/Call/dfn/** -text
+*.wasm binary
+*.tar.gz binary

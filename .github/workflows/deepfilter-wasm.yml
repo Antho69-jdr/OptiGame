@@ -47,7 +47,7 @@ jobs:
           # la copie ne sert qu'à DfParams::default, jamais appelé par wasm.rs. Seule cette ligne du Cargo.toml change :
           sed -i '/^wasm = \[/,/^\]/{/"default-model",/d}' libDF/Cargo.toml
           git diff -- libDF/Cargo.toml
-          wasm-pack build libDF --release --target web --features wasm
+          wasm-pack build libDF --release --target web --no-default-features --features wasm
 
       - name: Fichiers et empreintes
         run: |

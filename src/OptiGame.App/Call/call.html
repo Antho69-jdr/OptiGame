@@ -7,7 +7,7 @@
      deux PC se trouvent), la connexion WebRTC directe vers l'ami et, si l'utilisateur l'a accepté, le serveur public de découverte
      d'adresse. Seulement la voix : le canal « control » ne porte que deux signaux fixes (raccroché, micro coupé). -->
 <meta http-equiv="Content-Security-Policy"
-      content="default-src 'none'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'; media-src blob: mediastream:; connect-src wss://*.workers.dev ws://localhost:*">
+      content="default-src 'none'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'; media-src blob: mediastream:; connect-src 'self' wss://*.workers.dev ws://localhost:*">
 </head>
 <body>
 <script>
@@ -18,10 +18,11 @@ const STUN = 'stun:stun.cloudflare.com:3478';
 // autorise l'autre PC jusqu'à 192 kbit/s ; chacun limite ce qu'IL envoie à son réglage (96, 128 ou 192 kbit/s).
 const OPUS = { maxaveragebitrate: '192000', stereo: '0', 'sprop-stereo': '0', useinbandfec: '1', usedtx: '0', maxplaybackrate: '48000' };
 let bitrate = 128000;
-const NOISE_MODES = ['strong', 'standard', 'off'];
+const NOISE_MODES = ['max', 'strong', 'standard', 'off'];
 const GATE_MODES = ['auto', 'manual', 'off'];
 let gateMode = 'auto', gateThreshold = -30;
-// Suppression du bruit : 'strong' = filtre RNNoise (noise-worklet.js), 'standard' = celle du moteur web, 'off' = aucune.
+// Suppression du bruit : 'max' = filtre DeepFilterNet 3, 'strong' = filtre RNNoise (noise-worklet.js), 'standard' = celle du moteur
+// web, 'off' = aucune.
 const AUDIO = mode => ({ echoCancellation: true, noiseSuppression: mode === 'standard', autoGainControl: true, channelCount: 1 });
 
 let mic = null, muted = true, levels = null, ctx = null, analyser = null, source = null;
@@ -78,19 +79,50 @@ async function openMic() {
 
 // Traitement de la voix (noise-worklet.js : filtre RNNoise + seuil du micro) : chargé seulement s'il sert ; indisponible = la
 // suppression du moteur web prend le relais et le seuil est sans effet.
-const needsProcessor = () => noiseMode === 'strong' || gateMode !== 'off';
+const needsProcessor = () => noiseMode === 'max' || noiseMode === 'strong' || gateMode !== 'off';
+const usesFilter = () => noiseMode === 'max' || noiseMode === 'strong';
+
+// « Maximale » : moteur (dfn/df_bg.wasm, ≈ 9,6 Mo) et modèle (≈ 8 Mo) lus ici et transmis au fil audio, qui les compile ; une fois.
+let maxLoading = null;
+function loadMax() {
+  if (maxLoading || !processor) return;
+  maxLoading = (async () => {
+    try {
+      const started = performance.now();
+      const wasm = await (await fetch('dfn/df_bg.wasm')).arrayBuffer();
+      const model = await (await fetch('dfn/DeepFilterNet3_onnx.tar.gz')).arrayBuffer();
+      maxCompileMs = performance.now() - started;
+      send({ ev: 'maxStep', message: 'fichiers lus en ' + Math.round(maxCompileMs) + ' ms (' + wasm.byteLength + ' + ' + model.byteLength + ' octets)' });
+      processor.port.postMessage({ dfn: { wasm, model } }, [wasm, model]);
+    } catch (err) {
+      maxFailed(String((err && err.message) || err));
+    }
+  })();
+}
+let maxCompileMs = 0;
+function maxFailed(message) {
+  if (noiseMode === 'max') noiseMode = 'strong';
+  send({ ev: 'maxUnavailable', message });
+  applyVoice();
+}
 
 async function loadProcessor() {
   if (processor) return;
   try {
     await ctx.audioWorklet.addModule('noise-worklet.js');
     processor = new AudioWorkletNode(ctx, 'voice-processor', { numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [1] });
-    processor.port.onmessage = e => send({ ev: 'voiceStats', ...e.data });
+    processor.port.onmessageerror = () => maxFailed('message refusé par le fil audio');
+    processor.port.onmessage = e => {
+      if (e.data.maxStep !== undefined) send({ ev: 'maxStep', message: e.data.maxStep });
+      else if (e.data.maxReady !== undefined) send({ ev: 'maxReady', ms: e.data.maxReady, compileMs: maxCompileMs });
+      else if (e.data.maxFailed !== undefined) maxFailed(e.data.maxFailed);
+      else send({ ev: 'voiceStats', ...e.data });
+    };
     processor.connect(outbound);
     processor.connect(analyser);
   } catch (err) {
     processor = null;
-    if (noiseMode === 'strong') noiseMode = 'standard';
+    if (usesFilter()) noiseMode = 'standard';
     send({ ev: 'noiseUnavailable', message: String((err && err.message) || err) });
   }
 }
@@ -177,7 +209,10 @@ function stopBandwidth() {
   raw = null;
 }
 function applyVoice() {
-  if (processor) processor.port.postMessage({ denoise: noiseMode === 'strong', gateMode, threshold: gateThreshold });
+  if (processor) {
+    processor.port.postMessage({ denoise: usesFilter(), engine: noiseMode === 'max' ? 'dfn' : 'rnnoise', gateMode, threshold: gateThreshold });
+    if (noiseMode === 'max') loadMax();
+  }
   send({ ev: 'noise', mode: noiseMode, filter: !!processor });
 }
 

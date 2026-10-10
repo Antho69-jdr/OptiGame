@@ -1,4 +1,4 @@
-using System.Collections.ObjectModel;
+﻿using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Text.Json;
 using System.Windows.Threading;
@@ -200,6 +200,7 @@ public sealed partial class CallViewModel : ObservableObject, IDisposable
     /// <summary>Choix de la suppression du bruit (gardé ; appliqué tout de suite pendant un appel).</summary>
     public IReadOnlyList<NoiseOption> NoiseOptions { get; } =
     [
+        new(NoiseSuppression.Maximum, "Maximale (plus de processeur)"),
         new(NoiseSuppression.Strong, "Forte (recommandée)"),
         new(NoiseSuppression.Standard, "Standard"),
         new(NoiseSuppression.Off, "Aucune"),
@@ -221,6 +222,7 @@ public sealed partial class CallViewModel : ObservableObject, IDisposable
 
     private static string NoiseMode(NoiseSuppression mode) => mode switch
     {
+        NoiseSuppression.Maximum => "max",
         NoiseSuppression.Strong => "strong",
         NoiseSuppression.Standard => "standard",
         _ => "off",
@@ -551,7 +553,7 @@ public sealed partial class CallViewModel : ObservableObject, IDisposable
         {
             case "noise":
                 if (message.TryGetProperty("filter", out var filter) && filter.ValueKind == JsonValueKind.False
-                    && _settings.Get().CallNoiseSuppression == NoiseSuppression.Strong)
+                    && _settings.Get().CallNoiseSuppression is NoiseSuppression.Strong or NoiseSuppression.Maximum)
                 {
                     ShowStatus("Le filtre de bruit n'a pas pu démarrer sur ce PC : la suppression standard est utilisée.", Severity.Warning);
                 }
@@ -567,6 +569,17 @@ public sealed partial class CallViewModel : ObservableObject, IDisposable
                 break;
             case "noiseUnavailable":
                 _log.Warn($"Appel : filtre de bruit indisponible ({Text(message, "message")}).");
+                break;
+            case "maxStep":
+                _log.Info($"Appel : suppression maximale, {Text(message, "message")}.");
+                break;
+            case "maxReady":
+                // Filtre « Maximale » prêt : temps de chargement (compilation du moteur + création du modèle) pour le journal.
+                _log.Info($"Appel : suppression maximale prête en {Number(message, "ms"):0} ms (moteur compilé en {Number(message, "compileMs"):0} ms).");
+                break;
+            case "maxUnavailable":
+                _log.Warn($"Appel : suppression maximale indisponible ({Text(message, "message")}), suppression forte utilisée.");
+                ShowStatus("La suppression maximale n'a pas pu démarrer sur ce PC : la suppression forte est utilisée.", Severity.Warning);
                 break;
             case "devices":
                 OnDevices(message);
