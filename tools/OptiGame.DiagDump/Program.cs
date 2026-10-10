@@ -249,6 +249,22 @@ if (args.Length >= 1 && args[0] == "--ingame-settings")
 }
 
 // --steam-owned : jeux Steam possédés d'après les caches du client (appinfo.vdf + packageinfo.vdf), lecture seule.
+// --owned-list : jeux possédés NON installés, une ligne par jeu (« steam<TAB>appid<TAB>nom », « epic<TAB>clé<TAB>nom »…),
+// comme la section « Non installés » de Mes jeux.
+if (args.Length == 1 && args[0] == "--owned-list")
+{
+    var installed = OptiGame.Platform.Library.GameLibraryScanner.SteamApps().Select(a => a.AppId).ToHashSet();
+    foreach (var game in (OptiGame.Platform.Library.SteamOwnedLibrary.Read()?.Games.Values ?? []).OrderBy(g => g.Name))
+    {
+        if (!installed.Contains(game.AppId.ToString(System.Globalization.CultureInfo.InvariantCulture))) Console.WriteLine($"steam\t{game.AppId}\t{game.Name}");
+    }
+    foreach (var game in new OptiGame.Platform.Library.StoreOwnedLibrary(services.GetRequiredService<OptiGame.Core.Logging.FileLog>()).ReadNotInstalled().OrderBy(g => g.Name))
+    {
+        Console.WriteLine($"{game.Store.ToString().ToLowerInvariant()}\t{game.Key}\t{game.Name}");
+    }
+    return;
+}
+
 if (args.Length == 1 && args[0] == "--steam-owned")
 {
     var cache = Path.Combine(OptiGame.Platform.Library.GameLibraryScanner.SteamPath() ?? @"C:\Program Files (x86)\Steam", "appcache");
@@ -320,6 +336,17 @@ if (args.Length == 1 && args[0] == "--store-owned")
 // --igdb-taxonomy <nom>… : genres et types IGDB (requête multiple, 10 noms max), tels que Mes jeux les filtrera ; OPTIGAME_RAW=1 :
 // réponse brute de la requête multiple. Seuls les noms
 // sont envoyés ; identifiants IGDB de Paramètres.
+// --igdb-multiquery <fichier> : envoie la requête multiple IGDB écrite dans ce fichier (identifiants de l'appli) et affiche la réponse
+// brute (relevés ponctuels, ex. moteurs des jeux possédés).
+if (args.Length == 2 && args[0] == "--igdb-multiquery")
+{
+    var realSettings = new OptiGame.Core.Settings.AppSettingsStore(new OptiGame.Core.State.JsonStateStore<OptiGame.Core.Settings.AppSettings>(
+        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "OptiGame", "settings.json")));
+    var igdb = new OptiGame.Platform.Artwork.IgdbClient(realSettings, services.GetRequiredService<OptiGame.Core.Logging.FileLog>());
+    Console.WriteLine(await igdb.MultiQueryAsync(File.ReadAllText(args[1])));
+    return;
+}
+
 if (args.Length >= 2 && args[0] == "--igdb-taxonomy")
 {
     var names = args.Skip(1).Take(OptiGame.Core.Artwork.Igdb.MaxQueriesPerMultiQuery).ToList();
