@@ -1,4 +1,4 @@
-using OptiGame.Core.InGame;
+﻿using OptiGame.Core.InGame;
 
 namespace OptiGame.Core.Tests.InGame;
 
@@ -18,7 +18,7 @@ public sealed class DetectedSettingsTests
         Assert.True(settings.VSync); // VerticalSyncEnabled = "1"
         Assert.Null(settings.Width); // aucune dimension dans ce fichier : rien n'est supposé
         Assert.Null(settings.DisplayMode); // WindowMode = "1" : numérotation du jeu, inconnue
-        Assert.Contains(settings.Options!, o => o.Label == "Render.13.WindowMode" && o.Value == "1"); // montré tel quel
+        Assert.Contains(settings.Options!, o => o.Label == "WindowMode" && o.Value == "1"); // montré tel quel, sans « Render.13. »
         Assert.DoesNotContain(settings.Options!, o => o.Label.Contains("SoundQuality")); // le son n'est pas un réglage d'image
     }
 

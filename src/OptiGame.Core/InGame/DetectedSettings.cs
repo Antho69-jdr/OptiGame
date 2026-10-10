@@ -171,7 +171,12 @@ public static partial class DetectedSettings
         }
         if (width is null != height is null) (width, height) = (null, null);
 
-        var options = graphics.Take(40).Select(p => new InGameOption(p.Key, p.Value)).ToList();
+        // Nom affiché : le dernier segment (« Render.13.WindowMode » → « WindowMode »), sauf si deux réglages finissent pareil.
+        var shown = graphics.Take(40).ToList();
+        string Short(string key) => key[(key.LastIndexOf('.') + 1)..];
+        var repeated = shown.GroupBy(p => Short(p.Key), StringComparer.OrdinalIgnoreCase).Where(g => g.Select(p => p.Key).Distinct().Count() > 1)
+            .Select(g => g.Key).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var options = shown.Select(p => new InGameOption(repeated.Contains(Short(p.Key)) ? p.Key : Short(p.Key), p.Value)).ToList();
         return new InGameSettings(Engine, sourceName, sourcePath, savedAt, Width: width, Height: height, DisplayMode: mode, VSync: vsync,
             FrameLimit: frameLimit, Options: options, AutoDetected: true);
     }

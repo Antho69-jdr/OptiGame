@@ -269,7 +269,7 @@
                                                         <ColumnDefinition Width="220" />
                                                         <ColumnDefinition Width="*" />
                                                     </Grid.ColumnDefinitions>
-                                                    <TextBlock Style="{StaticResource Text.Secondary}" Text="{Binding Label}" />
+                                                    <TextBlock Margin="0,0,12,0" Style="{StaticResource Text.Secondary}" TextWrapping="Wrap" Text="{Binding Label}" />
                                                     <TextBlock Grid.Column="1" Style="{StaticResource Text.Body}" Text="{Binding Value}" />
                                                 </Grid>
                                             </DataTemplate>
