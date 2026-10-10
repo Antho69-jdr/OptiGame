@@ -1,6 +1,6 @@
 # Filtre de bruit DeepFilterNet 3 (appel vocal) compilé en WebAssembly depuis le code OFFICIEL (github.com/Rikorose/DeepFilterNet,
 # MIT OU Apache-2.0), à un commit figé, avec une version de Rust et de wasm-pack figées et les dépendances du Cargo.lock du projet
-# (--locked). Même commande que le workflow build_wasm.yml du projet. Les empreintes SHA-256 sont écrites dans le journal : celles des
+# (--locked). Commande du workflow build_wasm.yml du projet, en module ES (--target web) au lieu de no-modules. Les empreintes SHA-256 sont écrites dans le journal : celles des
 # fichiers copiés dans src/OptiGame.App/Call/ doivent y correspondre. Aucun binaire n'est pris ailleurs (le paquet npm qui l'emballe
 # télécharge le sien depuis le serveur de son auteur).
 name: Filtre DeepFilterNet (WebAssembly)
@@ -35,8 +35,8 @@ jobs:
       - name: wasm-pack 0.13.1
         run: cargo install wasm-pack --version 0.13.1 --locked
 
-      - name: Compilation (no-modules, fonctionnalité wasm)
-        run: wasm-pack build libDF --release --target no-modules --features wasm -- --locked
+      - name: Compilation (module ES « web » importable par l'AudioWorklet, fonctionnalité wasm)
+        run: wasm-pack build libDF --release --target web --features wasm -- --locked
 
       - name: Fichiers et empreintes
         run: |
