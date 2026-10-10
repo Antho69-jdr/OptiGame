@@ -36,7 +36,9 @@ jobs:
         run: cargo install wasm-pack --version 0.13.1 --locked
 
       - name: Compilation (module ES « web » importable par l'AudioWorklet, fonctionnalité wasm)
-        run: wasm-pack build libDF --release --target web --features wasm -- --locked
+        run: |
+          cargo fetch --locked
+          wasm-pack build libDF --release --target web --features wasm
 
       - name: Fichiers et empreintes
         run: |
