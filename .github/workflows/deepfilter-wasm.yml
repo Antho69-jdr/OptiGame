@@ -1,0 +1,56 @@
+# Filtre de bruit DeepFilterNet 3 (appel vocal) compilé en WebAssembly depuis le code OFFICIEL (github.com/Rikorose/DeepFilterNet,
+# MIT OU Apache-2.0), à un commit figé, avec une version de Rust et de wasm-pack figées et les dépendances du Cargo.lock du projet
+# (--locked). Même commande que le workflow build_wasm.yml du projet. Les empreintes SHA-256 sont écrites dans le journal : celles des
+# fichiers copiés dans src/OptiGame.App/Call/ doivent y correspondre. Aucun binaire n'est pris ailleurs (le paquet npm qui l'emballe
+# télécharge le sien depuis le serveur de son auteur).
+name: Filtre DeepFilterNet (WebAssembly)
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - .github/workflows/deepfilter-wasm.yml
+
+permissions:
+  contents: read
+
+env:
+  DFN_COMMIT: d375b2d8309e0935d165700c91da9de862a99c31 # main du 2024-09-25 (dernier commit)
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Code officiel de DeepFilterNet
+        uses: actions/checkout@v4
+        with:
+          repository: Rikorose/DeepFilterNet
+          ref: ${{ env.DFN_COMMIT }}
+
+      - name: Rust 1.81 (septembre 2024, comme le code)
+        uses: dtolnay/rust-toolchain@1.81.0
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: wasm-pack 0.13.1
+        run: cargo install wasm-pack --version 0.13.1 --locked
+
+      - name: Compilation (no-modules, fonctionnalité wasm)
+        run: wasm-pack build libDF --release --target no-modules --features wasm -- --locked
+
+      - name: Fichiers et empreintes
+        run: |
+          mkdir out
+          cp libDF/pkg/df_bg.wasm libDF/pkg/df.js out/
+          cp models/DeepFilterNet3_onnx.tar.gz LICENSE-MIT LICENSE-APACHE out/
+          echo "$DFN_COMMIT" > out/COMMIT.txt
+          rustc --version >> out/COMMIT.txt
+          wasm-pack --version >> out/COMMIT.txt
+          ls -l out
+          sha256sum out/*
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: deepfilternet3-wasm
+          path: out
+          retention-days: 30
