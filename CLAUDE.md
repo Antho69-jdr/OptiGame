@@ -571,8 +571,14 @@ vit dans Core ; Platform ne fait que lire/écrire le système.
     définition du jeu fait foi), r.TSR.UpscalingPreset 0 aucun / 1 auto / 2 Qualité / 3 Équilibré / 4 Performance / 5 Ultra
     performance, r.TSR.UpscalingModel 0 CNN (préréglage E) / 1 Transformer (K), r_HDRDisplayOutput et r_MotionBlur 0/1 ;
     sous-réglages sys_spec_* = sections [1]…[5] de Engine\Config\CVarGroups\sys_spec_*.cfg (3 par défaut ; libellé du niveau 5
-    non trouvé). Overwatch, Scrap Mechanic (C++ : l'ordre des clés GRAPHICS_* dans l'exe n'est PAS celui du menu, non utilisé),
-    Portal 2 : à suivre (relevés dans docs/audit-fonctionnalites-2026-10-07.md § 3).
+    non trouvé). Overwatch, Scrap Mechanic (C++ : l'ordre des clés GRAPHICS_* dans l'exe n'est PAS celui du menu, non utilisé) :
+    détection automatique seulement. PORTAL 2 (Source, 2026-10-10, format « keyvalues » = bloc VideoConfig de video.txt,
+    chemin « {ExeDir}\update\cfg\video.txt|{ExeDir}\portal2\cfg\video.txt » : le plus récent des fichiers existants) : écran des
+    options = pak01_dir.vpk › resource\ui\basemodui\advancedvideo.res (VPK lu en lecture seule : arborescence ext/chemin/nom,
+    entrée CRC, octets préchargés, n° d'archive, position, taille ; 0x7FFF = dans le _dir), listes Faible → Très élevée ; un fichier
+    par niveau dans portal2\cfg (gpu_level_0…3_pc.ekv, chiffrés, mais autant de niveaux que de choix) ; libellés de
+    basemodui_french.txt / gameui_french.txt (UTF-16) ; mat_queue_mode = aide de bin\materialsystem.dll. gpu_level = « Détail de
+    l'image » = qualité (0-3 → Bas…Ultra). Anticrénelage (liste construite par le jeu) et filtrage 0/1 : non interprétés.
   - DÉTECTION AUTOMATIQUE pour tous les autres jeux (choix de l'utilisateur le 2026-10-10 : pas de « bricolage » du joueur ;
     `Platform/InGame/GameConfigFinder` + `Core/InGame/DetectedSettings`, en DERNIER dans `InGameSettingsReader.Read`) : fichier
     cherché dans Documents, Documents\My Games, Saved Games, AppData (Roaming, Local, LocalLow ; dossier au nom du jeu à 1 ou 2

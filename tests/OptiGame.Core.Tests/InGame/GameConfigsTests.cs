@@ -86,6 +86,29 @@ public sealed class GameConfigsTests
     }
 
     [Fact]
+    public void Portal2_video_txt_in_the_game_words()
+    {
+        var definition = GameConfigs.For(@"A:\SteamLibrary\steamapps\common\Portal 2\portal2.exe")!;
+        Assert.Equal("keyvalues", definition.Format);
+        var values = GameConfigs.ReadValues(definition.Format, Sample("portal2-video.txt"));
+        var settings = GameConfigs.Interpret(definition, values, "video.txt", "video.txt", new DateTime(2026, 10, 4, 15, 18, 0))!;
+
+        Assert.Equal(GraphicsPreset.Ultra, settings.Preset); // gpu_level 3 = 4e choix « Très élevée » (gpu_level_3_pc.ekv)
+        Assert.Equal((3440, 1440), (settings.Width, settings.Height));
+        Assert.Equal(InGameDisplayMode.Borderless, settings.DisplayMode); // fullscreen 0 + nowindowborder 1
+        Assert.True(settings.VSync);
+        Assert.Contains(new InGameOption("Détail effets", "Élevé"), settings.Options!);
+        Assert.Contains(new InGameOption("Mode filtrage", "Anisotrope 16X"), settings.Options!);
+        Assert.Contains(new InGameOption("Rendu multicœur", "Par défaut (choisi par le jeu)"), settings.Options!);
+        Assert.DoesNotContain(settings.Options!, o => o.Label.Contains("crénelage")); // non interprété : jamais deviné
+        Assert.DoesNotContain(settings.Options!, o => o.Value.Contains("inconnue"));
+    }
+
+    [Fact]
+    public void Keyvalues_without_a_block_is_refused() =>
+        Assert.Throws<FormatException>(() => GameConfigs.ReadValues("keyvalues", "\"setting.gpu_level\" \"3\""));
+
+    [Fact]
     public void Xml_attributes_without_any_attr_is_refused()
     {
         Assert.Throws<FormatException>(() => GameConfigs.ReadValues("xml-attributes", "<Attributes Version=\"35\"/>"));

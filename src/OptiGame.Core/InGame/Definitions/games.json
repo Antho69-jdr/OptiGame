@@ -82,6 +82,40 @@
         { "key": "SysSpec_WaterCaustics", "label": "Reflets de l'eau (caustiques)", "values": { "1": "Bas", "2": "Moyen", "3": "Élevé", "4": "Très élevé" } },
         { "key": "SysSpec_VideoComms", "label": "Communications vidéo", "values": { "1": "Bas", "2": "Moyen", "3": "Élevé", "4": "Très élevé" } }
       ]
+    },
+    {
+      "id": "portal-2",
+      "name": "Portal 2",
+      "exe": "portal2.exe",
+      "path": "{ExeDir}\\update\\cfg\\video.txt|{ExeDir}\\portal2\\cfg\\video.txt",
+      "format": "keyvalues",
+      "verified": "2026-10-10 : fichier réel (update\\cfg\\video.txt, bloc VideoConfig) ; écran des options = pak01_dir.vpk › resource\\ui\\basemodui\\advancedvideo.res (listes dans l'ordre Faible → Très élevée : 4 pour le détail de l'image, 3 pour les effets, les textures et la mémoire paginée) ; un fichier de réglages par niveau dans portal2\\cfg (gpu_level_0…3_pc.ekv, cpu_level_0…2, gpu_mem_level_0…2, mem_level_0…2 : autant de niveaux que de choix) ; libellés = resource\\basemodui_french.txt et gameui_french.txt ; rendu multicœur = aide intégrée à bin\\materialsystem.dll (« -1=default, 0=synchronous single thread, 1=queued single thread, 2=queued multithreaded »). Anticrénelage (liste construite par le jeu, combinant mat_antialias et mat_aaquality) et filtrage bilinéaire / trilinéaire (0 ou 1) : non interprétés.",
+      "settings": [
+        { "key": "setting.gpu_level", "label": "Détail de l'image", "role": "preset",
+          "values": { "0": "Faible", "1": "Moyen", "2": "Élevé", "3": "Très élevée" },
+          "presets": { "0": "Low", "1": "Medium", "2": "High", "3": "Ultra" } },
+        { "key": "setting.defaultres", "role": "width" },
+        { "key": "setting.defaultresheight", "role": "height" },
+        { "key": "setting.fullscreen", "label": "Plein écran", "role": "displayMode",
+          "values": { "0": "Non", "1": "Oui" }, "displayModes": { "1": "Fullscreen" } },
+        { "key": "setting.nowindowborder", "label": "Fenêtré (aucune bordure)", "role": "displayMode",
+          "values": { "0": "Non", "1": "Oui" }, "displayModes": { "0": "Windowed", "1": "Borderless" },
+          "when": { "setting.fullscreen": [ "0" ] } },
+        { "key": "setting.mat_vsync", "label": "Synchronisation verticale", "role": "vsync",
+          "values": { "0": "Désactivé", "1": "Activé" }, "on": [ "1" ] },
+        { "key": "setting.mat_triplebuffered", "label": "Triple tampon",
+          "values": { "0": "Non", "1": "Oui" }, "when": { "setting.mat_vsync": [ "1" ] } },
+        { "key": "setting.cpu_level", "label": "Détail effets",
+          "values": { "0": "Faible", "1": "Moyen", "2": "Élevé" } },
+        { "key": "setting.gpu_mem_level", "label": "Détail textures/modèles",
+          "values": { "0": "Faible", "1": "Moyen", "2": "Élevé" } },
+        { "key": "setting.mem_level", "label": "Mémoire paginée disponible",
+          "values": { "0": "Faible", "1": "Moyen", "2": "Élevé" } },
+        { "key": "setting.mat_forceaniso", "label": "Mode filtrage",
+          "values": { "2": "Anisotrope 2X", "4": "Anisotrope 4X", "8": "Anisotrope 8X", "16": "Anisotrope 16X" } },
+        { "key": "setting.mat_queue_mode", "label": "Rendu multicœur",
+          "values": { "-1": "Par défaut (choisi par le jeu)", "0": "Désactivé (un seul fil, sans file d'attente)", "1": "Un seul fil, avec file d'attente", "2": "Activé (plusieurs cœurs)" } }
+      ]
     }
   ]
 }

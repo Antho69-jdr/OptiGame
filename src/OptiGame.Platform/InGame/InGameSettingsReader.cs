@@ -51,7 +51,11 @@ public static class InGameSettingsReader
     /// </summary>
     private static InGameSettings? ReadDefined(string exePath)
     {
-        if (GameConfigs.For(exePath) is not { } definition || DefinitionPath(definition.Path, exePath) is not { } path || !File.Exists(path)) return null;
+        // Plusieurs emplacements possibles (« chemin1|chemin2 ») : le fichier existant le plus récent.
+        if (GameConfigs.For(exePath) is not { } definition) return null;
+        var path = definition.Path.Split('|').Select(p => DefinitionPath(p, exePath)).OfType<string>().Where(File.Exists)
+            .OrderByDescending(File.GetLastWriteTime).FirstOrDefault();
+        if (path is null) return null;
         try
         {
             var values = GameConfigs.ReadValues(definition.Format, File.ReadAllText(path));

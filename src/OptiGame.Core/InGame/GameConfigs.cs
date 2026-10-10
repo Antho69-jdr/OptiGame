@@ -102,6 +102,16 @@ public static class GameConfigs
                     throw new FormatException($"Fichier XML illisible : {ex.Message}", ex);
                 }
                 break;
+            case "keyvalues":
+                // Source (video.txt) : "VideoConfig" { "setting.gpu_level" "3" … } ; KeyValues de Valve, un seul bloc racine.
+                var block = Library.Vdf.Parse(text).Children.Values.FirstOrDefault(c => c.Children.Count > 0)
+                            ?? throw new FormatException("Aucun bloc KeyValues.");
+                foreach (var (key, node) in block.Children)
+                {
+                    if (node.Value is { } value) values[key] = value;
+                }
+                if (values.Count == 0) throw new FormatException("Bloc KeyValues vide.");
+                break;
             default:
                 throw new FormatException($"Format de réglages inconnu : {format}.");
         }
