@@ -718,23 +718,40 @@ internal static class PageSnapshots
             }
             pages.Add(("c5h-appel-de-groupe", async () =>
             {
-                if (relay is null || relayUrl != relay.Url || hostFriends is null) return;
+                if (relay is null || relayUrl is null) return;
                 services.GetRequiredService<Core.Settings.AppSettingsStore>().Update(s => { s.CallSteamName = "Anthracite"; s.CallGateMode = Core.Call.MicGateMode.Off; s.CallNoiseSuppression = Core.Call.NoiseSuppression.Off; });
-                hostFriends.TestToken = "test:76561198000000001:Anthracite:76561198000000002";
                 (gaming, gamingFriends) = Person("test:76561198000000002:Gaming:76561198000000001,76561198000000003", "Gaming");
                 (clara, claraFriends) = Person("test:76561198000000003:Clara:76561198000000002", "Clara");
-                hostFriends.Start();
-                gamingFriends.Start();
-                claraFriends.Start();
-                await WaitUntil(() => hostFriends.IsOnline && gamingFriends.IsOnline && claraFriends.IsOnline && gamingFriends.OnlineFriends.Count == 2, 15_000);
-                await host.CallFriendCommand.ExecuteAsync(hostFriends.OnlineFriends.First(f => f.Name == "Gaming"));
-                await WaitUntil(() => gaming.HasIncomingCall, 15_000);
-                await gaming.AnswerCallCommand.ExecuteAsync(null);
-                await WaitUntil(() => host.IsInCall && gaming.IsInCall, 30_000);
-                gaming.InviteFriendCommand.Execute(gamingFriends.OnlineFriends.First(f => f.Name == "Clara"));
-                await WaitUntil(() => clara.HasIncomingCall, 15_000);
-                Log($"Invitation : Clara lit « {clara.IncomingCallText} » ; Gaming lit « {gaming.Status} », sa liste : [{string.Join(", ", gaming.FriendCallStates.Select(s => $"{s.Key} {s.Value}"))}].");
-                await clara.AnswerCallCommand.ExecuteAsync(null);
+                if (relayUrl != relay.Url)
+                {
+                    // VRAI serveur (jetons de test refusés) : même salon de groupe, rejoint par le code.
+                    gamingFriends = claraFriends = null;
+                    await host.StartCallCommand.ExecuteAsync(null);
+                    await WaitUntil(() => host.Phase == CallPhase.Waiting, 30_000);
+                    gaming.JoinCode = host.Code;
+                    await gaming.JoinCallCommand.ExecuteAsync(null);
+                    await WaitUntil(() => host.IsInCall && gaming.IsInCall, 30_000);
+                    clara.JoinCode = host.Code;
+                    await clara.JoinCallCommand.ExecuteAsync(null);
+                    Log($"Serveur réel : Clara rejoint par le code {host.Code}.");
+                }
+                else
+                {
+                    if (hostFriends is null) return;
+                    hostFriends.TestToken = "test:76561198000000001:Anthracite:76561198000000002";
+                    hostFriends.Start();
+                    gamingFriends!.Start();
+                    claraFriends!.Start();
+                    await WaitUntil(() => hostFriends.IsOnline && gamingFriends.IsOnline && claraFriends.IsOnline && gamingFriends.OnlineFriends.Count == 2, 15_000);
+                    await host.CallFriendCommand.ExecuteAsync(hostFriends.OnlineFriends.First(f => f.Name == "Gaming"));
+                    await WaitUntil(() => gaming.HasIncomingCall, 15_000);
+                    await gaming.AnswerCallCommand.ExecuteAsync(null);
+                    await WaitUntil(() => host.IsInCall && gaming.IsInCall, 30_000);
+                    gaming.InviteFriendCommand.Execute(gamingFriends.OnlineFriends.First(f => f.Name == "Clara"));
+                    await WaitUntil(() => clara.HasIncomingCall, 15_000);
+                    Log($"Invitation : Clara lit « {clara.IncomingCallText} » ; Gaming lit « {gaming.Status} », sa liste : [{string.Join(", ", gaming.FriendCallStates.Select(s => $"{s.Key} {s.Value}"))}].");
+                    await clara.AnswerCallCommand.ExecuteAsync(null);
+                }
                 bool AllConnected() => new[] { host, gaming, clara }.All(v => v.IsInCall && v.Participants.Count == 2 && v.Participants.All(p => p.Connected));
                 await WaitUntil(AllConnected, 40_000);
                 foreach (var vm in new[] { host, gaming, clara }) if (vm.IsMuted) vm.ToggleMuteCommand.Execute(null);

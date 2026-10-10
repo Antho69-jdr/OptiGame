@@ -279,8 +279,8 @@ par le serveur ; attente 2 min, 12 h max, 5 000 messages) ; la WebSocket du salo
 chacun (onglet Périphériques) ; dernier autre parti = fin de l'appel (sauf invitation en cours). Copie locale :
 `LocalCallRelay.Groups.cs`. Vérifié le 2026-10-10 (ui-snapshots `-Only c1,c5b,c5h,c5i`, 3 personnes aux réglages séparés, souffle
 de test sans filtre) : invitation en cours d'appel, chacun reçoit les DEUX autres (≈ 45 Ko en 3 s chacun), départ de l'une = l'appel
-continue à deux, puis fin. Les appels à deux passent aussi par `/v2` : le serveur DOIT être redéployé (GroupRoom) AVANT de
-publier une version qui s'en sert.
+continue à deux, puis fin. Les appels à deux passent aussi par `/v2` (serveur avec GroupRoom requis). Serveur DÉPLOYÉ le
+2026-10-10 et vérifié (`$env:OPTIGAME_CALL_RELAY`, `-Only c1,c5h,c5i` : 3e personne par le code, mêmes résultats ; `-Only c1,c2,c3,c4,c5`).
 
 Données fictives pour tester l'UI : `$env:OPTIGAME_DATA_DIR='<dossier temporaire>'` redirige tout le dossier de
 données ; `DiagDump -- --import-capture <csv> <libellé> <date ISO>` y ajoute une capture (refusé sans la variable).
