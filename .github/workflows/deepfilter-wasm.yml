@@ -43,6 +43,10 @@ jobs:
           git diff --stat -- Cargo.lock
           git diff -- Cargo.lock | grep -E "^[-+](name|version|checksum)" || true
           cargo fetch --locked
+          # Sans la copie du modèle intégrée au moteur (8 Mo) : la version WebAssembly reçoit toujours le modèle à part (df_create),
+          # la copie ne sert qu'à DfParams::default, jamais appelé par wasm.rs. Seule cette ligne du Cargo.toml change :
+          sed -i '/^wasm = \[/,/^\]/{/"default-model",/d}' libDF/Cargo.toml
+          git diff -- libDF/Cargo.toml
           wasm-pack build libDF --release --target web --features wasm
 
       - name: Fichiers et empreintes
