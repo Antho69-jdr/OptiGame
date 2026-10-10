@@ -1,4 +1,4 @@
-using CommunityToolkit.Mvvm.ComponentModel;
+﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using OptiGame.Core.Playtime;
 using OptiGame.Core.Profiles;
@@ -111,7 +111,8 @@ public sealed partial class GamePageViewModel(
     /// La qualité lue sert de réglage « Automatique ».
     /// </summary>
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(PresetCaption), nameof(PresetText), nameof(InGameOptions), nameof(HasInGameOptions), nameof(InGameOptionsHeader))]
+    [NotifyPropertyChangedFor(nameof(PresetCaption), nameof(PresetText), nameof(InGameOptions), nameof(HasInGameOptions), nameof(InGameOptionsHeader),
+        nameof(IsDetectedInGame))]
     private Core.InGame.InGameSettings? _inGame;
 
     /// <summary>Chaque réglage lu, dans les mots du jeu (jeux de la base de définitions : Void Crew…).</summary>
@@ -120,6 +121,9 @@ public sealed partial class GamePageViewModel(
     public bool HasInGameOptions => InGameOptions.Count > 0;
 
     public string InGameOptionsHeader => $"Les {Core.Text.FrenchText.Count(InGameOptions.Count, "réglage lu", "réglages lus")} dans le jeu";
+
+    /// <summary>Fichier trouvé par la détection automatique (jeu sans définition) : valeurs montrées telles quelles, sens non vérifié.</summary>
+    public bool IsDetectedInGame => InGame?.Engine == Core.InGame.DetectedSettings.Engine;
 
     partial void OnInGameChanged(Core.InGame.InGameSettings? value)
     {

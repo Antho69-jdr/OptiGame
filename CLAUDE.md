@@ -569,6 +569,19 @@ vit dans Core ; Platform ne fait que lire/écrire le système.
     sous-réglages sys_spec_* = sections [1]…[5] de Engine\Config\CVarGroups\sys_spec_*.cfg (3 par défaut ; libellé du niveau 5
     non trouvé). Overwatch, Scrap Mechanic (C++ : l'ordre des clés GRAPHICS_* dans l'exe n'est PAS celui du menu, non utilisé),
     Portal 2 : à suivre (relevés dans docs/audit-fonctionnalites-2026-10-07.md § 3).
+  - DÉTECTION AUTOMATIQUE pour tous les autres jeux (choix de l'utilisateur le 2026-10-10 : pas de « bricolage » du joueur ;
+    `Platform/InGame/GameConfigFinder` + `Core/InGame/DetectedSettings`, en DERNIER dans `InGameSettingsReader.Read`) : fichier
+    cherché dans Documents, Documents\My Games, Saved Games, AppData (Roaming, Local, LocalLow ; dossier au nom du jeu à 1 ou 2
+    niveaux, noms = exe + dossiers du jeu, `StoreCatalogs.NameKey`) et dans le dossier du jeu (noms video / config / settings /
+    options… seulement ; jamais default / preset) ; lu en INI, JSON, KeyValues de Valve ou .cfg ; meilleur fichier =
+    `DetectedSettings.Rank` (réglages graphiques distincts, favorisés s'ils forment l'essentiel du fichier). Interprété SEULEMENT
+    sans ambiguïté : dimensions (clés width / defaultres / ResolutionSizeX…, « 2560x1440 »), V-Sync en true / false, ou 0 / 1
+    si la clé dit « Enabled » / « Use » ou est mat_vsync (Source), limite de FPS 20-500 (FrameRateCap, MaxFps…), plein écran
+    true ; le reste montré TEL QUEL dans la fiche (« Fichier trouvé automatiquement… »), son / versions écartés. Vérifié
+    (`DiagDump -- --ingame-settings`, fichiers réels dans les tests) : Overwatch Settings_v0.ini → V-Sync activée ; Portal 2
+    update\cfg\video.txt → 3440×1440, V-Sync (config.cfg, 300 variables, écarté par le classement) ; Scrap Mechanic settings.json
+    → 3440×1440, limite 165 FPS, « VerticalSync : 1 » NON interprété ; la note s'en sert (« limite de 165 FPS dans le jeu »).
+    Recherche gardée 10 min par exe, liste des dossiers de l'utilisateur 10 min.
   - Projet de tests Core : `<None Include="**\Samples\**" Exclude="$(DefaultItemExcludes)">` ; sans l'exclusion, les
     échantillons déjà copiés dans bin y étaient recopiés un niveau plus bas à chaque compilation (348 017 fichiers le 2026-10-09,
     `dotnet test` bloqué plusieurs minutes sans rien afficher).

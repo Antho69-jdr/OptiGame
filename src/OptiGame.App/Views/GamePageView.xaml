@@ -257,6 +257,10 @@
                                 <!-- Chaque réglage lu dans le fichier du jeu, dans ses mots (base de définitions : Void Crew…) -->
                                 <Expander Margin="0,8,0,0" Style="{StaticResource Expander.Disclosure}" Header="{Binding InGameOptionsHeader}"
                                           Visibility="{Binding HasInGameOptions, Converter={StaticResource BoolToVisibility}}">
+                                    <StackPanel>
+                                    <TextBlock Margin="0,6,0,0" MaxWidth="520" HorizontalAlignment="Left" Style="{StaticResource Text.Caption}" TextWrapping="Wrap"
+                                               Visibility="{Binding IsDetectedInGame, Converter={StaticResource BoolToVisibility}}"
+                                               Text="Fichier trouvé automatiquement : les valeurs sont celles du fichier, sans traduction. Seules la résolution, la V-Sync et la limite de FPS sont interprétées, quand leur nom ne laisse aucun doute." />
                                     <ItemsControl Margin="0,6,0,0" MaxWidth="520" HorizontalAlignment="Left" ItemsSource="{Binding InGameOptions}" Focusable="False">
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate>
@@ -271,6 +275,7 @@
                                             </DataTemplate>
                                         </ItemsControl.ItemTemplate>
                                     </ItemsControl>
+                                    </StackPanel>
                                 </Expander>
                             </StackPanel>
                         </Border>

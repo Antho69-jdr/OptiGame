@@ -23,7 +23,8 @@ public static class InGameSettingsReader
     {
         try
         {
-            return ReadDefined(exePath) ?? ReadUnreal(exePath) ?? ReadUnity(exePath);
+            // Détection automatique en dernier : seulement pour un jeu sans définition ni moteur reconnu.
+            return ReadDefined(exePath) ?? ReadUnreal(exePath) ?? ReadUnity(exePath) ?? GameConfigFinder.Read(exePath);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Security.SecurityException or ArgumentException)
         {
@@ -67,7 +68,7 @@ public static class InGameSettingsReader
     }
 
     /// <summary>%UserProfile%\AppData\LocalLow, demandé à Windows (dossier connu LocalAppDataLow).</summary>
-    private static string? LocalLow()
+    internal static string? LocalLow()
     {
         var id = new Guid("A520A1A4-1780-4FF6-BD18-167343C5AF16");
         if (SHGetKnownFolderPath(ref id, 0, IntPtr.Zero, out var pointer) != 0) return null;
