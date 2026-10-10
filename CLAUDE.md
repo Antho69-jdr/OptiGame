@@ -124,7 +124,10 @@ src/OptiGame.App/        WPF : composition DI, tray, vues/viewmodels, dialogue d
                          est ouverte) et dock FERMÉ (DockController, surveillance du plein écran arrêtée ; recréé par Apply à la
                          fin — UpdateSuppression ne crée jamais la fenêtre : fullscreen.Start() peut déclencher FullscreenChanged
                          avant que _window soit posé). Toujours : Services/MemoryRelief (1re page des non installés, cache
-                         d'images vidé, UN GC regroupé, mémoire écrite au journal « Partie en cours : … ») et Services/
+                         d'images vidé, UN GC regroupé, mémoire écrite au journal « Partie en cours : … » ; filet de sécurité
+                         fenêtre ouverte : toutes les 5 min, privée +150 Mo depuis le dernier passage = un passage complet, jamais
+                         en partie, journal « Mémoire : nettoyage automatique » — relevé le 2026-10-10 sur la 1.16.2 installée :
+                         604 Mo privés, 251 après passage, +230 Mo en 15 min par paquets, tas .NET 22 Mo, cause non trouvée) et Services/
                          GameTimeGate (relecture des bibliothèques, jaquettes Epic/GOG et IGDB, notes, nouveaux jeux Steam, temps
                          Steam reportés à la fin de la partie, une fois par sorte). Vues : abonnement aux événements des
                          ViewModels sur Loaded / Unloaded (jamais DataContextChanged : la vue jetée resterait abonnée et

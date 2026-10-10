@@ -94,6 +94,7 @@ public partial class App : Application
         footprint.Start(this);
         StartSessions(_services);
         footprint.EnterGame(this); // partie reprise après un plantage d'OptiGame (sans quoi : rien à faire)
+        _services.GetRequiredService<MemoryRelief>().StartWatching();
         _services.GetRequiredService<Dock.DockController>().Start();
         _services.GetRequiredService<Platform.Measurement.AutoCapture>().Start();
         _services.GetRequiredService<UpdateService>().Start(this);
