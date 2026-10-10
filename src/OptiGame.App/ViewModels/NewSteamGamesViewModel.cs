@@ -1,4 +1,4 @@
-using System.Collections.ObjectModel;
+﻿using System.Collections.ObjectModel;
 using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -89,7 +89,9 @@ public sealed partial class NewSteamGamesViewModel : ObservableObject
     {
         var profiles = _store.GetAll();
         var known = _settings.Get().SteamKnownAppIds;
-        var skip = NewSteamGames.KnownToSkip(known, profiles.Count);
+        // Les jeux déjà installés ne passent plus par le bandeau : la section « Installés, pas encore dans Mes jeux » les montre
+        // (au premier lancement, le bandeau les proposait en double, outils compris). Seules les installations SUIVANTES y viennent.
+        var skip = known;
         IReadOnlyList<GameLibraryScanner.SteamApp> apps;
         IReadOnlyList<InstalledGame> games;
         try
@@ -99,7 +101,15 @@ public sealed partial class NewSteamGamesViewModel : ObservableObject
                 var apps = GameLibraryScanner.SteamApps();
                 if (skip is null) return (apps, (IReadOnlyList<InstalledGame>)[]);
                 var profileAppIds = profiles.Select(p => GameLibraryScanner.SteamAppIdFor(p, apps)).OfType<string>().ToHashSet();
-                var ids = NewSteamGames.ToPropose(apps.Select(a => new SteamInstall(a.AppId, a.StateFlags)), skip, profileAppIds);
+                Platform.Library.SteamOwnedSnapshot? owned = null;
+                try
+                {
+                    owned = Platform.Library.SteamOwnedLibrary.Read();
+                }
+                catch (Exception ex) when (ex is FormatException or IOException or UnauthorizedAccessException or IndexOutOfRangeException or ArgumentException) { }
+                var ids = NewSteamGames.ToPropose(apps.Select(a => new SteamInstall(a.AppId, a.StateFlags)), skip, profileAppIds)
+                    .Where(id => owned is null || (uint.TryParse(id, out var appId) && owned.IsGame(appId))) // outils de Steam écartés
+                    .ToList();
                 return (apps, (IReadOnlyList<InstalledGame>)ids.Select(id => GameLibraryScanner.ToInstalledGame(apps.First(a => a.AppId == id))).ToList());
             });
         }
@@ -111,13 +121,13 @@ public sealed partial class NewSteamGamesViewModel : ObservableObject
 
         if (known is null)
         {
-            // Premier passage : les jeux déjà installés sont mémorisés ; proposés quand même si Mes jeux est vide.
+            // Premier passage : les jeux déjà installés sont mémorisés (la section « Installés, pas encore dans Mes jeux » les montre).
             _settings.Update(s => s.SteamKnownAppIds = apps.Select(a => a.AppId).Distinct().ToList());
             _log.Info($"Nouveaux jeux Steam : {apps.Count} jeu(x) déjà installé(s) mémorisé(s), seuls les prochains seront proposés.");
-            if (profiles.Count > 0) return;
+            return;
         }
 
-        var offersInstalledGames = profiles.Count == 0;
+        var offersInstalledGames = false;
         // Rien de nouveau : on ne touche pas au bandeau (chaque changement fait relire les bibliothèques à « Mes jeux »).
         if (offersInstalledGames == _offersInstalledGames && Proposals.Select(p => p.Game.SteamAppId).SequenceEqual(games.Select(g => g.SteamAppId))) return;
         _offersInstalledGames = offersInstalledGames;

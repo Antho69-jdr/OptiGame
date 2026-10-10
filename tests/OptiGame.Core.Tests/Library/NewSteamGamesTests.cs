@@ -1,4 +1,4 @@
-using OptiGame.Core.Library;
+﻿using OptiGame.Core.Library;
 
 namespace OptiGame.Core.Tests.Library;
 
@@ -32,16 +32,11 @@ public sealed class NewSteamGamesTests
     }
 
     [Fact]
-    public void Installed_games_are_proposed_while_my_games_is_empty()
+    public void Games_already_seen_are_not_proposed_again()
     {
-        // Premier passage avec des jeux : l'existant est mémorisé, rien n'est proposé.
-        Assert.Null(NewSteamGames.KnownToSkip(known: null, profileCount: 3));
-        Assert.Equal(["3832010"], NewSteamGames.KnownToSkip(known: ["3832010"], profileCount: 3));
-
-        // Mes jeux vide (nouvel utilisateur, ou jeux mémorisés en silence par une version précédente) : tout est proposé.
-        Assert.Empty(NewSteamGames.KnownToSkip(known: null, profileCount: 0)!);
-        Assert.Empty(NewSteamGames.KnownToSkip(known: ["3832010"], profileCount: 0)!);
-        var proposed = NewSteamGames.ToPropose([new SteamInstall("3832010", 4)], NewSteamGames.KnownToSkip(["3832010"], 0)!, profileAppIds: []);
-        Assert.Equal(["3832010"], proposed);
+        // Les jeux déjà installés sont montrés par la section « Installés, pas encore dans Mes jeux », plus par le bandeau
+        // (au premier lancement, il les proposait en double, outils compris : audit du 2026-10-10).
+        var proposed = NewSteamGames.ToPropose([new SteamInstall("3832010", 4), new SteamInstall("1145350", 4)], known: ["3832010"], profileAppIds: []);
+        Assert.Equal(["1145350"], proposed);
     }
 }

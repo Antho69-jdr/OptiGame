@@ -486,7 +486,11 @@ vit dans Core ; Platform ne fait que lire/écrire le système.
   Section « Installés, pas encore dans Mes jeux » (carte Trello n° 1, 2026-10-10 : un utilisateur ne voyait que ses jeux NON
   installés ; un jeu installé sans profil n'apparaissait NULLE PART — écarté des non installés, bandeau proposé une seule fois et
   seulement à un Mes jeux vide) : `LibraryViewModel.InstalledNotAdded`, en couleur, hors de la case « non installés », jeux
-  entièrement installés connus des caches du client comme jeux possédés (outils écartés : « SaveSync » sur la machine de dev),
+  entièrement installés de TYPE « game » dans appinfo.vdf (`SteamOwnedSnapshot.IsGame`, sans exiger licence ni images en cache ;
+  outils écartés : « SaveSync » sur la machine de dev). Audit à froid du 2026-10-10 (données vides) : le bandeau ne propose PLUS
+  les jeux déjà installés (doublon de la section, outils compris), seulement les installations suivantes, jeux seulement ; Mes
+  jeux vide = « N jeux installés ont été trouvés… juste en dessous » + « Ajouter les N jeux » (`EmptyLibraryText`) ; jaquettes
+  Steam aux noms traduits aussi (library_capsule_french.jpg : Overwatch),
   « Ajouter à Mes jeux » = `NewSteamGamesViewModel.AddGame` (même ajout que le bandeau) ; AUSSI les jeux Epic / GOG installés
   sans profil (`StoreOwnedLibrary.Read` : non installés + installés en UNE lecture, reliés au catalogue par `StoreCatalogs.IsSameGame`
   = titre ou identifiant ; profil « Lanceur » comme la recherche des jeux installés ; non vérifié en vrai : aucun jeu Epic / GOG

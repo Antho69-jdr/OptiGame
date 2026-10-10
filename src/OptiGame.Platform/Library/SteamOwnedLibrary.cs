@@ -1,9 +1,14 @@
-using OptiGame.Core.Library;
+﻿using OptiGame.Core.Library;
 
 namespace OptiGame.Platform.Library;
 
 /// <summary>Bibliothèque Steam lue dans les caches du client : jeux possédés (installés ou non) par appid.</summary>
-public sealed record SteamOwnedSnapshot(IReadOnlyDictionary<uint, OwnedSteamGame> Games);
+/// <param name="GameAppIds">Applications de type « game » d'appinfo.vdf, possédées ou non : un jeu installé en est un, un outil
+/// (SaveSync…) non. Sans exiger de licence ni d'images en cache (un jeu tout juste installé peut ne pas en avoir).</param>
+public sealed record SteamOwnedSnapshot(IReadOnlyDictionary<uint, OwnedSteamGame> Games, IReadOnlySet<uint> GameAppIds)
+{
+    public bool IsGame(uint appId) => GameAppIds.Contains(appId);
+}
 
 /// <summary>
 /// Lecture seule des caches du client Steam (<c>appcache\appinfo.vdf</c>, <c>packageinfo.vdf</c>, <c>librarycache\</c>) : jeux
@@ -48,9 +53,9 @@ public static class SteamOwnedLibrary
             .Select(d => uint.TryParse(Path.GetFileName(d), out var id) ? id : 0)
             .Where(id => id != 0)
             .ToHashSet();
-        var owned = SteamOwnedGames.Find(
-            SteamBinaryCache.ParseAppInfo(ReadShared(appInfo)), SteamBinaryCache.ParsePackageInfo(ReadShared(packageInfo)), inLibrary);
-        return new SteamOwnedSnapshot(owned.ToDictionary(g => g.AppId));
+        var apps = SteamBinaryCache.ParseAppInfo(ReadShared(appInfo));
+        var owned = SteamOwnedGames.Find(apps, SteamBinaryCache.ParsePackageInfo(ReadShared(packageInfo)), inLibrary);
+        return new SteamOwnedSnapshot(owned.ToDictionary(g => g.AppId), apps.Where(a => a.Type == "game").Select(a => a.AppId).ToHashSet());
     }
 
     /// <summary>Jaquette portrait mise en cache par Steam (300×450) : <c>library_600x900.jpg</c>, ou <c>library_capsule.jpg</c>
@@ -59,7 +64,9 @@ public static class SteamOwnedLibrary
     {
         // Seules les jaquettes trouvées sont retenues : une jaquette que Steam télécharge plus tard sera vue à la lecture suivante.
         if (Covers.TryGetValue(appId, out var known) && File.Exists(known)) return known;
-        var path = Find(appId, "library_600x900.jpg") ?? Find(appId, "library_capsule.jpg");
+        // Noms traduits aussi (« library_capsule_french.jpg » : Overwatch, vu le 2026-10-10).
+        var path = Find(appId, "library_600x900.jpg") ?? Find(appId, "library_capsule.jpg") ??
+                   Find(appId, "library_600x900_*.jpg") ?? Find(appId, "library_capsule_*.jpg");
         if (path is not null) Covers[appId] = path;
         return path;
     }

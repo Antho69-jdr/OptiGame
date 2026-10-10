@@ -426,7 +426,16 @@ public sealed partial class LibraryViewModel : ObservableObject
         }
         OnPropertyChanged(nameof(HasVisibleInstalledNotAdded));
         OnPropertyChanged(nameof(InstalledNotAddedHeader));
+        OnPropertyChanged(nameof(EmptyLibraryText));
+        OnPropertyChanged(nameof(AddAllInstalledLabel));
     }
+
+    /// <summary>Mes jeux vide : renvoie vers les jeux installés déjà trouvés, s'il y en a (premier lancement).</summary>
+    public string EmptyLibraryText => VisibleInstalledNotAdded.Count > 0
+        ? $"{FrenchText.Count(VisibleInstalledNotAdded.Count, "jeu installé a été trouvé", "jeux installés ont été trouvés")} sur ce PC : ils sont juste en dessous. Ajoutez-les pour qu'OptiGame les optimise et les mesure. Un autre jeu s'ajoute par son fichier .exe."
+        : "OptiGame trouve les jeux installés avec Steam, Epic Games, GOG ou dans vos dossiers de jeux. Un autre jeu s'ajoute par son fichier .exe.";
+
+    public string AddAllInstalledLabel => VisibleInstalledNotAdded.Count == 1 ? "Ajouter ce jeu" : $"Ajouter les {VisibleInstalledNotAdded.Count} jeux";
 
     /// <summary>« Ajouter à Mes jeux » : exécutable le plus probable cherché dans son dossier (hors du thread UI), comme le bandeau.</summary>
     [RelayCommand]
@@ -658,14 +667,14 @@ public sealed partial class LibraryViewModel : ObservableObject
                     .Select(g => OwnedGameCardViewModel.FromStore(g, _storeCovers.TryGetCached(g.CoverUrl))));
 
                 // Jeux Steam installés sans profil : sinon visibles NULLE PART (ni dans Mes jeux, ni parmi les non installés).
-                // Seulement des jeux : ceux que les caches du client connaissent comme jeux possédés (outils, logiciels écartés).
+                // Seulement des jeux : type « game » dans les caches du client (outils, logiciels écartés).
                 var pending = new List<OwnedGameCardViewModel>();
                 var skipped = new List<string>();
                 foreach (var app in apps.Where(a => a.IsFullyInstalled).DistinctBy(a => a.AppId))
                 {
                     if (!uint.TryParse(app.AppId, out var id) || byProfile.ContainsValue(id)) continue;
                     var game = owned?.Games.GetValueOrDefault(id);
-                    if (owned is not null && game is null)
+                    if (owned is not null && !owned.IsGame(id))
                     {
                         skipped.Add(app.Name);
                         continue;
@@ -673,7 +682,7 @@ public sealed partial class LibraryViewModel : ObservableObject
                     pending.Add(OwnedGameCardViewModel.FromInstalledSteam(app, game, Platform.Library.SteamOwnedLibrary.CoverPath(id)));
                 }
                 var report = scan.Describe() + $", {pending.Count} pas encore dans Mes jeux" +
-                             (skipped.Count > 0 ? $" ; écartés (pas des jeux possédés selon Steam) : {string.Join(", ", skipped)}" : "");
+                             (skipped.Count > 0 ? $" ; écartés (pas des jeux selon Steam) : {string.Join(", ", skipped)}" : "");
 
                 // Jeux Epic et GOG installés sans profil (même trou que Steam) : déjà dans Mes jeux = un de ses exe a un profil, ou même nom.
                 foreach (var store in stores.Installed)

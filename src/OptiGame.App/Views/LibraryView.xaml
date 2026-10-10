@@ -1,4 +1,4 @@
-<UserControl x:Class="OptiGame.App.Views.LibraryView"
+﻿<UserControl x:Class="OptiGame.App.Views.LibraryView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
@@ -207,10 +207,14 @@
                         <TextBlock HorizontalAlignment="Center" Style="{StaticResource Text.Icon}" FontSize="{StaticResource FontSize.Hero}"
                                    Foreground="{StaticResource Brush.TextMuted}" Text="&#xE7FC;" />
                         <TextBlock Margin="0,16,0,0" HorizontalAlignment="Center" Style="{StaticResource Text.SectionTitle}" Text="Aucun jeu pour l'instant" />
-                        <TextBlock Margin="0,8,0,0" TextAlignment="Center" Style="{StaticResource Text.Secondary}"
-                                   Text="OptiGame trouve les jeux installés avec Steam, Epic Games, GOG ou dans vos dossiers de jeux. Un autre jeu s'ajoute par son fichier .exe." />
+                        <TextBlock Margin="0,8,0,0" TextAlignment="Center" Style="{StaticResource Text.Secondary}" TextWrapping="Wrap"
+                                   Text="{Binding EmptyLibraryText}" />
                         <StackPanel Margin="0,16,0,0" HorizontalAlignment="Center" Orientation="Horizontal">
-                            <Button Margin="0,0,8,0" Style="{StaticResource Button.Primary}" Content="Détecter les jeux installés…" Command="{Binding ScanGamesCommand}" />
+                            <!-- Jeux déjà trouvés (section ci-dessous) : les ajouter ; sinon les chercher -->
+                            <Button Margin="0,0,8,0" Style="{StaticResource Button.Primary}" Content="{Binding AddAllInstalledLabel}" Command="{Binding AddAllInstalledCommand}"
+                                    Visibility="{Binding HasVisibleInstalledNotAdded, Converter={StaticResource BoolToVisibility}}" />
+                            <Button Margin="0,0,8,0" Style="{StaticResource Button.Primary}" Content="Détecter les jeux installés…" Command="{Binding ScanGamesCommand}"
+                                    Visibility="{Binding HasVisibleInstalledNotAdded, Converter={StaticResource InverseBoolToVisibility}}" />
                             <Button Style="{StaticResource Button.Secondary}" Content="Choisir un fichier .exe…" Command="{Binding AddGameCommand}" />
                         </StackPanel>
                     </StackPanel>
