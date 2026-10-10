@@ -27,7 +27,7 @@ class VoiceProcessor extends AudioWorkletProcessor {
     this.outputWrite = FRAME; // 10 ms de silence au départ : de quoi toujours avoir un bloc prêt
     this.denoise = true;
     this.gateMode = 'off';
-    this.manualThreshold = -45;
+    this.manualThreshold = -30;
     this.floor = -60; // fond sonore (dBFS)
     this.voice = -25; // niveau de votre voix (dBFS)
     this.hold = 0;
@@ -46,8 +46,9 @@ class VoiceProcessor extends AudioWorkletProcessor {
 
   threshold() {
     if (this.gateMode === 'manual') return this.manualThreshold;
-    // Entre le fond et la voix, plus près de la voix (les voix de fond arrivent 10 à 20 dB plus bas au micro), borné.
-    const between = this.voice - Math.min(15, Math.max(6, (this.voice - this.floor) * 0.45));
+    // Entre le fond et la voix, 6 à 10 dB sous la voix (les voix de fond arrivent 10 à 20 dB plus bas au micro ; resserré le 2026-10-10 : le seuil manuel à −30 dB
+    // marchait mieux que l'ancien automatique, 6 à 15 dB sous la voix), borné.
+    const between = this.voice - Math.min(10, Math.max(6, (this.voice - this.floor) * 0.3));
     return Math.min(-20, Math.max(this.floor + 6, between));
   }
 

@@ -142,6 +142,8 @@ public enum NoiseSuppression
 /// <summary>Débit de la voix envoyée (Opus mono) : chacun choisit ce qu'il envoie.</summary>
 public enum VoiceQuality
 {
+    /// <summary>Selon le micro (format dans Windows et bande réellement captée, VoiceQualityAdvisor).</summary>
+    Auto = 0,
     Standard = 96,
     High = 128,
     Max = 192,

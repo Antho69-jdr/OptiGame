@@ -485,6 +485,8 @@ public sealed partial class CallViewModel : ObservableObject, IDisposable
     private void Begin()
     {
         _generation++;
+        _micName = "";
+        _sentKbps = 0; // le débit est envoyé quand le micro est connu (mode automatique : selon lui)
         ClearStatus();
         CanOpenMicrophoneSettings = false;
         Code = "";
@@ -541,6 +543,12 @@ public sealed partial class CallViewModel : ObservableObject, IDisposable
                 {
                     ShowStatus("Le filtre de bruit n'a pas pu démarrer sur ce PC : la suppression standard est utilisée.", Severity.Warning);
                 }
+                break;
+            case "mic":
+                OnMicLabel(Text(message, "label"));
+                break;
+            case "micBandwidth":
+                OnMicBandwidth(message);
                 break;
             case "voiceStats":
                 OnVoiceStats(message);

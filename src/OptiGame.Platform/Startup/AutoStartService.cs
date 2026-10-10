@@ -17,6 +17,21 @@ public sealed class AutoStartService
 
     public bool IsEnabled() => RunSchtasks($"/Query /TN \"{TaskName}\"", out _) == 0;
 
+    /// <summary>Programme lancé par la tâche (balise Command de sa définition XML) ; null s'il n'y a pas de tâche.</summary>
+    public string? TaskCommand()
+    {
+        if (RunSchtasks($"/Query /TN \"{TaskName}\" /XML", out var xml) != 0) return null;
+        try
+        {
+            var document = System.Xml.Linq.XDocument.Parse(xml);
+            return document.Descendants().FirstOrDefault(e => e.Name.LocalName == "Command")?.Value;
+        }
+        catch (System.Xml.XmlException)
+        {
+            return null;
+        }
+    }
+
     public void Enable(string exePath, string arguments)
     {
         var xmlPath = Path.Combine(Path.GetTempPath(), $"OptiGame-task-{Guid.NewGuid():N}.xml");

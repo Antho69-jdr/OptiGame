@@ -443,7 +443,7 @@ internal static class PageSnapshots
                     $"mots {(host.SafetyWords == guest.SafetyWords && host.SafetyWords.Length > 0 ? "identiques" : "DIFFÉRENTS")} ({host.SafetyWords}). {host.Status}{guest.Status}");
                 var silent = guest.BytesReceived;
                 await Settle(2000);
-                Log($"Micros coupés : l'invité a reçu {guest.BytesReceived - silent} octets en 2 s.");
+                Log($"Micros coupés : l'invité a reçu {guest.BytesReceived - silent} octets en 2 s ; débit envoyé par l'hôte {host.SentKbps} kbit/s (« {host.AutoQualityText} »).");
                 host.ToggleMuteCommand.Execute(null);
                 guest.ToggleMuteCommand.Execute(null);
                 var start = guest.BytesReceived;
@@ -540,11 +540,42 @@ internal static class PageSnapshots
             }));
             pages.Add(("c4b-appel-test-du-micro", async () =>
             {
+                // Micro simulé « de casque » : 0,5 s de « voix » (60 sons de 200 Hz à 7,5 kHz) puis 0,5 s de souffle léger (tout le
+                // spectre), en boucle. La bande mesurée doit s'arrêter vers 7,5-8 kHz → débit automatique 48 kbit/s.
+                // Autre son de test = autres options du moteur web : attendre que celui de l'appel précédent soit fermé.
+                await WaitUntil(() => WebProcesses() <= webBaseline, 15_000);
+                await Settle(1000);
+                Call.CallEngine.FakeAudioFile = Path.Combine(output, "voix-de-casque.wav");
+                using (var wav = new BinaryWriter(File.Create(Call.CallEngine.FakeAudioFile)))
+                {
+                    const int rate = 48000, seconds = 8;
+                    var random = new Random(2);
+                    var tones = Enumerable.Range(0, 60).Select(i => (Hz: 200 + i * 7300.0 / 59, Phase: random.NextDouble() * Math.PI * 2)).ToArray();
+                    wav.Write("RIFF"u8); wav.Write(36 + rate * seconds * 2); wav.Write("WAVEfmt "u8); wav.Write(16); wav.Write((short)1); wav.Write((short)1);
+                    wav.Write(rate); wav.Write(rate * 2); wav.Write((short)2); wav.Write((short)16); wav.Write("data"u8); wav.Write(rate * seconds * 2);
+                    for (var i = 0; i < rate * seconds; i++)
+                    {
+                        var hiss = (random.NextDouble() * 2 - 1) * 0.003;
+                        var voice = 0.0;
+                        var position = i % (rate / 2);
+                        var envelope = Math.Min(1, Math.Min(position, rate / 2 - position) / (0.02 * rate)); // montée et descente de 20 ms
+                        if (i / (rate / 2) % 2 == 0) foreach (var (hz, phase) in tones) voice += Math.Sin(2 * Math.PI * hz * i / rate + phase) * envelope;
+                        wav.Write((short)Math.Clamp((voice * 0.004 + hiss) * short.MaxValue, short.MinValue, short.MaxValue));
+                    }
+                }
+                services.GetRequiredService<Core.Settings.AppSettingsStore>().Update(s =>
+                {
+                    s.CallVoiceQuality = Core.Call.VoiceQuality.Auto;
+                    s.CallMicBandwidths.Clear(); // mesure neuve : rien de gardé d'un essai précédent
+                });
                 main.Navigate(host);
                 await host.ToggleMicTestCommand.ExecuteAsync(null);
                 await WaitUntil(() => host.MeterText.Length > 0, 15_000);
-                await Settle(2500);
-                Log($"Test du micro (hors appel) : « {host.MeterText} », barre {host.MicMeter:0.00}, bouton « {host.MicTestLabel} ».");
+                await WaitUntil(() => host.AutoQualityText.Contains("capte"), 20_000);
+                await Settle(1000);
+                var stored = services.GetRequiredService<Core.Settings.AppSettingsStore>().Get().CallMicBandwidths;
+                Log($"Test du micro (hors appel) : « {host.MeterText} » ; débit auto : « {host.AutoQualityText} » ; mesures gardées : " +
+                    $"{string.Join(", ", stored.Select(p => $"{p.Key} = {p.Value} Hz"))}. {host.BandDiagnostics}");
             }));
             pages.Add(("c5-appel-code-inconnu", async () =>
             {

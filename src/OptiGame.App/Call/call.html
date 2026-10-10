@@ -22,7 +22,7 @@ const OPUS = { maxaveragebitrate: '192000', stereo: '0', 'sprop-stereo': '0', us
 let bitrate = 128000;
 const NOISE_MODES = ['strong', 'standard', 'off'];
 const GATE_MODES = ['auto', 'manual', 'off'];
-let gateMode = 'auto', gateThreshold = -45;
+let gateMode = 'auto', gateThreshold = -30;
 // Suppression du bruit : 'strong' = filtre RNNoise (noise-worklet.js), 'standard' = celle du moteur web, 'off' = aucune.
 const AUDIO = mode => ({ echoCancellation: true, noiseSuppression: mode === 'standard', autoGainControl: true, channelCount: 1 });
 
@@ -65,6 +65,7 @@ async function openMic() {
   if (needsProcessor() || testing) await loadProcessor(); // ≈ 70 Mo avec le filtre : chargé seulement s'il sert
   applyVoice();
   connectSource();
+  startBandwidth();
   sendTrack = outbound.stream.getAudioTracks()[0];
   setMuted(true); // micro coupé tant que l'utilisateur ne l'ouvre pas
   send({ ev: 'mic', label: track ? track.label : '' });
@@ -93,6 +94,7 @@ async function loadProcessor() {
 function connectSource() {
   if (source) source.disconnect();
   source = ctx.createMediaStreamSource(mic);
+  if (raw) source.connect(raw); // mesure de la bande captée (micro changé : nouvelle source)
   if (processor) {
     source.connect(processor);
   } else {
@@ -101,6 +103,75 @@ function connectSource() {
   }
 }
 
+
+// ===== Bande réellement captée par le micro (débit automatique, Core/Call/VoiceQualityAdvisor) =====
+// Toutes les 100 ms, sur le son BRUT du micro : la trame est « voix » si son niveau dépasse le fond de 15 dB, « silence » à moins
+// de 5 dB du fond. Par bandes de 500 Hz, on garde le niveau de chaque trame ; la bande captée s'arrête à la dernière bande où la
+// MÉDIANE des trames de voix dépasse celle des silences d'au moins 6 dB. Médiane : les claquements (« p », « t »), larges mais
+// brefs, ne comptent pas ; le souffle d'un micro, présent dans les deux, non plus.
+const BAND = 500, MAX_FRAMES = 600;
+let raw = null, bandTimer = null, bandVoice = null, bandSilence = null, voiceFrames = 0, silenceFrames = 0, rawFloor = 0;
+
+function resetBandwidth() {
+  const bands = Math.floor(ctx.sampleRate / 2 / BAND);
+  bandVoice = Array.from({ length: bands }, () => new Float32Array(MAX_FRAMES));
+  bandSilence = Array.from({ length: bands }, () => new Float32Array(MAX_FRAMES));
+  voiceFrames = silenceFrames = 0;
+  rawFloor = 0;
+}
+
+function startBandwidth() {
+  if (bandTimer) return;
+  raw = ctx.createAnalyser();
+  raw.fftSize = 4096;
+  raw.smoothingTimeConstant = 0;
+  resetBandwidth();
+  if (source) source.connect(raw);
+  const time = new Float32Array(raw.fftSize), spectrum = new Float32Array(raw.frequencyBinCount);
+  const power = new Float64Array(bandVoice.length);
+  bandTimer = setInterval(() => {
+    raw.getFloatTimeDomainData(time);
+    let energy = 0;
+    for (const x of time) energy += x * x;
+    const db = 10 * Math.log10(energy / time.length + 1e-12);
+    rawFloor = rawFloor === 0 || db < rawFloor ? db : rawFloor + 0.05;
+    const voice = db > rawFloor + 15, silence = db < rawFloor + 5;
+    if (!voice && !silence) return;
+    if (voice ? voiceFrames >= MAX_FRAMES : silenceFrames >= MAX_FRAMES) return;
+    raw.getFloatFrequencyData(spectrum);
+    power.fill(0);
+    const binHz = ctx.sampleRate / raw.fftSize;
+    for (let i = 1; i < spectrum.length; i++) power[Math.min(power.length - 1, Math.floor(i * binHz / BAND))] += Math.pow(10, spectrum[i] / 10);
+    const target = voice ? bandVoice : bandSilence, index = voice ? voiceFrames++ : silenceFrames++;
+    for (let b = 0; b < power.length; b++) target[b][index] = 10 * Math.log10(power[b] + 1e-20);
+    if (voice && voiceFrames % 20 === 0 && silenceFrames >= 10) reportBandwidth();
+  }, 100);
+}
+
+function median(values, count) {
+  const sorted = Array.from(values.subarray(0, count)).sort((a, b) => a - b);
+  return sorted[Math.floor(count / 2)];
+}
+
+function reportBandwidth() {
+  // La bande captée s'arrête au premier « trou » de plus de 1,5 kHz : des pics isolés plus haut (constatés au-dessus de 17 kHz avec
+  // le micro simulé : traitements du moteur, ultrasons) ne sont pas de la voix.
+  let top = 0, gap = 0;
+  const diffs = [];
+  for (let b = 0; b < bandVoice.length; b++) {
+    const diff = median(bandVoice[b], voiceFrames) - median(bandSilence[b], silenceFrames);
+    diffs.push(Math.round(diff));
+    if (diff >= 6) { top = b; gap = 0; } else if (++gap > 3 && top > 0) break;
+  }
+  send({ ev: 'micBandwidth', hz: Math.min(20000, (top + 1) * BAND), voiceFrames, silenceFrames, diffs });
+}
+
+function stopBandwidth() {
+  if (bandTimer) clearInterval(bandTimer);
+  bandTimer = null;
+  if (raw) { try { raw.disconnect(); } catch (e) { /* déjà débranché */ } }
+  raw = null;
+}
 function applyVoice() {
   if (processor) processor.port.postMessage({ denoise: noiseMode === 'strong', gateMode, threshold: gateThreshold });
   send({ ev: 'noise', mode: noiseMode, filter: !!processor });
@@ -114,6 +185,7 @@ async function switchMic() {
   if (mic) mic.getTracks().forEach(t => { t.onended = null; t.stop(); });
   mic = fresh;
   connectSource();
+  if (bandVoice) resetBandwidth(); // autre micro : nouvelle mesure
   send({ ev: 'mic', label: track.label });
 }
 
@@ -349,6 +421,7 @@ function cue(on) {
 
 function hangup() {
   closing = true;
+  stopBandwidth();
   if (levels) { clearInterval(levels); levels = null; }
   if (control && control.readyState === 'open') { try { control.send('bye'); } catch (e) { /* fermé */ } }
   if (relay) { try { relay.close(1000); } catch (e) { /* fermée */ } relay = null; }
@@ -369,8 +442,8 @@ function reportError(err) {
 function readVoiceSettings(m) {
   noiseMode = NOISE_MODES.includes(m.noise) ? m.noise : 'strong';
   gateMode = GATE_MODES.includes(m.gate) ? m.gate : 'auto';
-  gateThreshold = Number.isFinite(m.threshold) ? Math.max(-80, Math.min(0, m.threshold)) : -45;
-  bitrate = [96, 128, 192].includes(m.kbps) ? m.kbps * 1000 : 128000;
+  gateThreshold = Number.isFinite(m.threshold) ? Math.max(-80, Math.min(0, m.threshold)) : -30;
+  bitrate = Number.isInteger(m.kbps) && m.kbps >= 16 && m.kbps <= 192 ? m.kbps * 1000 : 128000;
 }
 
 async function handle(m) {
@@ -419,7 +492,7 @@ async function handle(m) {
       applyVoice();
       break;
     case 'quality':
-      if ([96, 128, 192].includes(m.kbps)) { bitrate = m.kbps * 1000; await raiseBitrate(); }
+      if (Number.isInteger(m.kbps) && m.kbps >= 16 && m.kbps <= 192) { bitrate = m.kbps * 1000; await raiseBitrate(); }
       break;
     case 'speaker':
       speakerChoice = m.id || '';

@@ -204,14 +204,17 @@ public sealed class AppSettings
     /// <summary>Suppression du bruit de la voix ; absente d'un ancien settings.json = forte (filtre RNNoise).</summary>
     public Call.NoiseSuppression CallNoiseSuppression { get; set; } = Call.NoiseSuppression.Strong;
 
-    /// <summary>Débit de la voix envoyée ; absent d'un ancien settings.json = haute (128 kbit/s).</summary>
-    public Call.VoiceQuality CallVoiceQuality { get; set; } = Call.VoiceQuality.High;
+    /// <summary>Débit de la voix envoyée ; absent d'un ancien settings.json = automatique (selon le micro).</summary>
+    public Call.VoiceQuality CallVoiceQuality { get; set; } = Call.VoiceQuality.Auto;
+
+    /// <summary>Bande de la voix réellement captée par chaque micro (Hz), mesurée pendant qu'on parle ; clé = nom du micro.</summary>
+    public Dictionary<string, int> CallMicBandwidths { get; set; } = [];
 
     /// <summary>Seuil du micro ; absent = automatique.</summary>
     public Call.MicGateMode CallGateMode { get; set; } = Call.MicGateMode.Auto;
 
     /// <summary>Seuil manuel du micro, en dBFS (-80 à -10).</summary>
-    public int CallGateThreshold { get; set; } = -45;
+    public int CallGateThreshold { get; set; } = -30;
 
     /// <summary>Effet du raccourci : basculer (par défaut) ou appuyer pour parler.</summary>
     public Call.MicHotkeyMode CallMicKeyMode { get; set; } = Call.MicHotkeyMode.Toggle;
@@ -267,6 +270,7 @@ public sealed class AppSettings
         CallMicKey = CallMicKey,
         CallNoiseSuppression = CallNoiseSuppression,
         CallVoiceQuality = CallVoiceQuality,
+        CallMicBandwidths = new Dictionary<string, int>(CallMicBandwidths),
         CallGateMode = CallGateMode,
         CallGateThreshold = CallGateThreshold,
         CallMicKeyMode = CallMicKeyMode,

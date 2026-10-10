@@ -344,8 +344,10 @@
                                       AutomationProperties.Name="Seuil du micro" />
                         </StackPanel>
                     </WrapPanel>
+                    <TextBlock Margin="0,0,0,6" Style="{StaticResource Text.Caption}" Foreground="{StaticResource Brush.Text}" Text="{Binding AutoQualityText}"
+                               Visibility="{Binding HasAutoQualityText, Converter={StaticResource BoolToVisibility}}" AutomationProperties.LiveSetting="Polite" />
                     <TextBlock Style="{StaticResource Text.Caption}"
-                               Text="Seuil : votre micro ne s'ouvre que lorsque vous parlez assez fort ; une voix en fond, plus faible au micro, est coupée. Automatique : OptiGame apprend le niveau de votre voix pendant l'appel." />
+                               Text="Débit automatique : le plus haut qui apporte encore quelque chose avec votre micro (mesuré pendant que vous parlez, gardé pour ce micro). Seuil : votre micro ne s'ouvre que lorsque vous parlez assez fort ; une voix en fond, plus faible au micro, est coupée." />
                     <Grid Margin="0,8,0,0" Visibility="{Binding IsManualGate, Converter={StaticResource BoolToVisibility}}">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" MaxWidth="340" />

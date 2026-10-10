@@ -561,6 +561,17 @@ if (args.Length is 1 or 2 && args[0] == "--gpu-sample")
 }
 
 // --disks : disque de chaque lecteur et de chaque profil (type, espace libre, conseil affiché sur la page du jeu).
+if (args.Length == 1 && args[0] == "--audio-devices")
+{
+    // Micros et sorties actifs, format partagé de Windows (appel vocal : débit automatique selon le micro).
+    foreach (var (title, list) in new[] { ("Micros", OptiGame.Platform.Audio.AudioEndpoints.Capture()), ("Sorties", OptiGame.Platform.Audio.AudioEndpoints.Render()) })
+    {
+        Console.WriteLine($"{title} :");
+        foreach (var d in list) Console.WriteLine($"  {d.Name} — {d.SampleRate} Hz, {d.BitsPerSample} bits, {d.Channels} canal(aux), forme {d.FormFactor}");
+    }
+    return;
+}
+
 if (args.Length == 1 && args[0] == "--disks")
 {
     foreach (var drive in DriveInfo.GetDrives().Where(d => d.IsReady))

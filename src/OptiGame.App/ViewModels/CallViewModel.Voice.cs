@@ -20,8 +20,9 @@ public sealed partial class CallViewModel
 
     public IReadOnlyList<VoiceOption<VoiceQuality>> QualityOptions { get; } =
     [
+        new(VoiceQuality.Auto, "Automatique (selon votre micro)"),
         new(VoiceQuality.Standard, "Standard (96 kbit/s)"),
-        new(VoiceQuality.High, "Haute (128 kbit/s, recommandée)"),
+        new(VoiceQuality.High, "Haute (128 kbit/s)"),
         new(VoiceQuality.Max, "Maximale (192 kbit/s)"),
     ];
 
@@ -32,7 +33,8 @@ public sealed partial class CallViewModel
         {
             if (value is null || value.Value == _settings.Get().CallVoiceQuality) return;
             _settings.Update(s => s.CallVoiceQuality = value.Value);
-            _engine?.Send(new { cmd = "quality", kbps = (int)value.Value });
+            _sentKbps = 0;
+            ApplyQuality();
             _log.Info($"Appel : qualité de la voix « {value.Label} ».");
             OnPropertyChanged();
         }
@@ -73,6 +75,89 @@ public sealed partial class CallViewModel
             SendGate();
             OnPropertyChanged();
         }
+    }
+
+    // ===== Débit automatique (selon le micro) =====
+
+    private string _micName = "";
+    private int _sentKbps;
+    private readonly Dictionary<string, int?> _micSampleRates = [];
+
+    /// <summary>« Votre micro capte la voix jusqu'à 9 kHz : 64 kbit/s, plus de débit n'apporterait rien. » (mode automatique).</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasAutoQualityText))]
+    private string _autoQualityText = "";
+
+    public bool HasAutoQualityText => AutoQualityText.Length > 0;
+
+    /// <summary>Débit envoyé en ce moment (vérifications).</summary>
+    internal int SentKbps => _sentKbps;
+
+    /// <summary>Détail de la dernière mesure de bande (vérifications).</summary>
+    internal string BandDiagnostics { get; private set; } = "";
+
+    /// <summary>Micro ouvert (nom donné par le moteur web) : son format dans Windows et sa mesure gardée donnent le débit.</summary>
+    private void OnMicLabel(string label)
+    {
+        _micName = VoiceQualityAdvisor.DeviceName(label);
+        ApplyQuality();
+    }
+
+    /// <summary>Bande captée mesurée pendant qu'on parle : gardée pour ce micro (5 s de parole au moins), débit recalculé.</summary>
+    private void OnMicBandwidth(JsonElement message)
+    {
+        if (message.TryGetProperty("diffs", out var diffs) && diffs.ValueKind == JsonValueKind.Array)
+        {
+            BandDiagnostics = $"{Number(message, "voiceFrames")} trames de voix, {Number(message, "silenceFrames")} de silence ; écart voix − silence par 500 Hz : " +
+                string.Join(" ", diffs.EnumerateArray().Select(d => d.GetDouble().ToString("0", System.Globalization.CultureInfo.InvariantCulture)));
+        }
+        if (_micName.Length == 0 || Number(message, "voiceFrames") < VoiceQualityAdvisor.MinVoiceFrames) return;
+        var hz = (int)Number(message, "hz");
+        if (_settings.Get().CallMicBandwidths.TryGetValue(_micName, out var known) && known == hz) return;
+        _settings.Update(s => s.CallMicBandwidths[_micName] = hz);
+        _log.Info($"Appel : bande captée par le micro « {_micName} » : {hz} Hz.");
+        ApplyQuality();
+    }
+
+    /// <summary>Débit à envoyer : choisi, ou conseillé pour ce micro (mode automatique) ; envoyé au moteur s'il change.</summary>
+    private void ApplyQuality()
+    {
+        var settings = _settings.Get();
+        int kbps;
+        if (settings.CallVoiceQuality == VoiceQuality.Auto)
+        {
+            var advice = VoiceQualityAdvisor.Recommend(SampleRateOf(_micName),
+                settings.CallMicBandwidths.TryGetValue(_micName, out var hz) ? hz : null);
+            kbps = advice.Kbps;
+            AutoQualityText = _micName.Length == 0 ? "" : advice.Reason;
+        }
+        else
+        {
+            kbps = (int)settings.CallVoiceQuality;
+            AutoQualityText = "";
+        }
+        if (kbps == _sentKbps) return;
+        _sentKbps = kbps;
+        _engine?.Send(new { cmd = "quality", kbps });
+        if (_micName.Length > 0) _log.Info($"Appel : débit de la voix {kbps} kbit/s ({(settings.CallVoiceQuality == VoiceQuality.Auto ? "automatique" : "choisi")}).");
+    }
+
+    /// <summary>Fréquence d'échantillonnage du micro dans Windows (format partagé), retrouvé par son nom ; null si inconnu.</summary>
+    private int? SampleRateOf(string name)
+    {
+        if (name.Length == 0) return null;
+        if (_micSampleRates.TryGetValue(name, out var cached)) return cached;
+        int? rate = null;
+        try
+        {
+            rate = Platform.Audio.AudioEndpoints.Capture().FirstOrDefault(d => d.Name == name)?.SampleRate;
+        }
+        catch (Exception ex) when (ex is System.Runtime.InteropServices.COMException or InvalidCastException)
+        {
+            _log.Warn($"Appel : format du micro illisible ({ex.Message}).");
+        }
+        _micSampleRates[name] = rate;
+        return rate;
     }
 
     // ===== Mesure du niveau (pendant un appel ou un test) =====
@@ -117,6 +202,8 @@ public sealed partial class CallViewModel
                 return;
             }
             _testEngine = engine;
+            _micName = "";
+            _sentKbps = 0;
             engine.Message += OnTestMessage;
             var settings = _settings.Get();
             engine.Send(new
@@ -153,6 +240,12 @@ public sealed partial class CallViewModel
         if (!message.TryGetProperty("ev", out var ev)) return;
         switch (ev.GetString())
         {
+            case "mic":
+                OnMicLabel(Text(message, "label"));
+                break;
+            case "micBandwidth":
+                OnMicBandwidth(message);
+                break;
             case "voiceStats":
                 OnVoiceStats(message);
                 break;

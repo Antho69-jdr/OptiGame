@@ -99,6 +99,7 @@ public partial class App : Application
         _services.GetRequiredService<UpdateService>().Start(this);
         _services.GetRequiredService<Call.IncomingCallPresenter>().Start();
         _services.GetRequiredService<Call.SteamFriendsService>().Start(); // amis Steam : seulement si connecté avec Steam et visible
+        RepointAutoStart();
 
         _quitWatcher = new QuitRequestWatcher(services.GetRequiredService<AppPaths>().Root,
             () => Dispatcher.BeginInvoke(async () =>
@@ -187,6 +188,32 @@ public partial class App : Application
                 $"Fenêtre affichée {elapsed.TotalMilliseconds:0} ms après le lancement — mémoire : {MemoryUsage.Now().Describe()}");
         }
         window.ContentRendered += OnRendered;
+    }
+
+    /// <summary>
+    /// « Démarrer avec Windows » : la copie INSTALLÉE recâble sur elle-même une tâche qui lancerait une autre copie (une copie de
+    /// développement où la case avait été cochée lançait encore une vieille version, constaté le 2026-10-10 ; Core/Updates/
+    /// AutoStartTarget). Hors du fil de l'interface (schtasks), rien si la tâche n'existe pas.
+    /// </summary>
+    private void RepointAutoStart()
+    {
+        var log = _services!.GetRequiredService<FileLog>();
+        var autoStart = _services!.GetRequiredService<Platform.Startup.AutoStartService>();
+        _ = Task.Run(() =>
+        {
+            try
+            {
+                var exe = Environment.ProcessPath ?? "";
+                var task = autoStart.TaskCommand();
+                if (!Core.Updates.AutoStartTarget.ShouldRepoint(task, exe, Platform.Updates.InstalledCopy.WhyNoSelfUpdate() is null)) return;
+                autoStart.Enable(exe, MinimizedArgument);
+                log.Info($"Démarrage avec Windows : la tâche lançait « {task} » ; elle lance maintenant cette copie ({exe}).");
+            }
+            catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception or IOException or UnauthorizedAccessException)
+            {
+                log.Error("Démarrage avec Windows : tâche impossible à recâbler sur la copie installée", ex);
+            }
+        });
     }
 
     protected override void OnExit(ExitEventArgs e)

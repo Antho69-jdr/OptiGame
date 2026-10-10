@@ -212,6 +212,16 @@ maintien 250 ms, fermeture 60 ms ; automatique = entre le fond (minimum qui remo
 module se charge si filtre fort OU seuil. Mesures 10/s (`voiceStats`) → barre de niveau + « Niveau −32 dB · seuil −45 dB · le son
 passe » ; « Tester mon micro » (hors appel, aucun réseau : commande « test », moteur à part `_testEngine`, arrêté au début d'un
 appel). Vérifié : seuil −10 dB sur un souffle à −19 dB → coupé (0,001), −40 dB → passe.
+3e retour (2026-10-10) : seuil manuel ≈ −30 dB « marche mieux » que l'automatique (→ manuel −30 par défaut, automatique resserré à
+6-10 dB sous la voix) ; 96 / 128 / 192 « imperceptibles » → débit AUTOMATIQUE par défaut (`VoiceQuality.Auto`,
+`Core/Call/VoiceQualityAdvisor`) : bande de la voix = min(format du micro dans Windows / 2, bande MESURÉE) → 32 / 48 / 64 / 96 /
+128 kbit/s (≤ 4,5 / 8,5 / 12,5 / 16,5 kHz / au-delà). Format : `Platform/Audio/AudioEndpoints` (MMDevice, PKEY_AudioEngine_
+DeviceFormat, sans admin, retrouvé par le NOM du micro = libellé du moteur web sans « Par défaut - » ; `DiagDump -- --audio-devices`) ;
+machine de dev : Yeti Nano, Arctis 7 Chat, Iriun TOUS à 48 kHz (le format ne les distingue pas). Mesure (call.html) : toutes les
+100 ms sur le son BRUT, trame voix (> fond + 15 dB) ou silence (< fond + 5 dB), niveaux par bandes de 500 Hz, MÉDIANE voix −
+médiane silence ≥ 6 dB, la bande s'arrête au 1er trou > 1,5 kHz (moyenne = claquements larges ; sans l'arrêt, des pics au-dessus
+de 17 kHz donnaient 20 kHz) ; gardée par micro (`CallMicBandwidths`) dès 5 s de parole, débit réenvoyé pendant l'appel s'il change.
+Vérifié (micro simulé « de casque » : 60 sons de 200 Hz à 7,5 kHz + souffle) : 8 kHz mesurés → 48 kbit/s, appliqués à l'appel.
 Raccourci du micro en jeu (`Core/Call/MicHotkey` + `MicHotkeyMatcher`, `Platform/Input/RawKeyboardListener`) : touche ou combinaison
 choisie dans la page (saisie dans la fenêtre, Échap annule ; `AppSettings.CallMicKey` = « ctrl+alt+0x4D », `CallMicKeyMode` Basculer
 / Appuyer pour parler). Lue par l'ENTRÉE BRUTE (RegisterRawInputDevices, RIDEV_INPUTSINK, fenêtre de messages sur un thread dédié)
@@ -274,7 +284,10 @@ Sessions de jeu (Platform/Processes) :
 - Réglage `process` : valeur = [chemin, ligne de commande] ; journalisé seulement si le programme tournait.
   Relance via le jeton de l'Explorateur (`UnelevatedLauncher`) : jamais de relance élevée. Une relance ratée est
   signalée puis retirée du journal (`ChangeJournal.Discard`) ; les réglages système ratés restent en attente.
-- Démarrage auto : tâche planifiée importée en XML (`Startup/AutoStartService`), argument `--minimized`.
+- Démarrage auto : tâche planifiée importée en XML (`Startup/AutoStartService`), argument `--minimized`. La copie INSTALLÉE
+  recâble sur elle-même une tâche qui lance une autre copie (`Core/Updates/AutoStartTarget`, `App.RepointAutoStart`, au lancement,
+  hors fil de l'interface ; `AutoStartService.TaskCommand` = schtasks /XML, lisible sans admin) : constaté le 2026-10-10, la tâche
+  créée depuis une copie de DÉVELOPPEMENT lançait encore une 1.10 incapable de se mettre à jour alors que la 1.15.0 était installée.
 - Lancement (« Jouer ») : `Core/Launching/LaunchPlanner` (Automatique / Steam / Exécutable / Lanceur) +
   `Platform/Processes/GameLauncher`, toujours via `UnelevatedLauncher`. Steam = `steam.exe -applaunch <appid>`
   (SteamExe dans HKCU\Software\Valve\Steam), appid retrouvé dans les manifestes si absent du profil.
