@@ -1,4 +1,4 @@
-using System.Globalization;
+﻿using System.Globalization;
 using OptiGame.Core.Rating;
 using OptiGame.Core.Text;
 
@@ -25,6 +25,8 @@ public enum InGameDisplayMode
 /// <param name="QualityLevel">Niveau médian des groupes de qualité (Unreal), dans <paramref name="Scale"/>.</param>
 /// <param name="QualityKeys">Clés des groupes de qualité trouvées (« sg.ShadowQuality »…) : celles qu'OptiGame peut régler.</param>
 /// <param name="Options">Chaque réglage lu, dans les mots du jeu (jeux de la base <see cref="GameConfigs"/>).</param>
+/// <param name="AutoDetected">Tout ou partie trouvé par la détection automatique (<see cref="DetectedSettings"/>) : valeurs montrées
+/// telles quelles, sens non vérifié.</param>
 public sealed record InGameSettings(
     string Engine,
     string SourceName,
@@ -42,7 +44,8 @@ public sealed record InGameSettings(
     int? QualityLevel = null,
     UnrealSettings.QualityScale? Scale = null,
     IReadOnlyList<string>? QualityKeys = null,
-    IReadOnlyList<InGameOption>? Options = null)
+    IReadOnlyList<InGameOption>? Options = null,
+    bool AutoDetected = false)
 {
     /// <summary>« qualité Moyen, 3440×1440, plein écran fenêtré, V-Sync activée, sans limite de FPS, DLSS Qualité ».</summary>
     public string Summary()
@@ -241,5 +244,16 @@ public static class UnitySettings
                 _ => null,
             });
         return settings.Summary().Length == 0 ? null : settings;
+    }
+
+    /// <summary>
+    /// Préférence d'un jeu Unity rangée dans le registre (PlayerPrefs, « VSync_h1234567 ») → son nom sans le suffixe ; null pour
+    /// celles du moteur (Screenmanager…, Unity…, unity.…, déjà lues ou sans rapport).
+    /// </summary>
+    public static string? PrefName(string valueName)
+    {
+        if (valueName.StartsWith("Screenmanager", StringComparison.Ordinal) || valueName.StartsWith("Unity", StringComparison.OrdinalIgnoreCase)) return null;
+        var hash = valueName.LastIndexOf("_h", StringComparison.Ordinal);
+        return hash > 0 && valueName[(hash + 2)..].All(char.IsDigit) ? valueName[..hash] : null;
     }
 }

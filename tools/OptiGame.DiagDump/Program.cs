@@ -1,4 +1,4 @@
-using System.Text;
+﻿using System.Text;
 using Microsoft.Extensions.DependencyInjection;
 using OptiGame.Core;
 using OptiGame.Core.Diagnostics;
@@ -227,13 +227,18 @@ if (args.Length >= 1 && args[0] == "--background")
 }
 
 // --ingame-settings : réglages lus dans les fichiers de chaque jeu (Unreal Engine, Unity), lecture seule.
-if (args.Length == 1 && args[0] == "--ingame-settings")
+// --ingame-settings --no-definitions : en ignorant la base de définitions, pour comparer la détection automatique aux définitions
+// vérifiées (elle ne doit jamais les contredire).
+if (args.Length >= 1 && args[0] == "--ingame-settings")
 {
+    var withoutDefinitions = args.Contains("--no-definitions");
     var profiles = new OptiGame.Core.Profiles.ProfileStore(
         new JsonStateStore<OptiGame.Core.Profiles.ProfilesDocument>(AppPaths.Default.Profiles));
     foreach (var profile in profiles.GetAll())
     {
-        var settings = OptiGame.Platform.InGame.InGameSettingsReader.Read(profile.ExePath);
+        var settings = withoutDefinitions
+            ? OptiGame.Platform.InGame.InGameSettingsReader.ReadWithoutDefinitions(profile.ExePath)
+            : OptiGame.Platform.InGame.InGameSettingsReader.Read(profile.ExePath);
         Console.WriteLine(settings is null
             ? $"{profile.Name} : rien de lisible (autre moteur, ou jeu jamais lancé)"
             : $"{profile.Name} : {settings.Description(DateTime.Now)}\n    {settings.SourcePath}" +

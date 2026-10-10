@@ -582,6 +582,13 @@ vit dans Core ; Platform ne fait que lire/écrire le système.
     update\cfg\video.txt → 3440×1440, V-Sync (config.cfg, 300 variables, écarté par le classement) ; Scrap Mechanic settings.json
     → 3440×1440, limite 165 FPS, « VerticalSync : 1 » NON interprété ; la note s'en sert (« limite de 165 FPS dans le jeu »).
     Recherche gardée 10 min par exe, liste des dossiers de l'utilisateur 10 min.
+    Jeux UNITY (demande du 2026-10-10) : l'écran du registre (Screenmanager, sûr) est COMPLÉTÉ par la détection
+    (`DetectedSettings.Merge` : champs du moteur prioritaires, `InGameSettings.AutoDetected`) : fichier cherché d'abord dans
+    LocalLow\<éditeur>\<jeu> (noms d'app.info) + préférences de la même clé du registre (`UnitySettings.PrefName` : suffixe
+    « _h<hash> » retiré, Screenmanager / Unity* / unity.* écartés), NOMBRES ENTIERS SEULEMENT — jamais les textes ni les binaires :
+    la clé de Void Crew garde des identifiants de session et des jetons d'authentification. Contrôle :
+    `DiagDump -- --ingame-settings --no-definitions` (sans la base) ne doit jamais contredire une définition vérifiée — Void Crew :
+    « VSync : 2 » (= limite fixe) et « TargetFramerate : 120 » montrés tels quels, non interprétés.
   - Projet de tests Core : `<None Include="**\Samples\**" Exclude="$(DefaultItemExcludes)">` ; sans l'exclusion, les
     échantillons déjà copiés dans bin y étaient recopiés un niveau plus bas à chaque compilation (348 017 fichiers le 2026-10-09,
     `dotnet test` bloqué plusieurs minutes sans rien afficher).

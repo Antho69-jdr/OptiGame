@@ -173,8 +173,25 @@ public static partial class DetectedSettings
 
         var options = graphics.Take(40).Select(p => new InGameOption(p.Key, p.Value)).ToList();
         return new InGameSettings(Engine, sourceName, sourcePath, savedAt, Width: width, Height: height, DisplayMode: mode, VSync: vsync,
-            FrameLimit: frameLimit, Options: options);
+            FrameLimit: frameLimit, Options: options, AutoDetected: true);
     }
+
+    /// <summary>
+    /// Ce que le moteur dit avec certitude (Unity : écran lu dans le registre) complété par la détection : les champs du moteur
+    /// l'emportent, la détection remplit les autres et donne la liste des réglages.
+    /// </summary>
+    public static InGameSettings Merge(InGameSettings engine, InGameSettings? detected) => detected is null ? engine : engine with
+    {
+        SourceName = $"{engine.SourceName} et {detected.SourceName}",
+        SavedAt = engine.SavedAt > detected.SavedAt ? engine.SavedAt : detected.SavedAt,
+        Width = engine.Width ?? detected.Width,
+        Height = engine.Width is null ? detected.Height : engine.Height,
+        DisplayMode = engine.DisplayMode ?? detected.DisplayMode,
+        VSync = engine.VSync ?? detected.VSync,
+        FrameLimit = engine.FrameLimit ?? detected.FrameLimit,
+        Options = detected.Options,
+        AutoDetected = true,
+    };
 
     [GeneratedRegex(@"^\s*(\d{3,5})\s*[x×*,]\s*(\d{3,5})")]
     private static partial Regex ResolutionValue();

@@ -1,4 +1,4 @@
-using System.Runtime.InteropServices;
+﻿using System.Runtime.InteropServices;
 using Microsoft.Win32;
 using Microsoft.Win32.SafeHandles;
 using OptiGame.Core.InGame;
@@ -25,6 +25,19 @@ public static class InGameSettingsReader
         {
             // Détection automatique en dernier : seulement pour un jeu sans définition ni moteur reconnu.
             return ReadDefined(exePath) ?? ReadUnreal(exePath) ?? ReadUnity(exePath) ?? GameConfigFinder.Read(exePath);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Security.SecurityException or ArgumentException)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>Comme <see cref="Read"/> sans la base de définitions (vérifications : la détection ne doit pas les contredire).</summary>
+    public static InGameSettings? ReadWithoutDefinitions(string exePath)
+    {
+        try
+        {
+            return ReadUnreal(exePath) ?? ReadUnity(exePath) ?? GameConfigFinder.Read(exePath);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Security.SecurityException or ArgumentException)
         {
@@ -138,11 +151,20 @@ public static class InGameSettingsReader
         using var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(keyPath);
         if (key is null) return null;
         var values = new Dictionary<string, int>(StringComparer.Ordinal);
+        // Préférences du jeu : NOMBRES ENTIERS seulement. Jamais les textes ni les blocs binaires : la même clé garde des
+        // identifiants de session et des jetons de connexion (vu sur Void Crew le 2026-10-10).
+        var prefs = new List<(string, string)>();
         foreach (var name in key.GetValueNames())
         {
-            if (name.StartsWith("Screenmanager", StringComparison.Ordinal) && key.GetValue(name) is int value) values[name] = value;
+            if (key.GetValueKind(name) != RegistryValueKind.DWord || key.GetValue(name) is not int value) continue;
+            if (name.StartsWith("Screenmanager", StringComparison.Ordinal)) values[name] = value;
+            else if (UnitySettings.PrefName(name) is { } pref) prefs.Add((pref, value.ToString(System.Globalization.CultureInfo.InvariantCulture)));
         }
-        return UnitySettings.FromRegistry(values, $@"HKCU\{keyPath}", LastWriteTime(key) ?? File.GetLastWriteTime(appInfo));
+        var screen = UnitySettings.FromRegistry(values, $@"HKCU\{keyPath}", LastWriteTime(key) ?? File.GetLastWriteTime(appInfo));
+        if (screen is null) return null;
+        // Le reste des réglages : fichier propre au jeu (LocalLow\Éditeur\Jeu d'abord) et préférences ; l'écran du registre l'emporte.
+        var localLow = LocalLow() is { } low ? Path.Combine(low, names.Company, names.Product) : null;
+        return DetectedSettings.Merge(screen, GameConfigFinder.Read(exePath, localLow, prefs, $@"HKCU\{keyPath}"));
     }
 
     /// <summary>Date de dernière écriture d'une clé de registre (RegQueryInfoKey), en heure locale.</summary>

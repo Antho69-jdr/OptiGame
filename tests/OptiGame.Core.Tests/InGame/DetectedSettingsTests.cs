@@ -62,6 +62,37 @@ public sealed class DetectedSettingsTests
         Assert.True(DetectedSettings.Rank(video) > DetectedSettings.Rank(dump));
     }
 
+    [Theory]
+    [InlineData("VSync_h3912355471", "VSync")]
+    [InlineData("_showLockedSetting_h2535181253", "_showLockedSetting")]
+    [InlineData("Screenmanager Resolution Width_h182942802", null)] // lu par le moteur
+    [InlineData("UnityGraphicsQuality_h1669003810", null)] // non fiable (Void Crew : 1 en Ultra)
+    [InlineData("unity.player_sessionid_h1351336811", null)] // identifiant de session : jamais
+    [InlineData("SansSuffixe", null)]
+    public void Unity_pref_names_lose_their_hash_and_engine_values_are_left_out(string valueName, string? expected) =>
+        Assert.Equal(expected, UnitySettings.PrefName(valueName));
+
+    [Fact]
+    public void Merge_keeps_the_engine_screen_and_adds_what_the_detection_found()
+    {
+        // Void Crew lu SANS sa définition (2026-10-10) : écran du registre, puis son Settings.json.
+        var screen = UnitySettings.FromRegistry(new Dictionary<string, int>
+        {
+            ["Screenmanager Resolution Width_h182942802"] = 3440,
+            ["Screenmanager Resolution Height_h2627697771"] = 1440,
+            ["Screenmanager Fullscreen mode_h3630240806"] = 1,
+        }, "HKCU", DateTime.Now)!;
+        var detected = Detect(Sample("voidcrew-Settings.json"));
+
+        var merged = DetectedSettings.Merge(screen, detected);
+
+        Assert.Equal((3440, 1440, InGameDisplayMode.Borderless), (merged.Width, merged.Height, merged.DisplayMode));
+        Assert.Null(merged.VSync); // « VSync : 2 » (limite fixe selon la définition vérifiée) : jamais pris pour activée
+        Assert.Null(merged.FrameLimit); // « TargetFramerate » ne limite que si VSync = 2 : non interprété sans définition
+        Assert.True(merged.AutoDetected);
+        Assert.Contains(merged.Options!, o => o.Label == "VSync" && o.Value == "2");
+    }
+
     [Fact]
     public void Files_without_display_settings_are_ignored() =>
         Assert.Null(Detect("""{ "MasterVolume": 1.0, "Language": "French", "MouseSpeed": 0.7 }"""));

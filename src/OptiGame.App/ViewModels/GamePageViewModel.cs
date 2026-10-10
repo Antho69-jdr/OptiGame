@@ -123,7 +123,7 @@ public sealed partial class GamePageViewModel(
     public string InGameOptionsHeader => $"Les {Core.Text.FrenchText.Count(InGameOptions.Count, "réglage lu", "réglages lus")} dans le jeu";
 
     /// <summary>Fichier trouvé par la détection automatique (jeu sans définition) : valeurs montrées telles quelles, sens non vérifié.</summary>
-    public bool IsDetectedInGame => InGame?.Engine == Core.InGame.DetectedSettings.Engine;
+    public bool IsDetectedInGame => InGame?.AutoDetected == true;
 
     partial void OnInGameChanged(Core.InGame.InGameSettings? value)
     {

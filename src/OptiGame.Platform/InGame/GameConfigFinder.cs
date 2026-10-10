@@ -50,12 +50,20 @@ public static partial class GameConfigFinder
     private static partial Regex DefaultsFileName();
 
     /// <summary>Réglages détectés, ou null (aucun fichier qui parle d'affichage).</summary>
-    public static InGameSettings? Read(string exePath)
+    public static InGameSettings? Read(string exePath) => Read(exePath, null, [], "");
+
+    /// <summary>
+    /// Avec, pour un jeu Unity : son dossier LocalLow\Éditeur\Jeu (examiné aussi) et ses préférences du registre (nombres entiers
+    /// seulement), ajoutées aux réglages du fichier trouvé ou lues seules s'il n'y en a pas.
+    /// </summary>
+    public static InGameSettings? Read(string exePath, string? extraFolder, IReadOnlyList<(string Key, string Value)> extraPairs, string extraSource)
     {
-        if (Find(exePath) is not { } path) return null;
+        var path = Find(exePath, extraFolder);
         try
         {
-            return DetectedSettings.Interpret(DetectedSettings.Parse(File.ReadAllText(path)), Path.GetFileName(path), path, File.GetLastWriteTime(path));
+            if (path is null) return extraPairs.Count == 0 ? null : DetectedSettings.Interpret(extraPairs, "ses préférences", extraSource, DateTime.Now);
+            var pairs = DetectedSettings.Parse(File.ReadAllText(path)).Concat(extraPairs).ToList();
+            return DetectedSettings.Interpret(pairs, Path.GetFileName(path), path, File.GetLastWriteTime(path));
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
@@ -63,10 +71,10 @@ public static partial class GameConfigFinder
         }
     }
 
-    public static string? Find(string exePath)
+    public static string? Find(string exePath, string? extraFolder = null)
     {
         if (Cache.TryGetValue(exePath, out var cached) && DateTime.UtcNow - cached.At < CacheLife) return cached.Path;
-        var path = Search(exePath);
+        var path = Search(exePath, extraFolder);
         Cache[exePath] = (DateTime.UtcNow, path);
         return path;
     }
@@ -99,11 +107,12 @@ public static partial class GameConfigFinder
         return key.Length >= 4 && keys.Any(k => k == key || (Math.Min(k.Length, key.Length) >= 5 && (k.StartsWith(key, StringComparison.Ordinal) || key.StartsWith(k, StringComparison.Ordinal))));
     }
 
-    private static string? Search(string exePath)
+    private static string? Search(string exePath, string? extraFolder)
     {
         var keys = NameKeys(exePath);
         if (keys.Count == 0) return null;
         var candidates = new List<string>();
+        if (extraFolder is not null && Directory.Exists(extraFolder)) Collect(extraFolder, candidates, all: true);
 
         // Dossiers de l'utilisateur : un dossier au nom du jeu, directement ou sous celui de l'éditeur.
         var documents = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
