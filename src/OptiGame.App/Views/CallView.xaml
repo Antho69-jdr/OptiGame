@@ -5,6 +5,7 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="clr-namespace:OptiGame.App.ViewModels"
              xmlns:controls="clr-namespace:OptiGame.App.Controls"
+             xmlns:conv="clr-namespace:OptiGame.App.Converters"
              mc:Ignorable="d"
              d:DataContext="{d:DesignInstance vm:CallViewModel}">
     <!-- Page « Amis » (CallViewModel) : appel en cours (onglets Appel / Périphériques / Son), appel entrant, demandes d'ami, puis la
@@ -12,13 +13,14 @@
          dans Paramètres › Audio ; pendant un appel, les plus utiles sont repris ici. -->
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
+        <conv:FriendCallStateConverter x:Key="FriendCallState" />
     </UserControl.Resources>
 
     <ScrollViewer VerticalScrollBarVisibility="Auto">
         <StackPanel Margin="32,24,32,32" MaxWidth="900" HorizontalAlignment="Left">
             <TextBlock Style="{StaticResource Text.PageTitle}" Text="Amis" />
             <TextBlock Margin="0,4,0,16" Style="{StaticResource Text.Secondary}"
-                       Text="Appelez vos amis pendant vos parties. La voix passe directement entre vos deux PC, chiffrée de bout en bout." />
+                       Text="Appelez vos amis pendant vos parties. La voix passe directement d'un PC à l'autre, chiffrée de bout en bout." />
 
             <controls:InfoBar Margin="{StaticResource Margin.StackL}" Severity="{Binding StatusSeverity}" Message="{Binding Status}"
                               Visibility="{Binding HasStatus, Converter={StaticResource BoolToVisibility}}">
@@ -73,13 +75,8 @@
                                 Command="{Binding HangUpCommand}" />
                     </StackPanel>
 
-                    <!-- Connecté : mots de contrôle, onglets, boutons -->
+                    <!-- Connecté : onglets, participants, boutons -->
                     <StackPanel Visibility="{Binding IsInCall, Converter={StaticResource BoolToVisibility}}">
-                        <TextBlock Margin="0,4,0,0" Style="{StaticResource Text.Caption}" TextWrapping="Wrap"
-                                   Visibility="{Binding ShowsSafetyWords, Converter={StaticResource BoolToVisibility}}">
-                            <Run Text="Mots de contrôle : " /><Run Text="{Binding SafetyWords, Mode=OneWay}" FontWeight="SemiBold" />
-                            <Run Text=" — votre ami doit voir les mêmes. Sinon, raccrochez." />
-                        </TextBlock>
                         <TextBlock Margin="0,2,0,0" Style="{StaticResource Text.Caption}">
                             <Run Text="Connexion " /><Run Text="{Binding ConnectionPath, Mode=OneWay}" />
                         </TextBlock>
@@ -93,25 +90,46 @@
                             </WrapPanel>
                         </Border>
 
-                        <!-- Onglet Appel : niveaux -->
-                        <Grid Margin="0,16,0,0" Visibility="{Binding IsCallTab, Converter={StaticResource BoolToVisibility}}">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="*" MaxWidth="360" />
-                            </Grid.ColumnDefinitions>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="Auto" />
-                            </Grid.RowDefinitions>
-                            <TextBlock Grid.Row="0" Margin="0,0,16,8" VerticalAlignment="Center" Style="{StaticResource Text.Body}" Text="{Binding MicrophoneState}" />
-                            <ProgressBar Grid.Row="0" Grid.Column="1" Margin="0,0,0,8" Height="6" VerticalAlignment="Center" Maximum="1" Value="{Binding LocalLevel, Mode=OneWay}"
-                                         AutomationProperties.Name="Niveau de votre voix" />
-                            <TextBlock Grid.Row="1" Margin="0,0,16,0" VerticalAlignment="Center" Style="{StaticResource Text.Body}" Text="{Binding PeerState}" />
-                            <ProgressBar Grid.Row="1" Grid.Column="1" Height="6" VerticalAlignment="Center" Maximum="1" Value="{Binding RemoteLevel, Mode=OneWay}"
-                                         AutomationProperties.Name="Niveau de la voix de votre ami" />
-                        </Grid>
+                        <!-- Onglet Appel : vous, puis chaque participant (niveau, état, mots de contrôle) -->
+                        <StackPanel Margin="0,16,0,0" Visibility="{Binding IsCallTab, Converter={StaticResource BoolToVisibility}}">
+                            <Grid Margin="0,0,0,10">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" MaxWidth="420" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Width="200" Margin="44,0,16,0" VerticalAlignment="Center" Style="{StaticResource Text.Body}" Text="{Binding MicrophoneState}" />
+                                <ProgressBar Grid.Column="1" Height="6" VerticalAlignment="Center" Maximum="1" Value="{Binding LocalLevel, Mode=OneWay}"
+                                             AutomationProperties.Name="Niveau de votre voix" />
+                            </Grid>
+                            <ItemsControl ItemsSource="{Binding Participants}" AutomationProperties.Name="Participants">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Grid Margin="0,0,0,10">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="*" MaxWidth="420" />
+                                            </Grid.ColumnDefinitions>
+                                            <Border Width="32" Height="32" Margin="0,0,12,0" VerticalAlignment="Top" CornerRadius="16" Background="{DynamicResource Brush.AccentSoft}">
+                                                <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" Style="{StaticResource Text.BodyStrong}" Text="{Binding Initial}" />
+                                            </Border>
+                                            <StackPanel Grid.Column="1" Width="200" Margin="0,0,16,0">
+                                                <TextBlock Style="{StaticResource Text.Body}">
+                                                    <Run Text="{Binding DisplayName, Mode=OneWay}" /><Run Text="  " /><Run Text="{Binding StateText, Mode=OneWay}" Foreground="{StaticResource Brush.TextSecondary}" />
+                                                </TextBlock>
+                                                <TextBlock Style="{StaticResource Text.Caption}" Text="{Binding SafetyWords}" ToolTip="Mots de contrôle : cette personne doit voir les mêmes. Sinon, raccrochez." />
+                                            </StackPanel>
+                                            <ProgressBar Grid.Column="2" Height="6" VerticalAlignment="Center" Maximum="1" Value="{Binding Level, Mode=OneWay}"
+                                                         AutomationProperties.Name="{Binding DisplayName, StringFormat=Niveau de la voix de {0}}" />
+                                        </Grid>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <TextBlock Style="{StaticResource Text.Caption}" TextWrapping="Wrap"
+                                       Text="Sous chaque nom : vos mots de contrôle avec cette personne. Elle doit voir les mêmes ; sinon, raccrochez." />
+                        </StackPanel>
 
-                        <!-- Onglet Périphériques : micro, sortie, volume de l'ami -->
+                        <!-- Onglet Périphériques : micro, sortie, volume de chaque participant -->
                         <StackPanel Margin="0,16,0,0" Visibility="{Binding IsDevicesTab, Converter={StaticResource BoolToVisibility}}">
                             <WrapPanel>
                                 <StackPanel Margin="0,0,16,8">
@@ -125,9 +143,22 @@
                                               AutomationProperties.Name="Sortie audio" />
                                 </StackPanel>
                             </WrapPanel>
-                            <Label Style="{StaticResource Text.FieldLabel}" Content="_Volume de votre ami" Target="{Binding ElementName=VolumeSlider}" />
-                            <Slider x:Name="VolumeSlider" Width="320" HorizontalAlignment="Left" Minimum="0" Maximum="100" SmallChange="5" LargeChange="10"
-                                    Value="{Binding Volume}" AutomationProperties.Name="Volume de votre ami" />
+                            <TextBlock Margin="0,4,0,8" Style="{StaticResource Text.BodyStrong}" Text="Volume de chacun" />
+                            <ItemsControl ItemsSource="{Binding Participants}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Grid Margin="0,0,0,6">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="200" />
+                                                <ColumnDefinition Width="320" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock VerticalAlignment="Center" Style="{StaticResource Text.Body}" Text="{Binding DisplayName}" />
+                                            <Slider Grid.Column="1" VerticalAlignment="Center" Minimum="0" Maximum="100" SmallChange="5" LargeChange="10" Value="{Binding Volume}"
+                                                    AutomationProperties.Name="{Binding DisplayName, StringFormat=Volume de {0}}" />
+                                        </Grid>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
                         </StackPanel>
 
                         <!-- Onglet Son : ce que vous envoyez -->
@@ -263,10 +294,34 @@
                                         <Border Width="32" Height="32" CornerRadius="16" Background="{DynamicResource Brush.AccentSoft}">
                                             <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" Style="{StaticResource Text.BodyStrong}" Text="{Binding Initial}" />
                                         </Border>
-                                        <TextBlock Grid.Column="1" Margin="12,0" VerticalAlignment="Center" Style="{StaticResource Text.Body}" Text="{Binding DisplayName}" />
-                                        <controls:IconButton Grid.Column="2" Style="{StaticResource Button.Primary}" Glyph="&#xE717;" Label="Appeler"
-                                                             Command="{Binding DataContext.CallFriendCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                             CommandParameter="{Binding}" AutomationProperties.Name="{Binding DisplayName, StringFormat=Appeler {0}}" />
+                                        <TextBlock Grid.Column="1" Margin="12,0" VerticalAlignment="Center" Style="{StaticResource Text.Body}">
+                                            <Run Text="{Binding DisplayName, Mode=OneWay}" /><Run Text="  " /><Run Foreground="{StaticResource Brush.TextSecondary}">
+                                                <Run.Text>
+                                                    <MultiBinding Converter="{StaticResource FriendCallState}" ConverterParameter="text" Mode="OneWay">
+                                                        <Binding />
+                                                        <Binding Path="DataContext.FriendCallStates" RelativeSource="{RelativeSource AncestorType=UserControl}" />
+                                                    </MultiBinding>
+                                                </Run.Text>
+                                            </Run>
+                                        </TextBlock>
+                                        <!-- Hors appel : « Appeler » ; pendant un appel : « Inviter » dans l'appel en cours (6 personnes au plus) -->
+                                        <StackPanel Grid.Column="2" Orientation="Horizontal">
+                                            <controls:IconButton Style="{StaticResource Button.Primary}" Glyph="&#xE717;" Label="Appeler"
+                                                                 Command="{Binding DataContext.CallFriendCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                                 CommandParameter="{Binding}" AutomationProperties.Name="{Binding DisplayName, StringFormat=Appeler {0}}"
+                                                                 Visibility="{Binding DataContext.IsIdle, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BoolToVisibility}}" />
+                                            <controls:IconButton Style="{StaticResource Button.Secondary}" Glyph="&#xE8FA;" Label="Inviter"
+                                                                 Command="{Binding DataContext.InviteFriendCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                                 CommandParameter="{Binding}" AutomationProperties.Name="{Binding DisplayName, StringFormat='Inviter {0} dans l’appel'}">
+                                                <controls:IconButton.Visibility>
+                                                    <MultiBinding Converter="{StaticResource FriendCallState}" ConverterParameter="invite">
+                                                        <Binding />
+                                                        <Binding Path="DataContext.FriendCallStates" RelativeSource="{RelativeSource AncestorType=UserControl}" />
+                                                        <Binding Path="DataContext.CanInvite" RelativeSource="{RelativeSource AncestorType=UserControl}" />
+                                                    </MultiBinding>
+                                                </controls:IconButton.Visibility>
+                                            </controls:IconButton>
+                                        </StackPanel>
                                     </Grid>
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>

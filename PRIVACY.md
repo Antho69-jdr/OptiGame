@@ -45,18 +45,21 @@ Les programmes que vous lancez depuis OptiGame (Steam, Epic Games Launcher, GOG 
 politiques de confidentialité.
 
 
-## Appel vocal (page « Appel »)
+## Appel vocal (page « Amis »)
 
-L'appel passe **directement entre votre PC et celui de votre ami** (WebRTC, voix chiffrée de bout en bout) : aucun compte, rien
-n'est enregistré, la voix ne passe par aucun serveur. Seulement la voix : aucun texte n'est échangé.
+L'appel passe **directement entre votre PC et celui de chaque participant** (WebRTC, voix chiffrée de bout en bout) : aucun
+compte, rien n'est enregistré, la voix ne passe par aucun serveur. Seulement la voix : aucun texte n'est échangé.
 
-- **Mise en relation** : pour se trouver, les deux PC passent quelques secondes par le serveur de mise en relation d'OptiGame
+- **Appel de groupe** (6 personnes au plus) : chaque participant est relié directement à chacun des autres. Chacun voit donc les
+  adresses réseau des autres participants (comme dans un appel à deux), et chacun peut inviter un de ses amis.
+- **Mise en relation** : pour se trouver, les PC passent par le serveur de mise en relation d'OptiGame
   (`optigame-call.antho-b-69.workers.dev`, hébergé chez Cloudflare, code source dans `server/call-relay`). Il reçoit le code de l'appel
-  (6 caractères tirés au hasard) et relaie entre les deux PC leurs descriptions de connexion : adresses réseau (locales et, si
-  l'option ci-dessous est cochée, publique) et clés de chiffrement publiques. Il ne garde rien : le salon est effacé dès que les
-  deux PC sont connectés, qu'un des deux part, ou au bout de 2 minutes si personne ne rejoint. Comme tout serveur, il voit
-  l'adresse IP de connexion ; OptiGame n'y écrit aucun journal. Les **mots de contrôle** affichés pendant l'appel permettent de vérifier
-  que personne (pas même ce serveur) ne s'est interposé.
+  (6 caractères tirés au hasard), le nom affiché de chaque participant, et relaie entre les PC leurs descriptions de connexion :
+  adresses réseau (locales et, si l'option ci-dessous est cochée, publique) et clés de chiffrement publiques. Chaque PC y reste
+  connecté pendant l'appel (pour qu'un invité puisse arriver) ; la voix n'y passe jamais. Il ne garde rien : le salon est effacé
+  dès que le dernier participant part, au bout de 2 minutes si personne ne rejoint, et au plus tard après 12 heures. Comme tout
+  serveur, il voit l'adresse IP de connexion ; OptiGame n'y écrit aucun journal. Les **mots de contrôle** affichés sous le nom de
+  chaque participant permettent de vérifier que personne (pas même ce serveur) ne s'est interposé.
 - **Amis Steam** (facultatif, bouton « Se connecter avec Steam ») : la connexion se fait sur la page officielle de Steam, dans
   votre navigateur ; OptiGame ne voit jamais votre mot de passe. Steam confirme au serveur de mise en relation votre numéro de
   compte Steam (public), et le serveur remet à OptiGame un jeton de connexion valable 30 jours, gardé chiffré sur votre PC
@@ -98,11 +101,13 @@ product number), and driver lookups from NVIDIA, AMD and Windows Update on the
 "Drivers" page. As with any Internet connection, these services see your IP address and handle it under their own privacy
 policies.
 
-Voice calls ("Call" page) go directly between the two PCs (WebRTC, end-to-end encrypted voice), with no account and no
-recording; the voice never goes through a server and no text is exchanged. To find each other, the two PCs spend a few seconds on
-OptiGame's matchmaking server (`optigame-call.antho-b-69.workers.dev`, hosted by Cloudflare, source in `server/call-relay`), which relays
-their connection descriptions (network addresses, public encryption keys) under a random 6-character call code and keeps
-nothing: the room is erased once they are connected, when one leaves, or after 2 minutes. Only when the user ticks "Passer par
+Voice calls ("Amis" page) go directly between the PCs of the participants (WebRTC, end-to-end encrypted voice), with no
+account and no recording; the voice never goes through a server and no text is exchanged. In a group call (up to 6 people),
+every participant is connected directly to every other one and therefore sees their network addresses. To find each other,
+the PCs use OptiGame's matchmaking server (`optigame-call.antho-b-69.workers.dev`, hosted by Cloudflare, source in
+`server/call-relay`), which relays their connection descriptions (network addresses, public encryption keys) and display names
+under a random 6-character call code, stays connected during the call so that invited friends can join, and keeps nothing:
+the room is erased when the last participant leaves, after 2 minutes if nobody joins, and after 12 hours at most. Only when the user ticks "Passer par
 Internet" does OptiGame ask the public STUN server `stun.cloudflare.com` for the PC's public address (the server sees the IP
 address, never the voice). Optional "Steam friends": the user signs in on Steam's official page in their browser (OptiGame never
 sees the password); Steam confirms the public Steam account number to the matchmaking server, which gives OptiGame a 30-day

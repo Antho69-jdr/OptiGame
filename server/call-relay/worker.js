@@ -1,6 +1,6 @@
 // Serveur de mise en relation des appels vocaux d'OptiGame (Cloudflare Workers + Durable Objects).
 //
-// 1. Salons (classe Room, un par code) : les deux PC d'un appel ouvrent une WebSocket sur /v1/rooms/<CODE>?role=host|guest ; le
+// 1. Salons à deux (classe Room, v1, versions 1.11 à 1.15) et de groupe (classe GroupRoom, v2, depuis la 1.16 : jusqu'à 6) : les deux PC d'un appel ouvrent une WebSocket sur /v1/rooms/<CODE>?role=host|guest ; le
 //    serveur relaie leurs descriptions de connexion WebRTC le temps qu'ils se trouvent, puis ils se déconnectent. La voix ne passe
 //    JAMAIS par ici (elle va directement d'un PC à l'autre, chiffrée).
 // 2. Connexion avec Steam (classe Login, une par demande) : OpenID 2.0 de Steam dans le navigateur de l'utilisateur ; le serveur
@@ -18,9 +18,9 @@
 // Protocole des salons (JSON) — envoyé par le serveur : {t:"waiting", expiresAt} à l'hôte, {t:"peer"} aux deux quand l'ami arrive,
 // {t:"left"} quand l'autre part, {t:"error", code:"busy"|"unknown"|"expired"|"limit"} avant de fermer ; le reste est relayé tel quel.
 // Protocole des amis : serveur → {t:"hello", you, online:[{id,name}], friendsListPublic}, {t:"online", friend}, {t:"offline", id},
-// {t:"ring", from, code}, {t:"declined"|"cancelled", from, code}, {t:"callError", to, reason}, {t:"replaced"},
+// {t:"ring", from, code, with?:[noms déjà dans l'appel]}, {t:"declined"|"cancelled", from, code}, {t:"callError", to, reason}, {t:"replaced"},
 // {t:"friendRequest"|"friendAccepted", from} ;
-// client → {t:"call"|"decline"|"cancel", to, code}, {t:"contacts", ids}, {t:"request"|"accept", to}, {t:"ping"} (réponse {t:"pong"}).
+// client → {t:"call"|"decline"|"cancel", to, code, with?}, {t:"contacts", ids}, {t:"request"|"accept", to}, {t:"ping"} (réponse {t:"pong"}).
 
 const CODE = /^[23456789ABCDEFGHJKMNPQRSTUVWXYZ]{6}$/;
 const ROOM = /^\/v1\/rooms\/([23456789ABCDEFGHJKMNPQRSTUVWXYZ]{6})$/;
@@ -45,6 +45,12 @@ export default {
       const role = url.searchParams.get("role");
       if (role !== "host" && role !== "guest") return new Response("Rôle inconnu", { status: 400 });
       return env.ROOMS.get(env.ROOMS.idFromName(room[1])).fetch(request);
+    }
+
+    const group = url.pathname.match(GROUP_ROOM);
+    if (group) {
+      if (!websocket) return new Response("WebSocket attendu", { status: 426 });
+      return env.GROUPS.get(env.GROUPS.idFromName(group[1])).fetch(request);
     }
 
     if (url.pathname === "/v1/auth/steam") return steamStart(url);
@@ -262,6 +268,120 @@ export class Room {
   }
 }
 
+// ===== Salons de groupe (v2, depuis la 1.16 : un par code, jusqu'à 6 personnes) =====
+//
+// Chaque PC ouvre une WebSocket sur /v2/rooms/<CODE>?role=create|join|resume&name=<nom>[&member=<id>] et la GARDE pendant tout
+// l'appel : un ami peut arriver en cours de route, et chaque nouveau doit échanger sa description de connexion avec chacun (voix
+// directe entre tous). Le serveur donne un identifiant de membre, annonce les arrivées et départs, et relaie les messages
+// adressés à un membre ({to} → {from}). « resume » = reconnexion d'un membre (même identifiant) après une coupure du serveur.
+// Envoyé par le serveur : {t:"members", you, members:[{id,name}]} au nouveau, {t:"joined", member} et {t:"left", id} aux autres,
+// {t:"error", code:"busy"|"unknown"|"full"|"expired"|"limit"} avant de fermer.
+
+const GROUP_ROOM = /^\/v2\/rooms\/([23456789ABCDEFGHJKMNPQRSTUVWXYZ]{6})$/;
+const MEMBER = /^[a-z0-9]{8}$/;
+const MAX_MEMBERS = 6;
+const GROUP_WAIT_MS = 2 * 60 * 1000; // personne n'a rejoint
+const GROUP_MAX_MS = 12 * 3600 * 1000; // durée maximale d'un appel
+const GROUP_MAX_MESSAGES = 5000;
+
+export class GroupRoom {
+  constructor(state) {
+    this.state = state;
+  }
+
+  members() {
+    return this.state.getWebSockets().map(ws => ({ ws, ...ws.deserializeAttachment() }));
+  }
+
+  async fetch(request) {
+    const url = new URL(request.url);
+    const role = url.searchParams.get("role");
+    const name = (url.searchParams.get("name") || "").slice(0, 64);
+    const members = this.members();
+    const [client, server] = Object.values(new WebSocketPair());
+
+    let error = null;
+    if (role === "create" && members.length > 0) error = "busy";
+    else if (role === "join" && members.length === 0) error = "unknown";
+    else if (role !== "create" && role !== "join" && role !== "resume") error = "unknown";
+    else if (role !== "resume" && members.length >= MAX_MEMBERS) error = "full";
+    if (error) {
+      server.accept();
+      server.send(JSON.stringify({ t: "error", code: error }));
+      server.close(4000, error);
+      return new Response(null, { status: 101, webSocket: client });
+    }
+
+    let id = url.searchParams.get("member") || "";
+    if (role !== "resume" || !MEMBER.test(id)) id = Array.from(crypto.getRandomValues(new Uint8Array(8)), b => "abcdefghijklmnopqrstuvwxyz0123456789"[b % 36]).join("");
+    for (const old of members.filter(m => m.id === id)) { try { old.ws.close(4001, "replaced"); } catch { /* fermée */ } }
+
+    this.state.acceptWebSocket(server, [id]);
+    server.serializeAttachment({ id, name });
+    const others = members.filter(m => m.id !== id);
+    server.send(JSON.stringify({ t: "members", you: id, members: others.map(m => ({ id: m.id, name: m.name })) }));
+    if (role !== "resume") for (const m of others) { try { m.ws.send(JSON.stringify({ t: "joined", member: { id, name } })); } catch { /* fermée */ } }
+
+    const now = Date.now();
+    if (role === "create") {
+      await this.state.storage.put("count", 0);
+      await this.state.storage.setAlarm(now + GROUP_WAIT_MS);
+    } else if ((role === "join" && others.length === 1) || (role === "resume" && !(await this.state.storage.getAlarm()))) {
+      await this.state.storage.setAlarm(now + GROUP_MAX_MS); // l'appel commence vraiment (ou reprend après une coupure du serveur)
+    }
+    return new Response(null, { status: 101, webSocket: client });
+  }
+
+  async webSocketMessage(ws, raw) {
+    if (typeof raw !== "string" || raw.length > MAX_MESSAGE) return;
+    const count = ((await this.state.storage.get("count")) || 0) + 1;
+    if (count > GROUP_MAX_MESSAGES) return this.closeAll("limit");
+    await this.state.storage.put("count", count);
+    let m;
+    try { m = JSON.parse(raw); } catch { return; }
+    const to = m.to;
+    if (!MEMBER.test(to || "")) return;
+    delete m.to;
+    m.from = ws.deserializeAttachment().id; // l'expéditeur est celui de la connexion, jamais ce que le message prétend
+    for (const target of this.state.getWebSockets(to)) {
+      try { target.send(JSON.stringify(m)); } catch { /* fermée */ }
+    }
+  }
+
+  async webSocketClose(ws) {
+    try { ws.close(1000, "bye"); } catch { /* déjà fermée */ }
+    const { id } = ws.deserializeAttachment() || {};
+    const remaining = this.members().filter(m => m.ws !== ws);
+    if (!remaining.some(m => m.id === id)) {
+      for (const m of remaining) { try { m.ws.send(JSON.stringify({ t: "left", id })); } catch { /* fermée */ } }
+    }
+    if (remaining.length === 0) await this.clear();
+  }
+
+  async webSocketError(ws) {
+    await this.webSocketClose(ws);
+  }
+
+  async alarm() {
+    await this.closeAll("expired");
+  }
+
+  async closeAll(code) {
+    for (const ws of this.state.getWebSockets()) {
+      try {
+        ws.send(JSON.stringify({ t: "error", code }));
+        ws.close(4000, code);
+      } catch { /* déjà fermée */ }
+    }
+    await this.clear();
+  }
+
+  async clear() {
+    await this.state.storage.deleteAlarm();
+    await this.state.storage.deleteAll();
+  }
+}
+
 // ===== Attente d'une connexion avec Steam (une par demande) =====
 
 export class Login {
@@ -394,7 +514,9 @@ export class Presence {
     }
     const user = await this.state.storage.get(`u:${from}`);
     const type = { call: "ring", decline: "declined", cancel: "cancelled" }[m.t];
-    this.sendTo(m.to, { t: type, from: { id: from, name: user?.name || "" }, code: m.code });
+    // Appel de groupe : la sonnerie dit qui est déjà dans l'appel (noms donnés par l'appelant, 6 au plus).
+    const already = m.t === "call" && Array.isArray(m.with) ? m.with.filter(n => typeof n === "string").slice(0, MAX_MEMBERS).map(n => n.slice(0, 64)) : undefined;
+    this.sendTo(m.to, { t: type, from: { id: from, name: user?.name || "" }, code: m.code, with: already });
   }
 
   // Liste d'amis OptiGame du PC : ceux qui deviennent (ou cessent d'être) liés en sont prévenus, des deux côtés.

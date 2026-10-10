@@ -1,4 +1,4 @@
-using System.Text;
+﻿using System.Text;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
@@ -701,6 +701,67 @@ internal static class PageSnapshots
                 claraFriends.Stop();
                 hostFriends.Stop();
                 clara.Dispose();
+            }));
+            // Appel de groupe (voix directe entre tous) : Anthracite appelle Gaming, Gaming invite Clara en cours d'appel ; chacun doit
+            // entendre les deux autres ; Clara part (l'appel continue à deux), puis Gaming raccroche (fin). Chacun a ses propres réglages.
+            CallViewModel? gaming = null, clara = null;
+            Call.SteamFriendsService? gamingFriends = null, claraFriends = null;
+            (CallViewModel Vm, Call.SteamFriendsService Friends) Person(string token, string name)
+            {
+                var store = new Core.Settings.AppSettingsStore(new MemoryStateStore<Core.Settings.AppSettings>());
+                store.Update(s => { s.CallSteamName = name; s.CallGateMode = Core.Call.MicGateMode.Off; s.CallNoiseSuppression = Core.Call.NoiseSuppression.Off; });
+                var friends = new Call.SteamFriendsService(store, services.GetRequiredService<Core.Logging.FileLog>(),
+                    services.GetRequiredService<Platform.Processes.GameLauncher>()) { Relay = relayUrl, TestToken = token };
+                var vm = new CallViewModel(services.GetRequiredService<Core.AppPaths>(), store, services.GetRequiredService<Core.Logging.FileLog>(),
+                    friends, services.GetRequiredService<Services.INotificationService>()) { Relay = relayUrl };
+                return (vm, friends);
+            }
+            pages.Add(("c5h-appel-de-groupe", async () =>
+            {
+                if (relay is null || relayUrl != relay.Url || hostFriends is null) return;
+                services.GetRequiredService<Core.Settings.AppSettingsStore>().Update(s => { s.CallSteamName = "Anthracite"; s.CallGateMode = Core.Call.MicGateMode.Off; s.CallNoiseSuppression = Core.Call.NoiseSuppression.Off; });
+                hostFriends.TestToken = "test:76561198000000001:Anthracite:76561198000000002";
+                (gaming, gamingFriends) = Person("test:76561198000000002:Gaming:76561198000000001,76561198000000003", "Gaming");
+                (clara, claraFriends) = Person("test:76561198000000003:Clara:76561198000000002", "Clara");
+                hostFriends.Start();
+                gamingFriends.Start();
+                claraFriends.Start();
+                await WaitUntil(() => hostFriends.IsOnline && gamingFriends.IsOnline && claraFriends.IsOnline && gamingFriends.OnlineFriends.Count == 2, 15_000);
+                await host.CallFriendCommand.ExecuteAsync(hostFriends.OnlineFriends.First(f => f.Name == "Gaming"));
+                await WaitUntil(() => gaming.HasIncomingCall, 15_000);
+                await gaming.AnswerCallCommand.ExecuteAsync(null);
+                await WaitUntil(() => host.IsInCall && gaming.IsInCall, 30_000);
+                gaming.InviteFriendCommand.Execute(gamingFriends.OnlineFriends.First(f => f.Name == "Clara"));
+                await WaitUntil(() => clara.HasIncomingCall, 15_000);
+                Log($"Invitation : Clara lit « {clara.IncomingCallText} » ; Gaming lit « {gaming.Status} », sa liste : [{string.Join(", ", gaming.FriendCallStates.Select(s => $"{s.Key} {s.Value}"))}].");
+                await clara.AnswerCallCommand.ExecuteAsync(null);
+                bool AllConnected() => new[] { host, gaming, clara }.All(v => v.IsInCall && v.Participants.Count == 2 && v.Participants.All(p => p.Connected));
+                await WaitUntil(AllConnected, 40_000);
+                foreach (var vm in new[] { host, gaming, clara }) if (vm.IsMuted) vm.ToggleMuteCommand.Execute(null);
+                var before = new[] { host, gaming, clara }.Select(v => v.Participants.ToDictionary(p => p.DisplayName, p => p.Received)).ToList();
+                await Settle(3000);
+                string Heard(CallViewModel vm, int index) => string.Join(", ", vm.Participants.Select(p => $"{p.DisplayName} {p.Received - before[index].GetValueOrDefault(p.DisplayName)} o"));
+                Log($"Groupe : tous connectés {AllConnected()} ; Anthracite entend [{Heard(host, 0)}], Gaming [{Heard(gaming, 1)}], Clara [{Heard(clara, 2)}] en 3 s ; " +
+                    $"en-tête « {host.CallHeader} », liste d'Anthracite : [{string.Join(", ", host.FriendCallStates.Select(s => $"{s.Key} {s.Value}"))}] ; mots Anthracite↔Gaming {(host.Participants.First(p => p.DisplayName == "Gaming").SafetyWords == gaming.Participants.First(p => p.DisplayName == "Anthracite").SafetyWords ? "identiques" : "DIFFÉRENTS")}.");
+                main.Navigate(host);
+                host.IsCallTab = true;
+                await Settle(1000);
+            }));
+            pages.Add(("c5i-appel-de-groupe-depart", async () =>
+            {
+                if (clara is null || gaming is null) return;
+                clara.HangUpCommand.Execute(null);
+                await WaitUntil(() => host.Participants.Count == 1 && gaming.Participants.Count == 1, 15_000);
+                Log($"Clara part : Anthracite {host.Phase} avec [{string.Join(", ", host.Participants.Select(p => p.DisplayName))}] (« {host.Status} »), Gaming {gaming.Phase}.");
+                gaming.HangUpCommand.Execute(null);
+                await WaitUntil(() => host.Phase == CallPhase.Idle, 15_000);
+                Log($"Gaming raccroche : Anthracite {host.Phase}, « {host.Status} ».");
+                hostFriends?.Stop();
+                gamingFriends?.Stop();
+                claraFriends?.Stop();
+                gaming.Dispose();
+                clara.Dispose();
+                await Settle(500);
             }));
             pages.Add(("c6-appel-code-expire", async () =>
             {

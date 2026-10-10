@@ -127,8 +127,8 @@ public sealed partial class SteamFriendsService : ObservableObject, IDisposable
         }
     }
 
-    /// <summary>Un ami appelle (ami, code du salon).</summary>
-    public event Action<CallFriend, string>? Ring;
+    /// <summary>Un ami appelle (ami, code du salon, noms de ceux déjà dans l'appel).</summary>
+    public event Action<CallFriend, string, IReadOnlyList<string>>? Ring;
 
     /// <summary>L'ami appelé a refusé.</summary>
     public event Action<CallFriend, string>? Declined;
@@ -380,7 +380,7 @@ public sealed partial class SteamFriendsService : ObservableObject, IDisposable
                 foreach (var gone in OnlineFriends.Where(f => f.Id == id).ToList()) OnlineFriends.Remove(gone);
                 break;
             case "ring" when message.TryGetProperty("from", out var caller):
-                Ring?.Invoke(Friend(caller), Text(message, "code"));
+                Ring?.Invoke(Friend(caller), Text(message, "code"), Array(message, "with").Where(w => w.ValueKind == JsonValueKind.String).Select(w => w.GetString() ?? "").ToList());
                 break;
             case "declined" when message.TryGetProperty("from", out var decliner):
                 Declined?.Invoke(Friend(decliner), Text(message, "code"));
@@ -458,7 +458,9 @@ public sealed partial class SteamFriendsService : ObservableObject, IDisposable
 
     private void SendContacts() => Send(new { t = "contacts", ids = _settings.Get().CallContacts.Select(c => c.SteamId).ToArray() });
 
-    public void Call(string friendId, string code) => Send(new { t = "call", to = friendId, code });
+    /// <param name="already">Noms des personnes déjà dans l'appel (appel de groupe), annoncés dans la sonnerie.</param>
+    public void Call(string friendId, string code, IReadOnlyList<string>? already = null) =>
+        Send(new { t = "call", to = friendId, code, with = already ?? [] });
 
     public void Decline(string friendId, string code) => Send(new { t = "decline", to = friendId, code });
 

@@ -49,12 +49,10 @@ public sealed partial class CallViewModel : ObservableObject, IDisposable
     private readonly AppPaths _paths;
     private readonly AppSettingsStore _settings;
     private readonly FileLog _log;
-    private readonly DispatcherTimer _ticker;
     private CallEngine? _engine;
     private CancellationTokenSource? _timeout;
     private bool _isHost;
     private string _rawCode = "";
-    private DateTimeOffset _expiresAt;
     private DateTime _connectedAt;
     private long _received;
     private long _sent;
@@ -71,8 +69,6 @@ public sealed partial class CallViewModel : ObservableObject, IDisposable
         _paths = paths;
         _settings = settings;
         _log = log;
-        _ticker = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
-        _ticker.Tick += (_, _) => UpdateCountdown();
         Friends = friends;
         _notifications = notifications;
         friends.Ring += OnRing;
@@ -103,7 +99,7 @@ public sealed partial class CallViewModel : ObservableObject, IDisposable
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsIdle), nameof(IsWorking), nameof(IsWaiting), nameof(IsInCall), nameof(IsActive), nameof(WorkingText),
-        nameof(ShowsSafetyWords), nameof(ShowsMeter), nameof(CallHeader))]
+        nameof(ShowsSafetyWords), nameof(ShowsMeter), nameof(CallHeader), nameof(CanInvite))]
     [NotifyCanExecuteChangedFor(nameof(StartCallCommand), nameof(JoinCallCommand), nameof(HangUpCommand), nameof(ToggleMuteCommand), nameof(CopyCodeCommand))]
     private CallPhase _phase;
 
@@ -304,6 +300,7 @@ public sealed partial class CallViewModel : ObservableObject, IDisposable
         engine.Send(new
         {
             cmd = host ? "host" : "join",
+            name = MyCallName(),
             relay = relay.GetLeftPart(UriPartial.Authority),
             code,
             stun = settings.CallUseStun,
@@ -580,51 +577,36 @@ public sealed partial class CallViewModel : ObservableObject, IDisposable
                 ShowStatus(input ? "Le micro choisi n'est plus branché : celui de Windows par défaut le remplace."
                     : "La sortie audio choisie n'est plus branchée : celle de Windows par défaut la remplace.", Severity.Warning);
                 break;
-            case "waiting" when Phase == CallPhase.Preparing && _isHost:
-                _timeout?.Cancel();
-                _expiresAt = DateTimeOffset.FromUnixTimeMilliseconds((long)Number(message, "expiresAt"));
-                Code = CallCode.Display(_rawCode);
-                Phase = CallPhase.Waiting;
-                UpdateCountdown();
-                _ticker.Start();
-                RingOutgoing();
-                _log.Info("Appel : code créé, en attente de l'ami.");
+            case "members":
+                OnMembers(message);
                 break;
-            case "peer":
-                _ticker.Stop();
-                Countdown = "";
-                Phase = CallPhase.Connecting;
-                _log.Info($"Appel : {(_isHost ? "l'ami est arrivé" : "appel trouvé")}, connexion.");
-                ArmTimeout(ConnectTimeout, null);
+            case "joined":
+                OnJoined(message);
+                break;
+            case "left":
+                OnLeft(Text(message, "id"), "a raccroché");
+                break;
+            case "peerState":
+                OnPeerState(message);
                 break;
             case "fingerprints":
-                SafetyWords = Core.Call.SafetyWords.For(Text(message, "local"), Text(message, "remote"));
+                OnFingerprints(message);
                 break;
             case "relayError":
                 OnRelayError(Text(message, "code"));
-                break;
-            case "relayLeft":
-                End(_isHost ? "Votre ami a annulé." : "Votre ami a annulé l'appel.", Severity.Info, tellPeer: false);
                 break;
             case "relayClosed":
                 _log.Warn($"Appel : serveur de mise en relation fermé (code {Number(message, "code")}, étape {Phase}).");
                 End("Le serveur de mise en relation est injoignable : vérifiez votre connexion à Internet, puis recommencez.", Severity.Error, tellPeer: false);
                 break;
-            case "state":
-                OnConnectionState(Text(message, "value"));
-                break;
             case "muted":
                 IsMuted = message.TryGetProperty("value", out var muted) && muted.ValueKind == JsonValueKind.True;
                 break;
             case "peerMuted":
-                PeerMuted = message.TryGetProperty("value", out var peerMuted) && peerMuted.ValueKind == JsonValueKind.True;
+                OnPeerMuted(message);
                 break;
             case "levels":
-                OnLevels(message);
-                break;
-            case "bye":
-                _log.Info("Appel : l'ami a raccroché.");
-                End("Votre ami a raccroché.", Severity.Info, tellPeer: false);
+                OnGroupLevels(message);
                 break;
             case "error":
                 OnPageError(Text(message, "name"), Text(message, "message"));
@@ -647,7 +629,8 @@ public sealed partial class CallViewModel : ObservableObject, IDisposable
         }
         End(code switch
         {
-            "unknown" => "Ce code n'existe pas ou a expiré : demandez-en un nouveau à votre ami.",
+            "unknown" => "Cet appel est terminé : il n'existe plus.",
+            "full" => $"L'appel est complet ({MaxParticipants} personnes au plus).",
             "busy" => "Quelqu'un d'autre a déjà rejoint cet appel.",
             "expired" when Phase == CallPhase.Waiting => "Personne n'a rejoint en 2 minutes : le code a expiré.",
             "expired" => "La connexion a pris trop de temps. Recommencez.",
@@ -719,63 +702,11 @@ public sealed partial class CallViewModel : ObservableObject, IDisposable
         foreach (var device in devices) target.Add(device);
     }
 
-    private void OnConnectionState(string state)
-    {
-        switch (state)
-        {
-            case "connected" when Phase != CallPhase.Connected:
-                _timeout?.Cancel();
-                _connectedAt = DateTime.Now;
-                ClearStatus();
-                Phase = CallPhase.Connected;
-                _log.Info("Appel : connecté.");
-                break;
-            case "connected":
-                ClearStatus(); // reconnecté après une coupure
-                break;
-            case "disconnected" when Phase == CallPhase.Connected:
-                ShowStatus("Connexion interrompue : nouvelle tentative…", Severity.Warning);
-                break;
-            case "failed":
-                _log.Warn($"Appel : connexion impossible ou perdue (étape {Phase}, découverte d'adresse {(UseStun ? "activée" : "désactivée")}).");
-                End(Phase == CallPhase.Connected ? "La connexion avec votre ami a été perdue." : FailureMessage(), Severity.Error, tellPeer: false);
-                break;
-        }
-    }
-
     private string FailureMessage() => UseStun
         ? "Connexion impossible : vos box (routeurs) bloquent probablement les connexions directes. Essayez depuis un autre réseau, " +
           "par exemple le partage de connexion d'un téléphone."
         : "Connexion impossible. Si votre ami n'est pas sur le même réseau que vous, cochez « Passer par Internet » des deux côtés, " +
           "puis recommencez.";
-
-    private void UpdateCountdown()
-    {
-        if (Phase != CallPhase.Waiting) return;
-        var left = _expiresAt - DateTimeOffset.UtcNow;
-        if (left < TimeSpan.Zero) left = TimeSpan.Zero;
-        Countdown = $"Valable encore {left:m\\:ss}";
-        // Le serveur ferme le salon à l'échéance ; s'il ne l'a pas dit 5 s après, le code est tenu pour expiré ici.
-        if (left == TimeSpan.Zero && DateTimeOffset.UtcNow > _expiresAt.AddSeconds(5)) OnRelayError("expired");
-    }
-
-    private void OnLevels(JsonElement message)
-    {
-        if (Phase != CallPhase.Connected) return;
-        LocalLevel = Number(message, "local");
-        RemoteLevel = Number(message, "remote");
-        _received = (long)Number(message, "received");
-        _sent = (long)Number(message, "sent");
-        var path = Text(message, "path");
-        if (path.Length > 0 && path != _path)
-        {
-            _path = path;
-            ConnectionPath = path == "host/host" ? "directe, même réseau" : "directe, par Internet";
-            _log.Info($"Appel : chemin {path}.");
-        }
-        var elapsed = DateTime.Now - _connectedAt;
-        Duration = elapsed.TotalHours >= 1 ? elapsed.ToString(@"h\:mm\:ss") : elapsed.ToString(@"m\:ss");
-    }
 
     private void OnPageError(string name, string detail)
     {
@@ -819,8 +750,8 @@ public sealed partial class CallViewModel : ObservableObject, IDisposable
     private void End(string status, Severity severity, bool tellPeer)
     {
         StopOutgoing();
+        CancelInvites();
         _timeout?.Cancel();
-        _ticker.Stop();
         _generation++;
         if (Phase == CallPhase.Connected)
         {
@@ -873,7 +804,6 @@ public sealed partial class CallViewModel : ObservableObject, IDisposable
     /// <summary>Fermeture d'OptiGame : l'ami est prévenu si possible, le micro libéré.</summary>
     public void Dispose()
     {
-        _ticker.Stop();
         _keyboard?.Dispose();
         _keyboard = null;
         _testEngine?.Dispose();

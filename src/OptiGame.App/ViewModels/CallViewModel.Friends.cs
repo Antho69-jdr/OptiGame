@@ -6,7 +6,7 @@ using OptiGame.App.Controls;
 namespace OptiGame.App.ViewModels;
 
 /// <summary>Appel entrant d'un ami Steam : qui, et le code du salon où le rejoindre.</summary>
-public sealed record IncomingCall(CallFriend From, string Code);
+public sealed record IncomingCall(CallFriend From, string Code, IReadOnlyList<string> With);
 
 /// <summary>Amis Steam de la page Appel : appeler un ami en un clic, répondre ou refuser un appel entrant.</summary>
 public sealed partial class CallViewModel
@@ -30,7 +30,11 @@ public sealed partial class CallViewModel
 
     public bool HasIncomingCall => IncomingCall is not null;
 
-    public string IncomingCallText => IncomingCall is { } call ? $"{call.From.DisplayName} vous appelle" : "";
+    /// <summary>« Gaming vous appelle », ou « Gaming vous invite dans un appel avec Clara, Bob » (appel de groupe).</summary>
+    public string IncomingCallText => IncomingCall is not { } call ? ""
+        : call.With.Where(n => n != call.From.DisplayName && n.Length > 0).ToList() is { Count: > 0 } others
+            ? $"{call.From.DisplayName} vous invite dans un appel avec {string.Join(", ", others)}"
+            : $"{call.From.DisplayName} vous appelle";
 
     /// <summary>Titre de la carte du code : « Appel de Gaming… » quand on appelle un ami, sinon « Votre code ».</summary>
     public string WaitingTitle => _outgoing is { } friend ? $"Ça sonne chez {friend.DisplayName}…" : "Votre code";
@@ -114,7 +118,7 @@ public sealed partial class CallViewModel
         IncomingCall = null;
     }
 
-    private void OnRing(CallFriend from, string code)
+    private void OnRing(CallFriend from, string code, IReadOnlyList<string> already)
     {
         // Déjà en appel, ou un autre appel sonne : refusé tout de suite (l'appelant voit « a refusé »).
         if (Phase is CallPhase.Connecting or CallPhase.Connected || IncomingCall is not null)
@@ -123,7 +127,7 @@ public sealed partial class CallViewModel
             _log.Info("Appel : appel d'un ami refusé (déjà occupé).");
             return;
         }
-        IncomingCall = new IncomingCall(from, code);
+        IncomingCall = new IncomingCall(from, code, already);
         _log.Info("Appel : un ami appelle.");
         _ringTimeout?.Cancel();
         _ringTimeout = new CancellationTokenSource();
@@ -241,7 +245,7 @@ public sealed partial class CallViewModel
         _ => "",
     };
 
-    private string PeerOrFriend => CallPeerName.Length > 0 ? CallPeerName : "votre ami";
+    private string PeerOrFriend => Participants.Count > 0 ? ParticipantNames : CallPeerName.Length > 0 ? CallPeerName : "votre ami";
 
     /// <summary>Onglet du panneau d'appel : l'appel lui-même, les périphériques (et le volume de l'ami), ou le son envoyé.</summary>
     [ObservableProperty]
@@ -312,6 +316,7 @@ public sealed partial class CallViewModel
 
     private void OnDeclined(CallFriend from, string code)
     {
+        if (code == _rawCode && OnInviteAnswer(from.Id, "a refusé l'invitation.")) return; // invité en cours d'appel : l'appel continue
         if (_outgoing is not { } friend || friend.Id != from.Id || code != _rawCode) return;
         _outgoing = null; // pas de « cancel » en retour
         End($"{friend.DisplayName} a refusé l'appel.", Severity.Info, tellPeer: false);
@@ -319,6 +324,7 @@ public sealed partial class CallViewModel
 
     private void OnCallError(string friendId, string reason)
     {
+        if (OnInviteAnswer(friendId, reason == "notFriend" ? "n'est plus votre ami sur Steam." : "n'a plus OptiGame ouvert.")) return;
         if (_outgoing is not { } friend || friend.Id != friendId) return;
         _outgoing = null;
         End(reason == "notFriend" ? $"Vous n'êtes plus amis sur Steam avec {friend.DisplayName}." : $"{friend.DisplayName} n'a plus OptiGame ouvert.",

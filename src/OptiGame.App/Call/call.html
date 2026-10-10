@@ -10,11 +10,9 @@
       content="default-src 'none'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'; media-src blob: mediastream:; connect-src wss://*.workers.dev ws://localhost:*">
 </head>
 <body>
-<audio id="remote" autoplay></audio>
 <script>
 "use strict";
 const send = o => chrome.webview.postMessage(JSON.stringify(o));
-const remote = document.getElementById('remote');
 const STUN = 'stun:stun.cloudflare.com:3478';
 // Voix : Opus mono, correction d'erreurs, jamais coupé dans les silences (DTX : débuts de phrase hachés). Sa propre description
 // autorise l'autre PC jusqu'à 192 kbit/s ; chacun limite ce qu'IL envoie à son réglage (96, 128 ou 192 kbit/s).
@@ -26,10 +24,9 @@ let gateMode = 'auto', gateThreshold = -30;
 // Suppression du bruit : 'strong' = filtre RNNoise (noise-worklet.js), 'standard' = celle du moteur web, 'off' = aucune.
 const AUDIO = mode => ({ echoCancellation: true, noiseSuppression: mode === 'standard', autoGainControl: true, channelCount: 1 });
 
-let pc = null, control = null, sender = null, mic = null, muted = true, levels = null, ctx = null, analyser = null, source = null;
+let mic = null, muted = true, levels = null, ctx = null, analyser = null, source = null;
 let processor = null, outbound = null, sendTrack = null, noiseMode = 'strong';
-let relay = null, role = null, stun = false, connected = false, closing = false, sdpSent = false, testing = false;
-let localQueue = [], remoteQueue = [];
+let relay = null, stun = false, closing = false, testing = false;
 // Périphériques : '' = celui de Windows par défaut, suivi quand il change ; sinon l'identifiant choisi.
 let micChoice = '', speakerChoice = '', defaultIn = null, defaultOut = null;
 
@@ -212,19 +209,22 @@ function tuneOpus(sdp) {
     : sdp.replace(rtpmap[0], `${rtpmap[0]}\r\na=fmtp:${pt} ${merge('')}`);
 }
 
-async function raiseBitrate() {
-  if (!sender) return;
-  const params = sender.getParameters();
-  if (!params.encodings || params.encodings.length === 0) params.encodings = [{}];
-  params.encodings[0].maxBitrate = bitrate;
-  params.encodings[0].priority = 'high';
-  params.encodings[0].networkPriority = 'high';
-  await sender.setParameters(params).catch(() => {});
+// Débit choisi appliqué à une connexion (sans argument : à toutes).
+async function raiseBitrate(target) {
+  const senders = target ? [target] : [...peers.values()].map(p => p.sender);
+  for (const sender of senders) {
+    const params = sender.getParameters();
+    if (!params.encodings || params.encodings.length === 0) params.encodings = [{}];
+    params.encodings[0].maxBitrate = bitrate;
+    params.encodings[0].priority = 'high';
+    params.encodings[0].networkPriority = 'high';
+    await sender.setParameters(params).catch(() => {});
+  }
 }
 
-// Sortie : toujours un identifiant précis (celui du périphérique par défaut si « par défaut ») pour forcer le changement.
+// Sortie : toujours un identifiant précis (celui du périphérique par défaut si « par défaut ») pour forcer le changement ; la
+// même pour la voix de chaque participant.
 async function applySpeaker(list) {
-  if (typeof remote.setSinkId !== 'function') return;
   const outputs = list.filter(d => d.kind === 'audiooutput');
   let target = speakerChoice && outputs.find(d => d.deviceId !== 'default' && d.deviceId !== 'communications' && d.label === speakerChoice);
   if (speakerChoice && !target) { speakerChoice = ''; send({ ev: 'deviceLost', kind: 'output' }); }
@@ -232,9 +232,13 @@ async function applySpeaker(list) {
     const def = outputs.find(d => d.deviceId === 'default');
     target = def && outputs.find(d => d.deviceId !== 'default' && d.deviceId !== 'communications' && d.groupId === def.groupId) || def;
   }
-  if (target && remote.sinkId !== target.deviceId) await remote.setSinkId(target.deviceId);
+  if (!target) return;
+  sinkId = target.deviceId;
+  for (const peer of peers.values()) {
+    if (typeof peer.audio.setSinkId === 'function' && peer.audio.sinkId !== sinkId) await peer.audio.setSinkId(sinkId).catch(() => {});
+  }
   // Sons de confirmation sur la même sortie que la voix.
-  if (target && ctx && typeof ctx.setSinkId === 'function' && ctx.sinkId !== target.deviceId) await ctx.setSinkId(target.deviceId).catch(() => {});
+  if (ctx && typeof ctx.setSinkId === 'function' && ctx.sinkId !== sinkId) await ctx.setSinkId(sinkId).catch(() => {});
 }
 
 function plain(list, kind) {
@@ -262,80 +266,108 @@ async function reportDevices() {
 
 navigator.mediaDevices.addEventListener('devicechange', () => { if (mic && !closing) reportDevices().catch(reportError); });
 
-// ===== Mise en relation =====
+// ===== Mise en relation (salon de groupe, /v2/rooms : jusqu'à 6 personnes) =====
+// La connexion au serveur reste ouverte pendant tout l'appel : un ami peut arriver en cours de route. Le NOUVEAU propose la
+// connexion à chacun de ceux déjà là ; chacun garde une connexion directe par participant (voix directe entre tous).
 
-function relaySend(message) {
-  if (relay && relay.readyState === WebSocket.OPEN) relay.send(JSON.stringify(message));
+let relayUrl = '', roomCode = '', myName = '', memberId = '', joined = false;
+const peers = new Map(); // identifiant de membre → participant
+const names = new Map(); // identifiant de membre → nom annoncé
+const volumes = new Map(); // identifiant de membre → volume choisi (0 à 1)
+let sinkId = ''; // sortie audio de toutes les voix
+
+function relaySend(to, message) {
+  if (relay && relay.readyState === WebSocket.OPEN) relay.send(JSON.stringify({ ...message, to }));
 }
 
 function openRelay(url, code, asRole) {
-  role = asRole;
-  relay = new WebSocket(`${url}/v1/rooms/${code}?role=${asRole}`);
+  relayUrl = url;
+  roomCode = code;
+  const member = asRole === 'resume' ? `&member=${memberId}` : '';
+  relay = new WebSocket(`${url}/v2/rooms/${code}?role=${asRole}&name=${encodeURIComponent(myName)}${member}`);
   relay.onmessage = e => onRelay(JSON.parse(e.data)).catch(reportError);
-  relay.onclose = e => { if (!connected && !closing) send({ ev: 'relayClosed', code: e.code }); };
-}
-
-function closeRelay() {
-  if (!relay) return;
-  const r = relay;
-  relay = null;
-  try { r.send(JSON.stringify({ t: 'done' })); } catch (e) { /* déjà fermée */ }
-  setTimeout(() => { try { r.close(1000); } catch (e) { /* déjà fermée */ } }, 500);
+  relay.onclose = e => {
+    if (closing) return;
+    // Coupure du serveur pendant un appel (redémarrage) : les voix continuent, la mise en relation reprend 2 s plus tard.
+    if (joined && peers.size > 0) {
+      setTimeout(() => { if (!closing) openRelay(relayUrl, roomCode, 'resume'); }, 2000);
+      return;
+    }
+    send({ ev: 'relayClosed', code: e.code });
+  };
 }
 
 async function onRelay(m) {
   switch (m.t) {
-    case 'waiting':
-      send({ ev: 'waiting', expiresAt: m.expiresAt });
+    case 'members': {
+      const resumed = joined;
+      memberId = m.you;
+      joined = true;
+      for (const member of m.members) names.set(member.id, member.name);
+      send({ ev: 'members', you: m.you, members: m.members, resumed });
+      // Nouveau dans l'appel : proposer la connexion à chacun (après une reprise : seulement à ceux qu'on n'a pas).
+      for (const member of m.members) if (!peers.has(member.id)) await offerTo(member.id);
       break;
-    case 'peer':
-      send({ ev: 'peer' });
-      if (role === 'host') {
-        newConnection();
-        const offer = await pc.createOffer();
-        await pc.setLocalDescription({ type: 'offer', sdp: tuneOpus(offer.sdp) });
-        relaySend({ t: 'sdp', type: 'offer', sdp: pc.localDescription.sdp });
-        flushLocal();
+    }
+    case 'joined':
+      names.set(m.member.id, m.member.name);
+      send({ ev: 'joined', member: m.member });
+      break; // le nouveau va proposer la connexion
+    case 'left':
+      closePeer(m.id, false);
+      send({ ev: 'left', id: m.id });
+      break;
+    case 'sdp': {
+      if (m.type === 'offer') {
+        const old = peers.get(m.from);
+        if (old) closePeer(m.from, false); // il revient (reprise) : nouvelle connexion
+        const peer = newPeer(m.from);
+        await peer.pc.setRemoteDescription({ type: 'offer', sdp: m.sdp });
+        await flushRemote(peer);
+        const answer = await peer.pc.createAnswer();
+        await peer.pc.setLocalDescription({ type: 'answer', sdp: tuneOpus(answer.sdp) });
+        relaySend(peer.id, { t: 'sdp', type: 'answer', sdp: peer.pc.localDescription.sdp });
+        flushLocal(peer);
+        reportFingerprints(peer);
+      } else if (m.type === 'answer') {
+        const peer = peers.get(m.from);
+        if (!peer) return;
+        await peer.pc.setRemoteDescription({ type: 'answer', sdp: m.sdp });
+        await flushRemote(peer);
+        reportFingerprints(peer);
       }
       break;
-    case 'sdp':
-      if (m.type === 'offer' && role === 'guest' && !pc) {
-        newConnection();
-        await pc.setRemoteDescription({ type: 'offer', sdp: m.sdp });
-        await flushRemote();
-        const answer = await pc.createAnswer();
-        await pc.setLocalDescription({ type: 'answer', sdp: tuneOpus(answer.sdp) });
-        relaySend({ t: 'sdp', type: 'answer', sdp: pc.localDescription.sdp });
-        flushLocal();
-        reportFingerprints();
-      } else if (m.type === 'answer' && role === 'host' && pc) {
-        await pc.setRemoteDescription({ type: 'answer', sdp: m.sdp });
-        await flushRemote();
-        reportFingerprints();
-      }
+    }
+    case 'ice': {
+      const peer = peers.get(m.from);
+      if (!peer) return;
+      if (peer.pc.remoteDescription) await peer.pc.addIceCandidate(m.candidate).catch(() => {});
+      else peer.remoteQueue.push(m.candidate);
       break;
-    case 'ice':
-      if (pc && pc.remoteDescription) await pc.addIceCandidate(m.candidate).catch(() => {});
-      else remoteQueue.push(m.candidate);
-      break;
+    }
     case 'error':
       send({ ev: 'relayError', code: m.code });
-      break;
-    case 'left':
-      if (!connected) send({ ev: 'relayLeft' });
       break;
   }
 }
 
-function flushLocal() {
-  sdpSent = true;
-  localQueue.forEach(c => relaySend({ t: 'ice', candidate: c }));
-  localQueue = [];
+async function offerTo(id) {
+  const peer = newPeer(id);
+  const offer = await peer.pc.createOffer();
+  await peer.pc.setLocalDescription({ type: 'offer', sdp: tuneOpus(offer.sdp) });
+  relaySend(id, { t: 'sdp', type: 'offer', sdp: peer.pc.localDescription.sdp });
+  flushLocal(peer);
 }
 
-async function flushRemote() {
-  for (const c of remoteQueue) await pc.addIceCandidate(c).catch(() => {});
-  remoteQueue = [];
+function flushLocal(peer) {
+  peer.sdpSent = true;
+  peer.localQueue.forEach(c => relaySend(peer.id, { t: 'ice', candidate: c }));
+  peer.localQueue = [];
+}
+
+async function flushRemote(peer) {
+  for (const c of peer.remoteQueue) await peer.pc.addIceCandidate(c).catch(() => {});
+  peer.remoteQueue = [];
 }
 
 function fingerprint(sdp) {
@@ -343,47 +375,67 @@ function fingerprint(sdp) {
   return line ? line.substring('a=fingerprint:'.length).trim() : '';
 }
 
-function reportFingerprints() {
-  send({ ev: 'fingerprints', local: fingerprint(pc.localDescription.sdp), remote: fingerprint(pc.remoteDescription.sdp) });
+function reportFingerprints(peer) {
+  send({ ev: 'fingerprints', id: peer.id, local: fingerprint(peer.pc.localDescription.sdp), remote: fingerprint(peer.pc.remoteDescription.sdp) });
 }
 
-// ===== Connexion directe =====
+// ===== Connexions directes (une par participant) =====
 
 function setMuted(value) {
   muted = value;
   if (sendTrack) sendTrack.enabled = !value; // la piste envoyée : le micro reste ouvert pour l'annulation d'écho
-  if (control && control.readyState === 'open') control.send(value ? 'muted' : 'unmuted');
+  for (const peer of peers.values()) {
+    if (peer.control.readyState === 'open') peer.control.send(value ? 'muted' : 'unmuted');
+  }
   send({ ev: 'muted', value });
 }
 
-function newConnection() {
-  pc = new RTCPeerConnection({ iceServers: stun ? [{ urls: STUN }] : [] });
-  sender = pc.addTrack(sendTrack, outbound.stream);
-  // Canal négocié d'avance (même identifiant des deux côtés).
-  control = pc.createDataChannel('control', { negotiated: true, id: 0 });
-  control.onopen = () => control.send(muted ? 'muted' : 'unmuted');
-  control.onmessage = e => {
-    if (e.data === 'bye') send({ ev: 'bye' });
-    else if (e.data === 'muted' || e.data === 'unmuted') send({ ev: 'peerMuted', value: e.data === 'muted' });
+function newPeer(id) {
+  const pc = new RTCPeerConnection({ iceServers: stun ? [{ urls: STUN }] : [] });
+  const audio = document.createElement('audio');
+  audio.autoplay = true;
+  audio.volume = volumes.has(id) ? volumes.get(id) : 1;
+  document.body.appendChild(audio);
+  if (sinkId && typeof audio.setSinkId === 'function') audio.setSinkId(sinkId).catch(() => {});
+  const peer = { id, pc, audio, sender: pc.addTrack(sendTrack, outbound.stream), localQueue: [], remoteQueue: [], sdpSent: false, connected: false };
+  // Canal négocié d'avance (même identifiant des deux côtés) : deux signaux fixes, jamais de texte.
+  peer.control = pc.createDataChannel('control', { negotiated: true, id: 0 });
+  peer.control.onopen = () => peer.control.send(muted ? 'muted' : 'unmuted');
+  peer.control.onmessage = e => {
+    if (e.data === 'bye') { closePeer(id, false); send({ ev: 'left', id }); }
+    else if (e.data === 'muted' || e.data === 'unmuted') send({ ev: 'peerMuted', id, value: e.data === 'muted' });
   };
   pc.onicecandidate = e => {
     if (!e.candidate) return;
     const c = e.candidate.toJSON();
-    if (sdpSent) relaySend({ t: 'ice', candidate: c }); else localQueue.push(c);
+    if (peer.sdpSent) relaySend(id, { t: 'ice', candidate: c }); else peer.localQueue.push(c);
   };
-  pc.ontrack = e => { remote.srcObject = e.streams[0]; remote.play().catch(() => {}); };
+  pc.ontrack = e => { audio.srcObject = e.streams[0]; audio.play().catch(() => {}); };
   pc.onconnectionstatechange = () => {
-    send({ ev: 'state', value: pc.connectionState });
-    if (pc.connectionState === 'connected') {
-      if (!connected) { connected = true; closeRelay(); raiseBitrate(); } // le serveur n'est plus utile
+    send({ ev: 'peerState', id, name: names.get(id) || '', value: pc.connectionState });
+    if (pc.connectionState === 'connected' && !peer.connected) {
+      peer.connected = true;
+      raiseBitrate(peer.sender);
       if (!levels) levels = setInterval(reportLevels, 250);
     }
   };
+  peers.set(id, peer);
+  return peer;
 }
 
-// Niveaux sonores (« vous parlez » / « votre ami parle ») et octets échangés, 4 fois par seconde pendant l'appel seulement.
+function closePeer(id, tell) {
+  const peer = peers.get(id);
+  if (!peer) return;
+  peers.delete(id);
+  if (tell && peer.control.readyState === 'open') { try { peer.control.send('bye'); } catch (e) { /* fermé */ } }
+  try { peer.pc.close(); } catch (e) { /* déjà fermée */ }
+  peer.audio.srcObject = null;
+  peer.audio.remove();
+}
+
+// Niveaux sonores (« vous parlez » / chaque participant) et octets échangés, 4 fois par seconde pendant l'appel seulement.
 async function reportLevels() {
-  if (!pc) return;
+  if (peers.size === 0) return;
   let local = 0;
   if (analyser && !muted) {
     const data = new Uint8Array(analyser.fftSize);
@@ -392,22 +444,27 @@ async function reportLevels() {
     for (const v of data) { const x = (v - 128) / 128; sum += x * x; }
     local = Math.min(1, Math.sqrt(sum / data.length) * 4);
   }
-  let remoteLevel = 0, received = 0, sent = 0, path = '';
-  const stats = await pc.getStats();
-  const byId = new Map();
-  stats.forEach(s => byId.set(s.id, s));
-  stats.forEach(s => {
-    if (s.type === 'inbound-rtp' && s.kind === 'audio') { remoteLevel = Math.min(1, (s.audioLevel || 0) * 4); received = s.bytesReceived || 0; }
-    if (s.type === 'outbound-rtp' && s.kind === 'audio') sent = s.bytesSent || 0;
-    if (s.type === 'candidate-pair' && s.nominated && s.state === 'succeeded') {
-      const l = byId.get(s.localCandidateId), r = byId.get(s.remoteCandidateId);
-      path = (l ? l.candidateType : '?') + '/' + (r ? r.candidateType : '?');
-    }
-  });
-  send({ ev: 'levels', local, remote: remoteLevel, received, sent, path });
+  const list = [];
+  let sent = 0;
+  for (const peer of peers.values()) {
+    let level = 0, received = 0, path = '';
+    const stats = await peer.pc.getStats();
+    const byId = new Map();
+    stats.forEach(s => byId.set(s.id, s));
+    stats.forEach(s => {
+      if (s.type === 'inbound-rtp' && s.kind === 'audio') { level = Math.min(1, (s.audioLevel || 0) * 4); received = s.bytesReceived || 0; }
+      if (s.type === 'outbound-rtp' && s.kind === 'audio') sent += s.bytesSent || 0;
+      if (s.type === 'candidate-pair' && s.nominated && s.state === 'succeeded') {
+        const l = byId.get(s.localCandidateId), r = byId.get(s.remoteCandidateId);
+        path = (l ? l.candidateType : '?') + '/' + (r ? r.candidateType : '?');
+      }
+    });
+    list.push({ id: peer.id, level, received, path, connected: peer.connected });
+  }
+  send({ ev: 'levels', local, peers: list, sent });
 }
 
-// Son de confirmation du raccourci du micro (entendu seulement ici, jamais envoyé à l'ami) : deux notes montantes = ouvert,
+// Son de confirmation du raccourci du micro (entendu seulement ici, jamais envoyé) : deux notes montantes = ouvert,
 // descendantes = coupé, discrètes.
 function cue(on) {
   if (!ctx) return;
@@ -430,14 +487,16 @@ function hangup() {
   closing = true;
   stopBandwidth();
   if (levels) { clearInterval(levels); levels = null; }
-  if (control && control.readyState === 'open') { try { control.send('bye'); } catch (e) { /* fermé */ } }
+  for (const peer of peers.values()) {
+    if (peer.control.readyState === 'open') { try { peer.control.send('bye'); } catch (e) { /* fermé */ } }
+  }
   if (relay) { try { relay.close(1000); } catch (e) { /* fermée */ } relay = null; }
-  // Laisse partir le « bye » avant de fermer.
+  // Laisse partir les « bye » avant de fermer.
   setTimeout(() => {
-    if (pc) pc.close();
+    for (const id of [...peers.keys()]) closePeer(id, false);
     if (mic) mic.getTracks().forEach(t => { t.onended = null; t.stop(); });
     if (ctx) ctx.close();
-    pc = null; mic = null; ctx = null; control = null;
+    mic = null; ctx = null;
     send({ ev: 'state', value: 'closed' });
   }, 200);
 }
@@ -462,7 +521,8 @@ async function handle(m) {
       speakerChoice = m.speaker || '';
       readVoiceSettings(m);
       await openMic();
-      openRelay(m.relay, m.code, m.cmd === 'host' ? 'host' : 'guest');
+      myName = String(m.name || '').slice(0, 64); // nom annoncé aux autres participants
+      openRelay(m.relay, m.code, m.cmd === 'host' ? 'create' : 'join');
       break;
     case 'test':
       // « Tester mon micro » : micro et traitement seuls, sans appel ni réseau ; mesures envoyées 10 fois par seconde.
@@ -479,7 +539,12 @@ async function handle(m) {
       cue(!!m.on);
       break;
     case 'volume':
-      remote.volume = Math.max(0, Math.min(1, Number(m.value) || 0));
+      // Volume d'un participant (id), ou de tous.
+      for (const peer of peers.values()) {
+        if (m.id && peer.id !== m.id) continue;
+        peer.audio.volume = Math.max(0, Math.min(1, Number(m.value) || 0));
+      }
+      if (m.id) volumes.set(m.id, Math.max(0, Math.min(1, Number(m.value) || 0)));
       break;
     case 'mic':
       micChoice = m.id || '';

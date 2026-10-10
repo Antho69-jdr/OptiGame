@@ -173,7 +173,7 @@ peer|left|error} + messages relayés sdp / ice / done), déployé par `scripts\d
 ws://localhost en test ; variable OPTIGAME_CALL_RELAY). Les deux PC échangent leurs adresses AU MÊME INSTANT (trickle ICE) :
 c'est ce qui fait passer le pare-feu de Windows (profil Public = entrées bloquées, machine de dev) ; relevé du 1er essai : avec
 l'échange à la main, l'invité tentait la connexion dès sa réponse et abandonnait avant que l'hôte la colle (réussi seulement collé
-en 11 s, en direct host/host). Le serveur est quitté dès la connexion. `SafetyWords` (4 mots tirés des deux empreintes DTLS).
+en 11 s, en direct host/host). Salons v1 à deux (anciennes versions) : serveur quitté dès la connexion ; depuis les appels de groupe, gardé (plus bas). `SafetyWords` (4 mots tirés des deux empreintes DTLS).
 `App/Call/CallEngine` = WebView2 sur une fenêtre native CACHÉE (HwndSource, jamais une Window : elle deviendrait
 Application.MainWindow), dossier `webview-call`, page `Call/call.html` copiée avec l'appli, servie sous https://appel.optigame/
 (contexte sécurisé exigé pour le micro ; CSP connect-src wss://*.workers.dev ws://localhost:*), micro autorisé pour CETTE origine
@@ -267,6 +267,20 @@ ligne, sans rien dire à l'expéditeur ; accepté → chacun garde l'autre dans 
 renvoyé automatiquement ; acceptation non demandée ignorée ; 20 demandes par connexion. Vérifié le 2026-10-09 (serveur local, 3e
 personne aux réglages en mémoire, ui-snapshots `-Only c5`) : invisible sans lien, demande reçue, acceptée = vus des deux côtés,
 retirée = plus vus. Serveur v3 déployé (appels par code revérifiés).
+APPELS DE GROUPE (choix de l'utilisateur le 2026-10-10 : voix DIRECTE entre tous, 6 personnes au plus, TOUS les participants
+peuvent inviter un de leurs amis) : maillage complet, une RTCPeerConnection + un `<audio>` par participant dans `call.html`, la
+même piste envoyée (filtre, seuil, débit) à tous ; le NOUVEL arrivant fait l'offre à chacun. Serveur : classe `GroupRoom`
+(`/v2/rooms/<CODE>?role=create|join|resume&name=…[&member=…]`, binding GROUPS, migration v3 ; identifiant de 8 caractères tiré
+par le serveur, `{t:members, you, members}` à l'arrivant, `{t:joined|left}` aux autres, messages relayés à `to` avec `from` posé
+par le serveur ; attente 2 min, 12 h max, 5 000 messages) ; la WebSocket du salon reste OUVERTE tout l'appel (invités, reprise
+« resume » 2 s après une coupure du serveur). Invitation = sonnerie habituelle + `with` (noms déjà dans l'appel, 6 × 64 car.) →
+« X vous invite dans un appel avec … » ; liste « En ligne » : « dans l'appel » / « ça sonne… » au lieu d'« Inviter »
+(`FriendCallStates`, `Converters/FriendCallStateConverter`). Page : participants (mots de contrôle PAR personne, niveau), volume de
+chacun (onglet Périphériques) ; dernier autre parti = fin de l'appel (sauf invitation en cours). Copie locale :
+`LocalCallRelay.Groups.cs`. Vérifié le 2026-10-10 (ui-snapshots `-Only c1,c5b,c5h,c5i`, 3 personnes aux réglages séparés, souffle
+de test sans filtre) : invitation en cours d'appel, chacun reçoit les DEUX autres (≈ 45 Ko en 3 s chacun), départ de l'une = l'appel
+continue à deux, puis fin. Les appels à deux passent aussi par `/v2` : le serveur DOIT être redéployé (GroupRoom) AVANT de
+publier une version qui s'en sert.
 
 Données fictives pour tester l'UI : `$env:OPTIGAME_DATA_DIR='<dossier temporaire>'` redirige tout le dossier de
 données ; `DiagDump -- --import-capture <csv> <libellé> <date ISO>` y ajoute une capture (refusé sans la variable).

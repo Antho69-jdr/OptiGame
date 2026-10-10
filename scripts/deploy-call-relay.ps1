@@ -46,11 +46,12 @@ $subdomain = (Call-Api 'GET' "/accounts/$account/workers/subdomain" $null).subdo
 if (-not $subdomain) { throw 'Aucun sous-domaine workers.dev : ouvrez une fois « Workers et Pages » dans le tableau de bord Cloudflare pour le choisir.' }
 
 # Envoi du script (module) + objets durables (stockage SQLite, seul permis par le plan gratuit) : Room (salons, migration v1),
-# Login et Presence (connexion avec Steam, amis en ligne, v2). Les secrets déjà posés sont gardés (keep_bindings).
+# Login et Presence (connexion avec Steam, amis en ligne, v2), GroupRoom (appels de groupe, v3). Secrets déjà posés gardés.
 $migrations = @(
-    @{ old_tag = 'v1'; new_tag = 'v2'; new_sqlite_classes = @('Login', 'Presence') },                    # déjà en v1
-    @{ new_tag = 'v2'; steps = @(@{ new_sqlite_classes = @('Room') }, @{ new_sqlite_classes = @('Login', 'Presence') }) }, # compte neuf
-    $null                                                                                                  # déjà en v2
+    @{ old_tag = 'v2'; new_tag = 'v3'; new_sqlite_classes = @('GroupRoom') },                                                      # déjà en v2
+    @{ old_tag = 'v1'; new_tag = 'v3'; steps = @(@{ new_sqlite_classes = @('Login', 'Presence') }, @{ new_sqlite_classes = @('GroupRoom') }) },
+    @{ new_tag = 'v3'; steps = @(@{ new_sqlite_classes = @('Room') }, @{ new_sqlite_classes = @('Login', 'Presence') }, @{ new_sqlite_classes = @('GroupRoom') }) }, # compte neuf
+    $null                                                                                                                         # déjà en v3
 )
 function Send-Worker($Migration) {
     $metadata = @{
@@ -59,7 +60,8 @@ function Send-Worker($Migration) {
         bindings           = @(
             @{ type = 'durable_object_namespace'; name = 'ROOMS'; class_name = 'Room' },
             @{ type = 'durable_object_namespace'; name = 'LOGINS'; class_name = 'Login' },
-            @{ type = 'durable_object_namespace'; name = 'PRESENCE'; class_name = 'Presence' }
+            @{ type = 'durable_object_namespace'; name = 'PRESENCE'; class_name = 'Presence' },
+            @{ type = 'durable_object_namespace'; name = 'GROUPS'; class_name = 'GroupRoom' }
         )
         keep_bindings      = @('secret_text')
     }

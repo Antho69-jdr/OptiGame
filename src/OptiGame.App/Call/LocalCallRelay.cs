@@ -141,7 +141,13 @@ internal sealed partial class LocalCallRelay : IDisposable
                     continue;
                 }
                 var forwarded = type switch { "call" => "ring", "decline" => "declined", _ => "cancelled" };
-                await SendAsync(target.Socket, Json(new { t = forwarded, from = new { id = me.Id, name = me.Name }, code }));
+                // Invitation dans un appel de groupe : noms de ceux qui y sont déjà (6 au plus, 64 caractères chacun).
+                var already = type == "call" && root.TryGetProperty("with", out var withValue) && withValue.ValueKind == System.Text.Json.JsonValueKind.Array
+                    ? withValue.EnumerateArray().Select(e => e.GetString() ?? "").Where(n => n.Length > 0).Take(6).Select(n => n[..Math.Min(64, n.Length)]).ToArray()
+                    : null;
+                await SendAsync(target.Socket, already is null
+                    ? Json(new { t = forwarded, from = new { id = me.Id, name = me.Name }, code })
+                    : Json(new { t = forwarded, from = new { id = me.Id, name = me.Name }, code, with = already }));
             }
         }
         catch (Exception ex) when (ex is WebSocketException or System.Text.Json.JsonException or KeyNotFoundException) { }
@@ -154,6 +160,7 @@ internal sealed partial class LocalCallRelay : IDisposable
 
     private async Task HandleAsync(HttpListenerContext context)
     {
+        if (await TryGroupAsync(context)) return;
         if (context.Request.Url!.AbsolutePath == "/v1/presence")
         {
             await PresenceAsync(context);
